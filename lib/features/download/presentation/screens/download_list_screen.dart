@@ -37,16 +37,32 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
       return '$b B';
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/');
+        }
+      },
+      child: Scaffold(
         backgroundColor: AppColors.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-        ),
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/');
+              }
+            },
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          ),
         title: Text(
           'Daftar Unduhan',
           style: GoogleFonts.outfit(
@@ -124,8 +140,9 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildInProgressList(List<DownloadItem> items) {
     if (items.isEmpty) {

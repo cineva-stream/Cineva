@@ -56,23 +56,34 @@ class TvDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(tvDetailProvider(tvId));
 
-    return Scaffold(
-      body: detail.when(
-        data: (data) => _TvDetailContent(data: data),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
-              const SizedBox(height: 16),
-              Text('Gagal memuat detail', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(tvDetailProvider(tvId)),
-                child: const Text('Coba Lagi'),
-              ),
-            ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/');
+        }
+      },
+      child: Scaffold(
+        body: detail.when(
+          data: (data) => _TvDetailContent(data: data),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
+                const SizedBox(height: 16),
+                Text('Gagal memuat detail', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(tvDetailProvider(tvId)),
+                  child: const Text('Coba Lagi'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -122,15 +133,20 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
     final imdbId = data['external_ids']?['imdb_id'] as String?;
     final tvId = data['id'] as int? ?? 0;
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = screenWidth < 360;
+    final posterWidth = isCompact ? 100.0 : 120.0;
+    final posterHeight = isCompact ? 150.0 : 180.0;
+
     return CustomScrollView(
       slivers: [
         // ── Hero Backdrop ──
         SliverAppBar(
-          expandedHeight: 280,
+          expandedHeight: isCompact ? 240 : 280,
           pinned: true,
           backgroundColor: AppColors.background,
           leading: IconButton(
-            onPressed: () => context.pop(),
+            onPressed: () => context.canPop() ? context.pop() : context.go('/'),
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -182,18 +198,24 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                       borderRadius: BorderRadius.circular(14),
                       child: CachedNetworkImage(
                         imageUrl: ApiConstants.imageUrl(posterPath),
-                        width: 120,
-                        height: 180,
+                        width: posterWidth,
+                        height: posterHeight,
                         fit: BoxFit.cover,
-                        placeholder: (_, _) => Container(width: 120, height: 180, color: AppColors.surfaceVariant),
+                        placeholder: (_, _) => Container(width: posterWidth, height: posterHeight, color: AppColors.surfaceVariant),
                       ),
                     ).animate().fadeIn().slideY(begin: 0.1),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(name, style: Theme.of(context).textTheme.headlineLarge, maxLines: 3),
+                          Text(
+                            name,
+                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                              fontSize: isCompact ? 21 : 24,
+                            ),
+                            maxLines: 3,
+                          ),
                           if (tagline.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(tagline, style: Theme.of(context).textTheme.bodySmall?.copyWith(

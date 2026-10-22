@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/content_preference.dart';
+import '../../../../core/constants/genre_constants.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../../shared/widgets/app_error_widget.dart';
 import '../providers/home_providers.dart';
@@ -40,12 +41,23 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeFilter = ref.watch(homeFilterProvider);
+    final activeGenre = ref.watch(selectedHomeGenreProvider);
     final pref = ref.watch(contentPreferenceProvider);
     final trending = ref.watch(trendingMoviesProvider);
     final popular = ref.watch(popularMoviesProvider);
     final topRated = ref.watch(topRatedMoviesProvider);
     final upcoming = ref.watch(upcomingMoviesProvider);
     final popularTv = ref.watch(popularTvProvider);
+
+    List<Movie> filterMovies(List<Movie> list) {
+      if (activeGenre.id == 'all') return list;
+      return list.where((m) => activeGenre.matchesMovie(m)).toList();
+    }
+
+    List<TvSeries> filterTv(List<TvSeries> list) {
+      if (activeGenre.id == 'all') return list;
+      return list.where((t) => activeGenre.matchesTv(t)).toList();
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -225,16 +237,92 @@ class HomeScreen extends ConsumerWidget {
           ),
           ),
 
+          // ── Genre Filter Chips Row ──
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2, bottom: 14),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: GenreConstants.filters.map((genre) {
+                    final isSelected = activeGenre.id == genre.id;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () {
+                          ref.read(selectedHomeGenreProvider.notifier).state = genre;
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primary.withValues(alpha: 0.18)
+                                : AppColors.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : Colors.white.withValues(alpha: 0.08),
+                              width: isSelected ? 1.2 : 0.8,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(alpha: 0.25),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (genre.icon != null) ...[
+                                Icon(
+                                  genre.icon,
+                                  size: 13,
+                                  color: isSelected ? AppColors.primary : AppColors.textMuted,
+                                ),
+                                const SizedBox(width: 5),
+                              ],
+                              Text(
+                                genre.label,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.5,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected ? AppColors.primaryLight : AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ),
+
           // ── Hero Billboard Carousel (Trending) ──
           if (activeFilter == HomeCategoryFilter.all ||
               activeFilter == HomeCategoryFilter.trending ||
               activeFilter == HomeCategoryFilter.movies)
             SliverToBoxAdapter(
               child: trending.when(
-                data: (movies) => MovieCarousel(movies: movies)
-                    .animate()
-                    .fadeIn(duration: 500.ms)
-                    .slideY(begin: 0.04, end: 0, duration: 500.ms),
+                data: (movies) {
+                  final filtered = filterMovies(movies);
+                  if (filtered.isEmpty) return const SizedBox.shrink();
+                  return MovieCarousel(movies: filtered)
+                      .animate()
+                      .fadeIn(duration: 500.ms)
+                      .slideY(begin: 0.04, end: 0, duration: 500.ms);
+                },
                 loading: () => const ShimmerHeroCarousel(),
                 error: (e, _) => AppErrorWidget(
                   message: 'Gagal memuat film trending',
@@ -244,9 +332,10 @@ class HomeScreen extends ConsumerWidget {
             ),
 
           // ── CONTINUE WATCHING SECTION (In-Progress Movies & TV Series) ──
-          if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.movies ||
-              activeFilter == HomeCategoryFilter.tv)
+          if (activeGenre.id == 'all' &&
+              (activeFilter == HomeCategoryFilter.all ||
+                  activeFilter == HomeCategoryFilter.movies ||
+                  activeFilter == HomeCategoryFilter.tv))
             const SliverToBoxAdapter(
               child: ContinueWatchingSection(),
             ),
@@ -254,127 +343,165 @@ class HomeScreen extends ConsumerWidget {
           if (activeFilter == HomeCategoryFilter.all ||
               activeFilter == HomeCategoryFilter.trending ||
               activeFilter == HomeCategoryFilter.movies)
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
           // ── TOP 10 SECTION (Netflix-style Giant Rank Numbers) ──
           if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.top10) ...[
+              activeFilter == HomeCategoryFilter.top10)
             SliverToBoxAdapter(
-              child: SectionHeader(
+              child: _SectionWithHeader<Movie>(
                 title: 'Top 10 Hari Ini',
                 icon: Iconsax.crown,
+                asyncData: popular,
+                filter: filterMovies,
+                onRetry: () => ref.invalidate(popularMoviesProvider),
                 onSeeAll: () => context.go('/search'),
+                builder: (movies) => _Top10HorizontalList(movies: movies),
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 12)),
-            SliverToBoxAdapter(
-              child: popular.when(
-                data: (movies) => _Top10HorizontalList(movies: movies),
-                loading: () => const ShimmerMovieRow(),
-                error: (e, _) => AppErrorWidget(
-                  message: 'Gagal memuat Top 10',
-                  onRetry: () => ref.invalidate(popularMoviesProvider),
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
-          ],
 
           // ── POPULAR MOVIES SECTION ──
           if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.movies) ...[
+              activeFilter == HomeCategoryFilter.movies)
             SliverToBoxAdapter(
-              child: SectionHeader(
+              child: _SectionWithHeader<Movie>(
                 title: 'Film Populer',
                 icon: Iconsax.trend_up,
+                asyncData: popular,
+                filter: filterMovies,
+                onRetry: () => ref.invalidate(popularMoviesProvider),
                 onSeeAll: () => context.go('/search'),
+                builder: (movies) => _MovieHorizontalList(movies: movies),
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 12)),
-            SliverToBoxAdapter(
-              child: popular.when(
-                data: (movies) => _MovieHorizontalList(movies: movies),
-                loading: () => const ShimmerMovieRow(),
-                error: (e, _) => AppErrorWidget(
-                  message: 'Gagal memuat film populer',
-                  onRetry: () => ref.invalidate(popularMoviesProvider),
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
-          ],
 
           // ── POPULAR TV SERIES SECTION ──
           if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.tv) ...[
+              activeFilter == HomeCategoryFilter.tv)
             SliverToBoxAdapter(
-              child: SectionHeader(
+              child: _SectionWithHeader<TvSeries>(
                 title: 'Serial TV Populer',
                 icon: Iconsax.monitor,
+                asyncData: popularTv,
+                filter: filterTv,
+                onRetry: () => ref.invalidate(popularTvProvider),
                 onSeeAll: () => context.go('/search'),
+                builder: (tvShows) => _TvHorizontalList(tvShows: tvShows),
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 12)),
-            SliverToBoxAdapter(
-              child: popularTv.when(
-                data: (tvShows) => _TvHorizontalList(tvShows: tvShows),
-                loading: () => const ShimmerMovieRow(),
-                error: (e, _) => AppErrorWidget(
-                  message: 'Gagal memuat serial TV',
-                  onRetry: () => ref.invalidate(popularTvProvider),
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
-          ],
 
           // ── TOP RATED MOVIES SECTION ──
           if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.movies) ...[
+              activeFilter == HomeCategoryFilter.movies)
             SliverToBoxAdapter(
-              child: SectionHeader(
+              child: _SectionWithHeader<Movie>(
                 title: 'Rating Tertinggi',
                 icon: Iconsax.star_1,
+                asyncData: topRated,
+                filter: filterMovies,
+                onRetry: () => ref.invalidate(topRatedMoviesProvider),
                 onSeeAll: () => context.go('/search'),
+                builder: (movies) => _MovieHorizontalList(movies: movies),
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 12)),
-            SliverToBoxAdapter(
-              child: topRated.when(
-                data: (movies) => _MovieHorizontalList(movies: movies),
-                loading: () => const ShimmerMovieRow(),
-                error: (e, _) => AppErrorWidget(
-                  message: 'Gagal memuat film rating tertinggi',
-                  onRetry: () => ref.invalidate(topRatedMoviesProvider),
-                ),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
-          ],
 
           // ── UPCOMING MOVIES SECTION ──
           if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.movies) ...[
+              activeFilter == HomeCategoryFilter.movies)
             SliverToBoxAdapter(
-              child: SectionHeader(
+              child: _SectionWithHeader<Movie>(
                 title: 'Segera Tayang di Bioskop',
                 icon: Iconsax.calendar,
+                asyncData: upcoming,
+                filter: filterMovies,
+                onRetry: () => ref.invalidate(upcomingMoviesProvider),
                 onSeeAll: () => context.go('/search'),
+                builder: (movies) => _MovieHorizontalList(movies: movies),
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 12)),
-            SliverToBoxAdapter(
-              child: upcoming.when(
-                data: (movies) => _MovieHorizontalList(movies: movies),
-                loading: () => const ShimmerMovieRow(),
-                error: (e, _) => AppErrorWidget(
-                  message: 'Gagal memuat film mendatang',
-                  onRetry: () => ref.invalidate(upcomingMoviesProvider),
-                ),
-              ),
+
+          // ── Empty State if No Media matches Selected Genre ──
+          if (activeGenre.id != 'all')
+            Builder(
+              builder: (context) {
+                final hasTrending = filterMovies(trending.valueOrNull ?? []).isNotEmpty;
+                final hasPopular = filterMovies(popular.valueOrNull ?? []).isNotEmpty;
+                final hasTopRated = filterMovies(topRated.valueOrNull ?? []).isNotEmpty;
+                final hasUpcoming = filterMovies(upcoming.valueOrNull ?? []).isNotEmpty;
+                final hasTv = filterTv(popularTv.valueOrNull ?? []).isNotEmpty;
+
+                final anyLoaded = popular.hasValue || trending.hasValue;
+                final noneMatches = anyLoaded &&
+                    !hasTrending &&
+                    !hasPopular &&
+                    !hasTopRated &&
+                    !hasUpcoming &&
+                    !hasTv;
+
+                if (!noneMatches) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              genreIcon(activeGenre),
+                              size: 40,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Belum Ada Tayangan Genre ${activeGenre.label}',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Coba pilih genre lain atau atur ulang ke Semua Genre.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              ref.read(selectedHomeGenreProvider.notifier).state =
+                                  GenreConstants.filters.first;
+                            },
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: const Text('Tampilkan Semua Genre'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
-          ],
 
           // Extra spacing for floating edge-to-edge navbar
           SliverToBoxAdapter(
@@ -483,6 +610,69 @@ class _TvHorizontalList extends StatelessWidget {
                 .slideX(begin: 0.1, end: 0, curve: Curves.easeOutCubic);
           },
         ),
+      ),
+    );
+  }
+}
+
+IconData genreIcon(GenreFilter genre) {
+  return genre.icon ?? Iconsax.video_circle;
+}
+
+/// Generic helper to render a home section with SectionHeader and list only if not empty.
+class _SectionWithHeader<T> extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final AsyncValue<List<T>> asyncData;
+  final Widget Function(List<T> filtered) builder;
+  final VoidCallback onRetry;
+  final VoidCallback onSeeAll;
+  final List<T> Function(List<T>) filter;
+
+  const _SectionWithHeader({
+    required this.title,
+    required this.icon,
+    required this.asyncData,
+    required this.builder,
+    required this.onRetry,
+    required this.onSeeAll,
+    required this.filter,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return asyncData.when(
+      data: (items) {
+        final filtered = filter(items);
+        if (filtered.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SectionHeader(
+              title: title,
+              icon: icon,
+              onSeeAll: onSeeAll,
+            ),
+            const SizedBox(height: 12),
+            builder(filtered),
+            const SizedBox(height: 32),
+          ],
+        );
+      },
+      loading: () => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SectionHeader(title: title, icon: icon, onSeeAll: onSeeAll),
+          const SizedBox(height: 12),
+          const ShimmerMovieRow(),
+          const SizedBox(height: 32),
+        ],
+      ),
+      error: (e, _) => AppErrorWidget(
+        message: 'Gagal memuat $title',
+        onRetry: onRetry,
       ),
     );
   }

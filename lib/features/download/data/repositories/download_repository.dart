@@ -48,19 +48,23 @@ class DownloadRepository {
     if (item != null) {
       try {
         final videoFile = File(item.videoPath);
-        if (await videoFile.exists()) {
-          await videoFile.delete();
+        if (item.videoPath.endsWith('master.m3u8')) {
+          final parentDir = videoFile.parent;
+          if (await parentDir.exists()) {
+            await parentDir.delete(recursive: true);
+          }
+        } else {
+          if (await videoFile.exists()) {
+            await videoFile.delete();
+          }
+          if (item.subtitlePath != null) {
+            final subFile = File(item.subtitlePath!);
+            if (await subFile.exists()) {
+              await subFile.delete();
+            }
+          }
         }
       } catch (_) {}
-
-      if (item.subtitlePath != null) {
-        try {
-          final subFile = File(item.subtitlePath!);
-          if (await subFile.exists()) {
-            await subFile.delete();
-          }
-        } catch (_) {}
-      }
     }
     await _box.delete(id);
   }
@@ -72,7 +76,19 @@ class DownloadRepository {
       if (item.isCompleted) {
         try {
           final file = File(item.videoPath);
-          if (file.existsSync()) {
+          if (item.videoPath.endsWith('master.m3u8')) {
+            final parentDir = file.parent;
+            if (parentDir.existsSync()) {
+              int dirSize = 0;
+              for (final f in parentDir.listSync(recursive: true)) {
+                if (f is File) dirSize += f.lengthSync();
+              }
+              if (dirSize > 0) {
+                total += dirSize;
+                continue;
+              }
+            }
+          } else if (file.existsSync()) {
             total += file.lengthSync();
             continue;
           }
