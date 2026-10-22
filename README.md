@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="assets/images/logo_cineva.png" alt="Cineva Logo" width="240" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/images/logo_cineva.png" />
+    <source media="(prefers-color-scheme: light)" srcset="assets/images/logo_cineva_light.png" />
+    <img alt="Cineva Logo" src="assets/images/logo_cineva.png" width="240" />
+  </picture>
 </p>
 
 <h1 align="center">Cineva</h1>
