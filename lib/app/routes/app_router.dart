@@ -12,6 +12,7 @@ import '../../features/history/presentation/screens/watch_history_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/download/presentation/screens/download_list_screen.dart';
 import '../../shared/widgets/main_shell.dart';
+import '../../shared/widgets/shell_pop_scope.dart';
 
 /// Application route configuration using GoRouter.
 ///
@@ -42,35 +43,35 @@ final GoRouter appRouter = GoRouter(
           path: '/',
           name: 'home',
           pageBuilder: (context, state) => const NoTransitionPage(
-            child: HomeScreen(),
+            child: ShellPopScope(isHome: true, child: HomeScreen()),
           ),
         ),
         GoRoute(
           path: '/watchlist',
           name: 'watchlist',
           pageBuilder: (context, state) => const NoTransitionPage(
-            child: WatchlistScreen(),
+            child: ShellPopScope(child: WatchlistScreen()),
           ),
         ),
         GoRoute(
           path: '/search',
           name: 'search',
           pageBuilder: (context, state) => const NoTransitionPage(
-            child: SearchScreen(),
+            child: ShellPopScope(child: SearchScreen()),
           ),
         ),
         GoRoute(
           path: '/history',
           name: 'watchHistory',
           pageBuilder: (context, state) => const NoTransitionPage(
-            child: WatchHistoryScreen(),
+            child: ShellPopScope(child: WatchHistoryScreen()),
           ),
         ),
         GoRoute(
           path: '/settings',
           name: 'settings',
           pageBuilder: (context, state) => const NoTransitionPage(
-            child: SettingsScreen(),
+            child: ShellPopScope(child: SettingsScreen()),
           ),
         ),
       ],

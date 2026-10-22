@@ -10,15 +10,24 @@ import '../../app/theme/app_colors.dart';
 class ExitConfirmationBottomSheet extends StatelessWidget {
   const ExitConfirmationBottomSheet({super.key});
 
+  static bool _isShowing = false;
+
   /// Displays the exit confirmation bottom sheet with a smooth slide & fade animation.
-  static Future<bool?> show(BuildContext context) {
-    return showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.75),
-      builder: (ctx) => const ExitConfirmationBottomSheet(),
-    );
+  static Future<bool?> show(BuildContext context) async {
+    if (_isShowing) return null;
+    _isShowing = true;
+    try {
+      return await showModalBottomSheet<bool>(
+        context: context,
+        useRootNavigator: true,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        barrierColor: Colors.black.withValues(alpha: 0.75),
+        builder: (ctx) => const ExitConfirmationBottomSheet(),
+      );
+    } finally {
+      _isShowing = false;
+    }
   }
 
   @override

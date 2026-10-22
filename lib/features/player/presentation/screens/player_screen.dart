@@ -96,7 +96,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Timer? _volumeIndicatorTimer;
 
   // ── Controls & Mini Popups State ──
-  bool _showControls = true;
+  bool _showControls = false;
   Timer? _controlsTimer;
   _PlayerMiniPopup _activePopup = _PlayerMiniPopup.none;
   int _subtitleSettingsTab = 0; // 0: Waktu (Sync), 1: Tampilan
@@ -870,6 +870,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   void _toggleControls() {
+    if (_isLoading) return; // Do not toggle controls while processing/searching server
     if (_activePopup != _PlayerMiniPopup.none) {
       setState(() => _activePopup = _PlayerMiniPopup.none);
       _resetControlsTimer();
@@ -1847,75 +1848,92 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
             // ── 4. Loading & Buffering Overlay ──
             if (_isLoading)
-              IgnorePointer(
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.88),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
-                        const SizedBox(height: 18),
-                        Text(
-                          widget.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+              Container(
+                color: Colors.black.withValues(alpha: 0.94),
+                child: SafeArea(
+                  child: Stack(
+                    children: [
+                      // Top back button so user can always cancel/exit during loading
+                      Positioned(
+                        top: 8,
+                        left: 16,
+                        child: IconButton(
+                          onPressed: _handleExit,
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
                           ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _loadingStatus,
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      ),
+                      // Center Loading Indicator: pure orange spinner, no background box
+                      Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 50,
+                              height: 50,
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary,
+                                strokeWidth: 3.5,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 40),
+                              child: Text(
+                                widget.title,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _loadingStatus,
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            // Unified center buffering indicator when controls are hidden
+
+            // Unified center buffering indicator when controls are hidden: pure orange spinner, no background box
             if (_useNativePlayer && !_showControls && _isBuffering && !_isLoading)
-              IgnorePointer(
+              const IgnorePointer(
                 child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
+                  child: SizedBox(
+                    width: 52,
+                    height: 52,
+                    child: CircularProgressIndicator(
                       color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.45),
-                          blurRadius: 24,
-                          spreadRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: const SizedBox(
-                      width: 42,
-                      height: 42,
-                      child: Padding(
-                        padding: EdgeInsets.all(3),
-                        child: CircularProgressIndicator(
-                          color: Colors.black,
-                          strokeWidth: 3.5,
-                        ),
-                      ),
+                      strokeWidth: 3.5,
                     ),
                   ),
                 ),
               ),
 
             // ── 5. The ONLY Control Overlay: Cineva Custom Cinema Controls ──
-            AnimatedOpacity(
-              opacity: _showControls ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 200),
-              child: IgnorePointer(
-                ignoring: !_showControls,
-                child: Container(
+            // Do NOT render when processing or searching for server to prevent UI overlap!
+            if (!_isLoading)
+              AnimatedOpacity(
+                opacity: _showControls ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: IgnorePointer(
+                  ignoring: !_showControls,
+                  child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
@@ -2168,42 +2186,29 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                 onPressed: () => _seekRelative(-10),
                                 icon: const Icon(Icons.replay_10_rounded, color: Colors.white, size: 44),
                               ),
-                              const SizedBox(width: 44),
+                              const SizedBox(width: 36),
                               GestureDetector(
-                                onTap: (_isLoading || _isBuffering) ? null : _togglePlayPause,
-                                child: Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppColors.primary.withValues(alpha: 0.45),
-                                        blurRadius: 24,
-                                        spreadRadius: 4,
-                                      ),
-                                    ],
-                                  ),
-                                  child: (_isLoading || _isBuffering)
+                                onTap: _isBuffering ? null : _togglePlayPause,
+                                behavior: HitTestBehavior.opaque,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: _isBuffering
                                       ? const SizedBox(
-                                          width: 42,
-                                          height: 42,
-                                          child: Padding(
-                                            padding: EdgeInsets.all(3),
-                                            child: CircularProgressIndicator(
-                                              color: Colors.black,
-                                              strokeWidth: 3.5,
-                                            ),
+                                          width: 54,
+                                          height: 54,
+                                          child: CircularProgressIndicator(
+                                            color: AppColors.primary,
+                                            strokeWidth: 3.5,
                                           ),
                                         )
                                       : Icon(
                                           _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                          color: Colors.black,
-                                          size: 42,
+                                          color: AppColors.primary,
+                                          size: 58,
                                         ),
                                 ),
                               ),
-                              const SizedBox(width: 44),
+                              const SizedBox(width: 36),
                               IconButton(
                                 onPressed: () => _seekRelative(10),
                                 icon: const Icon(Icons.forward_10_rounded, color: Colors.white, size: 44),
@@ -2303,7 +2308,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ),
 
             // ── 6. Compact Semi-Transparent Mini Popups Layer ──
-            if (_activePopup != _PlayerMiniPopup.none) ...[
+            if (!_isLoading && _activePopup != _PlayerMiniPopup.none) ...[
               // Outside tap dismisser (transparent, non-blocking)
               Positioned.fill(
                 child: GestureDetector(

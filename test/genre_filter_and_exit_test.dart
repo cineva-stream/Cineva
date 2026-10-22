@@ -2,8 +2,10 @@ import 'package:cineva/core/constants/genre_constants.dart';
 import 'package:cineva/features/home/domain/entities/movie.dart';
 import 'package:cineva/features/home/domain/entities/tv_series.dart';
 import 'package:cineva/shared/widgets/exit_confirmation_bottom_sheet.dart';
+import 'package:cineva/shared/widgets/shell_pop_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
   group('GenreConstants and GenreFilter Model Tests', () {
@@ -165,6 +167,65 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Keluar dari Cineva?'), findsNothing);
+    });
+  });
+
+  group('ShellPopScope Widget Tests', () {
+    testWidgets('Non-home ShellPopScope navigates to / on back invocation', (tester) async {
+      final testRouter = GoRouter(
+        initialLocation: '/settings',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => const Text('Home Screen Test'),
+          ),
+          GoRoute(
+            path: '/settings',
+            builder: (context, state) => const ShellPopScope(
+              isHome: false,
+              child: Text('Settings Screen Test'),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: testRouter,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Settings Screen Test'), findsOneWidget);
+
+      // Simulate back invocation
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      // Should now be on Home Screen Test
+      expect(find.text('Home Screen Test'), findsOneWidget);
+    });
+
+    testWidgets('Home ShellPopScope shows ExitConfirmationBottomSheet on back invocation', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: ShellPopScope(
+              isHome: true,
+              child: Text('Home Page'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Home Page'), findsOneWidget);
+
+      // Simulate back invocation
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      // Exit confirmation sheet should appear
+      expect(find.text('Keluar dari Cineva?'), findsOneWidget);
     });
   });
 }
