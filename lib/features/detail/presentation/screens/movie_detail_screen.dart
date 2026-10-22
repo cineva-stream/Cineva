@@ -32,23 +32,34 @@ class MovieDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(movieDetailProvider(movieId));
 
-    return Scaffold(
-      body: detail.when(
-        data: (data) => _DetailContent(data: data),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
-              const SizedBox(height: 16),
-              Text('Gagal memuat detail', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(movieDetailProvider(movieId)),
-                child: const Text('Coba Lagi'),
-              ),
-            ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/');
+        }
+      },
+      child: Scaffold(
+        body: detail.when(
+          data: (data) => _DetailContent(data: data),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
+                const SizedBox(height: 16),
+                Text('Gagal memuat detail', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(movieDetailProvider(movieId)),
+                  child: const Text('Coba Lagi'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -79,15 +90,20 @@ class _DetailContent extends ConsumerWidget {
     // Similar movies
     final similarList = (data['similar']?['results'] as List<dynamic>?)?.take(10).toList() ?? [];
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = screenWidth < 360;
+    final posterWidth = isCompact ? 100.0 : 120.0;
+    final posterHeight = isCompact ? 150.0 : 180.0;
+
     return CustomScrollView(
       slivers: [
         // ── Hero Backdrop ──
         SliverAppBar(
-          expandedHeight: 300,
+          expandedHeight: isCompact ? 250 : 300,
           pinned: true,
           backgroundColor: AppColors.background,
           leading: IconButton(
-            onPressed: () => context.pop(),
+            onPressed: () => context.canPop() ? context.pop() : context.go('/'),
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -140,16 +156,16 @@ class _DetailContent extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(14),
                       child: CachedNetworkImage(
                         imageUrl: ApiConstants.imageUrl(posterPath),
-                        width: 120,
-                        height: 180,
+                        width: posterWidth,
+                        height: posterHeight,
                         fit: BoxFit.cover,
                         placeholder: (_, _) => Container(
-                          width: 120, height: 180,
+                          width: posterWidth, height: posterHeight,
                           color: AppColors.surfaceVariant,
                         ),
                       ),
                     ).animate().fadeIn().slideY(begin: 0.1, end: 0),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 14),
 
                     // Title & meta
                     Expanded(
@@ -158,7 +174,9 @@ class _DetailContent extends ConsumerWidget {
                         children: [
                           Text(
                             title,
-                            style: Theme.of(context).textTheme.headlineLarge,
+                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                              fontSize: isCompact ? 21 : 24,
+                            ),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),

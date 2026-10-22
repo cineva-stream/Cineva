@@ -73,6 +73,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   StreamSubscription? _playingSub;
   StreamSubscription? _bufferingSub;
   StreamSubscription? _trackSub;
+  StreamSubscription? _tracksSub;
 
   // ── Fallback WebView Controller ──
   WebViewController? _webViewController;
@@ -110,7 +111,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   DateTime _lastHistorySaveTime = DateTime.now();
   bool _hasRestoredPosition = false;
-  bool _hasSkippedIntro = false;
+  bool _hasAutoPlayedNext = false;
+  bool _nextEpisodeButtonVisible = false;
 
   @override
   void initState() {
@@ -131,10 +133,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       ),
     );
 
-    // Initialize media_kit Player with generous 128 MB demuxer buffer for ultra-smooth streaming even on <500kbps networks
+    // Initialize media_kit Player with 32 MB initial demuxer footprint (dynamically caches up to 128 MB)
     _player = Player(
       configuration: const PlayerConfiguration(
-        bufferSize: 128 * 1024 * 1024, // 128 MB demuxer buffer eliminates network stutter
+        bufferSize: 32 * 1024 * 1024,
       ),
     );
     _videoController = VideoController(
@@ -146,8 +148,33 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     _listenToPlayerStreams();
     _player.setVolume(_volume); // Explicitly ensure 100% base audio volume
+    _setupMpvFastBufferOptions();
     _initializeStreaming();
     _resetControlsTimer();
+  }
+
+  /// Sets up low-latency fast-start probing and progressive 3-minute background caching in mpv
+  Future<void> _setupMpvFastBufferOptions() async {
+    try {
+      final mpv = (_player.platform as dynamic);
+      // Fast start: initial buffer within ~3-7 seconds
+      // Avoid setting demuxer-lavf-probesize to a small value (256KB) because HLS master playlists
+      // and variant MPEG-TS chunks need adequate probe size to discover video codecs and streams.
+      await mpv?.command(['set', 'demuxer-lavf-analyzeduration', '2.0']); // 2s analyze duration
+      await mpv?.command(['set', 'cache-pause-initial', 'no']); // Start playing immediately without waiting
+      await mpv?.command(['set', 'cache-pause-wait', '3']); // Low 3s re-buffer threshold on stalls
+
+      // Progressive 3-minute background cache:
+      await mpv?.command(['set', 'cache', 'yes']);
+      await mpv?.command(['set', 'demuxer-readahead-secs', '180']); // Buffer up to 180s (3 minutes) ahead while watching!
+      await mpv?.command(['set', 'cache-secs', '180']); // 180s forward cache in memory
+      await mpv?.command(['set', 'demuxer-max-bytes', '134217728']); // 128 MB RAM max
+      await mpv?.command(['set', 'demuxer-max-back-bytes', '33554432']); // 32 MB backward buffer for instant rewind
+      await mpv?.command(['set', 'stream-buffer-size', '524288']); // 512 KB chunk reads
+      await mpv?.command(['set', 'network-timeout', '30']);
+    } catch (e) {
+      debugPrint('[PlayerScreen] mpv buffer setup error: $e');
+    }
   }
 
   bool _isExiting = false;
@@ -210,6 +237,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _playingSub?.cancel();
     _bufferingSub?.cancel();
     _trackSub?.cancel();
+    _tracksSub?.cancel();
     _positionNotifier.dispose();
 
     try {
@@ -284,6 +312,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _position = pos;
       _positionNotifier.value = pos;
 
+      // Immediately dismiss initial loading spinner as soon as first video frames play
+      if (_isLoading && pos.inMilliseconds > 0) {
+        if (mounted) setState(() => _isLoading = false);
+      }
+
       // Restore position once video duration is known and playback starts
       if (!_hasRestoredPosition && _duration.inMilliseconds > 0 && pos.inMilliseconds > 0) {
         _hasRestoredPosition = true;
@@ -294,9 +327,33 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         }
       }
 
-      // Reset skip intro flag if user seeks or rewinds back to beginning
-      if (pos.inSeconds < 5 && _hasSkippedIntro) {
-        _hasSkippedIntro = false;
+      // ── TV Series Next Episode (Auto when <= 5s, Manual button when <= 60s) ──
+      final isTv = widget.season != null && widget.episode != null;
+      if (isTv && _duration.inSeconds > 30) {
+        final remainingSecs = (_duration - pos).inSeconds;
+
+        // Auto next episode when 5 seconds or less remain
+        if (remainingSecs <= 5 && remainingSecs >= 0 && !_hasAutoPlayedNext) {
+          _hasAutoPlayedNext = true;
+          if (_nextEpisodeButtonVisible && mounted) {
+            setState(() => _nextEpisodeButtonVisible = false);
+          }
+          _playNextEpisode();
+        } else if (remainingSecs > 10 && _hasAutoPlayedNext) {
+          _hasAutoPlayedNext = false; // Reset on rewind
+        }
+
+        // Show manual button when <= 60 seconds (under 1 minute) and > 5 seconds
+        final inNextEpisodeWindow = remainingSecs <= 60 && remainingSecs > 5;
+        if (inNextEpisodeWindow) {
+          if (!_nextEpisodeButtonVisible && mounted) {
+            setState(() => _nextEpisodeButtonVisible = true);
+          }
+        } else {
+          if (_nextEpisodeButtonVisible && mounted) {
+            setState(() => _nextEpisodeButtonVisible = false);
+          }
+        }
       }
 
       // Save watch history periodically every 5 seconds
@@ -310,7 +367,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (mounted && _duration != dur) setState(() => _duration = dur);
     });
     _playingSub = _player.stream.playing.listen((playing) {
-      if (mounted && _isPlaying != playing) setState(() => _isPlaying = playing);
+      if (mounted && _isPlaying != playing) {
+        setState(() {
+          _isPlaying = playing;
+          if (playing && _isLoading) _isLoading = false;
+        });
+      }
     });
     _bufferingSub = _player.stream.buffering.listen((buffering) {
       if (mounted && _isBuffering != buffering) setState(() => _isBuffering = buffering);
@@ -321,6 +383,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // Cineva's CustomSubtitleOverlay renders on top with custom opacity, sync, and translation.
       if (track.subtitle != SubtitleTrack.no()) {
         _player.setSubtitleTrack(SubtitleTrack.no());
+      }
+      // Ensure video track remains active and does not drop to 'no'
+      if (track.video == VideoTrack.no() && _player.state.tracks.video.isNotEmpty) {
+        debugPrint('[PlayerScreen] Video track was none, restoring auto video track');
+        _player.setVideoTrack(VideoTrack.auto());
+      }
+    });
+    _tracksSub = _player.stream.tracks.listen((tracks) {
+      if (tracks.video.isNotEmpty && _player.state.track.video == VideoTrack.no()) {
+        debugPrint('[PlayerScreen] New video tracks detected, setting auto video track');
+        _player.setVideoTrack(VideoTrack.auto());
       }
     });
   }
@@ -524,6 +597,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Future<void> _initializeStreaming() async {
+    _hasAutoPlayedNext = false;
+    _nextEpisodeButtonVisible = false;
+
     setState(() {
       _isLoading = true;
       _loadingStatus = 'Menghubungkan stream video & audio...';
@@ -533,7 +609,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // 0. Offline Local File Playback (Downloaded Videos)
       if (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty) {
         debugPrint('[PlayerScreen] Playing local offline file: ${widget.localVideoPath}');
+        final localFile = File(widget.localVideoPath!);
+        if (!await localFile.exists()) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('File unduhan tidak ditemukan atau rusak. Silakan unduh ulang.'),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+            Navigator.of(context).pop();
+          }
+          return;
+        }
+
         _useNativePlayer = true;
+        try {
+          final mpv = (_player.platform as dynamic);
+          await mpv?.command(['set', 'demuxer-lavf-analyzeduration', '0.5']);
+        } catch (_) {}
+
         await _player.open(Media(widget.localVideoPath!));
         await _player.setSubtitleTrack(SubtitleTrack.no());
         await _player.setVolume(_volume);
@@ -575,6 +670,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         _useNativePlayer = true;
         _streamSubtitles = vixResult.subtitles;
 
+        if (mounted) {
+          setState(() {
+            _loadingStatus = 'Menyiapkan pemutaran cepat (buffer 7 detik)...';
+          });
+        }
+
+        // Apply fast initial buffer + 3-minute background cache before stream open
+        await _setupMpvFastBufferOptions();
+
         // Opening the Master Playlist ensures full audio rendition is bound with video
         await _player.open(
           Media(
@@ -586,20 +690,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         await _player.setSubtitleTrack(SubtitleTrack.no());
         await _player.setVolume(_volume);
 
-        // Low-bandwidth (<500kbps) & slow ISP streaming optimization
-        try {
-          final mpv = (_player.platform as dynamic);
-          await mpv?.command(['set', 'demuxer-max-bytes', '134217728']); // 128 MB RAM cache
-          await mpv?.command(['set', 'demuxer-readahead-secs', '180']); // 180s buffer ahead
-          await mpv?.command(['set', 'demuxer-max-back-bytes', '67108864']); // 64 MB backward buffer
-          await mpv?.command(['set', 'cache', 'yes']);
-          await mpv?.command(['set', 'cache-secs', '180']);
-          await mpv?.command(['set', 'network-timeout', '60']); // 60s timeout for high latency
-          await mpv?.command(['set', 'stream-buffer-size', '2097152']); // 2 MB chunk
-        } catch (e) {
-          debugPrint('[PlayerScreen] mpv buffer optimization fallback: $e');
-        }
-
         if (mounted) {
           setState(() {
             _isLoading = false;
@@ -607,7 +697,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             _resolutionLabel = '1080p FHD';
           });
         }
-        await _loadSubtitles();
+
+        // Subtitles loaded asynchronously in background so video playback begins immediately!
+        unawaited(_loadSubtitles());
         return;
       }
     } catch (e) {
@@ -816,23 +908,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     });
   }
 
-  // ── Skip Intro & Skip Credit / Next Episode ──
-
-  void _skipIntro() {
-    _seekRelative(85);
-    setState(() => _hasSkippedIntro = true);
-    _showToastSubtitle('Intro dilewati (+85 dtk)');
-  }
-
-  void _skipCredit() {
-    if (_duration > Duration.zero) {
-      final target = _duration - const Duration(seconds: 5);
-      _seekTo(target.inMilliseconds / 1000.0);
-      _showToastSubtitle('Kredit dilewati');
-    }
-  }
+  // ── TV Series Next Episode ──
 
   void _playNextEpisode() {
+    setState(() => _nextEpisodeButtonVisible = false);
     if (widget.season == null || widget.episode == null) return;
     final nextEp = widget.episode! + 1;
     _saveWatchHistory(force: true);
@@ -856,11 +935,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Widget _buildSkipPillButton({
+    Key? key,
     required IconData icon,
     required String label,
     required VoidCallback onTap,
   }) {
     return Material(
+      key: key,
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
@@ -1765,35 +1846,64 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ),
 
             // ── 4. Loading & Buffering Overlay ──
-            if (_isLoading || (_useNativePlayer && _isBuffering))
+            if (_isLoading)
               IgnorePointer(
                 child: Container(
-                  color: _isLoading ? Colors.black.withValues(alpha: 0.88) : Colors.transparent,
+                  color: Colors.black.withValues(alpha: 0.88),
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
-                        if (_isLoading) ...[
-                          const SizedBox(height: 18),
-                          Text(
-                            widget.title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 18),
+                        Text(
+                          widget.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _loadingStatus,
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                          ),
-                        ],
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _loadingStatus,
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        ),
                       ],
+                    ),
+                  ),
+                ),
+              ),
+            // Unified center buffering indicator when controls are hidden
+            if (_useNativePlayer && !_showControls && _isBuffering && !_isLoading)
+              IgnorePointer(
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.45),
+                          blurRadius: 24,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: const SizedBox(
+                      width: 42,
+                      height: 42,
+                      child: Padding(
+                        padding: EdgeInsets.all(3),
+                        child: CircularProgressIndicator(
+                          color: Colors.black,
+                          strokeWidth: 3.5,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -2060,7 +2170,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                               ),
                               const SizedBox(width: 44),
                               GestureDetector(
-                                onTap: _togglePlayPause,
+                                onTap: (_isLoading || _isBuffering) ? null : _togglePlayPause,
                                 child: Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
@@ -2074,11 +2184,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                       ),
                                     ],
                                   ),
-                                  child: Icon(
-                                    _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                    color: Colors.black,
-                                    size: 42,
-                                  ),
+                                  child: (_isLoading || _isBuffering)
+                                      ? const SizedBox(
+                                          width: 42,
+                                          height: 42,
+                                          child: Padding(
+                                            padding: EdgeInsets.all(3),
+                                            child: CircularProgressIndicator(
+                                              color: Colors.black,
+                                              strokeWidth: 3.5,
+                                            ),
+                                          ),
+                                        )
+                                      : Icon(
+                                          _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                          color: Colors.black,
+                                          size: 42,
+                                        ),
                                 ),
                               ),
                               const SizedBox(width: 44),
@@ -2164,50 +2286,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ),
             ),
 
-            // ── 5.5 Floating Skip Intro & Skip Credit / Next Episode Action ──
-            Positioned(
-              bottom: _showControls ? 78 : 28,
-              right: 28,
-              child: ValueListenableBuilder<Duration>(
-                valueListenable: _positionNotifier,
-                builder: (ctx, pos, _) {
-                  final showSkipIntro = _useNativePlayer &&
-                      !_isLoading &&
-                      !_hasSkippedIntro &&
-                      _duration.inSeconds >= 120 &&
-                      pos.inSeconds >= 6 &&
-                      pos.inSeconds <= 110;
-
-                  final isTv = widget.season != null && widget.episode != null;
-                  final isNearEnd = _duration.inSeconds >= 180 &&
-                      ((_duration - pos).inSeconds <= 140 ||
-                          (_duration.inMilliseconds > 0 &&
-                              (pos.inMilliseconds / _duration.inMilliseconds) >= 0.92));
-
-                  final showSkipCreditOrNext = _useNativePlayer && !_isLoading && isNearEnd;
-
-                  if (!showSkipIntro && !showSkipCreditOrNext) {
-                    return const SizedBox.shrink();
-                  }
-
-                  return showSkipIntro
-                      ? _buildSkipPillButton(
-                          icon: Icons.fast_forward_rounded,
-                          label: 'Lewati Intro',
-                          onTap: _skipIntro,
-                        )
-                      : _buildSkipPillButton(
-                          icon: isTv ? Icons.skip_next_rounded : Icons.fast_forward_rounded,
-                          label: isTv
-                              ? (widget.episode != null
-                                  ? 'Episode ${widget.episode! + 1} Berikutnya'
-                                  : 'Episode Berikutnya')
-                              : 'Lewati Kredit',
-                          onTap: isTv ? _playNextEpisode : _skipCredit,
-                        );
-                },
+            // ── 5.5 Floating TV Series Next Episode Action (When <= 60s remaining) ──
+            if (_useNativePlayer && !_isLoading && _nextEpisodeButtonVisible && (widget.season != null && widget.episode != null))
+              Positioned(
+                bottom: _showControls ? 78 : 28,
+                right: 28,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: _buildSkipPillButton(
+                    key: const ValueKey('tv_next_episode_btn'),
+                    icon: Icons.skip_next_rounded,
+                    label: 'Episode ${(widget.episode ?? 1) + 1} Berikutnya',
+                    onTap: _playNextEpisode,
+                  ),
+                ),
               ),
-            ),
 
             // ── 6. Compact Semi-Transparent Mini Popups Layer ──
             if (_activePopup != _PlayerMiniPopup.none) ...[

@@ -505,6 +505,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                           imdbId: widget.imdbId,
                           resolution: _selectedResolution,
                           streamUrl: selectedOption.streamUrl,
+                          masterPlaylistUrl: selectedOption.masterPlaylistUrl,
                           estimatedSizeBytes: selectedOption.estimatedSizeBytes,
                           preferredSubtitleLang: _selectedSubtitleLang,
                           runtimeMinutes: widget.runtimeMinutes,

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cineva/features/download/domain/models/download_item.dart';
 import 'package:cineva/features/download/data/services/download_file_namer.dart';
 import 'package:cineva/features/download/data/services/download_subtitle_pipeline.dart';
+import 'package:cineva/features/download/data/services/video_download_service.dart';
 import 'package:cineva/features/player/data/models/subtitle_cue.dart';
 
 void main() {
@@ -115,6 +116,23 @@ void main() {
       final srt = DownloadSubtitlePipeline.cuesToSrt(cues);
       expect(srt, contains('1\n00:00:01,500 --> 00:00:04,200\nHalo, apa kabar?'));
       expect(srt, contains('2\n00:01:10,000 --> 00:01:15,000\nAku sedang menonton Cineva.'));
+    });
+  });
+
+  group('VideoDownloadService ResolutionOption Tests', () {
+    test('ResolutionOption stores masterPlaylistUrl correctly', () {
+      const option = ResolutionOption(
+        label: '1080p',
+        title: 'Full HD',
+        description: 'Best',
+        estimatedSizeBytes: 1000000,
+        formattedSize: '1 MB',
+        streamUrl: 'https://vixsrc.to/playlist/123?type=video&rendition=1080p',
+        masterPlaylistUrl: 'https://vixsrc.to/playlist/123?master=1',
+      );
+
+      expect(option.masterPlaylistUrl, 'https://vixsrc.to/playlist/123?master=1');
+      expect(option.streamUrl, contains('rendition=1080p'));
     });
   });
 }

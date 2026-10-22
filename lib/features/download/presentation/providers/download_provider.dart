@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,6 +58,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     String? imdbId,
     required String resolution,
     required String streamUrl,
+    String masterPlaylistUrl = '',
     required int estimatedSizeBytes,
     String preferredSubtitleLang = 'id',
     int runtimeMinutes = 100,
@@ -74,8 +76,14 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     final subtitleFileName = DownloadFileNamer.formatSubtitleFileName(videoFileName);
 
     final dir = await VideoDownloadService.getDownloadDirectory();
-    final videoPath = '${dir.path}/$videoFileName';
-    final subtitlePath = '${dir.path}/$subtitleFileName';
+    final folderName = DownloadFileNamer.sanitizeFileName(
+      videoFileName.replaceAll(RegExp(r'\.mp4$', caseSensitive: false), ''),
+    );
+    final itemDir = Directory('${dir.path}/$folderName');
+    await itemDir.create(recursive: true);
+
+    final videoPath = '${itemDir.path}/master.m3u8';
+    final subtitlePath = '${itemDir.path}/$subtitleFileName';
 
     var item = DownloadItem(
       id: id,
@@ -116,6 +124,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       item: item,
       imdbId: imdbId,
       streamUrl: streamUrl,
+      masterPlaylistUrl: masterPlaylistUrl,
       cancelToken: cancelToken,
       runtimeMinutes: runtimeMinutes,
     ));
@@ -125,6 +134,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     required DownloadItem item,
     String? imdbId,
     required String streamUrl,
+    String masterPlaylistUrl = '',
     required CancelToken cancelToken,
     required int runtimeMinutes,
   }) async {
@@ -161,6 +171,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       // Video download starts at full multi-connection speed instantly
       final videoFuture = _videoService.downloadStream(
         streamUrl: streamUrl,
+        masterPlaylistUrl: masterPlaylistUrl,
         targetFilePath: item.videoPath,
         estimatedSizeBytes: item.estimatedSizeBytes,
         cancelToken: cancelToken,

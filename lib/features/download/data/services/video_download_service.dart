@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:encrypt/encrypt.dart' as enc;
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../player/data/services/vixsrc_stream_service.dart';
@@ -13,6 +15,7 @@ class ResolutionOption {
   final int estimatedSizeBytes;
   final String formattedSize; // '~1.8 GB'
   final String streamUrl;
+  final String masterPlaylistUrl;
 
   const ResolutionOption({
     required this.label,
@@ -21,10 +24,28 @@ class ResolutionOption {
     required this.estimatedSizeBytes,
     required this.formattedSize,
     required this.streamUrl,
+    this.masterPlaylistUrl = '',
+  });
+}
+
+class _HlsSegmentTask {
+  final int index;
+  final bool isAudio;
+  final String url;
+  final double duration;
+  final String fileName;
+
+  _HlsSegmentTask({
+    required this.index,
+    required this.isAudio,
+    required this.url,
+    required this.duration,
+    required this.fileName,
   });
 }
 
 /// Service that handles high-speed multi-connection downloading of video streams to local storage.
+/// Supports seamless decryption of AES-128 HLS streams with dual video & audio tracks.
 class VideoDownloadService {
   final Dio _dio;
 
@@ -115,11 +136,6 @@ class VideoDownloadService {
     final masterUrl = vixResult?.playlistUrl ?? '';
     final qualityUrls = vixResult?.qualityUrls ?? {};
 
-    // Standard video bitrates (bps):
-    // 1080p: ~2.5 Mbps -> (2500000 / 8) * duration
-    // 720p:  ~1.3 Mbps -> (1300000 / 8) * duration
-    // 480p:  ~650 kbps -> (650000 / 8) * duration
-    // 360p:  ~350 kbps -> (350000 / 8) * duration
     int calcSize(int bitrateBps) => ((bitrateBps / 8) * durationSeconds).round();
 
     String formatBytes(int bytes) {
@@ -142,6 +158,7 @@ class VideoDownloadService {
         estimatedSizeBytes: size1080,
         formattedSize: formatBytes(size1080),
         streamUrl: qualityUrls['1080p'] ?? masterUrl,
+        masterPlaylistUrl: masterUrl,
       ),
       ResolutionOption(
         label: '720p',
@@ -150,6 +167,7 @@ class VideoDownloadService {
         estimatedSizeBytes: size720,
         formattedSize: formatBytes(size720),
         streamUrl: qualityUrls['720p'] ?? masterUrl,
+        masterPlaylistUrl: masterUrl,
       ),
       ResolutionOption(
         label: '480p',
@@ -158,6 +176,7 @@ class VideoDownloadService {
         estimatedSizeBytes: size480,
         formattedSize: formatBytes(size480),
         streamUrl: qualityUrls['480p'] ?? masterUrl,
+        masterPlaylistUrl: masterUrl,
       ),
       ResolutionOption(
         label: '360p',
@@ -166,13 +185,15 @@ class VideoDownloadService {
         estimatedSizeBytes: size360,
         formattedSize: formatBytes(size360),
         streamUrl: qualityUrls['360p'] ?? masterUrl,
+        masterPlaylistUrl: masterUrl,
       ),
     ];
   }
 
-  /// Downloads an HLS stream or direct MP4 URL to the destination file.
+  /// Downloads an HLS stream (video + audio with AES-128 decryption) or direct MP4 URL.
   Future<void> downloadStream({
     required String streamUrl,
+    String masterPlaylistUrl = '',
     required String targetFilePath,
     required int estimatedSizeBytes,
     CancelToken? cancelToken,
@@ -184,9 +205,18 @@ class VideoDownloadService {
     })? onProgress,
   }) async {
     final targetFile = File(targetFilePath);
-    await targetFile.parent.create(recursive: true);
+    final targetDir = targetFile.parent;
+    await targetDir.create(recursive: true);
 
-    // 1. If direct MP4 file
+    // Write .nomedia so system media scanners do not index segment files
+    try {
+      final noMedia = File('${targetDir.path}/.nomedia');
+      if (!await noMedia.exists()) {
+        await noMedia.writeAsString('');
+      }
+    } catch (_) {}
+
+    // 1. Direct MP4 file download
     if (streamUrl.contains('.mp4') && !streamUrl.contains('.m3u8')) {
       int lastBytes = 0;
       int lastTime = DateTime.now().millisecondsSinceEpoch;
@@ -226,73 +256,245 @@ class VideoDownloadService {
       return;
     }
 
-    // 2. HLS M3U8 Stream: Download segments and concatenate seamlessly into .mp4
-    final playlistRes = await _dio.get<String>(
-      streamUrl,
+    // 2. HLS M3U8 Stream: Download and decrypt video & audio streams into a local HLS bundle
+    final effectiveMasterUrl = masterPlaylistUrl.isNotEmpty ? masterPlaylistUrl : streamUrl;
+    String masterContent = '';
+    try {
+      final masterRes = await _dio.get<String>(
+        effectiveMasterUrl,
+        options: Options(responseType: ResponseType.plain),
+        cancelToken: cancelToken,
+      );
+      masterContent = masterRes.data ?? '';
+    } catch (e) {
+      debugPrint('[VideoDownloadService] Master playlist fetch note: $e');
+    }
+
+    // Identify audio playlist URI from master playlist (prefer DEFAULT=YES or English)
+    String? audioPlaylistUrl;
+    if (masterContent.isNotEmpty) {
+      final masterLines = masterContent.split('\n');
+      for (final line in masterLines) {
+        if (line.startsWith('#EXT-X-MEDIA:TYPE=AUDIO')) {
+          final uriMatch = RegExp(r'URI="([^"]+)"').firstMatch(line);
+          if (uriMatch != null) {
+            final uriRaw = uriMatch.group(1)!;
+            final fullUri = uriRaw.startsWith('http')
+                ? uriRaw
+                : Uri.parse(effectiveMasterUrl).resolve(uriRaw).toString();
+            if (line.contains('DEFAULT=YES') || line.contains('LANGUAGE="eng"') || audioPlaylistUrl == null) {
+              audioPlaylistUrl = fullUri;
+            }
+          }
+        }
+      }
+    }
+
+    // Determine target video playlist
+    String targetVideoPlaylistUrl = streamUrl;
+    final videoRes = await _dio.get<String>(
+      targetVideoPlaylistUrl,
       options: Options(responseType: ResponseType.plain),
       cancelToken: cancelToken,
     );
+    String videoContent = videoRes.data ?? '';
+    var videoLines = videoContent.split('\n');
 
-    final playlistText = playlistRes.data ?? '';
-    final lines = playlistText.split('\n');
-
-    // Check if it's a variant master playlist with child playlist
-    String targetPlaylistUrl = streamUrl;
-    final childM3u8Line = lines.firstWhere(
+    // If streamUrl was a master playlist containing child m3u8 line
+    final childM3u8Line = videoLines.firstWhere(
       (l) => l.trim().endsWith('.m3u8') && !l.trim().startsWith('#'),
       orElse: () => '',
     );
     if (childM3u8Line.isNotEmpty) {
-      targetPlaylistUrl = childM3u8Line.startsWith('http')
+      targetVideoPlaylistUrl = childM3u8Line.startsWith('http')
           ? childM3u8Line
-          : Uri.parse(streamUrl).resolve(childM3u8Line.trim()).toString();
+          : Uri.parse(targetVideoPlaylistUrl).resolve(childM3u8Line.trim()).toString();
 
       final childRes = await _dio.get<String>(
-        targetPlaylistUrl,
+        targetVideoPlaylistUrl,
         options: Options(responseType: ResponseType.plain),
         cancelToken: cancelToken,
       );
-      lines.clear();
-      lines.addAll((childRes.data ?? '').split('\n'));
+      videoContent = childRes.data ?? '';
+      videoLines = videoContent.split('\n');
     }
 
-    // Extract all media segments (.ts or .mp4)
-    final segmentUrls = <String>[];
-    for (final rawLine in lines) {
-      final line = rawLine.trim();
-      if (line.isNotEmpty && !line.startsWith('#')) {
-        final fullSegmentUrl = line.startsWith('http')
-            ? line
-            : Uri.parse(targetPlaylistUrl).resolve(line).toString();
-        segmentUrls.add(fullSegmentUrl);
+    // Parse Video segments & encryption details
+    String? videoKeyUrl;
+    String? videoIvHex;
+    int videoTargetDuration = 7;
+    final videoTasks = <_HlsSegmentTask>[];
+
+    for (int i = 0; i < videoLines.length; i++) {
+      final line = videoLines[i].trim();
+      if (line.startsWith('#EXT-X-TARGETDURATION:')) {
+        videoTargetDuration = int.tryParse(line.split(':').last.trim()) ?? 7;
+      } else if (line.startsWith('#EXT-X-KEY:') && line.contains('AES-128')) {
+        final uriMatch = RegExp(r'URI="([^"]+)"').firstMatch(line);
+        final ivMatch = RegExp(r'IV=0x([0-9a-fA-F]+)').firstMatch(line);
+        if (uriMatch != null) {
+          final uriRaw = uriMatch.group(1)!;
+          videoKeyUrl = uriRaw.startsWith('http')
+              ? uriRaw
+              : Uri.parse(targetVideoPlaylistUrl).resolve(uriRaw).toString();
+        }
+        if (ivMatch != null) videoIvHex = ivMatch.group(1);
+      } else if (line.startsWith('#EXTINF:')) {
+        final durMatch = RegExp(r'#EXTINF:([0-9.]+)').firstMatch(line);
+        final dur = durMatch != null ? double.tryParse(durMatch.group(1)!) ?? 4.0 : 4.0;
+        if (i + 1 < videoLines.length) {
+          final nextLine = videoLines[i + 1].trim();
+          if (nextLine.isNotEmpty && !nextLine.startsWith('#')) {
+            final segUrl = nextLine.startsWith('http')
+                ? nextLine
+                : Uri.parse(targetVideoPlaylistUrl).resolve(nextLine).toString();
+            final taskIndex = videoTasks.length;
+            videoTasks.add(_HlsSegmentTask(
+              index: taskIndex,
+              isAudio: false,
+              url: segUrl,
+              duration: dur,
+              fileName: 'v_${taskIndex.toString().padLeft(4, '0')}.ts',
+            ));
+          }
+        }
       }
     }
 
-    if (segmentUrls.isEmpty) {
+    // Parse Audio segments & encryption details (if separate audio stream exists)
+    String? audioKeyUrl;
+    String? audioIvHex;
+    int audioTargetDuration = 7;
+    final audioTasks = <_HlsSegmentTask>[];
+
+    if (audioPlaylistUrl != null) {
+      try {
+        final audioRes = await _dio.get<String>(
+          audioPlaylistUrl,
+          options: Options(responseType: ResponseType.plain),
+          cancelToken: cancelToken,
+        );
+        final audioContent = audioRes.data ?? '';
+        final audioLines = audioContent.split('\n');
+
+        for (int i = 0; i < audioLines.length; i++) {
+          final line = audioLines[i].trim();
+          if (line.startsWith('#EXT-X-TARGETDURATION:')) {
+            audioTargetDuration = int.tryParse(line.split(':').last.trim()) ?? 7;
+          } else if (line.startsWith('#EXT-X-KEY:') && line.contains('AES-128')) {
+            final uriMatch = RegExp(r'URI="([^"]+)"').firstMatch(line);
+            final ivMatch = RegExp(r'IV=0x([0-9a-fA-F]+)').firstMatch(line);
+            if (uriMatch != null) {
+              final uriRaw = uriMatch.group(1)!;
+              audioKeyUrl = uriRaw.startsWith('http')
+                  ? uriRaw
+                  : Uri.parse(audioPlaylistUrl).resolve(uriRaw).toString();
+            }
+            if (ivMatch != null) audioIvHex = ivMatch.group(1);
+          } else if (line.startsWith('#EXTINF:')) {
+            final durMatch = RegExp(r'#EXTINF:([0-9.]+)').firstMatch(line);
+            final dur = durMatch != null ? double.tryParse(durMatch.group(1)!) ?? 4.0 : 4.0;
+            if (i + 1 < audioLines.length) {
+              final nextLine = audioLines[i + 1].trim();
+              if (nextLine.isNotEmpty && !nextLine.startsWith('#')) {
+                final segUrl = nextLine.startsWith('http')
+                    ? nextLine
+                    : Uri.parse(audioPlaylistUrl).resolve(nextLine).toString();
+                final taskIndex = audioTasks.length;
+                audioTasks.add(_HlsSegmentTask(
+                  index: taskIndex,
+                  isAudio: true,
+                  url: segUrl,
+                  duration: dur,
+                  fileName: 'a_${taskIndex.toString().padLeft(4, '0')}.ts',
+                ));
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[VideoDownloadService] Audio playlist fetch error: $e');
+      }
+    }
+
+    if (videoTasks.isEmpty) {
       throw Exception('Tidak ada segmen video yang ditemukan dalam stream.');
     }
 
-    // Multi-connection parallel chunk downloading for maximum network saturation
-    final totalSegments = segmentUrls.length;
-    final sink = targetFile.openWrite(mode: FileMode.writeOnlyAppend);
+    // Download AES-128 Keys if encrypted
+    Uint8List? videoKeyBytes;
+    Uint8List? audioKeyBytes;
+
+    if (videoKeyUrl != null) {
+      final keyRes = await _dio.get<List<int>>(
+        videoKeyUrl,
+        options: Options(responseType: ResponseType.bytes),
+        cancelToken: cancelToken,
+      );
+      if (keyRes.data != null && keyRes.data!.isNotEmpty) {
+        videoKeyBytes = Uint8List.fromList(keyRes.data!);
+      }
+    }
+
+    if (audioKeyUrl != null) {
+      if (audioKeyUrl == videoKeyUrl && videoKeyBytes != null) {
+        audioKeyBytes = videoKeyBytes;
+      } else {
+        final keyRes = await _dio.get<List<int>>(
+          audioKeyUrl,
+          options: Options(responseType: ResponseType.bytes),
+          cancelToken: cancelToken,
+        );
+        if (keyRes.data != null && keyRes.data!.isNotEmpty) {
+          audioKeyBytes = Uint8List.fromList(keyRes.data!);
+        }
+      }
+    }
+
+    // Combine all segment tasks
+    final allTasks = <_HlsSegmentTask>[...videoTasks, ...audioTasks];
+    final totalSegments = allTasks.length;
 
     int downloadedBytes = 0;
     int lastBytes = 0;
     int lastTime = DateTime.now().millisecondsSinceEpoch;
     String currentSpeed = '0 KB/s';
 
-    const int concurrency = 6; // 6 parallel connection workers
-    final Map<int, List<int>> chunkBuffer = {};
-    int nextWriteIndex = 0;
+    const int concurrency = 8; // High speed 8 parallel connection workers
     int nextClaimIndex = 0;
+    int completedSegments = 0;
     bool hasError = false;
     Object? errorObj;
 
-    void flushAvailableChunks() {
-      while (chunkBuffer.containsKey(nextWriteIndex)) {
-        final data = chunkBuffer.remove(nextWriteIndex)!;
-        sink.add(data);
-        nextWriteIndex++;
+    Uint8List parseIv(String? ivHex, int sequenceNumber) {
+      if (ivHex != null && ivHex.isNotEmpty) {
+        String cleanHex = ivHex.startsWith('0x') ? ivHex.substring(2) : ivHex;
+        cleanHex = cleanHex.padLeft(32, '0');
+        final iv = Uint8List(16);
+        for (int i = 0; i < 16; i++) {
+          iv[i] = int.parse(cleanHex.substring(i * 2, i * 2 + 2), radix: 16);
+        }
+        return iv;
+      }
+      final iv = Uint8List(16);
+      final byteData = ByteData.view(iv.buffer);
+      byteData.setUint64(8, sequenceNumber, Endian.big);
+      return iv;
+    }
+
+    List<int> decryptSegment(List<int> cipherBytes, Uint8List keyBytes, Uint8List ivBytes) {
+      final alignedLength = (cipherBytes.length ~/ 16) * 16;
+      if (alignedLength == 0) return cipherBytes;
+      final alignedCipher = cipherBytes.length == alignedLength
+          ? (cipherBytes is Uint8List ? cipherBytes : Uint8List.fromList(cipherBytes))
+          : Uint8List.fromList(cipherBytes.sublist(0, alignedLength));
+
+      try {
+        final encrypter = enc.Encrypter(enc.AES(enc.Key(keyBytes), mode: enc.AESMode.cbc, padding: 'PKCS7'));
+        return encrypter.decryptBytes(enc.Encrypted(alignedCipher), iv: enc.IV(ivBytes));
+      } catch (_) {
+        final encrypter = enc.Encrypter(enc.AES(enc.Key(keyBytes), mode: enc.AESMode.cbc, padding: null));
+        return encrypter.decryptBytes(enc.Encrypted(alignedCipher), iv: enc.IV(ivBytes));
       }
     }
 
@@ -308,19 +510,20 @@ class VideoDownloadService {
         }
         if (hasError) break;
 
-        // Flow control: Prevent excessive memory usage by limiting in-flight buffer
-        if (chunkBuffer.length >= 16) {
-          await Future.delayed(const Duration(milliseconds: 40));
+        int myIndex;
+        if (nextClaimIndex >= totalSegments) break;
+        myIndex = nextClaimIndex++;
+
+        final task = allTasks[myIndex];
+        final file = File('${targetDir.path}/${task.fileName}');
+
+        // Resume support: skip if segment already downloaded and valid
+        if (await file.exists() && await file.length() > 1000) {
+          completedSegments++;
+          downloadedBytes += await file.length();
           continue;
         }
 
-        int myIndex;
-        if (nextClaimIndex >= totalSegments) {
-          break; // All segments claimed
-        }
-        myIndex = nextClaimIndex++;
-
-        final segUrl = segmentUrls[myIndex];
         List<int>? bytes;
         int retries = 0;
 
@@ -328,7 +531,7 @@ class VideoDownloadService {
           if (cancelToken?.isCancelled ?? false) break;
           try {
             final response = await _dio.get<List<int>>(
-              segUrl,
+              task.url,
               options: Options(responseType: ResponseType.bytes),
               cancelToken: cancelToken,
             );
@@ -342,14 +545,24 @@ class VideoDownloadService {
               }
               return;
             }
-            await Future.delayed(Duration(milliseconds: 200 * retries));
+            await Future.delayed(Duration(milliseconds: 250 * retries));
           }
         }
 
         if (bytes != null && bytes.isNotEmpty) {
-          chunkBuffer[myIndex] = bytes;
-          downloadedBytes += bytes.length;
-          flushAvailableChunks();
+          List<int> outputBytes = bytes;
+
+          // Decrypt if stream is encrypted
+          final keyBytes = task.isAudio ? audioKeyBytes : videoKeyBytes;
+          if (keyBytes != null) {
+            final ivHex = task.isAudio ? audioIvHex : videoIvHex;
+            final iv = parseIv(ivHex, task.index);
+            outputBytes = decryptSegment(bytes, keyBytes, iv);
+          }
+
+          await file.writeAsBytes(outputBytes, flush: true);
+          downloadedBytes += outputBytes.length;
+          completedSegments++;
         }
 
         final now = DateTime.now().millisecondsSinceEpoch;
@@ -366,9 +579,9 @@ class VideoDownloadService {
           lastTime = now;
         }
 
-        final progress = (nextWriteIndex / totalSegments).clamp(0.0, 1.0);
-        final estimatedTotal = nextWriteIndex > 0
-            ? (downloadedBytes / nextWriteIndex * totalSegments).round()
+        final progress = (completedSegments / totalSegments).clamp(0.0, 1.0);
+        final estimatedTotal = completedSegments > 0
+            ? (downloadedBytes / completedSegments * totalSegments).round()
             : estimatedSizeBytes;
 
         onProgress?.call(
@@ -380,22 +593,67 @@ class VideoDownloadService {
       }
     }
 
-    try {
-      final workers = <Future>[];
-      final effectiveConcurrency = totalSegments < concurrency ? totalSegments : concurrency;
-      for (int w = 0; w < effectiveConcurrency; w++) {
-        workers.add(runWorker());
-      }
-      await Future.wait(workers);
-
-      flushAvailableChunks();
-
-      if (hasError && errorObj != null) {
-        throw errorObj!;
-      }
-    } finally {
-      await sink.flush();
-      await sink.close();
+    final workers = <Future>[];
+    final effectiveConcurrency = totalSegments < concurrency ? totalSegments : concurrency;
+    for (int w = 0; w < effectiveConcurrency; w++) {
+      workers.add(runWorker());
     }
+    await Future.wait(workers);
+
+    if (hasError && errorObj != null) {
+      throw errorObj!;
+    }
+
+    // 3. Assemble clean unencrypted HLS Playlists
+    // Generate clean video.m3u8
+    final videoM3u8Buffer = StringBuffer();
+    videoM3u8Buffer.writeln('#EXTM3U');
+    videoM3u8Buffer.writeln('#EXT-X-VERSION:3');
+    videoM3u8Buffer.writeln('#EXT-X-TARGETDURATION:$videoTargetDuration');
+    videoM3u8Buffer.writeln('#EXT-X-PLAYLIST-TYPE:VOD');
+    for (final task in videoTasks) {
+      videoM3u8Buffer.writeln('#EXTINF:${task.duration.toStringAsFixed(3)},');
+      videoM3u8Buffer.writeln(task.fileName);
+    }
+    videoM3u8Buffer.writeln('#EXT-X-ENDLIST');
+    await File('${targetDir.path}/video.m3u8').writeAsString(videoM3u8Buffer.toString());
+
+    // Generate clean audio.m3u8 if audio track exists
+    final hasAudioTrack = audioTasks.isNotEmpty;
+    if (hasAudioTrack) {
+      final audioM3u8Buffer = StringBuffer();
+      audioM3u8Buffer.writeln('#EXTM3U');
+      audioM3u8Buffer.writeln('#EXT-X-VERSION:3');
+      audioM3u8Buffer.writeln('#EXT-X-TARGETDURATION:$audioTargetDuration');
+      audioM3u8Buffer.writeln('#EXT-X-PLAYLIST-TYPE:VOD');
+      for (final task in audioTasks) {
+        audioM3u8Buffer.writeln('#EXTINF:${task.duration.toStringAsFixed(3)},');
+        audioM3u8Buffer.writeln(task.fileName);
+      }
+      audioM3u8Buffer.writeln('#EXT-X-ENDLIST');
+      await File('${targetDir.path}/audio.m3u8').writeAsString(audioM3u8Buffer.toString());
+    }
+
+    // Generate master.m3u8 (the main entry point for video player)
+    final masterM3u8Buffer = StringBuffer();
+    masterM3u8Buffer.writeln('#EXTM3U');
+    masterM3u8Buffer.writeln('#EXT-X-VERSION:3');
+    if (hasAudioTrack) {
+      masterM3u8Buffer.writeln(
+        '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="English",DEFAULT=YES,AUTOSELECT=YES,FORCED=NO,LANGUAGE="eng",URI="audio.m3u8"',
+      );
+      masterM3u8Buffer.writeln(
+        '#EXT-X-STREAM-INF:BANDWIDTH=2500000,CODECS="avc1.640028,mp4a.40.2",AUDIO="audio"',
+      );
+      masterM3u8Buffer.writeln('video.m3u8');
+    } else {
+      masterM3u8Buffer.writeln(
+        '#EXT-X-STREAM-INF:BANDWIDTH=2500000,CODECS="avc1.640028,mp4a.40.2"',
+      );
+      masterM3u8Buffer.writeln('video.m3u8');
+    }
+
+    await targetFile.writeAsString(masterM3u8Buffer.toString());
+    debugPrint('[VideoDownloadService] Successfully completed offline HLS bundle at: $targetFilePath');
   }
 }

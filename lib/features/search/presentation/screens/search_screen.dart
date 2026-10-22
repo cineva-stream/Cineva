@@ -13,6 +13,7 @@ import '../../../../core/utils/debouncer.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../../shared/widgets/app_error_widget.dart';
 import '../../../../core/constants/content_preference.dart';
+import '../../../../core/constants/genre_constants.dart';
 import '../../../home/domain/entities/movie.dart';
 import '../../../home/domain/entities/tv_series.dart';
 import '../../../home/presentation/providers/home_providers.dart';
@@ -92,6 +93,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final movieResults = ref.watch(searchMovieResultsProvider);
     final tvResults = ref.watch(searchTvResultsProvider);
     final pref = ref.watch(contentPreferenceProvider);
+    final activeGenre = ref.watch(selectedSearchGenreProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -172,9 +174,79 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
             ),
 
-            // ── Tab Filter ──
+            // ── Genre Filter Chips Row ──
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 2),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: GenreConstants.filters.map((genre) {
+                    final isSelected = activeGenre.id == genre.id;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () {
+                          ref.read(selectedSearchGenreProvider.notifier).state = genre;
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primary.withValues(alpha: 0.18)
+                                : AppColors.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : Colors.white.withValues(alpha: 0.08),
+                              width: isSelected ? 1.2 : 0.8,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(alpha: 0.25),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (genre.icon != null) ...[
+                                Icon(
+                                  genre.icon,
+                                  size: 13,
+                                  color: isSelected ? AppColors.primary : AppColors.textMuted,
+                                ),
+                                const SizedBox(width: 5),
+                              ],
+                              Text(
+                                genre.label,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.5,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected ? AppColors.primaryLight : AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
+            // ── Tab Filter (When query is present) ──
             if (query.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
@@ -195,17 +267,29 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
             ],
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
             // ── Results or Discovery View ──
             Expanded(
               child: query.isEmpty
-                  ? _SearchDiscoveryView(onSelectQuery: _selectQuery)
+                  ? (activeGenre.id == 'all'
+                      ? _SearchDiscoveryView(onSelectQuery: _selectQuery)
+                      : _GenreExplorerView(activeGenre: activeGenre))
                   : tabIndex == 0
                       ? movieResults.when(
-                          data: (movies) => movies.isEmpty
-                              ? AppErrorWidget.empty(message: 'Tidak ada film ditemukan untuk "$query"')
-                              : _MovieGrid(movies: movies),
+                          data: (movies) {
+                            final filtered = activeGenre.id == 'all'
+                                ? movies
+                                : movies.where((m) => activeGenre.matchesMovie(m)).toList();
+                            if (filtered.isEmpty) {
+                              return AppErrorWidget.empty(
+                                message: activeGenre.id == 'all'
+                                    ? 'Tidak ada film ditemukan untuk "$query"'
+                                    : 'Tidak ada film genre "${activeGenre.label}" untuk "$query"',
+                              );
+                            }
+                            return _MovieGrid(movies: filtered);
+                          },
                           loading: () => const _SearchLoadingGrid(),
                           error: (e, _) => AppErrorWidget(
                             message: 'Pencarian gagal',
@@ -213,9 +297,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           ),
                         )
                       : tvResults.when(
-                          data: (tvShows) => tvShows.isEmpty
-                              ? AppErrorWidget.empty(message: 'Tidak ada serial TV ditemukan untuk "$query"')
-                              : _TvGrid(tvShows: tvShows),
+                          data: (tvShows) {
+                            final filtered = activeGenre.id == 'all'
+                                ? tvShows
+                                : tvShows.where((t) => activeGenre.matchesTv(t)).toList();
+                            if (filtered.isEmpty) {
+                              return AppErrorWidget.empty(
+                                message: activeGenre.id == 'all'
+                                    ? 'Tidak ada serial TV ditemukan untuk "$query"'
+                                    : 'Tidak ada serial TV genre "${activeGenre.label}" untuk "$query"',
+                              );
+                            }
+                            return _TvGrid(tvShows: filtered);
+                          },
                           loading: () => const _SearchLoadingGrid(),
                           error: (e, _) => AppErrorWidget(
                             message: 'Pencarian gagal',
@@ -726,14 +820,17 @@ class _MovieGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pref = ref.watch(contentPreferenceProvider);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final crossAxisCount = screenWidth < 340 ? 2 : 3;
+    final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
 
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.55,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: childAspectRatio,
+        crossAxisSpacing: screenWidth < 360 ? 8 : 10,
+        mainAxisSpacing: screenWidth < 360 ? 8 : 10,
       ),
       itemCount: movies.length,
       itemBuilder: (context, index) {
@@ -839,14 +936,17 @@ class _TvGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pref = ref.watch(contentPreferenceProvider);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final crossAxisCount = screenWidth < 340 ? 2 : 3;
+    final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
 
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.55,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: childAspectRatio,
+        crossAxisSpacing: screenWidth < 360 ? 8 : 10,
+        mainAxisSpacing: screenWidth < 360 ? 8 : 10,
       ),
       itemCount: tvShows.length,
       itemBuilder: (context, index) {
@@ -950,13 +1050,17 @@ class _SearchLoadingGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final crossAxisCount = screenWidth < 340 ? 2 : 3;
+    final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
+
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.55,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: childAspectRatio,
+        crossAxisSpacing: screenWidth < 360 ? 8 : 10,
+        mainAxisSpacing: screenWidth < 360 ? 8 : 10,
       ),
       itemCount: 9,
       itemBuilder: (_, _) => const ShimmerLoading(
@@ -964,6 +1068,99 @@ class _SearchLoadingGrid extends StatelessWidget {
         height: double.infinity,
         borderRadius: 12,
       ),
+    );
+  }
+}
+
+/// Rich Genre Explorer View shown when a specific genre is selected without search query.
+class _GenreExplorerView extends ConsumerStatefulWidget {
+  final GenreFilter activeGenre;
+  const _GenreExplorerView({required this.activeGenre});
+
+  @override
+  ConsumerState<_GenreExplorerView> createState() => _GenreExplorerViewState();
+}
+
+class _GenreExplorerViewState extends ConsumerState<_GenreExplorerView> {
+  int _tab = 0; // 0 = Film, 1 = Serial TV
+
+  @override
+  Widget build(BuildContext context) {
+    final popularMovies = ref.watch(popularMoviesProvider);
+    final topRatedMovies = ref.watch(topRatedMoviesProvider);
+    final popularTv = ref.watch(popularTvProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              _FilterChip(
+                label: 'Film ${widget.activeGenre.label}',
+                isSelected: _tab == 0,
+                onTap: () => setState(() => _tab = 0),
+              ),
+              const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Serial TV ${widget.activeGenre.label}',
+                isSelected: _tab == 1,
+                onTap: () => setState(() => _tab = 1),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: _tab == 0
+              ? popularMovies.when(
+                  data: (movies) {
+                    final allMovies = [
+                      ...movies,
+                      ...topRatedMovies.valueOrNull ?? [],
+                    ];
+                    final unique = <int, Movie>{};
+                    for (final m in allMovies) {
+                      unique[m.id] = m;
+                    }
+                    final filtered = unique.values
+                        .where((m) => widget.activeGenre.matchesMovie(m))
+                        .toList();
+
+                    if (filtered.isEmpty) {
+                      return AppErrorWidget.empty(
+                        message: 'Belum ada film untuk genre ${widget.activeGenre.label}',
+                      );
+                    }
+                    return _MovieGrid(movies: filtered);
+                  },
+                  loading: () => const _SearchLoadingGrid(),
+                  error: (e, _) => AppErrorWidget(
+                    message: 'Gagal memuat film genre',
+                    onRetry: () => ref.invalidate(popularMoviesProvider),
+                  ),
+                )
+              : popularTv.when(
+                  data: (tvShows) {
+                    final filtered = tvShows
+                        .where((t) => widget.activeGenre.matchesTv(t))
+                        .toList();
+                    if (filtered.isEmpty) {
+                      return AppErrorWidget.empty(
+                        message: 'Belum ada serial TV untuk genre ${widget.activeGenre.label}',
+                      );
+                    }
+                    return _TvGrid(tvShows: filtered);
+                  },
+                  loading: () => const _SearchLoadingGrid(),
+                  error: (e, _) => AppErrorWidget(
+                    message: 'Gagal memuat serial TV genre',
+                    onRetry: () => ref.invalidate(popularTvProvider),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }

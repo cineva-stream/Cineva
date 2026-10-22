@@ -65,10 +65,15 @@ class _MovieCarouselState extends State<MovieCarousel> {
     final movies = widget.movies.take(7).toList();
     if (movies.isEmpty) return const SizedBox.shrink();
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final isCompact = screenWidth < 360 || screenHeight < 700;
+    final carouselHeight = isCompact ? 375.0 : 430.0;
+
     return Column(
       children: [
         SizedBox(
-          height: 430,
+          height: carouselHeight,
           child: PageView.builder(
             controller: _pageController,
             onPageChanged: (index) {
@@ -238,7 +243,7 @@ class _MovieCarouselState extends State<MovieCarousel> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.outfit(
-                                  fontSize: 26,
+                                  fontSize: isCompact ? 21 : 26,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
                                   height: 1.15,
@@ -306,19 +311,21 @@ class _MovieCarouselState extends State<MovieCarousel> {
                                     flex: 6,
                                     child: ElevatedButton.icon(
                                       onPressed: () => context.push('/movie/${movie.id}'),
-                                      icon: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 24),
+                                      icon: Icon(Icons.play_arrow_rounded, color: Colors.black, size: isCompact ? 20 : 24),
                                       label: Text(
                                         'Tonton Sekarang',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: GoogleFonts.inter(
                                           color: Colors.black,
                                           fontWeight: FontWeight.w700,
-                                          fontSize: 14,
+                                          fontSize: isCompact ? 12 : 14,
                                         ),
                                       ),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: AppColors.primary,
                                         foregroundColor: Colors.black,
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        padding: EdgeInsets.symmetric(vertical: isCompact ? 10 : 12),
                                         elevation: 6,
                                         shadowColor: AppColors.primary.withValues(alpha: 0.4),
                                         shape: RoundedRectangleBorder(
@@ -327,18 +334,20 @@ class _MovieCarouselState extends State<MovieCarousel> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     flex: 4,
                                     child: OutlinedButton.icon(
                                       onPressed: () => context.push('/movie/${movie.id}'),
-                                      icon: const Icon(Icons.info_outline_rounded, color: Colors.white, size: 18),
+                                      icon: Icon(Icons.info_outline_rounded, color: Colors.white, size: isCompact ? 16 : 18),
                                       label: Text(
                                         'Detail',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: GoogleFonts.inter(
                                           color: Colors.white,
                                           fontWeight: FontWeight.w600,
-                                          fontSize: 14,
+                                          fontSize: isCompact ? 12 : 14,
                                         ),
                                       ),
                                       style: OutlinedButton.styleFrom(
@@ -347,7 +356,7 @@ class _MovieCarouselState extends State<MovieCarousel> {
                                           color: Colors.white.withValues(alpha: 0.25),
                                           width: 1,
                                         ),
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        padding: EdgeInsets.symmetric(vertical: isCompact ? 10 : 12),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(12),
                                         ),
