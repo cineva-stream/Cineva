@@ -15,6 +15,7 @@ import '../../../../shared/widgets/modern_flag_badge.dart';
 import '../../../home/presentation/providers/home_providers.dart';
 import '../../data/settings_service.dart';
 import '../../data/subtitle_languages.dart';
+import '../../../player/presentation/providers/player_providers.dart';
 
 /// Modern, informative, and interactive Settings screen for Cineva.
 ///
@@ -479,6 +480,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: () async {
               Navigator.of(context, rootNavigator: true).pop();
               await SettingsService.setSubtitleFontSize(item['val']!);
+              ref.read(subtitleStyleProvider.notifier).reloadFromSettings();
               _loadSettings();
             },
           ),
@@ -546,6 +548,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: () async {
               Navigator.of(context, rootNavigator: true).pop();
               await SettingsService.setSubtitleBackground(bg['val']!);
+              ref.read(subtitleStyleProvider.notifier).reloadFromSettings();
               _loadSettings();
             },
           ),
@@ -1009,40 +1012,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             const SizedBox(height: 20),
 
-            // ── SECTION 4: TENTANG & DUKUNGAN ──
+            // ── SECTION 4: TENTANG & LISENSI ──
             _buildSectionHeader(s.settingsAboutSection, Iconsax.info_circle),
             _buildSettingsCard([
               _SettingsTileItem(
-                icon: Iconsax.document_text,
-                title: s.settingsDisclaimerTitle,
+                icon: Icons.shield_outlined,
+                title: s.settingsPrivacyPolicyTitle,
+                subtitle: s.settingsPrivacyPolicySubtitle,
+                trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
+                onTap: () => context.push('/settings/privacy-policy'),
+              ),
+              _buildCardDivider(),
+              _SettingsTileItem(
+                icon: Icons.gavel_rounded,
+                title: s.settingsTermsTitle,
+                subtitle: s.settingsTermsSubtitle,
+                trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
+                onTap: () => context.push('/settings/terms'),
+              ),
+              _buildCardDivider(),
+              _SettingsTileItem(
+                icon: Icons.warning_amber_rounded,
+                title: s.settingsDisclaimerMenuTitle,
                 subtitle: s.settingsDisclaimerSubtitle,
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    useRootNavigator: true,
-                    builder: (context) => AlertDialog(
-                      backgroundColor: AppColors.surface,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      title: Text(
-                        s.settingsDisclaimerDialogTitle,
-                        style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w700),
-                      ),
-                      content: Text(
-                        s.settingsDisclaimerContent,
-                        style: GoogleFonts.inter(color: AppColors.textSecondary, height: 1.5, fontSize: 13),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text(
-                            s.dialogUnderstood,
-                            style: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
+                onTap: () => context.push('/settings/disclaimer'),
+              ),
+              _buildCardDivider(),
+              _SettingsTileItem(
+                icon: Icons.info_outline_rounded,
+                title: s.settingsInfoTitle,
+                subtitle: s.settingsInfoSubtitle,
+                trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
+                onTap: () => context.push('/settings/info'),
               ),
             ]),
 

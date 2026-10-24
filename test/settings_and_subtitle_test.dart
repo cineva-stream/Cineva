@@ -8,6 +8,7 @@ import 'package:cineva/core/localization/app_strings.dart';
 import 'package:cineva/features/settings/data/settings_service.dart';
 import 'package:cineva/features/settings/data/subtitle_languages.dart';
 import 'package:cineva/features/player/data/services/subtitle_service.dart';
+import 'package:cineva/features/player/presentation/providers/player_providers.dart';
 import 'package:cineva/shared/widgets/modern_flag_badge.dart';
 
 void main() {
@@ -167,6 +168,50 @@ void main() {
 
       await SettingsService.setDefaultQuality('Auto');
       expect(SettingsService.getDefaultQuality(), equals('Auto'));
+    });
+
+    test('Can update and persist subtitle font size points correctly', () async {
+      await SettingsService.setSubtitleFontSize('Kecil');
+      expect(SettingsService.getSubtitleFontSizePoints(), equals(16.0));
+
+      await SettingsService.setSubtitleFontSize('Sedang');
+      expect(SettingsService.getSubtitleFontSizePoints(), equals(20.0));
+
+      await SettingsService.setSubtitleFontSize('Besar');
+      expect(SettingsService.getSubtitleFontSizePoints(), equals(24.0));
+    });
+
+    test('Can update and persist subtitle background opacity correctly', () async {
+      await SettingsService.setSubtitleBackground('Transparan');
+      expect(SettingsService.getSubtitleBackgroundOpacity(), equals(0.0));
+
+      await SettingsService.setSubtitleBackground('Semi-Transparan');
+      expect(SettingsService.getSubtitleBackgroundOpacity(), equals(0.5));
+
+      await SettingsService.setSubtitleBackground('Hitam Pekat');
+      expect(SettingsService.getSubtitleBackgroundOpacity(), equals(1.0));
+    });
+
+    test('SubtitleStyleNotifier synchronizes with SettingsService and reloads smoothly', () async {
+      await SettingsService.setSubtitleFontSize('Besar');
+      await SettingsService.setSubtitleBackground('Hitam Pekat');
+
+      final notifier = SubtitleStyleNotifier();
+      expect(notifier.state.fontSize, equals(24.0));
+      expect(notifier.state.backgroundOpacity, equals(1.0));
+
+      await SettingsService.setSubtitleFontSize('Kecil');
+      await SettingsService.setSubtitleBackground('Semi-Transparan');
+      notifier.reloadFromSettings();
+      expect(notifier.state.fontSize, equals(16.0));
+      expect(notifier.state.backgroundOpacity, equals(0.5));
+
+      // Test updating via player control sliders also persists to SettingsService
+      notifier.updateFontSize(24.0);
+      expect(SettingsService.getSubtitleFontSize(), equals('Besar'));
+
+      notifier.updateBackgroundOpacity(0.0);
+      expect(SettingsService.getSubtitleBackground(), equals('Transparan'));
     });
   });
 

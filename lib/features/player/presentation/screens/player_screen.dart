@@ -212,6 +212,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       ),
     );
 
+    // Ensure subtitle styling is freshly synchronized from user preferences
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(subtitleStyleProvider.notifier).reloadFromSettings();
+      }
+    });
+
     _listenToPlayerStreams();
     _player.setVolume(_volume); // Explicitly ensure 100% base audio volume
     if ((_currentLocalVideoPath != null && _currentLocalVideoPath!.isNotEmpty) ||

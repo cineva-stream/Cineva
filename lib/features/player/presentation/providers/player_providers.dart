@@ -7,6 +7,7 @@ import '../../data/services/subtitle_translator_service.dart';
 import '../../data/services/network_quality_service.dart';
 import '../../data/models/subtitle_cue.dart';
 import '../../data/models/subtitle_style_settings.dart';
+import '../../../settings/data/settings_service.dart';
 
 /// Singleton torrent source service provider.
 final torrentSourceServiceProvider = Provider<TorrentSourceService>((ref) {
@@ -70,7 +71,14 @@ final subtitlesProvider = FutureProvider.family<List<SubtitleInfo>, ({String imd
 
 /// State notifier for subtitle styling, positioning, and timing synchronization.
 class SubtitleStyleNotifier extends StateNotifier<SubtitleStyleSettings> {
-  SubtitleStyleNotifier() : super(const SubtitleStyleSettings());
+  SubtitleStyleNotifier() : super(SubtitleStyleSettings.fromSettings());
+
+  void reloadFromSettings() {
+    state = state.copyWith(
+      fontSize: SettingsService.getSubtitleFontSizePoints(),
+      backgroundOpacity: SettingsService.getSubtitleBackgroundOpacity(),
+    );
+  }
 
   void updateStrokeWidth(double width) {
     state = state.copyWith(strokeWidth: width);
@@ -78,6 +86,15 @@ class SubtitleStyleNotifier extends StateNotifier<SubtitleStyleSettings> {
 
   void updateFontSize(double size) {
     state = state.copyWith(fontSize: size);
+    try {
+      if (size <= 17.0) {
+        SettingsService.setSubtitleFontSize('Kecil');
+      } else if (size >= 23.0) {
+        SettingsService.setSubtitleFontSize('Besar');
+      } else {
+        SettingsService.setSubtitleFontSize('Sedang');
+      }
+    } catch (_) {}
   }
 
   void updateTextColor(dynamic color) {
@@ -90,6 +107,15 @@ class SubtitleStyleNotifier extends StateNotifier<SubtitleStyleSettings> {
 
   void updateBackgroundOpacity(double opacity) {
     state = state.copyWith(backgroundOpacity: opacity);
+    try {
+      if (opacity <= 0.15) {
+        SettingsService.setSubtitleBackground('Transparan');
+      } else if (opacity >= 0.8) {
+        SettingsService.setSubtitleBackground('Hitam Pekat');
+      } else {
+        SettingsService.setSubtitleBackground('Semi-Transparan');
+      }
+    } catch (_) {}
   }
 
   void adjustSyncOffset(int deltaMs) {

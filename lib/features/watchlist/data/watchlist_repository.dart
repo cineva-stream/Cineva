@@ -118,3 +118,10 @@ final watchlistProvider = StateNotifierProvider<WatchlistNotifier, List<Watchlis
   final repo = ref.watch(watchlistRepositoryProvider);
   return WatchlistNotifier(repo);
 });
+
+/// Reactively checks whether a media item is in the watchlist.
+final isInWatchlistProvider = Provider.family<bool, ({int id, String type})>((ref, arg) {
+  final items = ref.watch(watchlistProvider);
+  return items.any((item) => item.id == arg.id && item.type == arg.type);
+});
+

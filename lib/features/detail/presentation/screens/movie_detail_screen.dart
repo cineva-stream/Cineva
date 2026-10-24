@@ -306,19 +306,19 @@ class _DetailContent extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // Watchlist Button (Outlined when not added, Filled when added)
-                    Builder(
-                      builder: (context) {
-                        final isInWatchlist = ref.watch(watchlistProvider.notifier).isInWatchlist(
-                          data['id'] as int? ?? 0,
-                          'movie',
+                    // Watchlist Button (Outlined when not added, Filled icon when added)
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final mediaId = data['id'] as int? ?? 0;
+                        final isInWatchlist = ref.watch(
+                          isInWatchlistProvider((id: mediaId, type: 'movie')),
                         );
                         return Tooltip(
                           message: isInWatchlist ? s.detailWatchlistRemoveTooltip : s.detailWatchlistAddTooltip,
                           child: InkWell(
                             onTap: () async {
                               final item = WatchlistItem(
-                                id: data['id'] as int? ?? 0,
+                                id: mediaId,
                                 title: title,
                                 posterPath: posterPath,
                                 voteAverage: voteAverage,
@@ -342,26 +342,24 @@ class _DetailContent extends ConsumerWidget {
                               width: 56,
                               height: 56,
                               decoration: BoxDecoration(
-                                color: isInWatchlist ? AppColors.primary : Colors.transparent,
+                                color: AppColors.surfaceVariant.withValues(alpha: 0.6),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                  color: isInWatchlist ? AppColors.primary : AppColors.surfaceElevated,
+                                  color: isInWatchlist
+                                      ? AppColors.primary.withValues(alpha: 0.6)
+                                      : Colors.white.withValues(alpha: 0.12),
                                   width: 1.5,
                                 ),
-                                boxShadow: isInWatchlist
-                                    ? [
-                                        BoxShadow(
-                                          color: AppColors.primary.withValues(alpha: 0.35),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ]
-                                    : null,
                               ),
-                              child: Icon(
-                                isInWatchlist ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                                color: isInWatchlist ? Colors.black : Colors.white,
-                                size: 24,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 250),
+                                transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                                child: Icon(
+                                  isInWatchlist ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                  key: ValueKey(isInWatchlist),
+                                  color: isInWatchlist ? AppColors.primary : Colors.white,
+                                  size: 26,
+                                ),
                               ),
                             ),
                           ),

@@ -74,6 +74,23 @@ class SettingsService {
     await _box.put(keySubtitleFontSize, size);
   }
 
+  /// Returns the subtitle font size in points/pixels based on user preference.
+  /// 'Kecil' -> 16.0, 'Sedang' -> 20.0, 'Besar' -> 24.0.
+  static double getSubtitleFontSizePoints() {
+    try {
+      final size = getSubtitleFontSize().toLowerCase();
+      if (size.contains('kecil') || size.contains('small') || size == '16') {
+        return 16.0;
+      } else if (size.contains('besar') || size.contains('large') || size == '24') {
+        return 24.0;
+      } else {
+        return 20.0;
+      }
+    } catch (_) {
+      return 20.0;
+    }
+  }
+
   static bool getWifiOnlySeeding() {
     return _box.get(keyWifiOnlySeeding, defaultValue: true) as bool;
   }
@@ -93,6 +110,23 @@ class SettingsService {
 
   static Future<void> setSubtitleBackground(String bg) async {
     await _box.put(keySubtitleBackground, bg);
+  }
+
+  /// Returns the subtitle background opacity (0.0 to 1.0) based on user preference.
+  /// 'Transparan' -> 0.0, 'Semi-Transparan' -> 0.5, 'Hitam Pekat' -> 1.0.
+  static double getSubtitleBackgroundOpacity() {
+    try {
+      final bg = getSubtitleBackground().toLowerCase();
+      if (bg.contains('semi')) {
+        return 0.5;
+      } else if (bg.contains('hitam') || bg.contains('pekat') || bg.contains('solid') || bg.contains('dark')) {
+        return 1.0;
+      } else {
+        return 0.0;
+      }
+    } catch (_) {
+      return 0.0;
+    }
   }
 
   static bool getHardwareAcceleration() {

@@ -251,12 +251,63 @@ class AppStrings {
   String get settingsNoLanguageFound => isIndonesian ? 'Bahasa tidak ditemukan' : 'No language found';
   String get settingsVersion => isIndonesian ? 'Versi' : 'Version';
   String get settingsAboutSection => isIndonesian ? 'Tentang & Lisensi' : 'About & Licenses';
+  String get settingsPrivacyPolicyTitle => isIndonesian ? 'Kebijakan Privasi' : 'Privacy Policy';
+  String get settingsPrivacyPolicySubtitle => isIndonesian
+      ? 'Transparansi perlindungan data pribadi dan privasi pengguna'
+      : 'Personal data protection transparency and user privacy';
+  String get settingsTermsTitle => isIndonesian ? 'Syarat dan Ketentuan' : 'Terms and Conditions';
+  String get settingsTermsSubtitle => isIndonesian
+      ? 'Ketentuan penggunaan, lisensi piranti lunak, dan batasan layanan'
+      : 'Terms of use, software license, and service limitations';
   String get settingsDisclaimerTitle => isIndonesian ? 'Disclaimer & Hak Cipta' : 'Disclaimer & Copyright';
-  String get settingsDisclaimerSubtitle => isIndonesian ? 'Informasi hukum penggunaan layanan streaming P2P' : 'Legal information regarding P2P streaming services';
+  String get settingsDisclaimerMenuTitle => 'Disclaimer';
+  String get settingsDisclaimerSubtitle => isIndonesian
+      ? 'Informasi hukum penggunaan layanan streaming P2P'
+      : 'Legal information regarding P2P streaming services';
+  String get settingsInfoTitle => isIndonesian ? 'Info' : 'Info';
+  String get settingsInfoSubtitle => isIndonesian
+      ? 'Tentang Cineva, arsitektur teknologi, dan versi aplikasi'
+      : 'About Cineva, technology architecture, and app version';
   String get settingsDisclaimerDialogTitle => isIndonesian ? 'Disclaimer Hukum' : 'Legal Disclaimer';
   String get settingsDisclaimerContent => isIndonesian
       ? 'Cineva adalah pemutar media berbasis P2P terdesentralisasi yang mengakses konten publik yang tersedia di internet. Pengguna bertanggung jawab penuh atas media yang diakses sesuai peraturan perundang-undangan yang berlaku.'
       : 'Cineva is a decentralized P2P media player that accesses publicly available content on the internet. Users are fully responsible for the media accessed in compliance with applicable local laws.';
+
+  // ── Legal & About Screens ──
+  String get legalLastUpdated => isIndonesian ? 'Pembaruan Terakhir: Oktober 2026' : 'Last Updated: October 2026';
+  String get legalNoticeBadge => isIndonesian ? 'PEMBERITAHUAN HUKUM RESMI' : 'OFFICIAL LEGAL NOTICE';
+  String get legalJurisdictionNotice => isIndonesian
+      ? 'Ketentuan ini berlaku mengikat bagi seluruh pengguna di seluruh yurisdiksi dunia.'
+      : 'These terms are legally binding for all users across worldwide jurisdictions.';
+  String get aboutTagline => isIndonesian ? 'Modern Decentralized Media Player' : 'Modern Decentralized Media Player';
+  String get aboutBuildType => isIndonesian ? 'Edisi Publik Gratis' : 'Public Free Edition';
+  String get aboutDescription => isIndonesian
+      ? 'Cineva adalah pemutar media terdesentralisasi generasi baru yang dirancang untuk menghadirkan pengalaman visual sinematik tanpa hambatan. Dengan memanfaatkan arsitektur streaming P2P cerdas dan mesin akselerasi pemutaran modern, Cineva memungkinkan penjelajahan katalog media publik global dengan kecepatan tinggi, antarmuka elegan, dan dukungan multi-bahasa lengkap tanpa biaya langganan dan tanpa pelacakan data pribadi.'
+      : 'Cineva is a next-generation decentralized media player crafted to deliver cinema-grade viewing experiences without friction. Harnessing an intelligent P2P streaming architecture and modern hardware-accelerated playback engine, Cineva enables high-speed exploration of publicly indexed global media with an exquisite user interface, comprehensive world subtitles, zero subscription costs, and complete personal privacy.';
+  String get aboutFeatureP2PTitle => isIndonesian ? 'Streaming P2P Cerdas' : 'Smart P2P Streaming Engine';
+  String get aboutFeatureP2PDesc => isIndonesian
+      ? 'Teknologi streaming terdistribusi yang efisien tanpa ketergantungan pada server pusat tunggal.'
+      : 'Efficient distributed streaming technology with zero reliance on single centralized servers.';
+  String get aboutFeatureHwTitle => isIndonesian ? 'Akselerasi Perangkat Keras' : 'Hardware Acceleration';
+  String get aboutFeatureHwDesc => isIndonesian
+      ? 'Didukung oleh mesin pemutar MediaKit/MPV dengan decoding GPU hemat daya hingga resolusi 4K Ultra HD.'
+      : 'Powered by MediaKit/MPV engine with power-efficient GPU decoding up to 4K Ultra HD.';
+  String get aboutFeatureSubTitle => isIndonesian ? 'Katalog 65+ Bahasa Subtitle' : '65+ World Subtitle Languages';
+  String get aboutFeatureSubDesc => isIndonesian
+      ? 'Pencarian subtitle otomatis dengan dukungan terjemahan instan ke bahasa pilihan Anda.'
+      : 'Automated subtitle discovery with instant translation fallback to your preferred language.';
+  String get aboutFeatureDownloadTitle => isIndonesian ? 'Manajer Unduhan Offline' : 'Offline Download Manager';
+  String get aboutFeatureDownloadDesc => isIndonesian
+      ? 'Simpan tayangan favorit Anda langsung ke penyimpanan perangkat untuk dinikmati kapan saja tanpa internet.'
+      : 'Save your favorite media directly to device storage to enjoy anytime without an internet connection.';
+  String get aboutFeatureFreeTitle => isIndonesian ? 'Non-Profit & Bebas Iklan' : 'Non-Profit & Zero Ads';
+  String get aboutFeatureFreeDesc => isIndonesian
+      ? 'Proyek utilitas piranti lunak terbuka tanpa komersialisasi, tanpa iklan mengganggu, dan tanpa registrasi.'
+      : 'Open software utility project with zero commercial monetization, no intrusive ads, and no registration required.';
+  String get aboutCreditsTitle => isIndonesian ? 'Ekosistem & Kontributor Terbuka' : 'Open Ecosystem & Acknowledgements';
+  String get aboutCreditsDesc => isIndonesian
+      ? 'Cineva dibangun dengan rasa hormat mendalam kepada ekosistem open-source dan API publik dunia: Flutter, MediaKit, Riverpod, The Movie Database (TMDB), OpenSubtitles, Hive, dan komunitas Torrentio.'
+      : 'Cineva is crafted with deep gratitude to the worldwide open-source ecosystem and public APIs: Flutter, MediaKit, Riverpod, The Movie Database (TMDB), OpenSubtitles, Hive, and the Torrentio community.';
 
   // ── Dialogs & Actions ──
   String get dialogExitTitle => isIndonesian ? 'Konfirmasi Keluar' : 'Exit Confirmation';

@@ -11,6 +11,9 @@ import '../../features/watchlist/presentation/screens/watchlist_screen.dart';
 import '../../features/history/presentation/screens/watch_history_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/download/presentation/screens/download_list_screen.dart';
+import '../../features/settings/data/legal_content.dart';
+import '../../features/settings/presentation/screens/legal_document_screen.dart';
+import '../../features/settings/presentation/screens/about_info_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 import '../../shared/widgets/shell_pop_scope.dart';
 
@@ -166,6 +169,87 @@ final GoRouter appRouter = GoRouter(
           return SlideTransition(
             position: Tween<Offset>(
               begin: const Offset(0, 0.06),
+              end: Offset.zero,
+            ).animate(curved),
+            child: FadeTransition(opacity: curved, child: child),
+          );
+        },
+      ),
+    ),
+    // ── Settings Legal & Info Routes ──
+    GoRoute(
+      path: '/settings/privacy-policy',
+      name: 'settingsPrivacyPolicy',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const LegalDocumentScreen(type: LegalDocType.privacyPolicy),
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 250),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.06, 0),
+              end: Offset.zero,
+            ).animate(curved),
+            child: FadeTransition(opacity: curved, child: child),
+          );
+        },
+      ),
+    ),
+    GoRoute(
+      path: '/settings/terms',
+      name: 'settingsTerms',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const LegalDocumentScreen(type: LegalDocType.termsAndConditions),
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 250),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.06, 0),
+              end: Offset.zero,
+            ).animate(curved),
+            child: FadeTransition(opacity: curved, child: child),
+          );
+        },
+      ),
+    ),
+    GoRoute(
+      path: '/settings/disclaimer',
+      name: 'settingsDisclaimer',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const LegalDocumentScreen(type: LegalDocType.disclaimer),
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 250),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.06, 0),
+              end: Offset.zero,
+            ).animate(curved),
+            child: FadeTransition(opacity: curved, child: child),
+          );
+        },
+      ),
+    ),
+    GoRoute(
+      path: '/settings/info',
+      name: 'settingsInfo',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const AboutInfoScreen(),
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 250),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.06, 0),
               end: Offset.zero,
             ).animate(curved),
             child: FadeTransition(opacity: curved, child: child),

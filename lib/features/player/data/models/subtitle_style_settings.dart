@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../settings/data/settings_service.dart';
 
 /// User customization settings for subtitle rendering and synchronization.
 class SubtitleStyleSettings {
@@ -60,5 +61,17 @@ class SubtitleStyleSettings {
       backgroundOpacity: (map['backgroundOpacity'] as num?)?.toDouble() ?? 0.0,
       syncOffsetMs: (map['syncOffsetMs'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  /// Creates a SubtitleStyleSettings initialized directly from user preferences in SettingsService.
+  factory SubtitleStyleSettings.fromSettings() {
+    try {
+      return SubtitleStyleSettings(
+        fontSize: SettingsService.getSubtitleFontSizePoints(),
+        backgroundOpacity: SettingsService.getSubtitleBackgroundOpacity(),
+      );
+    } catch (_) {
+      return const SubtitleStyleSettings();
+    }
   }
 }
