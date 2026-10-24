@@ -4,6 +4,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../domain/models/download_item.dart';
+import '../services/video_download_service.dart';
+
 
 /// Repository managing persistent download metadata backed by Hive.
 class DownloadRepository {
@@ -57,14 +59,31 @@ class DownloadRepository {
           if (await videoFile.exists()) {
             await videoFile.delete();
           }
-          if (item.subtitlePath != null) {
-            final subFile = File(item.subtitlePath!);
-            if (await subFile.exists()) {
-              await subFile.delete();
-            }
+        }
+
+        // Always delete subtitle file if present
+        if (item.subtitlePath != null) {
+          final subFile = File(item.subtitlePath!);
+          if (await subFile.exists()) {
+            await subFile.delete();
           }
         }
+
+        // Clean up any legacy .media directory or file with the same name if exists in download dir
+        try {
+          final downloadDir = await VideoDownloadService.getDownloadDirectory();
+          final legacyFile = File('${downloadDir.path}/${item.videoFileName}');
+          if (await legacyFile.exists()) {
+            await legacyFile.delete();
+          }
+          final folderName = item.videoFileName.replaceAll(RegExp(r'\.mp4$', caseSensitive: false), '');
+          final legacyDir = Directory('${downloadDir.path}/.media/$folderName');
+          if (await legacyDir.exists()) {
+            await legacyDir.delete(recursive: true);
+          }
+        } catch (_) {}
       } catch (_) {}
+
     }
     await _box.delete(id);
   }

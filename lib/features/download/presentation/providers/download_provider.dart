@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -76,14 +77,12 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     final subtitleFileName = DownloadFileNamer.formatSubtitleFileName(videoFileName);
 
     final dir = await VideoDownloadService.getDownloadDirectory();
-    final folderName = DownloadFileNamer.sanitizeFileName(
-      videoFileName.replaceAll(RegExp(r'\.mp4$', caseSensitive: false), ''),
-    );
-    final itemDir = Directory('${dir.path}/$folderName');
-    await itemDir.create(recursive: true);
+    final itemDir = Directory('${dir.path}/$id');
+    if (!await itemDir.exists()) await itemDir.create(recursive: true);
 
     final videoPath = '${itemDir.path}/master.m3u8';
     final subtitlePath = '${itemDir.path}/$subtitleFileName';
+
 
     var item = DownloadItem(
       id: id,
@@ -155,6 +154,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
               season: item.seasonNumber,
               episode: item.episodeNumber,
               preferredLang: item.selectedSubtitleLang,
+              masterPlaylistUrl: masterPlaylistUrl,
             );
             currentItem = currentItem.copyWith(
               subtitleStatus: subResult.status,
@@ -196,9 +196,18 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       // Wait for both video and subtitle streams to complete
       await Future.wait([videoFuture, subtitleFuture]);
 
-      // Step 3: Mark complete
+      // Step 3: Check if video.mp4 exists (hardware muxed MP4) and resolve actual path & size
+      final parentDir = File(item.videoPath).parent.path;
+      final mp4File = File('$parentDir/video.mp4');
+      final bool hasMp4 = await mp4File.exists() && (await mp4File.length()) > 50000;
+      final actualVideoPath = hasMp4 ? mp4File.path : currentItem.videoPath;
+      final actualTotalBytes = hasMp4 ? await mp4File.length() : currentItem.downloadedBytes;
+
       final completedItem = currentItem.copyWith(
         status: DownloadStatus.completed,
+        videoPath: actualVideoPath,
+        downloadedBytes: actualTotalBytes > 0 ? actualTotalBytes : currentItem.downloadedBytes,
+        totalBytes: actualTotalBytes > 0 ? actualTotalBytes : currentItem.totalBytes,
         progress: 1.0,
         speed: 'Selesai',
         completedAt: DateTime.now(),
@@ -284,6 +293,9 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     await _repository.deleteDownload(id);
     _loadAll();
   }
+
+  /// Cancels an active download.
+  Future<void> cancelDownload(String id) => deleteDownload(id);
 }
 
 // ── Providers ──

@@ -267,95 +267,108 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
 
                 const SizedBox(height: 20),
 
-                // ── Watch Now (Starts S{selectedSeason}:E1) ──
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      await context.push('/player', extra: {
-                        'title': name,
-                        'episodeTitle': 'Season $_selectedSeasonNumber Episode 1',
-                        'imdbId': imdbId,
-                        'season': _selectedSeasonNumber,
-                        'episode': 1,
-                        'tmdbId': tvId,
-                        'mediaType': 'tv',
-                        'posterPath': posterPath,
-                        'backdropPath': backdropPath,
-                        'magnetLink': '',
-                      });
-                      SystemChrome.setPreferredOrientations([
-                        DeviceOrientation.portraitUp,
-                        DeviceOrientation.portraitDown,
-                      ]);
-                      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-                    },
-                    icon: const Icon(Icons.play_arrow_rounded, size: 28),
-                    label: Text(
-                      'Tonton Season $_selectedSeasonNumber Episode 1',
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
-
-                const SizedBox(height: 12),
-
-                // ── Watchlist Button ──
-                SizedBox(
-                  width: double.infinity,
-                  child: Builder(
-                    builder: (context) {
-                      final isInWatchlist = ref.watch(watchlistProvider.notifier).isInWatchlist(
-                        data['id'] as int? ?? 0,
-                        'tv',
-                      );
-                      return OutlinedButton.icon(
+                // ── Action Row: Watch Now & Watchlist ──
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
                         onPressed: () async {
-                          final item = WatchlistItem(
-                            id: data['id'] as int? ?? 0,
-                            title: name,
-                            posterPath: posterPath,
-                            voteAverage: voteAverage,
-                            type: 'tv',
-                            addedAt: DateTime.now(),
-                          );
-                          final added = await ref.read(watchlistProvider.notifier).toggle(item);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(added ? 'Ditambahkan ke Watchlist' : 'Dihapus dari Watchlist'),
-                                backgroundColor: AppColors.surfaceVariant,
-                              ),
-                            );
-                          }
+                          await context.push('/player', extra: {
+                            'title': name,
+                            'episodeTitle': 'Season $_selectedSeasonNumber Episode 1',
+                            'imdbId': imdbId,
+                            'season': _selectedSeasonNumber,
+                            'episode': 1,
+                            'tmdbId': tvId,
+                            'mediaType': 'tv',
+                            'posterPath': posterPath,
+                            'backdropPath': backdropPath,
+                            'magnetLink': '',
+                          });
+                          SystemChrome.setPreferredOrientations([
+                            DeviceOrientation.portraitUp,
+                            DeviceOrientation.portraitDown,
+                          ]);
+                          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
                         },
-                        icon: Icon(
-                          Iconsax.bookmark,
-                          size: 20,
-                          color: isInWatchlist ? AppColors.primary : AppColors.textSecondary,
-                        ),
+                        icon: const Icon(Icons.play_arrow_rounded, size: 28),
                         label: Text(
-                          isInWatchlist ? 'Tersimpan' : 'Simpan ke Watchlist',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isInWatchlist ? AppColors.primary : AppColors.textSecondary,
-                          ),
+                          'Tonton S$_selectedSeasonNumber : E1',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          side: BorderSide(
-                            color: isInWatchlist ? AppColors.primary : AppColors.surfaceElevated,
-                          ),
                         ),
-                      );
-                    },
-                  ),
-                ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Watchlist Button (Outlined when not added, Filled when added)
+                    Builder(
+                      builder: (context) {
+                        final isInWatchlist = ref.watch(watchlistProvider.notifier).isInWatchlist(
+                          data['id'] as int? ?? 0,
+                          'tv',
+                        );
+                        return Tooltip(
+                          message: isInWatchlist ? 'Hapus dari Watchlist' : 'Tambahkan ke Watchlist',
+                          child: InkWell(
+                            onTap: () async {
+                              final item = WatchlistItem(
+                                id: data['id'] as int? ?? 0,
+                                title: name,
+                                posterPath: posterPath,
+                                voteAverage: voteAverage,
+                                type: 'tv',
+                                addedAt: DateTime.now(),
+                              );
+                              final added = await ref.read(watchlistProvider.notifier).toggle(item);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(added ? 'Ditambahkan ke Watchlist' : 'Dihapus dari Watchlist'),
+                                    backgroundColor: AppColors.surfaceVariant,
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(14),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: isInWatchlist ? AppColors.primary : Colors.transparent,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isInWatchlist ? AppColors.primary : AppColors.surfaceElevated,
+                                  width: 1.5,
+                                ),
+                                boxShadow: isInWatchlist
+                                    ? [
+                                        BoxShadow(
+                                          color: AppColors.primary.withValues(alpha: 0.35),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Icon(
+                                isInWatchlist ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                color: isInWatchlist ? Colors.black : Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
 
                 const SizedBox(height: 24),
 
@@ -649,7 +662,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                             );
                                           },
                                           icon: const Icon(
-                                            Iconsax.document_download,
+                                            Icons.download_rounded,
                                             size: 20,
                                             color: AppColors.primary,
                                           ),

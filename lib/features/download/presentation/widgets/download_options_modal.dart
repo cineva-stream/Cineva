@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,8 +10,9 @@ import '../providers/download_provider.dart';
 import '../../data/services/download_file_namer.dart';
 import '../../data/services/video_download_service.dart';
 
-/// Modal bottom sheet allowing the user to select resolution (with size detail)
-/// and subtitle preference before downloading a Movie or TV Episode.
+/// Modal bottom sheet with a smooth two-step slide transition:
+/// Step 1: Video Resolution & File Size Selection
+/// Step 2: Subtitle Preference & Auto-Translation Selection
 class DownloadOptionsModal extends ConsumerStatefulWidget {
   final int tmdbId;
   final String mediaType; // 'movie' or 'tv'
@@ -86,6 +86,8 @@ class DownloadOptionsModal extends ConsumerStatefulWidget {
 
 class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
   final _videoService = VideoDownloadService();
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
   bool _isLoadingResolutions = true;
   List<ResolutionOption> _resolutions = [];
   String _selectedResolution = '1080p';
@@ -95,6 +97,12 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
   void initState() {
     super.initState();
     _loadResolutions();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadResolutions() async {
@@ -120,6 +128,22 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
         setState(() => _isLoadingResolutions = false);
       }
     }
+  }
+
+  void _nextPage() {
+    _pageController.animateToPage(
+      1,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _prevPage() {
+    _pageController.animateToPage(
+      0,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -168,9 +192,9 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
               ),
             ),
 
-            // Header Media Preview
+            // Header Media Preview with Step Dots
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               child: Row(
                 children: [
                   ClipRRect(
@@ -180,17 +204,17 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                         widget.posterPath,
                         size: ApiConstants.posterSmall,
                       ),
-                      width: 50,
-                      height: 75,
+                      width: 48,
+                      height: 72,
                       fit: BoxFit.cover,
                       placeholder: (_, _) => Container(
-                        width: 50,
-                        height: 75,
+                        width: 48,
+                        height: 72,
                         color: AppColors.surfaceVariant,
                       ),
                       errorWidget: (_, _, _) => Container(
-                        width: 50,
-                        height: 75,
+                        width: 48,
+                        height: 72,
                         color: AppColors.surfaceVariant,
                         child: const Icon(Icons.movie, color: AppColors.textMuted),
                       ),
@@ -211,7 +235,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Text(
                           isMovie
                               ? 'Film • ${widget.releaseYear.isNotEmpty ? widget.releaseYear : 'N/A'}'
@@ -225,21 +249,49 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceElevated,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            videoFileName,
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 10,
-                              color: AppColors.textSecondary,
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceElevated,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                _currentPage == 0 ? 'Langkah 1/2: Resolusi' : 'Langkah 2/2: Subtitle',
+                                style: GoogleFonts.inter(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            const SizedBox(width: 8),
+                            // Smooth step indicator dots
+                            Row(
+                              children: [
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 250),
+                                  width: _currentPage == 0 ? 16 : 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: _currentPage == 0 ? AppColors.primary : Colors.white24,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 250),
+                                  width: _currentPage == 1 ? 16 : 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: _currentPage == 1 ? AppColors.primary : Colors.white24,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -250,318 +302,19 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
 
             const Divider(color: Color(0x15FFFFFF), height: 1),
 
-            // Scrollable Options Content
+            // Two-step PageView with smooth horizontal slide animation
             Flexible(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Section 1: Resolusi & Ukuran
-                    Row(
-                      children: [
-                        const Icon(Iconsax.video_circle, color: AppColors.primary, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Pilih Resolusi & Ukuran File (Size)',
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                onPageChanged: (idx) => setState(() => _currentPage = idx),
+                children: [
+                  // PAGE 1: Resolusi & Ukuran
+                  _buildResolutionStep(context, selectedOption),
 
-                    if (_isLoadingResolutions)
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        alignment: Alignment.center,
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              'Menghubungkan stream & menghitung ukuran...',
-                              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      Column(
-                        children: _resolutions.map((res) {
-                          final isSelected = _selectedResolution == res.label;
-                          return InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              setState(() => _selectedResolution = res.label);
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? AppColors.primary.withValues(alpha: 0.12)
-                                    : AppColors.surfaceVariant,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
-                                  width: isSelected ? 1.5 : 1.0,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? AppColors.primary
-                                          : AppColors.surfaceElevated,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      res.label,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: isSelected ? Colors.black : Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          res.title,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 13,
-                                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                            color: isSelected ? AppColors.primary : Colors.white,
-                                          ),
-                                        ),
-                                        Text(
-                                          res.description,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 10,
-                                            color: AppColors.textMuted,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Text(
-                                    res.formattedSize,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    isSelected
-                                        ? Icons.check_circle_rounded
-                                        : Icons.circle_outlined,
-                                    size: 18,
-                                    color: isSelected ? AppColors.primary : AppColors.textMuted,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-
-                    const SizedBox(height: 16),
-
-                    // Section 2: Subtitle Preference
-                    Row(
-                      children: [
-                        const Icon(Iconsax.subtitle, color: AppColors.primary, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Pilih Subtitle',
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-
-                    _buildSubtitleOption(
-                      langCode: 'id',
-                      title: 'Bahasa Indonesia (Prioritas)',
-                      subtitle:
-                          'Otomatis unduh ID. Jika tidak ada, unduh English ke cache lalu terjemahkan gratis ke Bahasa Indonesia.',
-                    ),
-                    _buildSubtitleOption(
-                      langCode: 'en',
-                      title: 'English Subtitle',
-                      subtitle: 'Unduh teks subtitle bahasa Inggris asli.',
-                    ),
-                    _buildSubtitleOption(
-                      langCode: 'none',
-                      title: 'Tanpa Subtitle',
-                      subtitle: 'Hanya mengunduh file video .mp4 saja.',
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // Target Save Info Card
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceElevated.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Iconsax.folder_2, color: AppColors.textSecondary, size: 16),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Lokasi Simpan di Perangkat:',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Penyimpanan Utama > Download > Cineva > $videoFileName',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 10,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          if (_selectedSubtitleLang != 'none') ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              '+ Subtitle: $subtitleFileName',
-                              style: GoogleFonts.jetBrainsMono(
-                                fontSize: 10,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Bottom Action Button
-            Container(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, 14 + bottomInset),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                border: Border(
-                  top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-                ),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    final router = GoRouter.of(context);
-
-                    Navigator.of(context, rootNavigator: true).pop();
-
-                    await ref.read(downloadManagerProvider.notifier).startDownload(
-                          tmdbId: widget.tmdbId,
-                          mediaType: widget.mediaType,
-                          title: widget.title,
-                          releaseYear: widget.releaseYear,
-                          season: widget.season,
-                          episode: widget.episode,
-                          episodeTitle: widget.episodeTitle,
-                          posterPath: widget.posterPath,
-                          backdropPath: widget.backdropPath,
-                          imdbId: widget.imdbId,
-                          resolution: _selectedResolution,
-                          streamUrl: selectedOption.streamUrl,
-                          masterPlaylistUrl: selectedOption.masterPlaylistUrl,
-                          estimatedSizeBytes: selectedOption.estimatedSizeBytes,
-                          preferredSubtitleLang: _selectedSubtitleLang,
-                          runtimeMinutes: widget.runtimeMinutes,
-                        );
-
-                    messenger.clearSnackBars();
-                    messenger.showSnackBar(
-                      SnackBar(
-                        duration: const Duration(seconds: 4),
-                        backgroundColor: AppColors.surfaceElevated,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        content: Row(
-                          children: [
-                            const Icon(Iconsax.document_download, color: AppColors.primary, size: 20),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Unduhan dimulai! Ketuk ikon Unduhan di AppBar untuk melihat proses.',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        action: SnackBarAction(
-                          label: 'Lihat',
-                          textColor: AppColors.primary,
-                          onPressed: () {
-                            messenger.hideCurrentSnackBar();
-                            router.push('/downloads');
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Iconsax.document_download, size: 20),
-                  label: Text(
-                    'Mulai Mengunduh (${selectedOption.formattedSize})',
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                ),
+                  // PAGE 2: Subtitle Preference & Auto-Translation
+                  _buildSubtitleStep(context, selectedOption, videoFileName, subtitleFileName, bottomInset),
+                ],
               ),
             ),
           ],
@@ -570,25 +323,435 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
     );
   }
 
+  /// Step 1: Video resolution & file size selection
+  Widget _buildResolutionStep(BuildContext context, ResolutionOption selectedOption) {
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.hd_rounded, color: AppColors.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Pilih Resolusi Video',
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Pilih kualitas video sesuai ruang penyimpanan perangkat Anda',
+                  style: GoogleFonts.inter(fontSize: 11.5, color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 14),
+
+                if (_isLoadingResolutions)
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 36),
+                    alignment: Alignment.center,
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Menghubungkan stream & menghitung ukuran...',
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Column(
+                    children: _resolutions.map((res) {
+                      final isSelected = _selectedResolution == res.label;
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          setState(() => _selectedResolution = res.label);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primary.withValues(alpha: 0.12)
+                                : AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
+                              width: isSelected ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  res.label,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: isSelected ? Colors.black : Colors.white,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      res.title,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                        color: isSelected ? AppColors.primary : Colors.white,
+                                      ),
+                                    ),
+                                    Text(
+                                      res.description,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                res.formattedSize,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Icon(
+                                isSelected
+                                    ? Icons.check_circle_rounded
+                                    : Icons.circle_outlined,
+                                size: 20,
+                                color: isSelected ? AppColors.primary : AppColors.textMuted,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+              ],
+            ),
+          ),
+        ),
+
+        // Action Button: Lanjut ke Subtitle
+        Container(
+          padding: EdgeInsets.fromLTRB(20, 12, 20, 14 + MediaQuery.of(context).padding.bottom),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isLoadingResolutions ? null : _nextPage,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Lanjut ke Pilihan Subtitle (${selectedOption.label} • ${selectedOption.formattedSize})',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_forward_rounded, size: 18),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Step 2: Subtitle preference selection with auto-translate option
+  Widget _buildSubtitleStep(
+    BuildContext context,
+    ResolutionOption selectedOption,
+    String videoFileName,
+    String subtitleFileName,
+    double bottomInset,
+  ) {
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with back button
+                Row(
+                  children: [
+                    InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: _prevPage,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: AppColors.surfaceElevated,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 18),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Pilih Subtitle',
+                            style: GoogleFonts.outfit(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            'Kualitas terpilih: ${selectedOption.label} (${selectedOption.formattedSize})',
+                            style: GoogleFonts.inter(fontSize: 11, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                _buildSubtitleOption(
+                  langCode: 'id',
+                  title: 'Bahasa Indonesia (Prioritas)',
+                  badge: 'Auto-Translate',
+                  subtitle:
+                      'Otomatis unduh teks Indonesia. Jika belum ada, sistem mengunduh teks English ke cache lalu otomatis menerjemahkannya secara gratis.',
+                ),
+                _buildSubtitleOption(
+                  langCode: 'en',
+                  title: 'English Subtitle',
+                  badge: 'Original',
+                  subtitle: 'Unduh teks subtitle resmi Bahasa Inggris asli.',
+                ),
+                _buildSubtitleOption(
+                  langCode: 'none',
+                  title: 'Tanpa Subtitle',
+                  subtitle: 'Hanya mengunduh file video saja tanpa file subtitle terpisah.',
+                ),
+
+                const SizedBox(height: 14),
+
+                // File location card
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.folder_outlined, color: AppColors.textSecondary, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Lokasi Simpan di Perangkat:',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Penyimpanan Utama > Download > Cineva > $videoFileName',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 10,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      if (_selectedSubtitleLang != 'none') ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          '+ Subtitle: $subtitleFileName',
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 10,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Bottom Action Button: Mulai Mengunduh
+        Container(
+          padding: EdgeInsets.fromLTRB(20, 12, 20, 14 + bottomInset),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                final router = GoRouter.of(context);
+
+                Navigator.of(context, rootNavigator: true).pop();
+
+                await ref.read(downloadManagerProvider.notifier).startDownload(
+                      tmdbId: widget.tmdbId,
+                      mediaType: widget.mediaType,
+                      title: widget.title,
+                      releaseYear: widget.releaseYear,
+                      season: widget.season,
+                      episode: widget.episode,
+                      episodeTitle: widget.episodeTitle,
+                      posterPath: widget.posterPath,
+                      backdropPath: widget.backdropPath,
+                      imdbId: widget.imdbId,
+                      resolution: _selectedResolution,
+                      streamUrl: selectedOption.streamUrl,
+                      masterPlaylistUrl: selectedOption.masterPlaylistUrl,
+                      estimatedSizeBytes: selectedOption.estimatedSizeBytes,
+                      preferredSubtitleLang: _selectedSubtitleLang,
+                      runtimeMinutes: widget.runtimeMinutes,
+                    );
+
+                messenger.clearSnackBars();
+                messenger.showSnackBar(
+                  SnackBar(
+                    duration: const Duration(seconds: 5),
+                    backgroundColor: AppColors.surfaceElevated,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    content: Row(
+                      children: [
+                        const Icon(Icons.download_rounded, color: AppColors.primary, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Unduhan dimulai! Ketuk ikon Unduhan di AppBar untuk melihat proses.',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    action: SnackBarAction(
+                      label: 'Lihat',
+                      textColor: AppColors.primary,
+                      onPressed: () {
+                        messenger.hideCurrentSnackBar();
+                        router.push('/downloads');
+                      },
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.download_rounded, size: 20),
+              label: Text(
+                'Mulai Mengunduh (${selectedOption.formattedSize})',
+                style: GoogleFonts.outfit(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSubtitleOption({
     required String langCode,
     required String title,
+    String? badge,
     required String subtitle,
   }) {
     final isSelected = _selectedSubtitleLang == langCode;
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       onTap: () => setState(() => _selectedSubtitleLang = langCode),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.1)
+              ? AppColors.primary.withValues(alpha: 0.12)
               : AppColors.surfaceVariant,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
+            width: isSelected ? 1.5 : 1.0,
           ),
         ),
         child: Row(
@@ -597,19 +760,41 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? AppColors.primary : Colors.white,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected ? AppColors.primary : Colors.white,
+                        ),
+                      ),
+                      if (badge != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            badge,
+                            style: GoogleFonts.inter(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryLight,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     subtitle,
                     style: GoogleFonts.inter(
-                      fontSize: 10,
+                      fontSize: 10.5,
                       color: AppColors.textMuted,
                       height: 1.3,
                     ),
@@ -617,9 +802,10 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Icon(
               isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
-              size: 18,
+              size: 20,
               color: isSelected ? AppColors.primary : AppColors.textMuted,
             ),
           ],

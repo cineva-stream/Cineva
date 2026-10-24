@@ -2,7 +2,7 @@
 class AppConstants {
   AppConstants._();
 
-  static const String appName = 'Cineva';
+  static const String appName = 'Cineva Stream';
   static const String appVersion = '1.0.1';
   static const String appTagline = 'Stream Freely';
 
@@ -22,7 +22,7 @@ class AppConstants {
 
   // ── Torrent Defaults ──
   static const int defaultDownloadLimitBytes = 10 * 1024 * 1024; // 10 MB/s
-  static const int defaultUploadLimitBytes = 1 * 1024 * 1024;    // 1 MB/s
+  static const int defaultUploadLimitBytes = 1 * 1024 * 1024; // 1 MB/s
 
   // ── Hive Box Names ──
   static const String watchlistBox = 'watchlist';

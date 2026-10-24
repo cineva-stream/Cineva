@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../app/theme/app_colors.dart';
@@ -74,11 +73,11 @@ class MainShell extends StatelessWidget {
         bottomNavigationBar: Container(
           padding: EdgeInsets.only(bottom: bottomPadding),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: AppColors.background,
             border: Border(
               top: BorderSide(
                 color: Colors.white.withValues(alpha: 0.08),
-                width: 0.6,
+                width: 0.8,
               ),
             ),
             boxShadow: [
@@ -94,35 +93,40 @@ class MainShell extends StatelessWidget {
             child: Row(
               children: [
                 _NavTab(
-                  icon: Iconsax.home_2,
+                  icon: Icons.home_outlined,
+                  activeIcon: Icons.home_rounded,
                   label: 'Beranda',
                   isActive: currentIndex == 0,
                   isCompact: isCompact,
                   onTap: () => _onTap(context, 0),
                 ),
                 _NavTab(
-                  icon: Iconsax.bookmark,
+                  icon: Icons.bookmark_border_rounded,
+                  activeIcon: Icons.bookmark_rounded,
                   label: 'Watchlist',
                   isActive: currentIndex == 1,
                   isCompact: isCompact,
                   onTap: () => _onTap(context, 1),
                 ),
                 _NavTab(
-                  icon: Iconsax.search_normal_1,
+                  icon: Icons.search_rounded,
+                  activeIcon: Icons.search_rounded,
                   label: 'Cari',
                   isActive: currentIndex == 2,
                   isCompact: isCompact,
                   onTap: () => _onTap(context, 2),
                 ),
                 _NavTab(
-                  icon: Iconsax.clock,
+                  icon: Icons.history_rounded,
+                  activeIcon: Icons.history_rounded,
                   label: 'Riwayat',
                   isActive: currentIndex == 3,
                   isCompact: isCompact,
                   onTap: () => _onTap(context, 3),
                 ),
                 _NavTab(
-                  icon: Iconsax.setting_2,
+                  icon: Icons.settings_outlined,
+                  activeIcon: Icons.settings_rounded,
                   label: 'Pengaturan',
                   isActive: currentIndex == 4,
                   isCompact: isCompact,
@@ -140,6 +144,7 @@ class MainShell extends StatelessWidget {
 /// Static, minimalist navigation tab with zero animation overhead and adaptive scaling for 720p screens.
 class _NavTab extends StatelessWidget {
   final IconData icon;
+  final IconData? activeIcon;
   final String label;
   final bool isActive;
   final bool isCompact;
@@ -147,6 +152,7 @@ class _NavTab extends StatelessWidget {
 
   const _NavTab({
     required this.icon,
+    this.activeIcon,
     required this.label,
     required this.isActive,
     this.isCompact = false,
@@ -157,6 +163,7 @@ class _NavTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final activeColor = AppColors.primary;
     final inactiveColor = AppColors.textMuted;
+    final displayIcon = (isActive && activeIcon != null) ? activeIcon! : icon;
 
     return Expanded(
       child: InkResponse(
@@ -169,7 +176,7 @@ class _NavTab extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              icon,
+              displayIcon,
               size: isCompact ? 20 : 22,
               color: isActive ? activeColor : inactiveColor,
             ),

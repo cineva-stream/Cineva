@@ -6,8 +6,6 @@
   </picture>
 </p>
 
-<h1 align="center">Cineva</h1>
-
 <p align="center">
   <strong>Aplikasi Streaming & Unduhan Film dan Serial TV Modern Berbasis Flutter</strong>
 </p>

@@ -590,51 +590,53 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         bottom: false,
         child: ListView(
           physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 90),
+          padding: EdgeInsets.fromLTRB(0, 16, 0, MediaQuery.of(context).padding.bottom + 76),
           children: [
             // Page Header
-            Row(
-              children: [
-                Container(
-                  width: 3.5,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(2),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 3.5,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'Pengaturan',
-                  style: GoogleFonts.outfit(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
+                  const SizedBox(width: 10),
+                  Text(
+                    'Pengaturan',
+                    style: GoogleFonts.outfit(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
 
             const SizedBox(height: 20),
 
-            // ── App Detail Card (Modern Minimalist) ──
+            // ── App Detail Card (Full-width with Smooth Border) ──
             Container(
-              padding: const EdgeInsets.all(16),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.07),
-                  width: 0.8,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
+                color: AppColors.background,
+                border: Border(
+                  top: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    width: 0.8,
                   ),
-                ],
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    width: 0.8,
+                  ),
+                ),
               ),
               child: Row(
                 children: [
@@ -821,7 +823,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _buildSectionHeader('Penyimpanan & Riwayat', Iconsax.folder),
             _buildSettingsCard([
               _SettingsTileItem(
-                icon: Iconsax.document_download,
+                icon: Icons.download_rounded,
                 title: 'Daftar Unduhan (Download Manager)',
                 subtitle: 'Kelola film & serial TV yang sedang diunduh atau selesai',
                 trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
@@ -905,7 +907,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ]),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 4),
           ],
         ),
       ),
@@ -914,7 +916,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildSectionHeader(String title, IconData icon) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
       child: Row(
         children: [
           Icon(icon, size: 16, color: AppColors.primary),
@@ -935,36 +937,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildSettingsCard(List<Widget> children) {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-          width: 0.8,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+        color: AppColors.background,
+        border: Border(
+          top: BorderSide(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 0.8,
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Column(
-          children: children,
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 0.8,
+          ),
         ),
+      ),
+      child: Column(
+        children: children,
       ),
     );
   }
 
   Widget _buildCardDivider() {
-    return const Divider(
-      color: Color(0x10FFFFFF),
+    return Divider(
+      color: Colors.white.withValues(alpha: 0.07),
       height: 1,
-      thickness: 1,
-      indent: 52,
+      thickness: 0.8,
+      indent: 72,
+      endIndent: 20,
     );
   }
 }
@@ -991,7 +990,7 @@ class _SettingsTileItem extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Row(
           children: [
             Container(
@@ -1068,7 +1067,7 @@ class _SettingsToggleItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
         children: [
           Container(

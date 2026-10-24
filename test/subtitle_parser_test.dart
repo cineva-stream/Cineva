@@ -168,5 +168,73 @@ We must protect this place.
       expect(multiLines.length, 3);
       expect(multiLines[0], 'Halo.');
     });
+
+    test('smartFormatIndonesianSubtitle cleans chaotic casing, capitalizes sentences, sacred names and places', () {
+      // 1. Chaotic mixed casing normalized & capitalized at start of sentence
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('KAmi sedang berjalan di taman.'),
+        'Kami sedang berjalan di taman.',
+      );
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('KAMI SUDAH SIAP. BAGAIMANA DENGAN KALIAN?'),
+        'Kami sudah siap. Bagaimana dengan kalian?',
+      );
+
+      // 2. Capitalization after dot '.' and dialogue dashes '-'
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('- apa yang terjadi? - KAMI tidak tahu.'),
+        '- Apa yang terjadi? - Kami tidak tahu.',
+      );
+
+      // 3. Sacred names of God / Tuhan
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('tuhan tolong kami!'),
+        'Tuhan tolong kami!',
+      );
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('semoga TUHAN memberkati kamu sekalian.'),
+        'Semoga Tuhan memberkati kamu sekalian.',
+      );
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('ya allah, lindungi kami.'),
+        'Ya Allah, lindungi kami.',
+      );
+
+      // 4. Street names, places and honorifics followed by names
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('jalan sudirman sangat macet hari ini.'),
+        'Jalan Sudirman sangat macet hari ini.',
+      );
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('apakah dokter smith dan kapten miller sudah tiba di new york?'),
+        'Apakah Dokter Smith dan Kapten Miller sudah tiba di New York?',
+      );
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('dia tinggal di kota bandung bersama paman sam.'),
+        'Dia tinggal di Kota Bandung bersama Paman Sam.',
+      );
+
+      // 5. Acronyms & hyphenated proper names
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('kami melihat agen fbi di bandara soekarno-hatta.'),
+        'Kami melihat agen FBI di Bandara Soekarno-Hatta.',
+      );
+
+      // 6. Days, months and islands
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('senin depan kita akan pergi ke pulau bali.'),
+        'Senin depan kita akan pergi ke Pulau Bali.',
+      );
+
+      // 7. Reduplication at start of sentence vs middle of sentence
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('anak-anak sedang bermain di taman.'),
+        'Anak-anak sedang bermain di taman.',
+      );
+      expect(
+        SubtitleTranslatorService.smartFormatIndonesianSubtitle('kami menjaga anak-anak di taman.'),
+        'Kami menjaga anak-anak di taman.',
+      );
+    });
   });
 }

@@ -12,6 +12,7 @@ import '../providers/download_provider.dart';
 import '../../data/repositories/download_repository.dart';
 
 /// Screen displaying movies and TV series currently downloading and finished.
+/// Supports YouTube-style in-app offline playback and Season-based TV Series management.
 class DownloadListScreen extends ConsumerStatefulWidget {
   const DownloadListScreen({super.key});
 
@@ -21,6 +22,15 @@ class DownloadListScreen extends ConsumerStatefulWidget {
 
 class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
   int _selectedTab = 0; // 0 = Sedang Diunduh, 1 = Selesai
+  int _completedFilter = 0; // 0 = Semua, 1 = Film, 2 = Serial TV
+  final Set<String> _expandedSeries = {};
+
+  String _formatBytes(int b) {
+    if (b >= 1073741824) return '${(b / 1073741824).toStringAsFixed(2)} GB';
+    if (b >= 1048576) return '${(b / 1048576).toStringAsFixed(1)} MB';
+    if (b >= 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
+    return '$b B';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,12 +40,8 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
     final repo = ref.watch(downloadRepositoryProvider);
     final totalUsedBytes = repo.getTotalDownloadedBytes();
 
-    String formatBytes(int b) {
-      if (b >= 1073741824) return '${(b / 1073741824).toStringAsFixed(2)} GB';
-      if (b >= 1048576) return '${(b / 1048576).toStringAsFixed(1)} MB';
-      if (b >= 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
-      return '$b B';
-    }
+    final completedMovies = completed.where((i) => i.isMovie).toList();
+    final completedTv = completed.where((i) => i.isTv).toList();
 
     return PopScope(
       canPop: false,
@@ -63,91 +69,95 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
             },
             icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           ),
-        title: Text(
-          'Daftar Unduhan',
-          style: GoogleFonts.outfit(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.surfaceElevated),
+          title: Text(
+            'Unduhan Offline',
+            style: GoogleFonts.outfit(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
             ),
-            child: Row(
-              children: [
-                const Icon(Iconsax.folder_favorite, size: 14, color: AppColors.primary),
-                const SizedBox(width: 6),
-                Text(
-                  formatBytes(totalUsedBytes),
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+          ),
+          actions: [
+            Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.surfaceElevated),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Iconsax.folder_favorite, size: 14, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    _formatBytes(totalUsedBytes),
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Modern Minimalist Underline Tabs
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: AppColors.surfaceElevated.withValues(alpha: 0.8),
-                  width: 1.0,
-                ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _TabButton(
-                    label: 'Sedang Diunduh',
-                    count: inProgress.length,
-                    isSelected: _selectedTab == 0,
-                    onTap: () => setState(() => _selectedTab = 0),
+          ],
+        ),
+        body: Column(
+          children: [
+            // Modern Minimalist Underline Tabs
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.surfaceElevated.withValues(alpha: 0.8),
+                    width: 1.0,
                   ),
                 ),
-                Expanded(
-                  child: _TabButton(
-                    label: 'Selesai',
-                    count: completed.length,
-                    isSelected: _selectedTab == 1,
-                    onTap: () => setState(() => _selectedTab = 1),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _TabButton(
+                      label: 'Sedang Diunduh',
+                      count: inProgress.length,
+                      isSelected: _selectedTab == 0,
+                      onTap: () => setState(() => _selectedTab = 0),
+                    ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: _TabButton(
+                      label: 'Tersimpan Offline',
+                      count: completed.length,
+                      isSelected: _selectedTab == 1,
+                      onTap: () => setState(() => _selectedTab = 1),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          // Content List
-          Expanded(
-            child: _selectedTab == 0
-                ? _buildInProgressList(inProgress)
-                : _buildCompletedList(completed),
-          ),
-        ],
+            // Content Body
+            Expanded(
+              child: _selectedTab == 0
+                  ? _buildInProgressList(inProgress)
+                  : _buildCompletedView(
+                      allCompleted: completed,
+                      movies: completedMovies,
+                      tvList: completedTv,
+                    ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildInProgressList(List<DownloadItem> items) {
     if (items.isEmpty) {
       return _buildEmptyState(
-        icon: Iconsax.document_download,
+        icon: Icons.download_rounded,
         title: 'Tidak Ada Unduhan Aktif',
         description: 'Pilih Film atau Serial TV favorit Anda lalu tekan tombol Unduh.',
       );
@@ -165,24 +175,188 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
     );
   }
 
-  Widget _buildCompletedList(List<DownloadItem> items) {
-    if (items.isEmpty) {
+  Widget _buildCompletedView({
+    required List<DownloadItem> allCompleted,
+    required List<DownloadItem> movies,
+    required List<DownloadItem> tvList,
+  }) {
+    if (allCompleted.isEmpty) {
       return _buildEmptyState(
         icon: Iconsax.video_tick,
-        title: 'Belum Ada Unduhan Selesai',
-        description: 'Semua Film & Serial TV yang telah selesai diunduh akan muncul di sini untuk ditonton secara offline.',
+        title: 'Belum Ada Konten Tersimpan',
+        description: 'Semua Film & Serial TV yang diunduh akan tersimpan di sini dan siap ditonton kapan saja tanpa internet.',
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      physics: const BouncingScrollPhysics(),
-      itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return _CompletedCard(item: item);
-      },
+    // Group TV Series by tmdbId or Title
+    final tvSeriesMap = <String, List<DownloadItem>>{};
+    for (final item in tvList) {
+      final key = item.tmdbId > 0 ? '${item.tmdbId}' : item.title;
+      tvSeriesMap.putIfAbsent(key, () => []).add(item);
+    }
+
+    return Column(
+      children: [
+        // Filter Chips: Semua, Film, Serial TV
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              _buildFilterChip(
+                label: 'Semua',
+                count: allCompleted.length,
+                isSelected: _completedFilter == 0,
+                onTap: () => setState(() => _completedFilter = 0),
+              ),
+              const SizedBox(width: 8),
+              _buildFilterChip(
+                label: 'Film',
+                count: movies.length,
+                isSelected: _completedFilter == 1,
+                onTap: () => setState(() => _completedFilter = 1),
+              ),
+              const SizedBox(width: 8),
+              _buildFilterChip(
+                label: 'Serial TV',
+                count: tvSeriesMap.length,
+                isSelected: _completedFilter == 2,
+                onTap: () => setState(() => _completedFilter = 2),
+              ),
+            ],
+          ),
+        ),
+
+        // Scrollable List of Completed Media
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+            physics: const BouncingScrollPhysics(),
+            children: [
+              // 1. Movie Section (if filter is 0 or 1)
+              if ((_completedFilter == 0 || _completedFilter == 1) && movies.isNotEmpty) ...[
+                if (_completedFilter == 0) ...[
+                  _buildSectionHeader('Film Offline', '${movies.length} Film'),
+                  const SizedBox(height: 8),
+                ],
+                ...movies.map((movie) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _CompletedMovieCard(item: movie),
+                    )),
+                if (_completedFilter == 0 && tvSeriesMap.isNotEmpty) const SizedBox(height: 12),
+              ],
+
+              // 2. TV Series Section (if filter is 0 or 2)
+              if ((_completedFilter == 0 || _completedFilter == 2) && tvSeriesMap.isNotEmpty) ...[
+                if (_completedFilter == 0) ...[
+                  _buildSectionHeader('Serial TV Offline', '${tvSeriesMap.length} Judul'),
+                  const SizedBox(height: 8),
+                ],
+                ...tvSeriesMap.entries.map((entry) {
+                  final seriesKey = entry.key;
+                  final episodes = entry.value;
+                  final isExpanded = _expandedSeries.contains(seriesKey);
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: _TvSeriesSeasonCard(
+                      seriesKey: seriesKey,
+                      episodes: episodes,
+                      isExpanded: isExpanded,
+                      onToggleExpand: () {
+                        setState(() {
+                          if (isExpanded) {
+                            _expandedSeries.remove(seriesKey);
+                          } else {
+                            _expandedSeries.add(seriesKey);
+                          }
+                        });
+                      },
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required int count,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? Colors.black : Colors.white70,
+              ),
+            ),
+            if (count > 0) ...[
+              const SizedBox(width: 5),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.black.withValues(alpha: 0.15) : AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? Colors.black : AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, String subtitle) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            letterSpacing: 0.3,
+          ),
+        ),
+        Text(
+          subtitle,
+          style: GoogleFonts.outfit(
+            fontSize: 12,
+            color: AppColors.textMuted,
+          ),
+        ),
+      ],
     );
   }
 
@@ -220,20 +394,9 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
               description,
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                fontSize: 12,
-                color: AppColors.textMuted,
+                fontSize: 13,
+                color: AppColors.textSecondary,
                 height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: () => context.go('/'),
-              icon: const Icon(Iconsax.play, size: 16),
-              label: const Text('Jelajahi Konten'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
             ),
           ],
@@ -242,6 +405,10 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB BUTTON
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _TabButton extends StatelessWidget {
   final String label;
@@ -258,81 +425,51 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        splashColor: AppColors.primary.withValues(alpha: 0.08),
-        highlightColor: Colors.transparent,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    return InkWell(
+      onTap: onTap,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isSelected ? AppColors.primary : Colors.transparent,
+              width: 2.5,
+            ),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeInOut,
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                      color: isSelected ? AppColors.primary : Colors.white70,
-                      letterSpacing: 0.2,
-                    ),
-                    child: Text(label),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              ),
+            ),
+            if (count > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primary.withValues(alpha: 0.18)
+                      : AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? AppColors.primary : AppColors.textMuted,
                   ),
-                  if (count > 0) ...[
-                    const SizedBox(width: 8),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 220),
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.primary.withValues(alpha: 0.16)
-                            : AppColors.surfaceElevated,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isSelected
-                              ? AppColors.primary.withValues(alpha: 0.4)
-                              : Colors.transparent,
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        '$count',
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: isSelected ? AppColors.primary : Colors.white70,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-            // Smooth thin bottom border indicator
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeInOut,
-              height: 2.5,
-              margin: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.45),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ]
-                    : null,
-              ),
-            ),
+            ],
           ],
         ),
       ),
@@ -340,7 +477,10 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-/// Card item for actively downloading media.
+// ─────────────────────────────────────────────────────────────────────────────
+// IN PROGRESS CARD
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _InProgressCard extends ConsumerWidget {
   final DownloadItem item;
   const _InProgressCard({required this.item});
@@ -348,6 +488,7 @@ class _InProgressCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(downloadManagerProvider.notifier);
+    final percent = (item.progress * 100).toInt();
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -362,22 +503,25 @@ class _InProgressCard extends ConsumerWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Poster Thumbnail
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: CachedNetworkImage(
                   imageUrl: ApiConstants.imageUrl(item.posterPath, size: ApiConstants.posterSmall),
-                  width: 55,
-                  height: 80,
+                  width: 54,
+                  height: 76,
                   fit: BoxFit.cover,
                   errorWidget: (_, _, _) => Container(
-                    width: 55,
-                    height: 80,
+                    width: 54,
+                    height: 76,
                     color: AppColors.surface,
                     child: const Icon(Icons.movie, color: AppColors.textMuted),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
+
+              // Title and details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,108 +538,81 @@ class _InProgressCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      item.videoFileName,
-                      style: GoogleFonts.jetBrainsMono(
+                      item.isTv
+                          ? 'S${item.seasonNumber} E${item.episodeNumber}${item.episodeTitle != null ? ' • ${item.episodeTitle}' : ''}'
+                          : '${item.releaseYear} • ${item.resolution}',
+                      style: GoogleFonts.inter(
                         fontSize: 11,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceElevated,
+                            color: AppColors.primary.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            item.resolution,
+                            item.speed,
                             style: GoogleFonts.jetBrainsMono(
-                              fontSize: 9,
+                              fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                              color: AppColors.primary,
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           '${item.formattedDownloadedSize} / ${item.formattedTotalSize}',
-                          style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 10,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              // Pause / Resume & Cancel
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      if (item.isDownloading) {
-                        notifier.pauseDownload(item.id);
-                      } else {
-                        notifier.resumeDownload(item.id);
-                      }
-                    },
-                    icon: Icon(
-                      item.isDownloading ? Icons.pause_circle_rounded : Icons.play_circle_fill_rounded,
-                      color: AppColors.primary,
-                      size: 28,
-                    ),
-                    tooltip: item.isDownloading ? 'Jeda' : 'Lanjutkan',
-                  ),
-                  IconButton(
-                    onPressed: () => notifier.deleteDownload(item.id),
-                    icon: const Icon(Icons.close_rounded, color: AppColors.textMuted, size: 20),
-                    tooltip: 'Batalkan',
-                  ),
-                ],
+
+              // Cancel button
+              IconButton(
+                onPressed: () => notifier.cancelDownload(item.id),
+                icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.textMuted),
+                tooltip: 'Batalkan',
               ),
             ],
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
-          // Progress Bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: item.progress.clamp(0.0, 1.0),
-              backgroundColor: Colors.white.withValues(alpha: 0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                item.isPaused ? Colors.amber : AppColors.primary,
-              ),
-              minHeight: 6,
-            ),
-          ),
-
-          const SizedBox(height: 6),
-
-          // Speed & Subtitle Status
+          // Progress Bar with Percentage
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${(item.progress * 100).toStringAsFixed(1)}% • ${item.speed}',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: item.isPaused ? Colors.amber : AppColors.primary,
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: item.progress.clamp(0.0, 1.0),
+                    backgroundColor: AppColors.surfaceElevated,
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    minHeight: 5,
+                  ),
                 ),
               ),
+              const SizedBox(width: 10),
               Text(
-                item.subtitleStatus == 'translated'
-                    ? 'Subtitle ID (Terjemahan)'
-                    : item.subtitleStatus == 'ready'
-                        ? 'Subtitle ID (Asli)'
-                        : 'Subtitle: ${item.selectedSubtitleLang}',
-                style: GoogleFonts.inter(fontSize: 10, color: AppColors.textMuted),
+                '$percent%',
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
               ),
             ],
           ),
@@ -505,62 +622,52 @@ class _InProgressCard extends ConsumerWidget {
   }
 }
 
-/// Card item for completed media ready for offline playback.
-class _CompletedCard extends ConsumerWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPLETED MOVIE CARD
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CompletedMovieCard extends ConsumerWidget {
   final DownloadItem item;
-  const _CompletedCard({required this.item});
+  const _CompletedMovieCard({required this.item});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(downloadManagerProvider.notifier);
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () {
-        // Launch Player Screen offline directly!
-        context.push('/player', extra: {
-          'title': item.title,
-          'episodeTitle': item.episodeTitle,
-          'mediaType': item.mediaType,
-          'tmdbId': item.tmdbId,
-          'posterPath': item.posterPath,
-          'backdropPath': item.backdropPath,
-          'localVideoPath': item.videoPath,
-          'localSubtitlePath': item.subtitlePath,
-          'magnetLink': '',
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.surfaceElevated),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Thumbnail with Play Overlay
-            ClipRRect(
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surfaceElevated),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Thumbnail with Play overlay
+          InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => _playOffline(context),
+            child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   CachedNetworkImage(
                     imageUrl: ApiConstants.imageUrl(item.posterPath, size: ApiConstants.posterSmall),
-                    width: 60,
-                    height: 88,
+                    width: 64,
+                    height: 92,
                     fit: BoxFit.cover,
                     errorWidget: (_, _, _) => Container(
-                      width: 60,
-                      height: 88,
+                      width: 64,
+                      height: 92,
                       color: AppColors.surface,
                       child: const Icon(Icons.movie, color: AppColors.textMuted),
                     ),
                   ),
                   Container(
-                    width: 60,
-                    height: 88,
+                    width: 64,
+                    height: 92,
                     color: Colors.black.withValues(alpha: 0.35),
                   ),
                   Container(
@@ -569,140 +676,570 @@ class _CompletedCard extends ConsumerWidget {
                       color: AppColors.primary,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 18),
+                    child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 20),
                   ),
                 ],
               ),
             ),
+          ),
+          const SizedBox(width: 14),
 
-            const SizedBox(width: 14),
-
-            // Video Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          // Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.title,
+                  style: GoogleFonts.outfit(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    item.videoFileName,
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 11,
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  item.releaseYear.isNotEmpty ? 'Film • ${item.releaseYear}' : 'Film',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
                   ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceElevated,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        item.resolution,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceElevated,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        item.formattedTotalSize,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 9,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    if (item.subtitlePath != null)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceElevated,
+                          color: AppColors.primary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Text(
-                          item.resolution,
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 9,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Iconsax.subtitle, size: 10, color: AppColors.primary),
+                            const SizedBox(width: 3),
+                            Text(
+                              'SUB ID',
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Actions: Play & Delete
+          Column(
+            children: [
+              IconButton(
+                onPressed: () => _playOffline(context),
+                icon: const Icon(Icons.play_circle_fill_rounded, color: AppColors.primary, size: 28),
+                tooltip: 'Putar',
+              ),
+              IconButton(
+                onPressed: () => _showDeleteDialog(context, notifier),
+                icon: const Icon(Iconsax.trash, size: 18, color: AppColors.textMuted),
+                tooltip: 'Hapus',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _playOffline(BuildContext context) {
+    context.push('/player', extra: {
+      'title': item.title,
+      'episodeTitle': item.episodeTitle,
+      'mediaType': item.mediaType,
+      'tmdbId': item.tmdbId,
+      'posterPath': item.posterPath,
+      'backdropPath': item.backdropPath,
+      'localVideoPath': item.videoPath,
+      'localSubtitlePath': item.subtitlePath,
+      'magnetLink': '',
+    });
+  }
+
+  void _showDeleteDialog(BuildContext context, DownloadNotifier notifier) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceVariant,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Hapus Unduhan?', style: GoogleFonts.outfit(color: Colors.white)),
+        content: Text(
+          'Film "${item.title}" akan dihapus dari penyimpanan perangkat Anda.',
+          style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              notifier.deleteDownload(item.id);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TV SERIES SEASON CARD (GROUPED BY SHOW & SEASON)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TvSeriesSeasonCard extends ConsumerWidget {
+  final String seriesKey;
+  final List<DownloadItem> episodes;
+  final bool isExpanded;
+  final VoidCallback onToggleExpand;
+
+  const _TvSeriesSeasonCard({
+    required this.seriesKey,
+    required this.episodes,
+    required this.isExpanded,
+    required this.onToggleExpand,
+  });
+
+  String _formatBytes(int b) {
+    if (b >= 1073741824) return '${(b / 1073741824).toStringAsFixed(2)} GB';
+    if (b >= 1048576) return '${(b / 1048576).toStringAsFixed(1)} MB';
+    if (b >= 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
+    return '$b B';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final first = episodes.first;
+    final notifier = ref.read(downloadManagerProvider.notifier);
+
+    // Group episodes by seasonNumber
+    final seasonsMap = <int, List<DownloadItem>>{};
+    int totalBytes = 0;
+    for (final ep in episodes) {
+      final s = ep.seasonNumber ?? 1;
+      seasonsMap.putIfAbsent(s, () => []).add(ep);
+      totalBytes += ep.downloadedBytes > 0 ? ep.downloadedBytes : ep.totalBytes;
+    }
+
+    // Sort seasons ascending and sort episodes inside each season ascending
+    final sortedSeasonKeys = seasonsMap.keys.toList()..sort();
+    for (final s in sortedSeasonKeys) {
+      seasonsMap[s]!.sort((a, b) => (a.episodeNumber ?? 1).compareTo(b.episodeNumber ?? 1));
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isExpanded ? AppColors.primary.withValues(alpha: 0.5) : AppColors.surfaceElevated,
+        ),
+      ),
+      child: Column(
+        children: [
+          // Header Card (Tap to Expand/Collapse)
+          InkWell(
+            onTap: onToggleExpand,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  // Poster Thumbnail
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: CachedNetworkImage(
+                      imageUrl: ApiConstants.imageUrl(first.posterPath, size: ApiConstants.posterSmall),
+                      width: 58,
+                      height: 84,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, _, _) => Container(
+                        width: 58,
+                        height: 84,
+                        color: AppColors.surface,
+                        child: const Icon(Icons.tv_rounded, color: AppColors.textMuted),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+
+                  // Series Title and Stats
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          first.title,
+                          style: GoogleFonts.outfit(
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceElevated,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          item.formattedTotalSize,
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 9,
+                        const SizedBox(height: 3),
+                        Text(
+                          '${sortedSeasonKeys.length} Season • ${episodes.length} Episode',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
                         ),
-                      ),
-                      if (item.subtitlePath != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Iconsax.subtitle, size: 10, color: AppColors.primary),
-                              const SizedBox(width: 3),
-                              Text(
-                                item.subtitleStatus == 'translated'
-                                    ? 'SRT ID (Kau/Aku)'
-                                    : 'SRT ID',
-                                style: GoogleFonts.inter(
-                                  fontSize: 9,
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceElevated,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                _formatBytes(totalBytes),
+                                style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.primary,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isExpanded ? 'Tutup Daftar' : 'Buka Episode',
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
                         ),
-                    ],
+                      ],
+                    ),
+                  ),
+
+                  // Expand Icon
+                  Icon(
+                    isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                    color: isExpanded ? AppColors.primary : AppColors.textMuted,
+                    size: 24,
                   ),
                 ],
               ),
             ),
+          ),
 
-            // Delete Button
-            IconButton(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    backgroundColor: AppColors.surfaceVariant,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    title: Text('Hapus Unduhan?', style: GoogleFonts.outfit(color: Colors.white)),
-                    content: Text(
-                      'File video "${item.videoFileName}" dan subtitle akan dihapus dari perangkat untuk menghemat ruang.',
-                      style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
+          // Expanded Season-by-Season Episode List
+          if (isExpanded) ...[
+            const Divider(color: AppColors.surfaceElevated, height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final seasonNum in sortedSeasonKeys) ...[
+                    _buildSeasonHeader(
+                      context,
+                      seasonNum: seasonNum,
+                      episodes: seasonsMap[seasonNum]!,
+                      seriesTitle: first.title,
+                      notifier: notifier,
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Batal', style: TextStyle(color: AppColors.textMuted)),
-                      ),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          notifier.deleteDownload(item.id);
-                        },
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                        child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+                    const SizedBox(height: 6),
+                    for (final ep in seasonsMap[seasonNum]!) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _EpisodeCard(item: ep),
                       ),
                     ],
-                  ),
-                );
-              },
-              icon: const Icon(Iconsax.trash, size: 18, color: AppColors.textMuted),
-              tooltip: 'Hapus file',
+                    const SizedBox(height: 8),
+                  ],
+                ],
+              ),
             ),
           ],
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSeasonHeader(
+    BuildContext context, {
+    required int seasonNum,
+    required List<DownloadItem> episodes,
+    required String seriesTitle,
+    required DownloadNotifier notifier,
+  }) {
+    int seasonBytes = 0;
+    for (final ep in episodes) {
+      seasonBytes += ep.downloadedBytes > 0 ? ep.downloadedBytes : ep.totalBytes;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.video_library_rounded, size: 14, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Text(
+                'Season $seasonNum',
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '(${episodes.length} Ep • ${_formatBytes(seasonBytes)})',
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 10,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Iconsax.trash, size: 14, color: AppColors.textMuted),
+            tooltip: 'Hapus Season $seasonNum',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: AppColors.surfaceVariant,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: Text('Hapus Season $seasonNum?', style: GoogleFonts.outfit(color: Colors.white)),
+                  content: Text(
+                    'Semua ${episodes.length} episode di Season $seasonNum ($seriesTitle) akan dihapus.',
+                    style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Batal', style: TextStyle(color: AppColors.textMuted)),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        for (final ep in episodes) {
+                          notifier.deleteDownload(ep.id);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                      child: const Text('Hapus Semua', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EPISODE CARD (INSIDE A SEASON)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EpisodeCard extends ConsumerWidget {
+  final DownloadItem item;
+  const _EpisodeCard({required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(downloadManagerProvider.notifier);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.surfaceElevated.withValues(alpha: 0.7)),
+      ),
+      child: Row(
+        children: [
+          // Episode Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              'Eps ${item.episodeNumber ?? 1}',
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // Title & Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.episodeTitle != null && item.episodeTitle!.isNotEmpty
+                      ? item.episodeTitle!
+                      : 'Episode ${item.episodeNumber ?? 1}',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      '${item.resolution} • ${item.formattedTotalSize}',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 10,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    if (item.subtitlePath != null) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        '• SUB ID',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Play Button
+          IconButton(
+            onPressed: () {
+              context.push('/player', extra: {
+                'title': item.title,
+                'episodeTitle': item.episodeTitle,
+                'mediaType': item.mediaType,
+                'season': item.seasonNumber,
+                'episode': item.episodeNumber,
+                'tmdbId': item.tmdbId,
+                'posterPath': item.posterPath,
+                'backdropPath': item.backdropPath,
+                'localVideoPath': item.videoPath,
+                'localSubtitlePath': item.subtitlePath,
+                'magnetLink': '',
+              });
+            },
+            icon: const Icon(Icons.play_circle_fill_rounded, color: AppColors.primary, size: 26),
+            tooltip: 'Putar Episode',
+          ),
+
+          // Delete Button
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Iconsax.trash, size: 16, color: AppColors.textMuted),
+            tooltip: 'Hapus Episode',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: AppColors.surfaceVariant,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: Text('Hapus Episode?', style: GoogleFonts.outfit(color: Colors.white)),
+                  content: Text(
+                    'Episode ${item.episodeNumber ?? 1} (${item.title}) akan dihapus.',
+                    style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Batal', style: TextStyle(color: AppColors.textMuted)),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        notifier.deleteDownload(item.id);
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                      child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

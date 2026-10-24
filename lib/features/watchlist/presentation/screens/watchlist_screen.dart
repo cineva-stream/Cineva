@@ -78,7 +78,7 @@ class _EmptyState extends StatelessWidget {
                 color: AppColors.surfaceVariant.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Iconsax.bookmark, size: 48, color: AppColors.textMuted),
+              child: const Icon(Icons.bookmark_border_rounded, size: 48, color: AppColors.textMuted),
             ),
             const SizedBox(height: 24),
             const Text(
@@ -98,7 +98,7 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () => GoRouter.of(context).go('/search'),
-              icon: const Icon(Iconsax.search_normal_1, size: 18),
+              icon: const Icon(Icons.search_rounded, size: 18),
               label: const Text('Cari Film'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),

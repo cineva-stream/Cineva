@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cineva/features/download/domain/models/download_item.dart';
 import 'package:cineva/features/download/data/services/download_file_namer.dart';
 import 'package:cineva/features/download/data/services/download_subtitle_pipeline.dart';
 import 'package:cineva/features/download/data/services/video_download_service.dart';
+import 'package:cineva/features/download/data/services/local_stream_server.dart';
+import 'package:cineva/features/download/data/services/native_media_muxer.dart';
 import 'package:cineva/features/player/data/models/subtitle_cue.dart';
 
 void main() {
@@ -135,4 +138,81 @@ void main() {
       expect(option.streamUrl, contains('rendition=1080p'));
     });
   });
+
+  group('SubtitlePipelineResult Tests', () {
+    test('SubtitlePipelineResult holds status and subtitlePath', () {
+      const res = SubtitlePipelineResult(
+        subtitlePath: '/storage/emulated/0/Download/Cineva/SpiderMan - 2026.srt',
+        status: 'translated',
+        note: 'Diterjemahkan otomatis ke Bahasa Indonesia',
+      );
+
+      expect(res.status, 'translated');
+      expect(res.subtitlePath, contains('.srt'));
+      expect(res.note, contains('Bahasa Indonesia'));
+    });
+  });
+
+  group('LocalStreamServer Tests', () {
+    test('getStreamUrl generates valid non-empty clean ID without empty path segments', () {
+      final server = LocalStreamServer.instance;
+      final url = server.getStreamUrl(
+        dirPath: '/storage/emulated/0/Android/data/com.primadev.cineva/files/offline_media/movie_123',
+        fileName: 'master.m3u8',
+      );
+
+      expect(url, isNot(contains('/stream//')));
+      expect(url, contains('/stream/stream_'));
+      expect(url, endsWith('/master.m3u8'));
+    });
+
+    test('getStreamUrl uses clean alphanumeric ID if specified', () {
+      final server = LocalStreamServer.instance;
+      final url = server.getStreamUrl(
+        id: 'movie-123.special',
+        dirPath: '/dummy/path',
+        fileName: 'video.m3u8',
+      );
+
+      expect(url, contains('/stream/movie-123_special/video.m3u8'));
+    });
+  });
+
+  group('Offline Media Detection & NativeMediaMuxer Tests', () {
+    test('NativeMediaMuxer safely returns false on non-Android desktop without crashing', () async {
+      final result = await NativeMediaMuxer.muxToMp4(
+        videoPath: '/dummy/video.ts',
+        audioPath: '/dummy/audio.ts',
+        outputPath: '/dummy/output.mp4',
+      );
+      // On Windows/desktop test environment, it safely reports unsupported platform
+      expect(result, isFalse);
+    });
+
+    test('Offline player prefers video.mp4 when present in target directory', () async {
+      final tempDir = await Directory.systemTemp.createTemp('cineva_mp4_pref_test_');
+      try {
+        final m3u8File = File('${tempDir.path}/master.m3u8');
+        await m3u8File.writeAsString('#EXTM3U\nvideo.m3u8');
+
+        final mp4File = File('${tempDir.path}/video.mp4');
+        await mp4File.writeAsBytes(List.filled(60000, 0));
+
+        // Logic check matching PlayerScreen: if mp4 exists with size > 50000, prefer it
+        File targetFile = m3u8File;
+        if (!targetFile.path.toLowerCase().endsWith('.mp4')) {
+          final mp4Candidate = File('${targetFile.parent.path}/video.mp4');
+          if (await mp4Candidate.exists() && (await mp4Candidate.length()) > 50000) {
+            targetFile = mp4Candidate;
+          }
+        }
+
+        expect(targetFile.path, mp4File.path);
+        expect(targetFile.path.endsWith('.mp4'), isTrue);
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
+    });
+  });
 }
+

@@ -160,7 +160,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 style: const TextStyle(color: AppColors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Cari film atau serial TV...',
-                  prefixIcon: const Icon(Iconsax.search_normal_1, color: AppColors.textMuted),
+                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted),
                   suffixIcon: query.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Iconsax.close_circle, color: AppColors.textMuted, size: 20),
@@ -386,7 +386,7 @@ class _SearchDiscoveryView extends ConsumerWidget {
 
     return ListView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+      padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.of(context).padding.bottom + 84),
       children: [
         // ── 1. RIWAYAT PENCARIAN ──
         if (history.isNotEmpty) ...[
@@ -825,7 +825,7 @@ class _MovieGrid extends ConsumerWidget {
     final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
 
     return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 84),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         childAspectRatio: childAspectRatio,
@@ -941,7 +941,7 @@ class _TvGrid extends ConsumerWidget {
     final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
 
     return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 84),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         childAspectRatio: childAspectRatio,
@@ -1055,7 +1055,7 @@ class _SearchLoadingGrid extends StatelessWidget {
     final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
 
     return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 84),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         childAspectRatio: childAspectRatio,

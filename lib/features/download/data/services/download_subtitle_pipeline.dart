@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../../../player/data/models/subtitle_cue.dart';
 import '../../../player/data/services/subtitle_service.dart';
 import '../../../player/data/services/subtitle_translator_service.dart';
+import '../../../player/data/services/vixsrc_stream_service.dart';
 
 class SubtitlePipelineResult {
   final String? subtitlePath;
@@ -18,7 +20,7 @@ class SubtitlePipelineResult {
 }
 
 /// Pipeline that downloads requested subtitles, and if Indonesian is not found,
-/// falls back to English, caches it, and translates it for free to Indonesian.
+/// falls back to English (OpenSubtitles or Stream VTT), caches it, and translates it for free to Indonesian.
 class DownloadSubtitlePipeline {
   final SubtitleService _subtitleService;
   final SubtitleTranslatorService _translatorService;
@@ -50,6 +52,46 @@ class DownloadSubtitlePipeline {
     return '$hours:$minutes:$seconds,$millis';
   }
 
+  /// Finds stream subtitle URI from master playlist if available.
+  Future<String?> _findStreamSubtitleUri(String masterPlaylistUrl, String langCode) async {
+    if (masterPlaylistUrl.isEmpty) return null;
+    try {
+      final client = HttpClient();
+      final req = await client.getUrl(Uri.parse(masterPlaylistUrl));
+      req.headers.set('accept', '*/*');
+      final res = await req.close();
+      final content = await res.transform(utf8.decoder).join();
+      client.close();
+
+      for (final line in content.split('\n')) {
+        final trimmed = line.trim();
+        if (trimmed.startsWith('#EXT-X-MEDIA:TYPE=SUBTITLES')) {
+          final uriMatch = RegExp(r'URI="([^"]+)"').firstMatch(trimmed);
+          final langMatch = RegExp(r'LANGUAGE="([^"]+)"').firstMatch(trimmed);
+          final nameMatch = RegExp(r'NAME="([^"]+)"').firstMatch(trimmed);
+
+          final subLang = (langMatch?.group(1) ?? nameMatch?.group(1) ?? '').toLowerCase();
+          bool matches = false;
+          if (langCode == 'id') {
+            matches = subLang.contains('id') || subLang.contains('ind');
+          } else if (langCode == 'en') {
+            matches = subLang.contains('en') || subLang.contains('eng');
+          }
+
+          if (matches && uriMatch != null) {
+            final raw = uriMatch.group(1)!;
+            return raw.startsWith('http')
+                ? raw
+                : Uri.parse(masterPlaylistUrl).resolve(raw).toString();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[DownloadSubtitlePipeline] Stream subtitle inspection note: $e');
+    }
+    return null;
+  }
+
   /// Downloads or translates subtitle, saving directly to [targetFilePath].
   Future<SubtitlePipelineResult> processSubtitle({
     required String targetFilePath,
@@ -59,6 +101,7 @@ class DownloadSubtitlePipeline {
     int? season,
     int? episode,
     String preferredLang = 'id',
+    String masterPlaylistUrl = '',
     void Function(double progress, String status)? onProgress,
   }) async {
     if (preferredLang == 'none') {
@@ -68,7 +111,7 @@ class DownloadSubtitlePipeline {
     try {
       onProgress?.call(0.1, 'Mencari subtitle $preferredLang...');
 
-      // 1. Try to search subtitle in preferred language
+      // 1. Try to search subtitle in preferred language via OpenSubtitles
       List<SubtitleInfo> subs = [];
       if (imdbId != null && imdbId.isNotEmpty) {
         subs = await _subtitleService.searchByImdbId(
@@ -88,7 +131,7 @@ class DownloadSubtitlePipeline {
         );
       }
 
-      // If preferred subtitle found directly:
+      // If preferred subtitle found directly from OpenSubtitles:
       if (subs.isNotEmpty) {
         onProgress?.call(0.5, 'Mengunduh subtitle $preferredLang...');
         final downloadUrl = await _subtitleService.getDownloadUrl(subs.first.id);
@@ -101,7 +144,9 @@ class DownloadSubtitlePipeline {
                 start: c.start,
                 end: c.end,
                 text: SubtitleTranslatorService.balanceSubtitleLines(
-                  SubtitleTranslatorService.refineIndonesianPronouns(c.text),
+                  SubtitleTranslatorService.smartFormatIndonesianSubtitle(
+                    SubtitleTranslatorService.refineIndonesianPronouns(c.text),
+                  ),
                 ),
               );
             }).toList();
@@ -119,9 +164,44 @@ class DownloadSubtitlePipeline {
         }
       }
 
-      // 2. If Indonesian not found (or selected is id and not available), fallback to English
+      // If preferred is Indonesian and not found in OpenSubtitles, check embedded stream subtitles
       if (preferredLang == 'id') {
+        final streamIdSubUri = await _findStreamSubtitleUri(masterPlaylistUrl, 'id');
+        if (streamIdSubUri != null) {
+          final streamContent = await VixSrcStreamService.downloadSubtitleContent(streamIdSubUri);
+          if (streamContent != null && streamContent.isNotEmpty) {
+            final cues = SubtitleCue.parseSrt(streamContent);
+            if (cues.isNotEmpty) {
+              final refinedCues = cues.map((c) {
+                return SubtitleCue(
+                  start: c.start,
+                  end: c.end,
+                  text: SubtitleTranslatorService.balanceSubtitleLines(
+                    SubtitleTranslatorService.smartFormatIndonesianSubtitle(
+                      SubtitleTranslatorService.refineIndonesianPronouns(c.text),
+                    ),
+                  ),
+                );
+              }).toList();
+
+              final file = File(targetFilePath);
+              await file.parent.create(recursive: true);
+              await file.writeAsString(cuesToSrt(refinedCues));
+              onProgress?.call(1.0, 'Subtitle Indonesia siap');
+              return SubtitlePipelineResult(
+                subtitlePath: targetFilePath,
+                status: 'ready',
+                note: 'Subtitle asli Indonesia (Stream)',
+              );
+            }
+          }
+        }
+
+        // Fallback: Fetch English subtitle and translate to Indonesian
         onProgress?.call(0.3, 'Subtitle Indonesia tidak ditemukan. Mengunduh subtitle English...');
+        String? enContent;
+
+        // Try OpenSubtitles English first
         List<SubtitleInfo> enSubs = [];
         if (imdbId != null && imdbId.isNotEmpty) {
           enSubs = await _subtitleService.searchByImdbId(
@@ -143,28 +223,58 @@ class DownloadSubtitlePipeline {
         if (enSubs.isNotEmpty) {
           final downloadUrl = await _subtitleService.getDownloadUrl(enSubs.first.id);
           if (downloadUrl != null) {
-            final enContent = await _subtitleService.downloadSubtitleContent(downloadUrl);
-            if (enContent != null && enContent.isNotEmpty) {
-              onProgress?.call(0.5, 'Menerjemahkan subtitle English ke Indonesia...');
-              final cues = SubtitleCue.parseSrt(enContent);
-              final cacheKey = 'sub_${tmdbId ?? 0}_${season ?? 0}_${episode ?? 0}_id';
+            enContent = await _subtitleService.downloadSubtitleContent(downloadUrl);
+          }
+        }
 
-              final translatedCues = await _translatorService.translateCuesToIndonesian(
-                cues: cues,
-                cacheKey: cacheKey,
-                onProgress: (p) {
-                  onProgress?.call(0.5 + (p * 0.45), 'Menerjemahkan (${(p * 100).toInt()}%)...');
-                },
-              );
+        // If OpenSubtitles English failed, try embedded stream English subtitle
+        if (enContent == null || enContent.isEmpty) {
+          final streamEnUri = await _findStreamSubtitleUri(masterPlaylistUrl, 'en');
+          if (streamEnUri != null) {
+            enContent = await VixSrcStreamService.downloadSubtitleContent(streamEnUri);
+          }
+        }
 
+        // Translate English content to Indonesian
+        if (enContent != null && enContent.isNotEmpty) {
+          onProgress?.call(0.5, 'Menerjemahkan subtitle English ke Indonesia...');
+          final cues = SubtitleCue.parseSrt(enContent);
+          final cacheKey = 'sub_${tmdbId ?? 0}_${season ?? 0}_${episode ?? 0}_id';
+
+          final translatedCues = await _translatorService.translateCuesToIndonesian(
+            cues: cues,
+            cacheKey: cacheKey,
+            onProgress: (p) {
+              onProgress?.call(0.5 + (p * 0.45), 'Menerjemahkan (${(p * 100).toInt()}%)...');
+            },
+          );
+
+          final file = File(targetFilePath);
+          await file.parent.create(recursive: true);
+          await file.writeAsString(cuesToSrt(translatedCues));
+          onProgress?.call(1.0, 'Subtitle terjemahan Indonesia siap');
+          return SubtitlePipelineResult(
+            subtitlePath: targetFilePath,
+            status: 'translated',
+            note: 'Diterjemahkan otomatis ke Bahasa Indonesia',
+          );
+        }
+      } else if (preferredLang == 'en') {
+        // Fallback for English: Stream subtitle
+        final streamEnUri = await _findStreamSubtitleUri(masterPlaylistUrl, 'en');
+        if (streamEnUri != null) {
+          final streamContent = await VixSrcStreamService.downloadSubtitleContent(streamEnUri);
+          if (streamContent != null && streamContent.isNotEmpty) {
+            final cues = SubtitleCue.parseSrt(streamContent);
+            if (cues.isNotEmpty) {
               final file = File(targetFilePath);
               await file.parent.create(recursive: true);
-              await file.writeAsString(cuesToSrt(translatedCues));
-              onProgress?.call(1.0, 'Subtitle terjemahan Indonesia siap');
+              await file.writeAsString(cuesToSrt(cues));
+              onProgress?.call(1.0, 'Subtitle English siap');
               return SubtitlePipelineResult(
                 subtitlePath: targetFilePath,
-                status: 'translated',
-                note: 'Diterjemahkan otomatis ke Bahasa Indonesia',
+                status: 'ready',
+                note: 'Subtitle asli English (Stream)',
               );
             }
           }

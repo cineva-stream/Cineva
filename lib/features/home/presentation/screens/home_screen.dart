@@ -18,14 +18,13 @@ import '../../domain/entities/movie.dart';
 import '../../domain/entities/tv_series.dart';
 import '../../../history/presentation/widgets/continue_watching_section.dart';
 import '../../../download/presentation/providers/download_provider.dart';
+import '../widgets/genre_selection_bottom_sheet.dart';
 
 /// Active category filter on the Home Screen.
 enum HomeCategoryFilter {
-  all('Semua', Iconsax.category_2),
-  movies('Film', Iconsax.video_circle),
-  tv('Serial TV', Iconsax.monitor),
-  top10('Top 10', Iconsax.crown),
-  trending('Trending', Iconsax.trend_up);
+  all('Semua', Icons.auto_awesome_rounded),
+  movies('Film', Icons.movie_outlined),
+  tv('Serial TV', Icons.tv_rounded);
 
   final String label;
   final IconData icon;
@@ -105,7 +104,7 @@ class HomeScreen extends ConsumerWidget {
                     children: [
                       IconButton(
                         onPressed: () => context.push('/downloads'),
-                        icon: const Icon(Iconsax.document_download, color: AppColors.textPrimary, size: 21),
+                        icon: const Icon(Icons.download_rounded, color: AppColors.textPrimary, size: 22),
                         tooltip: 'Unduhan',
                       ),
                       if (activeCount > 0)
@@ -127,7 +126,7 @@ class HomeScreen extends ConsumerWidget {
               ),
               IconButton(
                 onPressed: () => context.go('/watchlist'),
-                icon: const Icon(Iconsax.bookmark, color: AppColors.textPrimary, size: 21),
+                icon: const Icon(Icons.bookmark_border_rounded, color: AppColors.textPrimary, size: 22),
                 tooltip: 'Daftar Tontonan',
               ),
               const SizedBox(width: 8),
@@ -231,87 +230,92 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     );
                   }),
+
+                  // ── Integrated Genre Filter Chip (Tapping opens Bottom Sheet) ──
+                  Builder(
+                    builder: (context) {
+                      final isGenreActive = activeGenre.id != 'all';
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: GestureDetector(
+                          onTap: () => GenreSelectionBottomSheet.show(context),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOutCubic,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isGenreActive ? AppColors.primary : AppColors.surfaceVariant,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isGenreActive
+                                    ? AppColors.primary
+                                    : Colors.white.withValues(alpha: 0.08),
+                                width: 1,
+                              ),
+                              boxShadow: isGenreActive
+                                  ? [
+                                      BoxShadow(
+                                        color: AppColors.primary.withValues(alpha: 0.35),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isGenreActive ? (activeGenre.icon ?? Icons.tune_rounded) : Icons.tune_rounded,
+                                  size: 14,
+                                  color: isGenreActive ? Colors.black : AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isGenreActive ? activeGenre.label : 'Genre',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: isGenreActive ? FontWeight.w700 : FontWeight.w500,
+                                    color: isGenreActive ? Colors.black : AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                if (isGenreActive)
+                                  GestureDetector(
+                                    onTap: () {
+                                      ref.read(selectedHomeGenreProvider.notifier).state =
+                                          GenreConstants.filters.first;
+                                    },
+                                    child: const Padding(
+                                      padding: EdgeInsets.only(left: 2),
+                                      child: Icon(
+                                        Icons.close_rounded,
+                                        size: 14,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    size: 16,
+                                    color: AppColors.textSecondary,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
           ),
           ),
 
-          // ── Genre Filter Chips Row ──
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 2, bottom: 14),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: GenreConstants.filters.map((genre) {
-                    final isSelected = activeGenre.id == genre.id;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: GestureDetector(
-                        onTap: () {
-                          ref.read(selectedHomeGenreProvider.notifier).state = genre;
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOutCubic,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.primary.withValues(alpha: 0.18)
-                                : AppColors.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : Colors.white.withValues(alpha: 0.08),
-                              width: isSelected ? 1.2 : 0.8,
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: AppColors.primary.withValues(alpha: 0.25),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (genre.icon != null) ...[
-                                Icon(
-                                  genre.icon,
-                                  size: 13,
-                                  color: isSelected ? AppColors.primary : AppColors.textMuted,
-                                ),
-                                const SizedBox(width: 5),
-                              ],
-                              Text(
-                                genre.label,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.5,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected ? AppColors.primaryLight : AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-          ),
-
           // ── Hero Billboard Carousel (Trending) ──
           if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.trending ||
               activeFilter == HomeCategoryFilter.movies)
             SliverToBoxAdapter(
               child: trending.when(
@@ -341,13 +345,12 @@ class HomeScreen extends ConsumerWidget {
             ),
 
           if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.trending ||
               activeFilter == HomeCategoryFilter.movies)
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
           // ── TOP 10 SECTION (Netflix-style Giant Rank Numbers) ──
           if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.top10)
+              activeFilter == HomeCategoryFilter.movies)
             SliverToBoxAdapter(
               child: _SectionWithHeader<Movie>(
                 title: 'Top 10 Hari Ini',
@@ -503,9 +506,9 @@ class HomeScreen extends ConsumerWidget {
               },
             ),
 
-          // Extra spacing for floating edge-to-edge navbar
+          // Clean spacing for bottom navigation bar
           SliverToBoxAdapter(
-            child: SizedBox(height: MediaQuery.of(context).padding.bottom + 90),
+            child: SizedBox(height: MediaQuery.of(context).padding.bottom + 48),
           ),
         ],
       ),

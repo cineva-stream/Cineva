@@ -1,9 +1,11 @@
 import 'package:cineva/core/constants/genre_constants.dart';
 import 'package:cineva/features/home/domain/entities/movie.dart';
 import 'package:cineva/features/home/domain/entities/tv_series.dart';
+import 'package:cineva/features/home/presentation/widgets/genre_selection_bottom_sheet.dart';
 import 'package:cineva/shared/widgets/exit_confirmation_bottom_sheet.dart';
 import 'package:cineva/shared/widgets/shell_pop_scope.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -226,6 +228,35 @@ void main() {
 
       // Exit confirmation sheet should appear
       expect(find.text('Keluar dari Cineva?'), findsOneWidget);
+    });
+  });
+
+  group('GenreSelectionBottomSheet Widget Tests', () {
+    testWidgets('Renders bottom sheet with title and all genres', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => GenreSelectionBottomSheet.show(context),
+                  child: const Text('Open Genre Sheet'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Genre Sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pilih Genre'), findsOneWidget);
+      expect(find.text('Saring film dan serial TV sesuai selera'), findsOneWidget);
+      expect(find.text('Semua Genre'), findsOneWidget);
+      expect(find.text('Action'), findsOneWidget);
+      expect(find.text('Komedi'), findsOneWidget);
+      expect(find.text('Horor'), findsOneWidget);
     });
   });
 }

@@ -9,7 +9,7 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../data/models/subtitle_cue.dart';
@@ -19,6 +19,10 @@ import '../../data/services/vixsrc_stream_service.dart';
 import '../../../settings/data/settings_service.dart';
 import '../../../history/data/models/watch_history_item.dart';
 import '../../../history/data/repositories/watch_history_repository.dart';
+import '../../../download/domain/models/download_item.dart';
+import '../../../download/data/services/local_stream_server.dart';
+import '../../../download/data/services/native_media_muxer.dart';
+import '../../../download/presentation/providers/download_provider.dart';
 import '../providers/player_providers.dart';
 import '../widgets/custom_subtitle_overlay.dart';
 
@@ -113,6 +117,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _hasRestoredPosition = false;
   bool _hasAutoPlayedNext = false;
   bool _nextEpisodeButtonVisible = false;
+  bool _isSwitchingEpisode = false;
+
+  // ── TV Series Episode & Media State (Allows seamless in-place episode skipping) ──
+  late final int? _currentSeason = widget.season;
+  late int? _currentEpisode = widget.episode;
+  late String? _currentEpisodeTitle = widget.episodeTitle ?? (widget.episode != null ? 'Episode ${widget.episode}' : null);
+  late String? _currentLocalVideoPath = widget.localVideoPath;
+  late String? _currentLocalSubtitlePath = widget.localSubtitlePath;
+  late int? _initialPositionMs = widget.initialPositionMs;
 
   @override
   void initState() {
@@ -148,9 +161,30 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     _listenToPlayerStreams();
     _player.setVolume(_volume); // Explicitly ensure 100% base audio volume
-    _setupMpvFastBufferOptions();
+    if ((_currentLocalVideoPath != null && _currentLocalVideoPath!.isNotEmpty) ||
+        (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty)) {
+      _setupMpvOfflineOptions();
+    } else {
+      _setupMpvFastBufferOptions();
+    }
     _initializeStreaming();
     _resetControlsTimer();
+  }
+
+  /// Sets up zero-latency instant offline playback options for mpv.
+  /// Eliminates network caching delays and prevents loopback buffering freezes.
+  Future<void> _setupMpvOfflineOptions() async {
+    try {
+      final mpv = (_player.platform as dynamic);
+      await mpv?.command(['set', 'cache', 'no']); // ZERO network cache: read directly from local storage
+      await mpv?.command(['set', 'cache-pause', 'no']); // Never pause on local files
+      await mpv?.command(['set', 'cache-pause-initial', 'no']); // Play immediately without waiting
+      await mpv?.command(['set', 'demuxer-readahead-secs', '5']); // Minimal 5s readahead
+      await mpv?.command(['set', 'demuxer-lavf-o', 'fflags=+genpts,allowed_extensions=ALL']);
+      await mpv?.command(['set', 'hr-seek', 'yes']); // Precise seeking
+    } catch (e) {
+      debugPrint('[PlayerScreen] mpv offline options setup error: $e');
+    }
   }
 
   /// Sets up low-latency fast-start probing and progressive 3-minute background caching in mpv
@@ -242,10 +276,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     try {
       _player.setVolume(0.0);
+      _player.pause();
       _player.stop();
     } catch (_) {}
 
     try {
+      _webViewController?.runJavaScript(
+        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }'
+      );
       _webViewController?.loadRequest(Uri.parse('about:blank'));
     } catch (_) {}
 
@@ -262,12 +300,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   int? _getSavedPositionMs() {
     if (widget.tmdbId == null) return null;
-    final mediaType = widget.mediaType ?? (widget.season != null ? 'tv' : 'movie');
+    final mediaType = widget.mediaType ?? (_currentSeason != null ? 'tv' : 'movie');
     final repo = ref.read(watchHistoryRepositoryProvider);
     final item = repo.getItem(mediaType, widget.tmdbId!);
     if (item != null && !item.isCompleted && item.positionMs > 5000) {
       if (mediaType == 'tv') {
-        if (item.season == widget.season && item.episode == widget.episode) {
+        if (item.season == _currentSeason && item.episode == _currentEpisode) {
           return item.positionMs;
         }
       } else {
@@ -286,15 +324,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (durMs <= 0 || posMs < 3000) return;
 
     final isCompleted = (posMs / durMs) >= 0.95;
-    final mediaType = widget.mediaType ?? (widget.season != null ? 'tv' : 'movie');
+    final mediaType = widget.mediaType ?? (_currentSeason != null ? 'tv' : 'movie');
 
     final item = WatchHistoryItem(
       id: tmdbId,
       mediaType: mediaType,
       title: widget.title,
-      episodeTitle: widget.episodeTitle,
-      season: widget.season,
-      episode: widget.episode,
+      episodeTitle: _currentEpisodeTitle ?? widget.episodeTitle,
+      season: _currentSeason,
+      episode: _currentEpisode,
       imdbId: widget.imdbId,
       posterPath: widget.posterPath,
       backdropPath: widget.backdropPath,
@@ -313,14 +351,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _positionNotifier.value = pos;
 
       // Immediately dismiss initial loading spinner as soon as first video frames play
-      if (_isLoading && pos.inMilliseconds > 0) {
-        if (mounted) setState(() => _isLoading = false);
+      if ((_isLoading || _isBuffering) && pos.inMilliseconds > 0) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _isBuffering = false;
+          });
+        }
       }
 
       // Restore position once video duration is known and playback starts
       if (!_hasRestoredPosition && _duration.inMilliseconds > 0 && pos.inMilliseconds > 0) {
         _hasRestoredPosition = true;
-        final resumeMs = widget.initialPositionMs ?? _getSavedPositionMs();
+        final resumeMs = _initialPositionMs ?? _getSavedPositionMs();
         if (resumeMs != null && resumeMs > 5000 && resumeMs < _duration.inMilliseconds - 10000) {
           debugPrint('[PlayerScreen] Resuming playback at ${resumeMs}ms');
           _player.seek(Duration(milliseconds: resumeMs));
@@ -328,12 +371,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       }
 
       // ── TV Series Next Episode (Auto when <= 5s, Manual button when <= 60s) ──
-      final isTv = widget.season != null && widget.episode != null;
+      final isTv = _currentSeason != null && _currentEpisode != null;
       if (isTv && _duration.inSeconds > 30) {
         final remainingSecs = (_duration - pos).inSeconds;
 
         // Auto next episode when 5 seconds or less remain
-        if (remainingSecs <= 5 && remainingSecs >= 0 && !_hasAutoPlayedNext) {
+        if (remainingSecs <= 5 && remainingSecs >= 0 && !_hasAutoPlayedNext && !_isSwitchingEpisode) {
           _hasAutoPlayedNext = true;
           if (_nextEpisodeButtonVisible && mounted) {
             setState(() => _nextEpisodeButtonVisible = false);
@@ -345,7 +388,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
         // Show manual button when <= 60 seconds (under 1 minute) and > 5 seconds
         final inNextEpisodeWindow = remainingSecs <= 60 && remainingSecs > 5;
-        if (inNextEpisodeWindow) {
+        if (inNextEpisodeWindow && !_isSwitchingEpisode) {
           if (!_nextEpisodeButtonVisible && mounted) {
             setState(() => _nextEpisodeButtonVisible = true);
           }
@@ -371,10 +414,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         setState(() {
           _isPlaying = playing;
           if (playing && _isLoading) _isLoading = false;
+          if (playing && _isBuffering) _isBuffering = false;
         });
       }
     });
     _bufferingSub = _player.stream.buffering.listen((buffering) {
+      final isOffline = (_currentLocalVideoPath != null && _currentLocalVideoPath!.isNotEmpty) ||
+          (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty);
+      if (isOffline) {
+        // Offline playback: never show full-screen buffering spinner unless player is completely stopped/not playing
+        final shouldBuffer = buffering && !_isPlaying;
+        if (mounted && _isBuffering != shouldBuffer) {
+          setState(() => _isBuffering = shouldBuffer);
+        }
+        return;
+      }
       if (mounted && _isBuffering != buffering) setState(() => _isBuffering = buffering);
     });
     _trackSub = _player.stream.track.listen((track) {
@@ -421,8 +475,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         final subs = await subService.searchByImdbId(
           widget.imdbId!,
           language: 'id,en',
-          seasonNumber: widget.season,
-          episodeNumber: widget.episode,
+          seasonNumber: _currentSeason,
+          episodeNumber: _currentEpisode,
         );
         allSubs.addAll(subs);
       }
@@ -501,7 +555,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     end: c.end,
                     text: sub.language.toLowerCase() == 'id'
                         ? SubtitleTranslatorService.balanceSubtitleLines(
-                            SubtitleTranslatorService.refineIndonesianPronouns(c.text))
+                            SubtitleTranslatorService.smartFormatIndonesianSubtitle(
+                                SubtitleTranslatorService.refineIndonesianPronouns(c.text)))
                         : SubtitleTranslatorService.balanceSubtitleLines(c.text),
                   )).toList();
             ref.read(activeSubtitleCuesProvider.notifier).state = refinedCues;
@@ -542,7 +597,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ref.read(activeSubtitleCuesProvider.notifier).state = balancedOriginalCues;
 
             final translator = ref.read(subtitleTranslatorServiceProvider);
-            final cacheKey = 'sub_${widget.imdbId ?? widget.tmdbId}_auto_id_${sub.id.hashCode}_s${widget.season ?? 0}_e${widget.episode ?? 0}';
+            final cacheKey = 'sub_${widget.imdbId ?? widget.tmdbId}_auto_id_${sub.id.hashCode}_s${_currentSeason ?? 0}_e${_currentEpisode ?? 0}';
 
             final translatedCues = await translator.translateCuesToIndonesian(
               cues: originalCues,
@@ -600,69 +655,231 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _hasAutoPlayedNext = false;
     _nextEpisodeButtonVisible = false;
 
+    // 0. OFFLINE LOCAL FILE PLAYBACK (Completely isolated from online streaming)
+    if ((_currentLocalVideoPath != null && _currentLocalVideoPath!.isNotEmpty) ||
+        (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty)) {
+      await _initOfflinePlayback();
+      return;
+    }
+
+    // 1. ONLINE STREAMING FLOW
+    await _initOnlineStreaming();
+  }
+
+  /// Dedicated offline video player handler.
+  /// Plays local MP4 video directly from storage without any network traffic or buffering.
+  Future<void> _initOfflinePlayback() async {
+    setState(() {
+      _isLoading = true;
+      _loadingStatus = 'Menyiapkan pemutaran offline...';
+    });
+
+    try {
+      final path = _currentLocalVideoPath ?? widget.localVideoPath!;
+      final localFile = File(path);
+      debugPrint('[PlayerScreen] Initializing offline playback: ${localFile.path}');
+      if (!await localFile.exists()) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('File unduhan tidak ditemukan di penyimpanan perangkat. Silakan unduh ulang.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+        return;
+      }
+
+      var targetMediaFile = localFile;
+
+      // 1. Check if hardware-muxed video.mp4 exists in the folder
+      if (!targetMediaFile.path.toLowerCase().endsWith('.mp4')) {
+        final mp4Candidate = File('${targetMediaFile.parent.path}/video.mp4');
+        if (await mp4Candidate.exists() && (await mp4Candidate.length()) > 50000) {
+          targetMediaFile = mp4Candidate;
+        }
+      }
+
+      // 2. If not MP4 yet, but offline TS chunks exist on Android, auto-mux to MP4 for instant zero-buffer playback
+      if (Platform.isAndroid && !targetMediaFile.path.toLowerCase().endsWith('.mp4')) {
+        final parentDir = targetMediaFile.parent;
+        final v0 = File('${parentDir.path}/v_0000.ts');
+        if (await v0.exists()) {
+          try {
+            debugPrint('[PlayerScreen] Found offline TS chunks, auto-muxing to MP4 for optimal offline playback...');
+            if (mounted) setState(() => _loadingStatus = 'Menyiapkan video MP4...');
+            final vTemp = File('${parentDir.path}/temp_video.ts');
+            final aTemp = File('${parentDir.path}/temp_audio.ts');
+            final outMp4 = File('${parentDir.path}/video.mp4');
+
+            final vSink = vTemp.openWrite();
+            final chunks = parentDir.listSync().whereType<File>().toList();
+            final vFiles = chunks.where((f) => f.path.split(RegExp(r'[\\/]')).last.startsWith('v_')).toList()
+              ..sort((a, b) => a.path.compareTo(b.path));
+            for (final f in vFiles) {
+              await vSink.addStream(f.openRead());
+            }
+            await vSink.flush();
+            await vSink.close();
+
+            String? aTempPath;
+            final aFiles = chunks.where((f) => f.path.split(RegExp(r'[\\/]')).last.startsWith('a_')).toList()
+              ..sort((a, b) => a.path.compareTo(b.path));
+            if (aFiles.isNotEmpty) {
+              final aSink = aTemp.openWrite();
+              for (final f in aFiles) {
+                await aSink.addStream(f.openRead());
+              }
+              await aSink.flush();
+              await aSink.close();
+              if (await aTemp.exists() && (await aTemp.length()) > 1000) {
+                aTempPath = aTemp.path;
+              }
+            }
+
+            final success = await NativeMediaMuxer.muxToMp4(
+              videoPath: vTemp.path,
+              audioPath: aTempPath,
+              outputPath: outMp4.path,
+            );
+
+            if (await vTemp.exists()) await vTemp.delete();
+            if (await aTemp.exists()) await aTemp.delete();
+
+            if (success && await outMp4.exists() && (await outMp4.length()) > 50000) {
+              debugPrint('[PlayerScreen] Auto-muxing succeeded: ${outMp4.path}');
+              targetMediaFile = outMp4;
+              for (final f in [...vFiles, ...aFiles]) {
+                try {
+                  await f.delete();
+                } catch (_) {}
+              }
+            }
+          } catch (e) {
+            debugPrint('[PlayerScreen] Auto-muxing note: $e');
+          }
+        }
+      }
+
+      _useNativePlayer = true;
+      await _setupMpvOfflineOptions();
+
+      // 3. Play media file directly without HTTP server if it is a container file (MP4, MKV, TS)
+      final isSingleContainer = targetMediaFile.path.toLowerCase().endsWith('.mp4') ||
+          targetMediaFile.path.toLowerCase().endsWith('.mkv') ||
+          targetMediaFile.path.toLowerCase().endsWith('.ts');
+
+      if (isSingleContainer) {
+        debugPrint('[PlayerScreen] Playing offline native media directly from storage: ${targetMediaFile.path}');
+        await _player.open(Media(targetMediaFile.path));
+      } else {
+        // Fallback for HLS manifest: try direct file path first, fallback to loopback HTTP server with cache:no
+        try {
+          debugPrint('[PlayerScreen] Attempting direct local HLS manifest open: ${targetMediaFile.path}');
+          await _player.open(Media(targetMediaFile.path));
+        } catch (_) {
+          debugPrint('[PlayerScreen] Direct HLS failed, streaming via LocalStreamServer with zero-network cache');
+          final port = await LocalStreamServer.instance.start();
+          if (port == 0) {
+            throw Exception('Gagal mengaktifkan server streaming lokal.');
+          }
+
+          final parentDir = targetMediaFile.parent.path;
+          final fileName = targetMediaFile.path.split(RegExp(r'[\\/]')).where((s) => s.isNotEmpty).last;
+
+          final streamUrl = LocalStreamServer.instance.getStreamUrl(
+            dirPath: parentDir,
+            fileName: fileName,
+          );
+
+          await _player.open(Media(streamUrl));
+        }
+      }
+
+      await _player.setAudioTrack(AudioTrack.auto());
+      await _player.setSubtitleTrack(SubtitleTrack.no());
+      await _player.setVolume(_volume);
+      await _player.play();
+
+      final subPath = _currentLocalSubtitlePath ?? widget.localSubtitlePath;
+      if (subPath != null && subPath.isNotEmpty) {
+        try {
+          final subFile = File(subPath);
+          if (await subFile.exists()) {
+            final content = await subFile.readAsString();
+            final cues = SubtitleCue.parseSrt(content);
+            ref.read(activeSubtitleCuesProvider.notifier).state = cues;
+            debugPrint('[PlayerScreen] Loaded offline subtitle: ${cues.length} cues');
+          }
+        } catch (e) {
+          debugPrint('[PlayerScreen] Failed to load offline subtitle: $e');
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isBuffering = false;
+          _currentQuality = 'Offline';
+          _resolutionLabel = targetMediaFile.path.toLowerCase().endsWith('.mp4') ? 'Lokal MP4' : 'Lokal';
+        });
+      }
+    } catch (e) {
+      debugPrint('[PlayerScreen] Offline playback failed: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.surfaceVariant,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text(
+              'Gagal Memutar Offline',
+              style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            content: Text(
+              'Terjadi kendala saat memutar file lokal:\n$e\n\nPastikan proses unduhan telah selesai 100%.',
+              style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/downloads');
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.black,
+                ),
+                child: const Text('Kembali ke Unduhan'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  /// Online video streaming handler with VixSrc direct HLS and Web player fallback.
+  Future<void> _initOnlineStreaming() async {
     setState(() {
       _isLoading = true;
       _loadingStatus = 'Menghubungkan stream video & audio...';
     });
 
     try {
-      // 0. Offline Local File Playback (Downloaded Videos)
-      if (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty) {
-        debugPrint('[PlayerScreen] Playing local offline file: ${widget.localVideoPath}');
-        final localFile = File(widget.localVideoPath!);
-        if (!await localFile.exists()) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('File unduhan tidak ditemukan atau rusak. Silakan unduh ulang.'),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
-            Navigator.of(context).pop();
-          }
-          return;
-        }
-
-        _useNativePlayer = true;
-        try {
-          final mpv = (_player.platform as dynamic);
-          await mpv?.command(['set', 'demuxer-lavf-analyzeduration', '0.5']);
-        } catch (_) {}
-
-        await _player.open(Media(widget.localVideoPath!));
-        await _player.setSubtitleTrack(SubtitleTrack.no());
-        await _player.setVolume(_volume);
-
-        if (widget.localSubtitlePath != null && widget.localSubtitlePath!.isNotEmpty) {
-          try {
-            final subFile = File(widget.localSubtitlePath!);
-            if (await subFile.exists()) {
-              final content = await subFile.readAsString();
-              final cues = SubtitleCue.parseSrt(content);
-              ref.read(activeSubtitleCuesProvider.notifier).state = cues;
-              debugPrint('[PlayerScreen] Loaded offline subtitle: ${cues.length} cues');
-            }
-          } catch (e) {
-            debugPrint('[PlayerScreen] Failed to load offline subtitle: $e');
-          }
-        }
-
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _currentQuality = 'Lokal';
-            _resolutionLabel = 'Offline';
-          });
-        }
-        return;
-      }
-
       // 1. Direct HLS Master Playlist extraction from VixSrc (includes full English audio track)
       final vixResult = await VixSrcStreamService.resolveStream(
         tmdbId: widget.tmdbId,
         imdbId: widget.imdbId,
-        season: widget.season,
-        episode: widget.episode,
+        season: _currentSeason,
+        episode: _currentEpisode,
       );
 
       if (vixResult != null && vixResult.playlistUrl.isNotEmpty) {
@@ -709,6 +926,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // 2. Fallback to Web Player if direct extraction fails
     debugPrint('[PlayerScreen] Falling back to Web Stream...');
     _useNativePlayer = false;
+    // Mute and stop native player before fallback
+    try {
+      await _player.setVolume(0.0);
+      await _player.pause();
+      await _player.stop();
+    } catch (_) {}
+
     final fallbackUrl = _buildFallbackUrl();
 
     final controller = WebViewController()
@@ -752,10 +976,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final cleanImdb = widget.imdbId != null && widget.imdbId!.isNotEmpty
         ? (widget.imdbId!.startsWith('tt') ? widget.imdbId! : 'tt${widget.imdbId}')
         : '';
-    final s = widget.season ?? 1;
-    final e = widget.episode ?? 1;
+    final s = _currentSeason ?? 1;
+    final e = _currentEpisode ?? 1;
 
-    if (widget.season != null && widget.episode != null) {
+    if (_currentSeason != null && _currentEpisode != null) {
       return cleanImdb.isNotEmpty
           ? 'https://vidsrc.sh/embed/tv?imdb=$cleanImdb&season=$s&episode=$e'
           : 'https://vidsrc.sh/embed/tv?tmdb=${widget.tmdbId ?? 1399}&season=$s&episode=$e';
@@ -911,28 +1135,117 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   // ── TV Series Next Episode ──
 
-  void _playNextEpisode() {
-    setState(() => _nextEpisodeButtonVisible = false);
-    if (widget.season == null || widget.episode == null) return;
-    final nextEp = widget.episode! + 1;
+  Future<void> _playNextEpisode() async {
+    if (_isSwitchingEpisode) return;
+    _isSwitchingEpisode = true;
+
+    if (_currentSeason == null || _currentEpisode == null) {
+      _isSwitchingEpisode = false;
+      return;
+    }
+
+    final nextEp = _currentEpisode! + 1;
     _saveWatchHistory(force: true);
 
-    context.pushReplacementNamed(
-      'player',
-      extra: {
-        'magnetLink': '',
-        'title': widget.title,
-        'imdbId': widget.imdbId,
-        'season': widget.season,
-        'episode': nextEp,
-        'tmdbId': widget.tmdbId,
-        'mediaType': 'tv',
-        'posterPath': widget.posterPath,
-        'backdropPath': widget.backdropPath,
-        'episodeTitle': 'Episode $nextEp',
-        'initialPositionMs': 0,
-      },
-    );
+    if (mounted) {
+      setState(() {
+        _nextEpisodeButtonVisible = false;
+        _showControls = false;
+        _isLoading = true;
+        _loadingStatus = 'Menyiapkan Episode $nextEp...';
+      });
+    }
+
+    // 1. COMPLETE SOUND AND STREAM TERMINATION:
+    // Mute and stop native player immediately to eliminate any previous audio bleed
+    try {
+      await _player.setVolume(0.0);
+      await _player.pause();
+      await _player.stop();
+    } catch (e) {
+      debugPrint('[PlayerScreen] Error stopping native player on next episode: $e');
+    }
+
+    // 2. Kill WebView playback & audio if web player was active
+    try {
+      await _webViewController?.runJavaScript(
+        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }'
+      );
+      await _webViewController?.loadRequest(Uri.parse('about:blank'));
+      _webViewController = null;
+    } catch (e) {
+      debugPrint('[PlayerScreen] Error clearing webview on next episode: $e');
+    }
+
+    // 3. Instantly clear subtitles
+    ref.read(activeSubtitleCuesProvider.notifier).state = [];
+    _availableSubtitles = [];
+    _streamSubtitles = [];
+    _selectedSubtitle = null;
+    _isSubtitleTranslated = false;
+
+    // 4. Reset playback timeline & state
+    _position = Duration.zero;
+    _positionNotifier.value = Duration.zero;
+    _duration = Duration.zero;
+    _hasRestoredPosition = false;
+    _hasAutoPlayedNext = false;
+    _initialPositionMs = null;
+    _activePopup = _PlayerMiniPopup.none;
+
+    // 5. Advance episode state
+    _currentEpisode = nextEp;
+    _currentEpisodeTitle = 'Episode $nextEp';
+
+    // Check if the next episode was downloaded locally
+    String? nextLocalVideo;
+    String? nextLocalSub;
+    try {
+      final downloadItems = ref.read(downloadManagerProvider);
+      final nextDownload = downloadItems.where((d) =>
+        d.tmdbId == widget.tmdbId &&
+        d.mediaType == 'tv' &&
+        d.seasonNumber == _currentSeason &&
+        d.episodeNumber == nextEp &&
+        d.status == DownloadStatus.completed
+      ).firstOrNull;
+
+      if (nextDownload != null) {
+        final f = File(nextDownload.videoPath);
+        if (f.existsSync() && f.lengthSync() > 10000) {
+          nextLocalVideo = nextDownload.videoPath;
+          nextLocalSub = nextDownload.subtitlePath;
+          debugPrint('[PlayerScreen] Next episode found in offline downloads: $nextLocalVideo');
+        }
+      }
+    } catch (_) {}
+
+    _currentLocalVideoPath = nextLocalVideo;
+    _currentLocalSubtitlePath = nextLocalSub;
+
+    // 6. Restore volume setting for the next episode
+    try {
+      await _player.setVolume(_volume);
+    } catch (_) {}
+
+    if (!mounted) {
+      _isSwitchingEpisode = false;
+      return;
+    }
+
+    // 7. Initialize streaming for next episode in-place
+    try {
+      if ((_currentLocalVideoPath != null && _currentLocalVideoPath!.isNotEmpty) ||
+          (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty)) {
+        await _initOfflinePlayback();
+      } else {
+        await _initOnlineStreaming();
+      }
+    } catch (e) {
+      debugPrint('[PlayerScreen] Failed to start next episode: $e');
+    } finally {
+      _isSwitchingEpisode = false;
+    }
   }
 
   Widget _buildSkipPillButton({
@@ -986,85 +1299,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  Future<void> _launchExternalVlc() async {
-    final magnet = widget.magnetLink;
-    if (magnet.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pemutar langsung 60 FPS aktif di dalam aplikasi.'),
-          backgroundColor: AppColors.surfaceVariant,
-        ),
-      );
-      return;
-    }
 
-    try {
-      final uri = Uri.parse(magnet);
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched && mounted) {
-        _showVlcNoticeDialog(magnet);
-      }
-    } catch (_) {
-      if (mounted) _showVlcNoticeDialog(magnet);
-    }
-  }
-
-  void _showVlcNoticeDialog(String magnet) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Iconsax.video_play, color: AppColors.primary, size: 24),
-            SizedBox(width: 10),
-            Text('Putar di VLC', style: TextStyle(color: Colors.white, fontSize: 18)),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Aplikasi VLC for Android siap memutar video dengan akselerasi perangkat keras 60 FPS bebas lag.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Salin link magnet jika VLC tidak terbuka otomatis:',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tutup', style: TextStyle(color: AppColors.textMuted)),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Clipboard.setData(ClipboardData(text: magnet));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Link magnet berhasil disalin!'),
-                  backgroundColor: AppColors.success,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            icon: const Icon(Iconsax.copy, size: 16),
-            label: const Text('Salin Magnet'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.black,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   String _formatDuration(Duration d) {
     final hours = d.inHours;
@@ -1983,9 +2218,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    if (widget.season != null && widget.episode != null)
+                                    if (_currentSeason != null && _currentEpisode != null)
                                       Text(
-                                        'Season ${widget.season} • Episode ${widget.episode}',
+                                        'Season $_currentSeason • Episode $_currentEpisode',
                                         style: const TextStyle(
                                           color: AppColors.primary,
                                           fontSize: 12,
@@ -2114,7 +2349,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                 onTap: () => _togglePopup(_PlayerMiniPopup.subtitleSettings),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  margin: const EdgeInsets.only(right: 8),
                                   decoration: BoxDecoration(
                                     color: _activePopup == _PlayerMiniPopup.subtitleSettings
                                         ? AppColors.primary
@@ -2137,34 +2371,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                         'Atur Sub',
                                         style: TextStyle(
                                           color: _activePopup == _PlayerMiniPopup.subtitleSettings ? Colors.black : Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                              // External VLC Button
-                              GestureDetector(
-                                onTap: _launchExternalVlc,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceVariant.withValues(alpha: 0.85),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: AppColors.surfaceElevated),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Iconsax.export_1, color: Colors.white, size: 14),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        'VLC',
-                                        style: TextStyle(
-                                          color: Colors.white,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -2292,16 +2498,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
 
             // ── 5.5 Floating TV Series Next Episode Action (When <= 60s remaining) ──
-            if (_useNativePlayer && !_isLoading && _nextEpisodeButtonVisible && (widget.season != null && widget.episode != null))
+            if (_useNativePlayer && !_isLoading && _nextEpisodeButtonVisible && (_currentSeason != null && _currentEpisode != null))
               Positioned(
                 bottom: _showControls ? 78 : 28,
                 right: 28,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
                   child: _buildSkipPillButton(
-                    key: const ValueKey('tv_next_episode_btn'),
+                    key: ValueKey('tv_next_episode_$_currentEpisode'),
                     icon: Icons.skip_next_rounded,
-                    label: 'Episode ${(widget.episode ?? 1) + 1} Berikutnya',
+                    label: 'Episode ${(_currentEpisode ?? 1) + 1} Berikutnya',
                     onTap: _playNextEpisode,
                   ),
                 ),

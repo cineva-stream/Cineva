@@ -56,7 +56,7 @@ class SubtitleTranslatorService {
               : batch[j].text;
 
           final rawText = translatedLine.isNotEmpty ? translatedLine : batch[j].text;
-          final refinedText = balanceSubtitleLines(refineIndonesianPronouns(rawText));
+          final refinedText = balanceSubtitleLines(smartFormatIndonesianSubtitle(refineIndonesianPronouns(rawText)));
 
           translatedCues.add(SubtitleCue(
             start: batch[j].start,
@@ -190,6 +190,172 @@ class SubtitleTranslatorService {
     );
   }
 
+  static const Set<String> _knownAcronyms = {
+    'FBI', 'CIA', 'NASA', 'DNA', 'RNA', 'TV', 'ID', 'OK', 'AS', 'PBB',
+    'RS', 'UGD', 'ICU', 'SWAT', 'CEO', 'CFO', 'CTO', 'VIP', 'VVIP',
+    'DJ', 'PC', 'AI', 'GPS', 'USB', 'PIN', 'ATM', 'SIM', 'KTP', 'BOM',
+    'UFO', 'AC', 'CD', 'DVD', 'HD', 'FHD', '4K', 'CSI', 'NCIS', 'MI6',
+    'KGB', 'UN', 'EU', 'US', 'UK', 'USA', 'SOS', 'HQ', 'WIB', 'WITA', 'WIT',
+  };
+
+  static const Set<String> _sacredNames = {
+    'tuhan', 'tuhanku', 'tuhan-ku', 'tuhanmu', 'tuhan-mu', 'tuhannya', 'tuhan-nya',
+    'allah', 'allahku', 'allah-ku', 'allahmu', 'allah-mu', 'allahnya', 'allah-nya',
+    'yesus', 'kristus', 'bapa', 'pencipta',
+  };
+
+  static const Set<String> _fixedProperNouns = {
+    // Days & Months
+    'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu',
+    'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+    'juli', 'agustus', 'september', 'oktober', 'november', 'desember',
+
+    // Common countries, cities & major locations
+    'indonesia', 'jakarta', 'surabaya', 'bandung', 'medan', 'bali', 'yogyakarta',
+    'amerika', 'inggris', 'jepang', 'korea', 'cina', 'tiongkok', 'rusia', 'prancis',
+    'jerman', 'italia', 'spanyol', 'kanada', 'australia', 'belanda', 'meksiko',
+    'brasil', 'india', 'mesir', 'london', 'paris', 'tokyo', 'seoul', 'washington',
+    'new', 'york', 'angeles', 'chicago', 'roma', 'berlin', 'moskow', 'beijing',
+    'singapura', 'bangkok',
+  };
+
+  static const Set<String> _titleAndPlacePrefixes = {
+    // Titles / Honorifics
+    'pak', 'bapak', 'bu', 'ibu', 'tuan', 'nyonya', 'nona', 'dokter', 'dok',
+    'profesor', 'prof', 'kapten', 'detektif', 'sersan', 'mayor', 'jenderal',
+    'inspektur', 'komandan', 'paman', 'bibi', 'kakek', 'nenek', 'raja', 'ratu',
+    'pangeran', 'putri', 'presiden',
+
+    // Places / Geographic markers
+    'jalan', 'jl', 'gang', 'gg', 'kota', 'provinsi', 'pulau',
+    'gunung', 'danau', 'sungai', 'laut', 'samudra', 'bandara', 'stasiun',
+    'gedung', 'rumah sakit',
+  };
+
+  /// Intelligently formats Indonesian subtitle text:
+  /// - Normalizes chaotic mixed casing from machine translations (e.g., "KAmi", "KAMI sedang")
+  /// - Enforces uppercase at the start of sentences, dialogues, and after terminal punctuation (., ?, !, ...)
+  /// - Capitalizes sacred entities (Tuhan, Allah, Yesus, Kristus, etc.)
+  /// - Capitalizes days, months, and major cities/countries
+  /// - Capitalizes titles, honorifics, and geographic markers followed by names (e.g. "Jalan Sudirman", "Dokter Smith")
+  /// - Preserves recognized acronyms (FBI, CIA, TV, etc.) in uppercase
+  /// - Handles hyphenated words and Indonesian reduplications gracefully
+  static String smartFormatIndonesianSubtitle(String text) {
+    if (text.isEmpty) return text;
+
+    final lines = text.split('\n');
+    final formattedLines = lines.map(_formatSingleLine).toList();
+    return formattedLines.join('\n');
+  }
+
+  static String _formatSingleLine(String line) {
+    if (line.trim().isEmpty) return line;
+
+    final tokenRegex = RegExp(r'([A-Za-z0-9\u00C0-\u024F]+(?:-[A-Za-z0-9\u00C0-\u024F]+)*|[^\sA-Za-z0-9\u00C0-\u024F]+|\s+)');
+    final matches = tokenRegex.allMatches(line);
+
+    final tokens = matches.map((m) => m.group(0)!).toList();
+    final result = <String>[];
+
+    bool isStartOfSentence = true;
+    bool capitalizeNextWord = false;
+
+    for (int i = 0; i < tokens.length; i++) {
+      final token = tokens[i];
+
+      // Whitespace
+      if (RegExp(r'^\s+$').hasMatch(token)) {
+        result.add(token);
+        continue;
+      }
+
+      // Punctuation / symbols
+      if (RegExp(r'^[^\sA-Za-z0-9\u00C0-\u024F]+$').hasMatch(token)) {
+        result.add(token);
+
+        if (token.contains('.') || token.contains('!') || token.contains('?') || token.contains('…')) {
+          isStartOfSentence = true;
+          capitalizeNextWord = false;
+        } else if (token.contains('-') || token.contains('—') || token.contains('"') || token.contains('“') || token.contains('”') || token.contains(':')) {
+          if (result.where((t) => RegExp(r'[A-Za-z0-9]').hasMatch(t)).isEmpty || isStartOfSentence) {
+            isStartOfSentence = true;
+          }
+        }
+        continue;
+      }
+
+      // Word token
+      final lower = token.toLowerCase();
+      final upper = token.toUpperCase();
+
+      // 1. Acronyms (FBI, CIA, TV, etc.)
+      if (_knownAcronyms.contains(upper)) {
+        result.add(upper);
+        isStartOfSentence = false;
+        capitalizeNextWord = false;
+        continue;
+      }
+
+      // 2. Sacred names (Tuhan, Allah, Yesus, Kristus)
+      if (_sacredNames.contains(lower)) {
+        result.add(_capitalizeWord(lower));
+        isStartOfSentence = false;
+        capitalizeNextWord = false;
+        continue;
+      }
+
+      // 3. Fixed proper nouns (days, months, countries, major cities)
+      if (_fixedProperNouns.contains(lower)) {
+        result.add(_capitalizeWord(lower));
+        isStartOfSentence = false;
+        capitalizeNextWord = false;
+        continue;
+      }
+
+      // 4. Honorific/Place following word (e.g. "Jalan Sudirman", "Dokter Smith")
+      if (capitalizeNextWord) {
+        result.add(_capitalizeWord(lower));
+        capitalizeNextWord = false;
+        isStartOfSentence = false;
+        continue;
+      }
+
+      // 5. Honorific/Place prefix itself
+      if (_titleAndPlacePrefixes.contains(lower)) {
+        result.add(_capitalizeWord(lower));
+        capitalizeNextWord = true;
+        isStartOfSentence = false;
+        continue;
+      }
+
+      // 6. Sentence or dialogue beginning
+      if (isStartOfSentence) {
+        result.add(_capitalizeWord(lower));
+        isStartOfSentence = false;
+        continue;
+      }
+
+      // 7. Standard lowercase word within sentence
+      result.add(lower);
+    }
+
+    return result.join('');
+  }
+
+  static String _capitalizeWord(String word) {
+    if (word.isEmpty) return word;
+    if (word.contains('-')) {
+      final parts = word.split('-');
+      // Indonesian reduplication (e.g. anak-anak, tiba-tiba), only capitalize first part
+      if (parts.length == 2 && parts[0].toLowerCase() == parts[1].toLowerCase()) {
+        return '${parts[0][0].toUpperCase()}${parts[0].substring(1).toLowerCase()}-${parts[1].toLowerCase()}';
+      }
+      // Hyphenated proper names (e.g. Soekarno-Hatta)
+      return parts.map((p) => p.isNotEmpty ? '${p[0].toUpperCase()}${p.substring(1)}' : p).join('-');
+    }
+    return '${word[0].toUpperCase()}${word.substring(1)}';
+  }
+
   Future<List<SubtitleCue>?> _loadFromCache(String cacheKey) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
@@ -198,7 +364,9 @@ class SubtitleTranslatorService {
         final content = await file.readAsString();
         final List<dynamic> jsonList = jsonDecode(content);
         return jsonList.map((item) {
-          final textWithPronouns = refineIndonesianPronouns(item['text'] as String);
+          final textWithPronouns = smartFormatIndonesianSubtitle(
+            refineIndonesianPronouns(item['text'] as String),
+          );
           return SubtitleCue(
             start: Duration(milliseconds: item['startMs'] as int),
             end: Duration(milliseconds: item['endMs'] as int),
