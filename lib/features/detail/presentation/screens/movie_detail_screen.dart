@@ -11,16 +11,34 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../watchlist/data/watchlist_repository.dart';
 import '../../../download/presentation/widgets/download_options_modal.dart';
+import '../../../../core/localization/app_language.dart';
+import '../../../../core/localization/app_language_provider.dart';
 
 // ── Detail Providers ──
 
 final movieDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((ref, movieId) async {
+  final lang = ref.watch(appLanguageProvider);
+  final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
   final dio = DioClient.createTmdbClient();
   final response = await dio.get('/movie/$movieId', queryParameters: {
-    'language': 'id-ID',
+    'language': tmdbLang,
     'append_to_response': 'credits,external_ids,similar',
   });
-  return response.data;
+  final data = Map<String, dynamic>.from(response.data as Map);
+  final overview = (data['overview'] as String? ?? '').trim();
+  if (overview.isEmpty) {
+    try {
+      final fallbackLang = tmdbLang == 'id-ID' ? 'en-US' : 'id-ID';
+      final fbResponse = await dio.get('/movie/$movieId', queryParameters: {
+        'language': fallbackLang,
+      });
+      final fbOverview = (fbResponse.data['overview'] as String? ?? '').trim();
+      if (fbOverview.isNotEmpty) {
+        data['overview'] = fbOverview;
+      }
+    } catch (_) {}
+  }
+  return data;
 });
 
 /// Movie detail screen displaying full backdrop, info, cast, and play button.
@@ -30,6 +48,7 @@ class MovieDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final detail = ref.watch(movieDetailProvider(movieId));
 
     return PopScope(
@@ -52,11 +71,11 @@ class MovieDetailScreen extends ConsumerWidget {
               children: [
                 const Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
                 const SizedBox(height: 16),
-                Text('Gagal memuat detail', style: Theme.of(context).textTheme.titleMedium),
+                Text(s.detailFailed, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => ref.invalidate(movieDetailProvider(movieId)),
-                  child: const Text('Coba Lagi'),
+                  child: Text(s.detailRetry),
                 ),
               ],
             ),
@@ -73,6 +92,7 @@ class _DetailContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final title = data['title'] ?? '';
     final overview = data['overview'] ?? '';
     final backdropPath = data['backdrop_path'] as String?;
@@ -219,7 +239,7 @@ class _DetailContent extends ConsumerWidget {
                               if (runtime > 0) ...[
                                 const Text('  •  ', style: TextStyle(color: AppColors.textMuted)),
                                 Text(
-                                  '${runtime ~/ 60}j ${runtime % 60}m',
+                                  '${runtime ~/ 60}${s.isIndonesian ? 'j' : 'h'} ${runtime % 60}m',
                                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
                                 ),
                               ],
@@ -278,7 +298,7 @@ class _DetailContent extends ConsumerWidget {
                           SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
                         },
                         icon: const Icon(Icons.play_arrow_rounded, size: 28),
-                        label: const Text('Tonton Sekarang', style: TextStyle(fontSize: 16)),
+                        label: Text(s.detailWatchNow, style: const TextStyle(fontSize: 16)),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -294,7 +314,7 @@ class _DetailContent extends ConsumerWidget {
                           'movie',
                         );
                         return Tooltip(
-                          message: isInWatchlist ? 'Hapus dari Watchlist' : 'Tambahkan ke Watchlist',
+                          message: isInWatchlist ? s.detailWatchlistRemoveTooltip : s.detailWatchlistAddTooltip,
                           child: InkWell(
                             onTap: () async {
                               final item = WatchlistItem(
@@ -309,7 +329,7 @@ class _DetailContent extends ConsumerWidget {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(added ? 'Ditambahkan ke Watchlist' : 'Dihapus dari Watchlist'),
+                                    content: Text(added ? s.detailAddedToWatchlist : s.detailRemovedFromWatchlist),
                                     backgroundColor: AppColors.surfaceVariant,
                                     duration: const Duration(seconds: 2),
                                   ),
@@ -372,9 +392,9 @@ class _DetailContent extends ConsumerWidget {
                       );
                     },
                     icon: const Icon(Icons.download_rounded, size: 22, color: AppColors.primary),
-                    label: const Text(
-                      'Unduh Film',
-                      style: TextStyle(
+                    label: Text(
+                      s.detailDownloadMovie,
+                      style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.primary,
                         fontWeight: FontWeight.w600,
@@ -391,17 +411,17 @@ class _DetailContent extends ConsumerWidget {
                 const SizedBox(height: 24),
 
                 // ── Synopsis ──
-                Text('Sinopsis', style: Theme.of(context).textTheme.headlineMedium),
+                Text(s.detailSynopsis, style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 8),
                 Text(
-                  overview.isNotEmpty ? overview : 'Belum ada sinopsis.',
+                  overview.isNotEmpty ? overview : s.detailNoSynopsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6),
                 ),
 
                 // ── Cast ──
                 if (castList.isNotEmpty) ...[
                   const SizedBox(height: 24),
-                  Text('Pemeran', style: Theme.of(context).textTheme.headlineMedium),
+                  Text(s.detailCast, style: Theme.of(context).textTheme.headlineMedium),
                   const SizedBox(height: 12),
                   SizedBox(
                     height: 130,
@@ -454,7 +474,7 @@ class _DetailContent extends ConsumerWidget {
                 // ── Similar Movies ──
                 if (similarList.isNotEmpty) ...[
                   const SizedBox(height: 24),
-                  Text('Film Serupa', style: Theme.of(context).textTheme.headlineMedium),
+                  Text(s.detailSimilarMovies, style: Theme.of(context).textTheme.headlineMedium),
                   const SizedBox(height: 12),
                   SizedBox(
                     height: 200,

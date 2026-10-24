@@ -141,6 +141,24 @@ We must protect this place.
         SubtitleTranslatorService.refineIndonesianPronouns('Ini semua bukan rekayasa saya.'),
         'Ini semua bukan rekayasa aku.',
       );
+
+      // Verify kamulah / andalah -> kaulah (smart capitalization)
+      expect(
+        SubtitleTranslatorService.refineIndonesianPronouns('Kamulah yang terpilih untuk misi ini.'),
+        'Kaulah yang terpilih untuk misi ini.',
+      );
+      expect(
+        SubtitleTranslatorService.refineIndonesianPronouns('Karena andalah satu-satunya harapan kami.'),
+        'Karena kaulah satu-satunya harapan kami.',
+      );
+      expect(
+        SubtitleTranslatorService.refineIndonesianPronouns('sebab kamulah pemenangnya dan andalah juaranya.'),
+        'sebab kaulah pemenangnya dan kaulah juaranya.',
+      );
+      expect(
+        SubtitleTranslatorService.refineIndonesianPronouns('KAMULAH RAJA KAMI! ANDALAH PAHLAWAN SEJATI!'),
+        'KAULAH RAJA KAMI! KAULAH PAHLAWAN SEJATI!',
+      );
     });
 
     test('balanceSubtitleLines wraps long lines at natural word boundaries without clipping', () {

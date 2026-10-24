@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/genre_constants.dart';
+import '../../../../core/localization/app_language_provider.dart';
 
 /// Clean, modern bottom sheet presenting all curated genres for Movies and TV Series.
 class GenreSelectionBottomSheet extends ConsumerWidget {
@@ -23,6 +24,7 @@ class GenreSelectionBottomSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final activeGenre = ref.watch(selectedHomeGenreProvider);
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
@@ -82,7 +84,7 @@ class GenreSelectionBottomSheet extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Pilih Genre',
+                      s.isIndonesian ? 'Pilih Genre' : 'Select Genre',
                       style: GoogleFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -90,7 +92,7 @@ class GenreSelectionBottomSheet extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      'Saring film dan serial TV sesuai selera',
+                      s.isIndonesian ? 'Saring film dan serial TV sesuai selera' : 'Filter movies and TV series by genre',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: AppColors.textMuted,
@@ -162,7 +164,7 @@ class GenreSelectionBottomSheet extends ConsumerWidget {
                             const SizedBox(width: 8),
                           ],
                           Text(
-                            genre.label,
+                            genre.getLocalizedLabel(s.isIndonesian),
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cineva/core/localization/app_language.dart';
+import 'package:cineva/core/localization/app_language_provider.dart';
 import 'package:cineva/core/utils/tmdb_genres.dart';
 import 'package:cineva/features/home/domain/entities/movie.dart';
 import 'package:cineva/features/home/presentation/widgets/movie_card.dart';
@@ -42,12 +44,17 @@ void main() {
       bool seeAllTapped = false;
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SectionHeader(
-              title: 'Film Populer',
-              icon: Icons.local_fire_department,
-              onSeeAll: () => seeAllTapped = true,
+        ProviderScope(
+          overrides: [
+            appLanguageProvider.overrideWith((ref) => AppLanguageNotifier(AppLanguage.id)),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: SectionHeader(
+                title: 'Film Populer',
+                icon: Icons.local_fire_department,
+                onSeeAll: () => seeAllTapped = true,
+              ),
             ),
           ),
         ),

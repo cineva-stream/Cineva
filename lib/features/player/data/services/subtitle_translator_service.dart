@@ -17,18 +17,20 @@ class SubtitleTranslatorService {
           headers: {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'},
         ));
 
-  /// Translates a list of [SubtitleCue] to Indonesian with progress notification.
-  Future<List<SubtitleCue>> translateCuesToIndonesian({
+  /// Translates a list of [SubtitleCue] to a target language with progress notification.
+  /// Supports dynamic targetLang (e.g. 'id', 'en', 'es', 'ja', 'fr', etc.).
+  Future<List<SubtitleCue>> translateCues({
     required List<SubtitleCue> cues,
     required String cacheKey,
+    String targetLang = 'id',
     void Function(double progress)? onProgress,
   }) async {
     if (cues.isEmpty) return [];
 
     // 1. Check local cache first
-    final cached = await _loadFromCache(cacheKey);
+    final cached = await _loadFromCache(cacheKey, targetLang: targetLang);
     if (cached != null && cached.isNotEmpty) {
-      debugPrint('[SubtitleTranslator] Loaded from local cache: $cacheKey');
+      debugPrint('[SubtitleTranslator] Loaded from local cache ($targetLang): $cacheKey');
       onProgress?.call(1.0);
       return cached;
     }
@@ -47,7 +49,7 @@ class SubtitleTranslatorService {
       final combinedText = batch.map((c) => c.text.replaceAll('\n', ' ')).join(delimiter);
 
       try {
-        final translatedBatchText = await _translateText(combinedText);
+        final translatedBatchText = await _translateText(combinedText, targetLang: targetLang);
         final splitTranslated = translatedBatchText.split('[[DELIM]]');
 
         for (int j = 0; j < batch.length; j++) {
@@ -56,7 +58,9 @@ class SubtitleTranslatorService {
               : batch[j].text;
 
           final rawText = translatedLine.isNotEmpty ? translatedLine : batch[j].text;
-          final refinedText = balanceSubtitleLines(smartFormatIndonesianSubtitle(refineIndonesianPronouns(rawText)));
+          final refinedText = targetLang.toLowerCase() == 'id'
+              ? balanceSubtitleLines(smartFormatIndonesianSubtitle(refineIndonesianPronouns(rawText)))
+              : balanceSubtitleLines(rawText);
 
           translatedCues.add(SubtitleCue(
             start: batch[j].start,
@@ -85,13 +89,27 @@ class SubtitleTranslatorService {
     return translatedCues;
   }
 
-  Future<String> _translateText(String text) async {
+  /// Backward-compatible method that translates cues specifically to Indonesian.
+  Future<List<SubtitleCue>> translateCuesToIndonesian({
+    required List<SubtitleCue> cues,
+    required String cacheKey,
+    void Function(double progress)? onProgress,
+  }) {
+    return translateCues(
+      cues: cues,
+      cacheKey: cacheKey,
+      targetLang: 'id',
+      onProgress: onProgress,
+    );
+  }
+
+  Future<String> _translateText(String text, {String targetLang = 'id'}) async {
     final response = await _dio.get(
       'https://translate.googleapis.com/translate_a/single',
       queryParameters: {
         'client': 'gtx',
         'sl': 'auto',
-        'tl': 'id',
+        'tl': targetLang,
         'dt': 't',
         'q': text,
       },
@@ -164,12 +182,13 @@ class SubtitleTranslatorService {
 
   /// Replaces formal Indonesian pronouns with natural cinematic conversational speech:
   /// - "KAMU" / "ANDA" -> "KAU", "Kamu" / "Anda" -> "Kau", "kamu" / "anda" -> "kau"
+  /// - "KAMULAH" / "ANDALAH" -> "KAULAH", "Kamulah" / "Andalah" -> "Kaulah", "kamulah" / "andalah" -> "kaulah"
   /// - "SAYA" -> "AKU", "Saya" -> "Aku", "saya" -> "aku"
   static String refineIndonesianPronouns(String text) {
     if (text.isEmpty) return text;
 
     return text.replaceAllMapped(
-      RegExp(r'\b(kamu|anda|saya)\b', caseSensitive: false),
+      RegExp(r'\b(kamulah|andalah|kamu|anda|saya)\b', caseSensitive: false),
       (match) {
         final word = match.group(0)!;
         final lower = word.toLowerCase();
@@ -180,6 +199,10 @@ class SubtitleTranslatorService {
           if (isAllUpper) return 'AKU';
           if (isCapitalized) return 'Aku';
           return 'aku';
+        } else if (lower == 'kamulah' || lower == 'andalah') {
+          if (isAllUpper) return 'KAULAH';
+          if (isCapitalized) return 'Kaulah';
+          return 'kaulah';
         } else {
           // kamu or anda
           if (isAllUpper) return 'KAU';
@@ -356,7 +379,7 @@ class SubtitleTranslatorService {
     return '${word[0].toUpperCase()}${word.substring(1)}';
   }
 
-  Future<List<SubtitleCue>?> _loadFromCache(String cacheKey) async {
+  Future<List<SubtitleCue>?> _loadFromCache(String cacheKey, {String targetLang = 'id'}) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/subtitles_cache/$cacheKey.json');
@@ -364,9 +387,10 @@ class SubtitleTranslatorService {
         final content = await file.readAsString();
         final List<dynamic> jsonList = jsonDecode(content);
         return jsonList.map((item) {
-          final textWithPronouns = smartFormatIndonesianSubtitle(
-            refineIndonesianPronouns(item['text'] as String),
-          );
+          final rawText = item['text'] as String;
+          final textWithPronouns = targetLang.toLowerCase() == 'id'
+              ? smartFormatIndonesianSubtitle(refineIndonesianPronouns(rawText))
+              : rawText;
           return SubtitleCue(
             start: Duration(milliseconds: item['startMs'] as int),
             end: Duration(milliseconds: item['endMs'] as int),

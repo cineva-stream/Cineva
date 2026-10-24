@@ -8,6 +8,7 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/localization/app_language_provider.dart';
 import '../../data/models/watch_history_item.dart';
 import '../../data/repositories/watch_history_repository.dart';
 
@@ -37,23 +38,24 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
   }
 
   void _confirmClearAll() {
+    final s = ref.read(appStringsProvider);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Hapus Semua Riwayat?',
+          s.historyClearConfirmTitle,
           style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w700),
         ),
         content: Text(
-          'Semua catatan tontonan dan titik akhir pemutaran akan dihapus secara permanen.',
+          s.historyClearConfirmDesc,
           style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: GoogleFonts.inter(color: AppColors.textMuted)),
+            child: Text(s.dialogCancel, style: GoogleFonts.inter(color: AppColors.textMuted)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -68,7 +70,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
                         const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
                         const SizedBox(width: 10),
                         Text(
-                          'Riwayat tontonan berhasil dibersihkan',
+                          s.historyClearedSuccess,
                           style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -82,7 +84,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Hapus Semua'),
+            child: Text(s.searchClearAll),
           ),
         ],
       ),
@@ -91,6 +93,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
     final allHistory = ref.watch(watchHistoryProvider);
 
     final filteredList = allHistory.where((item) {
@@ -131,7 +134,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    'Riwayat Tontonan',
+                    s.historyTitle,
                     style: GoogleFonts.outfit(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -144,7 +147,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
                     IconButton(
                       onPressed: _confirmClearAll,
                       icon: const Icon(Iconsax.trash, color: AppColors.textMuted, size: 20),
-                      tooltip: 'Hapus Semua',
+                      tooltip: s.searchClearAll,
                     ),
                 ],
               ),
@@ -155,11 +158,11 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  _buildFilterChip('all', 'Semua (${allHistory.length})'),
+                  _buildFilterChip('all', '${s.historyFilterAll} (${allHistory.length})'),
                   const SizedBox(width: 8),
-                  _buildFilterChip('in_progress', 'Sedang Ditonton ($inProgressCount)'),
+                  _buildFilterChip('in_progress', '${s.historyFilterInProgress} ($inProgressCount)'),
                   const SizedBox(width: 8),
-                  _buildFilterChip('completed', 'Selesai ($completedCount)'),
+                  _buildFilterChip('completed', '${s.historyFilterCompleted} ($completedCount)'),
                 ],
               ),
             ),
@@ -169,14 +172,14 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
             // ── History List or Empty State ──
             Expanded(
               child: filteredList.isEmpty
-                  ? _buildEmptyState()
+                  ? _buildEmptyState(s)
                   : ListView.builder(
                       physics: const BouncingScrollPhysics(),
                       padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 84),
                       itemCount: filteredList.length,
                       itemBuilder: (context, index) {
                         final item = filteredList[index];
-                        return _buildHistoryTile(item);
+                        return _buildHistoryTile(item, s);
                       },
                     ),
             ),
@@ -212,7 +215,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
     );
   }
 
-  Widget _buildHistoryTile(WatchHistoryItem item) {
+  Widget _buildHistoryTile(WatchHistoryItem item, dynamic s) {
     final imagePath = item.backdropPath ?? item.posterPath;
     final imageUrl = imagePath != null ? 'https://image.tmdb.org/t/p/w780$imagePath' : null;
 
@@ -359,7 +362,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              item.isCompleted ? 'Selesai ditonton' : item.positionTimestamp,
+                              item.isCompleted ? s.historyCompletedBadge : item.positionTimestamp,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.inter(
@@ -389,7 +392,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
                     ref.read(watchHistoryProvider.notifier).removeItem(item.key);
                   },
                   icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.textMuted),
-                  tooltip: 'Hapus dari riwayat',
+                  tooltip: s.historyDeleteTooltip,
                 ),
               ],
             ),
@@ -399,7 +402,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(dynamic s) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -421,7 +424,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
             ),
             const SizedBox(height: 18),
             Text(
-              'Belum Ada Riwayat Tontonan',
+              s.historyEmptyTitle,
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -430,7 +433,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Film dan serial yang Anda putar akan otomatis tercatat di sini sehingga Anda dapat melanjutkannya kapan saja.',
+              s.historyEmptyDesc,
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 12,
@@ -443,7 +446,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
               onPressed: () => context.go('/'),
               icon: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 20),
               label: Text(
-                'Jelajahi Film',
+                s.historyExplore,
                 style: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 13),
               ),
               style: ElevatedButton.styleFrom(

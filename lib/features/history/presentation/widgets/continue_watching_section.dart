@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/localization/app_language_provider.dart';
 import '../../data/repositories/watch_history_repository.dart';
 import 'continue_watching_card.dart';
 
@@ -14,6 +15,7 @@ class ContinueWatchingSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final inProgressItems = ref.watch(inProgressWatchHistoryProvider);
 
     if (inProgressItems.isEmpty) {
@@ -47,7 +49,7 @@ class ContinueWatchingSection extends ConsumerWidget {
                     const Icon(Iconsax.play_cricle, size: 18, color: AppColors.primary),
                     const SizedBox(width: 6),
                     Text(
-                      'Lanjutkan Menonton',
+                      s.homeContinueWatching,
                       style: GoogleFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -63,7 +65,7 @@ class ContinueWatchingSection extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Lihat Semua',
+                        s.homeSeeAll,
                         style: GoogleFonts.inter(
                           color: AppColors.primary,
                           fontSize: 12,

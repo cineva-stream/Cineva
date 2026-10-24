@@ -69,6 +69,48 @@ enum ContentPreference {
     );
   }
 
+  /// Returns localized label based on user's active language.
+  String getLocalizedLabel(bool isIndonesian) {
+    if (isIndonesian) return label;
+    switch (this) {
+      case ContentPreference.all:
+        return 'All (Global)';
+      case ContentPreference.indonesia:
+        return 'Indonesia';
+      case ContentPreference.anime:
+        return 'Anime';
+      case ContentPreference.hollywood:
+        return 'Hollywood (Western)';
+      case ContentPreference.korea:
+        return 'Korea (K-Drama)';
+      case ContentPreference.japan:
+        return 'Japan (J-Drama)';
+      case ContentPreference.bollywood:
+        return 'Bollywood (India)';
+    }
+  }
+
+  /// Returns localized description based on user's active language.
+  String getLocalizedDescription(bool isIndonesian) {
+    if (isIndonesian) return description;
+    switch (this) {
+      case ContentPreference.all:
+        return 'Show all movies and TV shows worldwide without restrictions';
+      case ContentPreference.indonesia:
+        return 'Prioritize Indonesian movies & TV series';
+      case ContentPreference.anime:
+        return 'Prioritize Japanese anime movies & TV series';
+      case ContentPreference.hollywood:
+        return 'Prioritize Hollywood blockbusters & US TV series';
+      case ContentPreference.korea:
+        return 'Prioritize Korean dramas & K-Cinema';
+      case ContentPreference.japan:
+        return 'Prioritize Japanese live-action movies & series';
+      case ContentPreference.bollywood:
+        return 'Prioritize Indian cinema & Bollywood series';
+    }
+  }
+
   /// Whether a movie matches this preference for search sorting.
   bool matchesMovie(Movie movie) {
     if (this == ContentPreference.all) return false;

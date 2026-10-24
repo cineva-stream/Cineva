@@ -22,25 +22,25 @@ class _SplashScreenState extends State<SplashScreen>
   late final AnimationController _marqueeController;
 
   static const List<String> _postersRow1 = [
-    'https://image.tmdb.org/t/p/w342/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg', // Dune: Part Two
-    'https://image.tmdb.org/t/p/w342/ptpr0kGAckfQkJeJIt8st5dglvd.jpg', // Oppenheimer
-    'https://image.tmdb.org/t/p/w342/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg', // Across the Spider-Verse
-    'https://image.tmdb.org/t/p/w342/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg', // Interstellar
-    'https://image.tmdb.org/t/p/w342/qJ2tW6WMUDux911r6m7haRef0WH.jpg', // The Dark Knight
-    'https://image.tmdb.org/t/p/w342/7WsyChQLEftFiDOVTGkv3hFpyyt.jpg', // Avengers: Infinity War
-    'https://image.tmdb.org/t/p/w342/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg', // Inception
-    'https://image.tmdb.org/t/p/w342/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg', // Pulp Fiction
+    'assets/images/spiderman_brand_new_day.webp',
+    'assets/images/stranger_things.webp',
+    'assets/images/squid_game.webp',
+    'assets/images/game_of_thrones.webp',
+    'assets/images/breaking_bad.webp',
+    'assets/images/peaky_blinders.webp',
+    'assets/images/house_of_the_dragon.webp',
+    'assets/images/chernobyl.webp',
   ];
 
   static const List<String> _postersRow2 = [
-    'https://image.tmdb.org/t/p/w342/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg', // The Batman
-    'https://image.tmdb.org/t/p/w342/t6HIqrRAclMCA60NsSmeqe9RmNV.jpg', // Avatar 2
-    'https://image.tmdb.org/t/p/w342/vqzNJax09Vk53HoZ244a3z9i7yt.jpg', // Blade Runner 2049
-    'https://image.tmdb.org/t/p/w342/4m1Au3YkjqsxF8YrQvy7Fe7ScQn.jpg', // Stranger Things
-    'https://image.tmdb.org/t/p/w342/fqv8v6A9pnivveuOGfZKi83av2L.jpg', // Arcane
-    'https://image.tmdb.org/t/p/w342/1E5baAaEse26fej7uHcjOgEE2t2.jpg', // Fast X
-    'https://image.tmdb.org/t/p/w342/3bhkrj58Vtu7enYsRolD1fZdja1.jpg', // The Godfather
-    'https://image.tmdb.org/t/p/w342/A7EByudX09ZezGlASLe2YH8xrR5.jpg', // Gladiator II
+    'assets/images/chernobyl.webp',
+    'assets/images/house_of_the_dragon.webp',
+    'assets/images/peaky_blinders.webp',
+    'assets/images/breaking_bad.webp',
+    'assets/images/game_of_thrones.webp',
+    'assets/images/squid_game.webp',
+    'assets/images/stranger_things.webp',
+    'assets/images/spiderman_brand_new_day.webp',
   ];
 
   @override
@@ -61,7 +61,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateToHome() async {
-    await Future.delayed(const Duration(milliseconds: 3500));
+    await Future.delayed(const Duration(milliseconds: 5000));
     if (mounted) {
       context.go('/');
     }
@@ -70,8 +70,8 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final posterZoneHeight = size.height * 0.70;
-    final brandingZoneHeight = size.height * 0.30;
+    final posterZoneHeight = size.height * 0.62;
+    final brandingZoneHeight = size.height * 0.40;
 
     const double cardWidth = 115.0;
     const double cardHeight = 170.0;
@@ -83,7 +83,7 @@ class _SplashScreenState extends State<SplashScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // ── 70% Top Area: Counter-scrolling Movie Poster Marquee ──
+          // ── Top Area: Counter-scrolling Movie & TV Series Poster Marquee ──
           Positioned(
             top: 0,
             left: 0,
@@ -100,7 +100,7 @@ class _SplashScreenState extends State<SplashScreen>
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Row 1: Scrolling Right-to-Left
+                      // Row 1: Movies Scrolling Right-to-Left
                       SizedBox(
                         height: cardHeight,
                         child: OverflowBox(
@@ -119,7 +119,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                       ),
                       const SizedBox(height: 14),
-                      // Row 2: Scrolling Left-to-Right (Opposite Direction)
+                      // Row 2: TV Series Scrolling Left-to-Right
                       SizedBox(
                         height: cardHeight,
                         child: OverflowBox(
@@ -144,19 +144,19 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
 
-          // ── Gradient Overlay: Transparent over posters fading to solid background ──
+          // ── Gradient Overlay: Smooth transition from transparent to solid obsidian black ──
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  stops: const [0.0, 0.20, 0.50, 0.70, 0.75, 1.0],
+                  stops: const [0.0, 0.12, 0.35, 0.55, 0.65, 1.0],
                   colors: [
-                    AppColors.background.withValues(alpha: 0.6),
-                    Colors.black.withValues(alpha: 0.2),
+                    AppColors.background.withValues(alpha: 0.55),
                     Colors.transparent,
-                    AppColors.background.withValues(alpha: 0.85),
+                    Colors.transparent,
+                    AppColors.background.withValues(alpha: 0.75),
                     AppColors.background,
                     AppColors.background,
                   ],
@@ -165,101 +165,103 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
 
-          // ── 30% Bottom Area: Clean Typography & Description ──
+          // ── Bottom Area: Cineva Logo, Indonesian Description & Footer ──
           Positioned(
             left: 24,
             right: 24,
             bottom: 0,
             height: brandingZoneHeight,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Cineva Typographic Branding (No icon / No image logo)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      'CINEVA',
-                      style: GoogleFonts.outfit(
-                        fontSize: 38,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 4.5,
-                        color: Colors.white,
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Spacer(),
+
+                  // Cineva Logo Image (berisi ikon play oranye & teks CINEVA)
+                  Image.asset(
+                    'assets/images/logo_cineva.png',
+                    height: 96,
+                    fit: BoxFit.contain,
+                  )
+                      .animate()
+                      .fadeIn(duration: 650.ms, curve: Curves.easeOut)
+                      .scale(
+                        begin: const Offset(0.92, 0.92),
+                        end: const Offset(1, 1),
+                        duration: 650.ms,
+                        curve: Curves.easeOutCubic,
+                      ),
+
+                  const SizedBox(height: 16),
+
+                  // Deskripsi Singkat dalam Bahasa Indonesia (Diperbesar)
+                  Text(
+                    'Nonton Film & Serial TV Favorit Tanpa Batas',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: AppColors.textPrimary,
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
+                  )
+                      .animate(delay: 200.ms)
+                      .fadeIn(duration: 500.ms),
+
+                  const SizedBox(height: 6),
+
+                  Text(
+                    'Koleksi Terlengkap • Kualitas Ultra HD • Subtitle Indonesia',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 0.2,
+                    ),
+                  )
+                      .animate(delay: 350.ms)
+                      .fadeIn(duration: 500.ms),
+
+                  const SizedBox(height: 22),
+
+                  // Sleek Amber Progress Line (Diperbesar)
+                  SizedBox(
+                    width: 140,
+                    height: 3.5,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        backgroundColor: AppColors.surfaceElevated,
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary,
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
+                  )
+                      .animate(delay: 500.ms)
+                      .fadeIn(duration: 400.ms),
+
+                  const Spacer(),
+
+                  // Footer: Made with ❤️ by Cineva Group (Diperbesar)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'Made with ❤️ by Cineva Group',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        color: AppColors.textMuted.withValues(alpha: 0.85),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.4,
                       ),
                     ),
-                  ],
-                )
-                    .animate()
-                    .fadeIn(duration: 600.ms, curve: Curves.easeOut)
-                    .slideY(begin: 0.2, end: 0, duration: 600.ms, curve: Curves.easeOutCubic),
-
-                const SizedBox(height: 10),
-
-                // Main Tagline
-                Text(
-                  'Streaming Film & Serial TV Tanpa Batas',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    color: AppColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                )
-                    .animate(delay: 200.ms)
-                    .fadeIn(duration: 500.ms),
-
-                const SizedBox(height: 6),
-
-                // Secondary Description
-                Text(
-                  'Koleksi Terlengkap • Kualitas Ultra HD • Subtitle Indonesia',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    color: AppColors.textMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: 0.2,
-                  ),
-                )
-                    .animate(delay: 350.ms)
-                    .fadeIn(duration: 500.ms),
-
-                const SizedBox(height: 28),
-
-                // Sleek Amber Progress Line
-                SizedBox(
-                  width: 130,
-                  height: 3,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: LinearProgressIndicator(
-                      backgroundColor: AppColors.surfaceElevated,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                    ),
-                  ),
-                )
-                    .animate(delay: 500.ms)
-                    .fadeIn(duration: 400.ms),
-              ],
+                  )
+                      .animate(delay: 600.ms)
+                      .fadeIn(duration: 500.ms),
+                ],
+              ),
             ),
           ),
         ],
@@ -268,7 +270,9 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Widget _buildPosterCard(
-      String url, double width, double height, double rightMargin) {
+      String path, double width, double height, double rightMargin) {
+    final isNetwork = path.startsWith('http://') || path.startsWith('https://');
+
     return Container(
       width: width,
       height: height,
@@ -289,20 +293,32 @@ class _SplashScreenState extends State<SplashScreen>
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: CachedNetworkImage(
-          imageUrl: url,
-          memCacheWidth: 230,
-          memCacheHeight: 340,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            color: AppColors.surfaceVariant,
-          ),
-          errorWidget: (context, url, error) => Container(
-            color: AppColors.surfaceVariant,
-            child: const Icon(Icons.movie_outlined,
-                color: AppColors.textMuted, size: 28),
-          ),
-        ),
+        child: isNetwork
+            ? CachedNetworkImage(
+                imageUrl: path,
+                memCacheWidth: 230,
+                memCacheHeight: 340,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  color: AppColors.surfaceVariant,
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: AppColors.surfaceVariant,
+                  child: const Icon(Icons.movie_outlined,
+                      color: AppColors.textMuted, size: 28),
+                ),
+              )
+            : Image.asset(
+                path,
+                fit: BoxFit.cover,
+                cacheWidth: 230,
+                cacheHeight: 340,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: AppColors.surfaceVariant,
+                  child: const Icon(Icons.movie_outlined,
+                      color: AppColors.textMuted, size: 28),
+                ),
+              ),
       ),
     );
   }

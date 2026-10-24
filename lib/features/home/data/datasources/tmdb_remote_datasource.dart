@@ -8,8 +8,9 @@ import '../models/tv_series_model.dart';
 /// Remote data source for fetching movie/TV catalog data from TMDB API.
 class TmdbRemoteDatasource {
   final Dio _dio;
+  final String languageCode;
 
-  TmdbRemoteDatasource(this._dio);
+  TmdbRemoteDatasource(this._dio, {this.languageCode = 'id-ID'});
 
   /// Fetch trending movies (day, or discover if preference set).
   Future<List<MovieModel>> getTrendingMovies({
@@ -20,7 +21,7 @@ class TmdbRemoteDatasource {
       if (preference == ContentPreference.all) {
         final response = await _dio.get(
           '/trending/movie/day',
-          queryParameters: {'page': page, 'language': 'id-ID'},
+          queryParameters: {'page': page, 'language': languageCode},
         );
         return _parseMovieList(response.data);
       } else {
@@ -47,7 +48,7 @@ class TmdbRemoteDatasource {
       if (preference == ContentPreference.all) {
         final response = await _dio.get(
           '/movie/popular',
-          queryParameters: {'page': page, 'language': 'id-ID'},
+          queryParameters: {'page': page, 'language': languageCode},
         );
         return _parseMovieList(response.data);
       } else {
@@ -74,7 +75,7 @@ class TmdbRemoteDatasource {
       if (preference == ContentPreference.all) {
         final response = await _dio.get(
           '/movie/top_rated',
-          queryParameters: {'page': page, 'language': 'id-ID'},
+          queryParameters: {'page': page, 'language': languageCode},
         );
         return _parseMovieList(response.data);
       } else {
@@ -101,7 +102,7 @@ class TmdbRemoteDatasource {
       if (preference == ContentPreference.all) {
         final response = await _dio.get(
           '/movie/upcoming',
-          queryParameters: {'page': page, 'language': 'id-ID'},
+          queryParameters: {'page': page, 'language': languageCode},
         );
         return _parseMovieList(response.data);
       } else {
@@ -128,7 +129,7 @@ class TmdbRemoteDatasource {
       if (preference == ContentPreference.all) {
         final response = await _dio.get(
           '/tv/popular',
-          queryParameters: {'page': page, 'language': 'id-ID'},
+          queryParameters: {'page': page, 'language': languageCode},
         );
         return _parseTvList(response.data);
       } else {
@@ -155,7 +156,7 @@ class TmdbRemoteDatasource {
       if (preference == ContentPreference.all) {
         final response = await _dio.get(
           '/tv/top_rated',
-          queryParameters: {'page': page, 'language': 'id-ID'},
+          queryParameters: {'page': page, 'language': languageCode},
         );
         return _parseTvList(response.data);
       } else {
@@ -180,7 +181,7 @@ class TmdbRemoteDatasource {
   }) {
     final params = <String, dynamic>{
       'page': page,
-      'language': 'id-ID',
+      'language': languageCode,
       'sort_by': sortBy,
     };
 
@@ -225,7 +226,7 @@ class TmdbRemoteDatasource {
   }) {
     final params = <String, dynamic>{
       'page': page,
-      'language': 'id-ID',
+      'language': languageCode,
       'sort_by': sortBy,
     };
 
@@ -271,7 +272,7 @@ class TmdbRemoteDatasource {
         queryParameters: {
           'query': query,
           'page': page,
-          'language': 'id-ID',
+          'language': languageCode,
         },
       );
       return _parseMovieList(response.data);
@@ -291,7 +292,7 @@ class TmdbRemoteDatasource {
         queryParameters: {
           'query': query,
           'page': page,
-          'language': 'id-ID',
+          'language': languageCode,
         },
       );
       return _parseTvList(response.data);

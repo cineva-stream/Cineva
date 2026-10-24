@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 
 import '../../../../core/constants/content_preference.dart';
+import '../../../../core/localization/app_language.dart';
+import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../settings/data/settings_service.dart';
 import '../../data/datasources/tmdb_remote_datasource.dart';
@@ -17,7 +19,9 @@ final tmdbDioProvider = Provider<Dio>((ref) {
 });
 
 final tmdbDatasourceProvider = Provider<TmdbRemoteDatasource>((ref) {
-  return TmdbRemoteDatasource(ref.watch(tmdbDioProvider));
+  final lang = ref.watch(appLanguageProvider);
+  final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
+  return TmdbRemoteDatasource(ref.watch(tmdbDioProvider), languageCode: tmdbLang);
 });
 
 final movieRepositoryProvider = Provider<MovieRepository>((ref) {

@@ -9,6 +9,7 @@ import '../../features/home/domain/entities/tv_series.dart';
 class GenreFilter {
   final String id;
   final String label;
+  final String? labelEn;
   final List<int> movieGenreIds;
   final List<int> tvGenreIds;
   final IconData? icon;
@@ -16,10 +17,14 @@ class GenreFilter {
   const GenreFilter({
     required this.id,
     required this.label,
+    this.labelEn,
     required this.movieGenreIds,
     required this.tvGenreIds,
     this.icon,
   });
+
+  /// Returns localized label based on user's active language.
+  String getLocalizedLabel(bool isIndonesian) => isIndonesian ? label : (labelEn ?? label);
 
   /// Checks if a [movie] has any matching genre ID.
   bool matchesMovie(Movie movie) {
@@ -42,6 +47,7 @@ class GenreConstants {
     GenreFilter(
       id: 'all',
       label: 'Semua Genre',
+      labelEn: 'All Genres',
       movieGenreIds: [],
       tvGenreIds: [],
       icon: Iconsax.category_2,
@@ -49,6 +55,7 @@ class GenreConstants {
     GenreFilter(
       id: 'action',
       label: 'Action',
+      labelEn: 'Action',
       movieGenreIds: [28, 10759],
       tvGenreIds: [10759, 28],
       icon: Icons.flash_on_rounded,
@@ -56,6 +63,7 @@ class GenreConstants {
     GenreFilter(
       id: 'scifi',
       label: 'Sci-Fi',
+      labelEn: 'Sci-Fi',
       movieGenreIds: [878, 10765],
       tvGenreIds: [10765, 878],
       icon: Icons.rocket_launch_rounded,
@@ -63,6 +71,7 @@ class GenreConstants {
     GenreFilter(
       id: 'romance',
       label: 'Romance',
+      labelEn: 'Romance',
       movieGenreIds: [10749],
       tvGenreIds: [10749, 18],
       icon: Icons.favorite_rounded,
@@ -70,6 +79,7 @@ class GenreConstants {
     GenreFilter(
       id: 'drama',
       label: 'Drama',
+      labelEn: 'Drama',
       movieGenreIds: [18],
       tvGenreIds: [18],
       icon: Icons.theater_comedy_rounded,
@@ -77,6 +87,7 @@ class GenreConstants {
     GenreFilter(
       id: 'comedy',
       label: 'Komedi',
+      labelEn: 'Comedy',
       movieGenreIds: [35],
       tvGenreIds: [35],
       icon: Icons.sentiment_very_satisfied_rounded,
@@ -84,6 +95,7 @@ class GenreConstants {
     GenreFilter(
       id: 'horror',
       label: 'Horor',
+      labelEn: 'Horror',
       movieGenreIds: [27],
       tvGenreIds: [27, 9648],
       icon: Icons.nightlight_round,
@@ -91,6 +103,7 @@ class GenreConstants {
     GenreFilter(
       id: 'animation',
       label: 'Animasi',
+      labelEn: 'Animation',
       movieGenreIds: [16],
       tvGenreIds: [16],
       icon: Icons.auto_awesome_rounded,
@@ -98,6 +111,7 @@ class GenreConstants {
     GenreFilter(
       id: 'adventure',
       label: 'Petualangan',
+      labelEn: 'Adventure',
       movieGenreIds: [12, 10759],
       tvGenreIds: [10759, 12],
       icon: Icons.explore_rounded,
@@ -105,6 +119,7 @@ class GenreConstants {
     GenreFilter(
       id: 'thriller',
       label: 'Thriller',
+      labelEn: 'Thriller',
       movieGenreIds: [53, 80],
       tvGenreIds: [53, 80],
       icon: Icons.psychology_rounded,
@@ -112,6 +127,7 @@ class GenreConstants {
     GenreFilter(
       id: 'fantasy',
       label: 'Fantasi',
+      labelEn: 'Fantasy',
       movieGenreIds: [14, 10765],
       tvGenreIds: [10765, 14],
       icon: Icons.auto_fix_high_rounded,
@@ -119,6 +135,7 @@ class GenreConstants {
     GenreFilter(
       id: 'mystery',
       label: 'Misteri',
+      labelEn: 'Mystery',
       movieGenreIds: [9648],
       tvGenreIds: [9648],
       icon: Icons.search_rounded,
@@ -126,6 +143,7 @@ class GenreConstants {
     GenreFilter(
       id: 'family',
       label: 'Keluarga',
+      labelEn: 'Family',
       movieGenreIds: [10751, 10762],
       tvGenreIds: [10762, 10751],
       icon: Icons.family_restroom_rounded,
@@ -133,6 +151,7 @@ class GenreConstants {
     GenreFilter(
       id: 'crime',
       label: 'Kriminal',
+      labelEn: 'Crime',
       movieGenreIds: [80],
       tvGenreIds: [80],
       icon: Icons.gavel_rounded,

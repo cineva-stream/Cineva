@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/localization/app_language_provider.dart';
 import '../../data/watchlist_repository.dart';
 
 /// Watchlist screen displaying saved movies and TV series from Hive.
@@ -15,6 +16,7 @@ class WatchlistScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final items = ref.watch(watchlistProvider);
 
     return Scaffold(
@@ -28,7 +30,7 @@ class WatchlistScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: Row(
                 children: [
-                  Text('Watchlist', style: Theme.of(context).textTheme.displaySmall),
+                  Text(s.watchlistTitle, style: Theme.of(context).textTheme.displaySmall),
                   const SizedBox(width: 8),
                   if (items.isNotEmpty)
                     Container(
@@ -53,7 +55,7 @@ class WatchlistScreen extends ConsumerWidget {
 
             // ── Content ──
             Expanded(
-              child: items.isEmpty ? _EmptyState() : _WatchlistGrid(items: items),
+              child: items.isEmpty ? const _EmptyState() : _WatchlistGrid(items: items),
             ),
           ],
         ),
@@ -63,9 +65,13 @@ class WatchlistScreen extends ConsumerWidget {
 }
 
 /// Empty state widget shown when no items in watchlist.
-class _EmptyState extends StatelessWidget {
+class _EmptyState extends ConsumerWidget {
+  const _EmptyState();
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -81,25 +87,25 @@ class _EmptyState extends StatelessWidget {
               child: const Icon(Icons.bookmark_border_rounded, size: 48, color: AppColors.textMuted),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Watchlist Kosong',
-              style: TextStyle(
+            Text(
+              s.watchlistEmptyTitle,
+              style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Film dan serial TV yang kamu simpan\nakan muncul di sini',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+            Text(
+              s.watchlistEmptyDesc,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () => GoRouter.of(context).go('/search'),
               icon: const Icon(Icons.search_rounded, size: 18),
-              label: const Text('Cari Film'),
+              label: Text(s.watchlistExploreButton),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

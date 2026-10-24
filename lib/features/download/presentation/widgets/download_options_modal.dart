@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/localization/app_strings.dart';
+import '../../../../core/localization/app_language_provider.dart';
 import '../providers/download_provider.dart';
 import '../../data/services/download_file_namer.dart';
 import '../../data/services/video_download_service.dart';
@@ -148,6 +150,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final isMovie = widget.mediaType == 'movie';
 
@@ -162,7 +165,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
       orElse: () => ResolutionOption(
         label: '1080p',
         title: '1080p Full HD',
-        description: 'Kualitas terbaik',
+        description: s.isIndonesian ? 'Kualitas terbaik' : 'Best quality',
         estimatedSizeBytes: 1800000000,
         formattedSize: '~1.8 GB',
         streamUrl: '',
@@ -238,8 +241,8 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                         const SizedBox(height: 3),
                         Text(
                           isMovie
-                              ? 'Film • ${widget.releaseYear.isNotEmpty ? widget.releaseYear : 'N/A'}'
-                              : 'Serial TV • S${widget.season} E${widget.episode}${widget.episodeTitle != null ? ' - ${widget.episodeTitle}' : ''}',
+                              ? '${s.downloadModalMovie} • ${widget.releaseYear.isNotEmpty ? widget.releaseYear : 'N/A'}'
+                              : '${s.downloadModalTv} • S${widget.season} E${widget.episode}${widget.episodeTitle != null ? ' - ${widget.episodeTitle}' : ''}',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             color: AppColors.primary,
@@ -258,7 +261,9 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                _currentPage == 0 ? 'Langkah 1/2: Resolusi' : 'Langkah 2/2: Subtitle',
+                                _currentPage == 0
+                                    ? (s.isIndonesian ? 'Langkah 1/2: Resolusi' : 'Step 1/2: Resolution')
+                                    : (s.isIndonesian ? 'Langkah 2/2: Subtitle' : 'Step 2/2: Subtitle'),
                                 style: GoogleFonts.inter(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
@@ -310,10 +315,10 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                 onPageChanged: (idx) => setState(() => _currentPage = idx),
                 children: [
                   // PAGE 1: Resolusi & Ukuran
-                  _buildResolutionStep(context, selectedOption),
+                  _buildResolutionStep(context, selectedOption, s),
 
                   // PAGE 2: Subtitle Preference & Auto-Translation
-                  _buildSubtitleStep(context, selectedOption, videoFileName, subtitleFileName, bottomInset),
+                  _buildSubtitleStep(context, selectedOption, videoFileName, subtitleFileName, bottomInset, s),
                 ],
               ),
             ),
@@ -324,7 +329,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
   }
 
   /// Step 1: Video resolution & file size selection
-  Widget _buildResolutionStep(BuildContext context, ResolutionOption selectedOption) {
+  Widget _buildResolutionStep(BuildContext context, ResolutionOption selectedOption, AppStrings s) {
     return Column(
       children: [
         Expanded(
@@ -339,7 +344,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                     const Icon(Icons.hd_rounded, color: AppColors.primary, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      'Pilih Resolusi Video',
+                      s.downloadModalSelectResolution,
                       style: GoogleFonts.outfit(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -350,7 +355,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Pilih kualitas video sesuai ruang penyimpanan perangkat Anda',
+                  s.downloadModalSelectResolutionDesc,
                   style: GoogleFonts.inter(fontSize: 11.5, color: AppColors.textMuted),
                 ),
                 const SizedBox(height: 14),
@@ -359,10 +364,10 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 36),
                     alignment: Alignment.center,
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        SizedBox(
+                        const SizedBox(
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
@@ -370,10 +375,10 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                             color: AppColors.primary,
                           ),
                         ),
-                        SizedBox(width: 12),
+                        const SizedBox(width: 12),
                         Text(
-                          'Menghubungkan stream & menghitung ukuran...',
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                          s.downloadModalConnecting,
+                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                         ),
                       ],
                     ),
@@ -491,7 +496,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Lanjut ke Pilihan Subtitle (${selectedOption.label} • ${selectedOption.formattedSize})',
+                    '${s.downloadModalNextSub} (${selectedOption.label} • ${selectedOption.formattedSize})',
                     style: GoogleFonts.outfit(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w700,
@@ -515,6 +520,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
     String videoFileName,
     String subtitleFileName,
     double bottomInset,
+    AppStrings s,
   ) {
     return Column(
       children: [
@@ -546,7 +552,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Pilih Subtitle',
+                            s.downloadModalSelectSubtitle,
                             style: GoogleFonts.outfit(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -554,7 +560,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                             ),
                           ),
                           Text(
-                            'Kualitas terpilih: ${selectedOption.label} (${selectedOption.formattedSize})',
+                            s.downloadModalSelectedQuality(selectedOption.label, selectedOption.formattedSize),
                             style: GoogleFonts.inter(fontSize: 11, color: AppColors.primary),
                           ),
                         ],
@@ -566,21 +572,20 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
 
                 _buildSubtitleOption(
                   langCode: 'id',
-                  title: 'Bahasa Indonesia (Prioritas)',
+                  title: s.downloadModalIndonesianPriority,
                   badge: 'Auto-Translate',
-                  subtitle:
-                      'Otomatis unduh teks Indonesia. Jika belum ada, sistem mengunduh teks English ke cache lalu otomatis menerjemahkannya secara gratis.',
+                  subtitle: s.downloadModalIndonesianPriorityDesc,
                 ),
                 _buildSubtitleOption(
                   langCode: 'en',
-                  title: 'English Subtitle',
+                  title: s.downloadModalEnglishSub,
                   badge: 'Original',
-                  subtitle: 'Unduh teks subtitle resmi Bahasa Inggris asli.',
+                  subtitle: s.downloadModalEnglishSubDesc,
                 ),
                 _buildSubtitleOption(
                   langCode: 'none',
-                  title: 'Tanpa Subtitle',
-                  subtitle: 'Hanya mengunduh file video saja tanpa file subtitle terpisah.',
+                  title: s.downloadModalNoSub,
+                  subtitle: s.downloadModalNoSubDesc,
                 ),
 
                 const SizedBox(height: 14),
@@ -601,7 +606,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                           const Icon(Icons.folder_outlined, color: AppColors.textSecondary, size: 16),
                           const SizedBox(width: 6),
                           Text(
-                            'Lokasi Simpan di Perangkat:',
+                            s.downloadModalStorageLocation,
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               color: AppColors.textSecondary,
@@ -688,7 +693,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Unduhan dimulai! Ketuk ikon Unduhan di AppBar untuk melihat proses.',
+                            s.downloadModalStartedToast,
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               color: Colors.white,
@@ -699,7 +704,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                       ],
                     ),
                     action: SnackBarAction(
-                      label: 'Lihat',
+                      label: s.downloadModalViewToast,
                       textColor: AppColors.primary,
                       onPressed: () {
                         messenger.hideCurrentSnackBar();
@@ -711,7 +716,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
               },
               icon: const Icon(Icons.download_rounded, size: 20),
               label: Text(
-                'Mulai Mengunduh (${selectedOption.formattedSize})',
+                '${s.downloadModalStartDownload} (${selectedOption.formattedSize})',
                 style: GoogleFonts.outfit(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,

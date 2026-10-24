@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../app/theme/app_colors.dart';
-
+import '../../core/localization/app_language_provider.dart';
 import 'exit_confirmation_bottom_sheet.dart';
 
 /// Lightweight, modern, and minimalist bottom navigation shell.
@@ -13,7 +14,7 @@ import 'exit_confirmation_bottom_sheet.dart';
 /// - Opaque obsidian surface (removes expensive GPU BackdropFilter blurs)
 /// - Edge-to-edge system navigation bar padding
 /// - Centralized PopScope: back button always lands on Beranda, and on Beranda shows smooth exit bottom sheet
-class MainShell extends StatelessWidget {
+class MainShell extends ConsumerWidget {
   final Widget child;
   const MainShell({super.key, required this.child});
 
@@ -47,7 +48,8 @@ class MainShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final currentIndex = _currentIndex(context);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -95,7 +97,7 @@ class MainShell extends StatelessWidget {
                 _NavTab(
                   icon: Icons.home_outlined,
                   activeIcon: Icons.home_rounded,
-                  label: 'Beranda',
+                  label: s.navHome,
                   isActive: currentIndex == 0,
                   isCompact: isCompact,
                   onTap: () => _onTap(context, 0),
@@ -103,7 +105,7 @@ class MainShell extends StatelessWidget {
                 _NavTab(
                   icon: Icons.bookmark_border_rounded,
                   activeIcon: Icons.bookmark_rounded,
-                  label: 'Watchlist',
+                  label: s.navWatchlist,
                   isActive: currentIndex == 1,
                   isCompact: isCompact,
                   onTap: () => _onTap(context, 1),
@@ -111,7 +113,7 @@ class MainShell extends StatelessWidget {
                 _NavTab(
                   icon: Icons.search_rounded,
                   activeIcon: Icons.search_rounded,
-                  label: 'Cari',
+                  label: s.navSearch,
                   isActive: currentIndex == 2,
                   isCompact: isCompact,
                   onTap: () => _onTap(context, 2),
@@ -119,7 +121,7 @@ class MainShell extends StatelessWidget {
                 _NavTab(
                   icon: Icons.history_rounded,
                   activeIcon: Icons.history_rounded,
-                  label: 'Riwayat',
+                  label: s.navHistory,
                   isActive: currentIndex == 3,
                   isCompact: isCompact,
                   onTap: () => _onTap(context, 3),
@@ -127,7 +129,7 @@ class MainShell extends StatelessWidget {
                 _NavTab(
                   icon: Icons.settings_outlined,
                   activeIcon: Icons.settings_rounded,
-                  label: 'Pengaturan',
+                  label: s.navSettings,
                   isActive: currentIndex == 4,
                   isCompact: isCompact,
                   onTap: () => _onTap(context, 4),

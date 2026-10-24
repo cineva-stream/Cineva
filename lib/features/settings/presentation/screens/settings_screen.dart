@@ -8,8 +8,13 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/content_preference.dart';
+import '../../../../core/localization/app_language.dart';
+import '../../../../core/localization/app_strings.dart';
+import '../../../../core/localization/app_language_provider.dart';
+import '../../../../shared/widgets/modern_flag_badge.dart';
 import '../../../home/presentation/providers/home_providers.dart';
 import '../../data/settings_service.dart';
+import '../../data/subtitle_languages.dart';
 
 /// Modern, informative, and interactive Settings screen for Cineva.
 ///
@@ -73,17 +78,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
   }
 
-  String _subtitleLangLabel(String code) {
-    switch (code) {
-      case 'id':
-        return 'Indonesia (Auto-Terjemah)';
-      case 'en':
-        return 'English (Bahasa Asli)';
-      case 'off':
-        return 'Nonaktif (Tanpa Subtitle)';
+  String _localizedFontSize(String size, AppStrings s) {
+    switch (size.toLowerCase()) {
+      case 'kecil':
+        return s.isIndonesian ? 'Kecil' : 'Small';
+      case 'sedang':
+        return s.isIndonesian ? 'Sedang' : 'Medium';
+      case 'besar':
+        return s.isIndonesian ? 'Besar' : 'Large';
       default:
-        return code.toUpperCase();
+        return size;
     }
+  }
+
+  String _localizedSubtitleBg(String bg, AppStrings s) {
+    final lower = bg.toLowerCase();
+    if (lower.contains('transparan') && !lower.contains('semi')) {
+      return s.isIndonesian ? 'Transparan' : 'Transparent';
+    } else if (lower.contains('semi')) {
+      return s.isIndonesian ? 'Semi-Transparan' : 'Semi-Transparent';
+    } else if (lower.contains('hitam') || lower.contains('gelap')) {
+      return s.isIndonesian ? 'Hitam Pekat' : 'Solid Black';
+    }
+    return bg;
   }
 
   // ── Unified Scrollable Root Modal Bottom Sheet ──
@@ -167,7 +184,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showContentPreferenceSheet() {
+  void _showContentPreferenceSheet(AppStrings s) {
     final preferences = ContentPreference.values;
 
     _showModalSheet(
@@ -176,12 +193,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Icon(Iconsax.category_2, color: AppColors.primary, size: 22),
           const SizedBox(width: 10),
           Text(
-            'Preferensi Movie & TV Series',
+            s.settingsContentPref,
             style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
           ),
         ],
       ),
-      subtitle: 'Pilih kategori untuk diprioritaskan di Beranda dan pencarian film / serial TV.',
+      subtitle: s.settingsContentPrefDesc,
       children: preferences.map((pref) {
         final isSelected = _contentPreference == pref.code;
         return Container(
@@ -205,7 +222,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Icon(pref.icon, color: isSelected ? AppColors.primary : AppColors.textMuted, size: 18),
             ),
             title: Text(
-              pref.label,
+              pref.getLocalizedLabel(s.isIndonesian),
               style: GoogleFonts.inter(
                 color: isSelected ? AppColors.primary : Colors.white,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -213,7 +230,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             subtitle: Text(
-              pref.description,
+              pref.getLocalizedDescription(s.isIndonesian),
               style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 11),
             ),
             trailing: isSelected
@@ -234,7 +251,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Preferensi diubah ke ${pref.label}. Beranda & Pencarian otomatis disesuaikan.',
+                            s.isIndonesian
+                                ? 'Preferensi diubah ke ${pref.getLocalizedLabel(true)}. Beranda & Pencarian otomatis disesuaikan.'
+                                : 'Preference changed to ${pref.getLocalizedLabel(false)}. Home & Search updated.',
                             style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
                           ),
                         ),
@@ -250,12 +269,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showQualitySheet() {
+  void _showQualitySheet(AppStrings s) {
     final options = [
-      {'val': 'Auto', 'label': 'Auto (Adaptif FHD)', 'desc': 'Menyesuaikan kecepatan jaringan secara dinamis'},
-      {'val': '1080p', 'label': '1080p Full HD', 'desc': 'Kualitas gambar terbaik, jernih & tajam'},
-      {'val': '720p', 'label': '720p HD', 'desc': 'Hemat kuota dengan resolusi tetap tajam'},
-      {'val': '480p', 'label': '480p SD', 'desc': 'Koneksi lambat & paling hemat kuota'},
+      {
+        'val': 'Auto',
+        'label': 'Auto (Adaptif FHD)',
+        'desc': s.isIndonesian ? 'Menyesuaikan kecepatan jaringan secara dinamis' : 'Dynamically adapts to network speed',
+      },
+      {
+        'val': '1080p',
+        'label': '1080p Full HD',
+        'desc': s.isIndonesian ? 'Kualitas gambar terbaik, jernih & tajam' : 'Best picture quality, crystal clear & sharp',
+      },
+      {
+        'val': '720p',
+        'label': '720p HD',
+        'desc': s.isIndonesian ? 'Hemat kuota dengan resolusi tetap tajam' : 'Data saving with crisp resolution',
+      },
+      {
+        'val': '480p',
+        'label': '480p SD',
+        'desc': s.isIndonesian ? 'Koneksi lambat & paling hemat kuota' : 'For slow connections & lowest data usage',
+      },
     ];
 
     _showModalSheet(
@@ -264,12 +299,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Icon(Iconsax.video_play, color: AppColors.primary, size: 22),
           const SizedBox(width: 10),
           Text(
-            'Kualitas Video Default',
+            s.settingsDefaultQuality,
             style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
           ),
         ],
       ),
-      subtitle: 'Pilih resolusi pemutaran video yang disukai.',
+      subtitle: s.isIndonesian ? 'Pilih resolusi pemutaran video yang disukai.' : 'Choose preferred video playback resolution.',
       children: options.map((opt) {
         final val = opt['val']!;
         final isSelected = _defaultQuality == val;
@@ -307,28 +342,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showSubtitleLangSheet() {
-    final langs = [
-      {'val': 'id', 'title': 'Bahasa Indonesia', 'desc': 'Prioritas subtitle ID. Jika tidak tersedia, auto-terjemahkan subtitle EN secara instan.'},
-      {'val': 'en', 'title': 'English (Original)', 'desc': 'Gunakan subtitle Bahasa Inggris bawaan tanpa terjemahan otomatis.'},
-      {'val': 'off', 'title': 'Nonaktif', 'desc': 'Jangan aktifkan subtitle otomatis saat film baru dimulai.'},
-    ];
-
+  void _showAppLanguageSheet(AppStrings s) {
+    final currentLang = ref.read(appLanguageProvider);
     _showModalSheet(
       header: Row(
         children: [
-          const Icon(Iconsax.subtitle, color: AppColors.primary, size: 22),
+          const Icon(Icons.language_rounded, color: AppColors.primary, size: 22),
           const SizedBox(width: 10),
           Text(
-            'Bahasa Subtitle Default',
+            s.settingsAppLanguage,
             style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
           ),
         ],
       ),
-      subtitle: 'Pilih bahasa subtitle bawaan saat memutar video.',
-      children: langs.map((lang) {
-        final val = lang['val']!;
-        final isSelected = _defaultSubtitleLang == val;
+      subtitle: s.settingsAppLanguageDesc,
+      children: AppLanguage.values.map((lang) {
+        final isSelected = currentLang == lang;
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
@@ -341,21 +370,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           child: ListTile(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            title: Text(lang['title']!,
-                style: GoogleFonts.inter(
-                  color: isSelected ? AppColors.primary : Colors.white,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 14,
-                )),
-            subtitle: Text(lang['desc']!,
-                style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 11)),
+            leading: ModernFlagBadge(
+              countryCode: lang.flagCountryCode,
+              width: 30,
+              height: 20,
+              borderRadius: 4.5,
+            ),
+            title: Text(
+              lang.displayName,
+              style: GoogleFonts.inter(
+                color: isSelected ? AppColors.primary : Colors.white,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
             trailing: isSelected
                 ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20)
                 : null,
             onTap: () async {
               Navigator.of(context, rootNavigator: true).pop();
-              await SettingsService.setDefaultSubtitleLang(val);
-              _loadSettings();
+              await ref.read(appLanguageProvider.notifier).setLanguage(lang);
             },
           ),
         );
@@ -363,11 +397,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showFontSizeSheet() {
+  void _showSubtitleLangSheet(AppStrings s) {
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      barrierColor: Colors.black.withValues(alpha: 0.75),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return _SubtitleLanguagePickerSheet(
+          selectedCode: _defaultSubtitleLang,
+          strings: s,
+          onSelect: (code) async {
+            await SettingsService.setDefaultSubtitleLang(code);
+            _loadSettings();
+          },
+        );
+      },
+    );
+  }
+
+  void _showFontSizeSheet(AppStrings s) {
     final sizes = [
-      {'val': 'Kecil', 'desc': 'Ukuran teks 16pt (Cocok untuk layar landscape luas)'},
-      {'val': 'Sedang', 'desc': 'Ukuran teks 20pt (Standar nyaman untuk semua layar)'},
-      {'val': 'Besar', 'desc': 'Ukuran teks 24pt (Terlihat jelas dan mudah dibaca)'},
+      {
+        'val': 'Kecil',
+        'label': s.isIndonesian ? 'Kecil' : 'Small',
+        'desc': s.isIndonesian ? 'Ukuran teks 16pt (Cocok untuk layar landscape luas)' : '16pt font size (Best for wide landscape screens)',
+      },
+      {
+        'val': 'Sedang',
+        'label': s.isIndonesian ? 'Sedang' : 'Medium',
+        'desc': s.isIndonesian ? 'Ukuran teks 20pt (Standar nyaman untuk semua layar)' : '20pt font size (Standard comfortable size for all screens)',
+      },
+      {
+        'val': 'Besar',
+        'label': s.isIndonesian ? 'Besar' : 'Large',
+        'desc': s.isIndonesian ? 'Ukuran teks 24pt (Terlihat jelas dan mudah dibaca)' : '24pt font size (Clear and easily readable)',
+      },
     ];
 
     _showModalSheet(
@@ -376,14 +445,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Icon(Iconsax.text, color: AppColors.primary, size: 22),
           const SizedBox(width: 10),
           Text(
-            'Ukuran Huruf Subtitle',
+            s.settingsSubFontSize,
             style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
           ),
         ],
       ),
-      subtitle: 'Sesuaikan ukuran teks subtitle agar nyaman dibaca.',
-      children: sizes.map((s) {
-        final isSelected = _subtitleFontSize == s['val'];
+      subtitle: s.isIndonesian ? 'Sesuaikan ukuran teks subtitle agar nyaman dibaca.' : 'Adjust subtitle text size for comfortable reading.',
+      children: sizes.map((item) {
+        final isSelected = _subtitleFontSize == item['val'];
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
@@ -396,20 +465,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           child: ListTile(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            title: Text(s['val']!,
+            title: Text(item['label']!,
                 style: GoogleFonts.inter(
                   color: isSelected ? AppColors.primary : Colors.white,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   fontSize: 14,
                 )),
-            subtitle: Text(s['desc']!,
+            subtitle: Text(item['desc']!,
                 style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 11)),
             trailing: isSelected
                 ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20)
                 : null,
             onTap: () async {
               Navigator.of(context, rootNavigator: true).pop();
-              await SettingsService.setSubtitleFontSize(s['val']!);
+              await SettingsService.setSubtitleFontSize(item['val']!);
               _loadSettings();
             },
           ),
@@ -418,11 +487,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showSubtitleBgSheet() {
+  void _showSubtitleBgSheet(AppStrings s) {
     final backgrounds = [
-      {'val': 'Transparan', 'desc': 'Teks dengan bayangan halus tanpa kotak latar'},
-      {'val': 'Semi-Transparan', 'desc': 'Latar hitam transparan 50% untuk kontras tinggi'},
-      {'val': 'Hitam Pekat', 'desc': 'Latar hitam solid untuk keterbacaan maksimal'},
+      {
+        'val': 'Transparan',
+        'label': s.isIndonesian ? 'Transparan' : 'Transparent',
+        'desc': s.isIndonesian ? 'Teks dengan bayangan halus tanpa kotak latar' : 'Text with soft shadow without background box',
+      },
+      {
+        'val': 'Semi-Transparan',
+        'label': s.isIndonesian ? 'Semi-Transparan' : 'Semi-Transparent',
+        'desc': s.isIndonesian ? 'Latar hitam transparan 50% untuk kontras tinggi' : '50% transparent black background for high contrast',
+      },
+      {
+        'val': 'Hitam Pekat',
+        'label': s.isIndonesian ? 'Hitam Pekat' : 'Solid Black',
+        'desc': s.isIndonesian ? 'Latar hitam solid untuk keterbacaan maksimal' : 'Solid black background for maximum readability',
+      },
     ];
 
     _showModalSheet(
@@ -431,12 +512,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Icon(Icons.format_paint_rounded, color: AppColors.primary, size: 22),
           const SizedBox(width: 10),
           Text(
-            'Latar Belakang Subtitle',
+            s.settingsSubBg,
             style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
           ),
         ],
       ),
-      subtitle: 'Sesuaikan kontras latar belakang subtitle terhadap gambar video.',
+      subtitle: s.isIndonesian ? 'Sesuaikan kontras latar belakang subtitle terhadap gambar video.' : 'Adjust subtitle background contrast against video content.',
       children: backgrounds.map((bg) {
         final isSelected = _subtitleBg == bg['val'];
         return Container(
@@ -451,7 +532,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           child: ListTile(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            title: Text(bg['val']!,
+            title: Text(bg['label']!,
                 style: GoogleFonts.inter(
                   color: isSelected ? AppColors.primary : Colors.white,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -473,7 +554,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _clearCacheAction() {
+  void _clearCacheAction(AppStrings s) {
     showDialog(
       context: context,
       useRootNavigator: true,
@@ -481,17 +562,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Bersihkan Cache?',
+          s.settingsClearCache,
           style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w700),
         ),
         content: Text(
-          'Tindakan ini akan menghapus ${_cacheSizeMb.toStringAsFixed(1)} MB file poster sementara dan data buffering yang tersimpan di perangkat.',
+          s.isIndonesian
+              ? 'Tindakan ini akan menghapus ${_cacheSizeMb.toStringAsFixed(1)} MB file poster sementara dan data buffering yang tersimpan di perangkat.'
+              : 'This will remove ${_cacheSizeMb.toStringAsFixed(1)} MB of cached posters and temporary buffering data on this device.',
           style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: GoogleFonts.inter(color: AppColors.textMuted)),
+            child: Text(s.dialogCancel, style: GoogleFonts.inter(color: AppColors.textMuted)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -508,7 +591,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
                       const SizedBox(width: 10),
                       Text(
-                        'Cache berhasil dibersihkan (0.0 MB)',
+                        '${s.dialogCacheCleaned} (0.0 MB)',
                         style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -521,14 +604,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Bersihkan'),
+            child: Text(s.dialogClear),
           ),
         ],
       ),
     );
   }
 
-  void _clearHistoryAction() {
+  void _clearHistoryAction(AppStrings s) {
     showDialog(
       context: context,
       useRootNavigator: true,
@@ -536,17 +619,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Hapus Riwayat Tontonan?',
+          s.settingsClearHistory,
           style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w700),
         ),
         content: Text(
-          'Semua daftar film dan episode yang telah selesai atau sedang Anda tonton akan dihapus secara permanen.',
+          s.settingsClearHistoryDesc,
           style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: GoogleFonts.inter(color: AppColors.textMuted)),
+            child: Text(s.dialogCancel, style: GoogleFonts.inter(color: AppColors.textMuted)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -561,7 +644,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
                         const SizedBox(width: 10),
                         Text(
-                          'Riwayat tontonan berhasil dihapus',
+                          s.dialogHistoryCleared,
                           style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -575,7 +658,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Hapus'),
+            child: Text(s.dialogDelete),
           ),
         ],
       ),
@@ -584,6 +667,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
+    final currentAppLang = ref.watch(appLanguageProvider);
+    final currentSubLang = SubtitleLanguageCatalog.findByCode(_defaultSubtitleLang);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -607,7 +694,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    'Pengaturan',
+                    s.settingsTitle,
                     style: GoogleFonts.outfit(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
@@ -682,7 +769,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          'Versi $_appVersion (Build $_buildNumber)',
+                          '${s.settingsVersion} $_appVersion (Build $_buildNumber)',
                           style: GoogleFonts.inter(
                             color: AppColors.textSecondary,
                             fontSize: 13,
@@ -707,13 +794,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             const SizedBox(height: 24),
 
-            // ── SECTION: PREFERENSI KONTEN (Movie & TV Series) ──
-            _buildSectionHeader('Preferensi Konten', Iconsax.category_2),
+            // ── SECTION 0: PREFERENSI UMUM (Bahasa Aplikasi & Konten) ──
+            _buildSectionHeader(s.settingsGeneralSection, Iconsax.setting_2),
             _buildSettingsCard([
               _SettingsTileItem(
+                icon: Icons.language_rounded,
+                title: s.settingsAppLanguage,
+                subtitle: s.settingsAppLanguageDesc,
+                trailingWidget: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ModernFlagBadge(
+                      countryCode: currentAppLang.flagCountryCode,
+                      width: 26,
+                      height: 18,
+                      borderRadius: 4,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      currentAppLang.label,
+                      style: GoogleFonts.inter(
+                        color: AppColors.primaryLight,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 13),
+                  ],
+                ),
+                onTap: () => _showAppLanguageSheet(s),
+              ),
+              _buildCardDivider(),
+              _SettingsTileItem(
                 icon: Iconsax.discover,
-                title: 'Preferensi Movie & TV Series',
-                subtitle: 'Prioritaskan katalog di Beranda & Pencarian (${ContentPreference.fromCode(_contentPreference).label})',
+                title: s.settingsContentPref,
+                subtitle: '${s.settingsContentPrefDesc} (${ContentPreference.fromCode(_contentPreference).getLocalizedLabel(s.isIndonesian)})',
                 trailingWidget: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -724,7 +840,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        ContentPreference.fromCode(_contentPreference).label.split(' ').first,
+                        ContentPreference.fromCode(_contentPreference).getLocalizedLabel(s.isIndonesian).split(' ').first,
                         style: GoogleFonts.inter(
                           color: AppColors.primaryLight,
                           fontWeight: FontWeight.w700,
@@ -736,27 +852,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 13),
                   ],
                 ),
-                onTap: _showContentPreferenceSheet,
+                onTap: () => _showContentPreferenceSheet(s),
               ),
             ]),
 
             const SizedBox(height: 20),
 
             // ── SECTION 1: PEMUTARAN & KUALITAS VIDEO ──
-            _buildSectionHeader('Pemutaran & Video', Iconsax.video_circle),
+            _buildSectionHeader(s.settingsVideoSection, Iconsax.video_circle),
             _buildSettingsCard([
               _SettingsTileItem(
                 icon: Iconsax.video_play,
-                title: 'Kualitas Streaming Default',
+                title: s.settingsDefaultQuality,
                 subtitle: _defaultQuality == 'Auto' ? 'Auto (Adaptif FHD)' : '$_defaultQuality Full HD',
                 trailingText: _defaultQuality,
-                onTap: _showQualitySheet,
+                onTap: () => _showQualitySheet(s),
               ),
               _buildCardDivider(),
               _SettingsToggleItem(
                 icon: Icons.speed_rounded,
-                title: 'Akselerasi Perangkat Keras',
-                subtitle: 'Gunakan GPU decoder untuk pemutaran video 60fps tanpa patah-patah',
+                title: s.settingsHwAccel,
+                subtitle: s.settingsHwAccelDesc,
                 value: _hwAcceleration,
                 onChanged: (v) async {
                   await SettingsService.setHardwareAcceleration(v);
@@ -766,8 +882,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _buildCardDivider(),
               _SettingsToggleItem(
                 icon: Iconsax.wifi,
-                title: 'Streaming Hemat Kuota (Wi-Fi Saja)',
-                subtitle: 'Mencegah buffering torrent berukuran besar di jaringan seluler',
+                title: s.settingsWifiOnly,
+                subtitle: s.settingsWifiOnlyDesc,
                 value: _wifiOnlySeeding,
                 onChanged: (v) async {
                   await SettingsService.setWifiOnlySeeding(v);
@@ -779,20 +895,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 20),
 
             // ── SECTION 2: SUBTITLE & BAHASA ──
-            _buildSectionHeader('Subtitle & Bahasa', Iconsax.subtitle),
+            _buildSectionHeader(s.settingsSubSection, Iconsax.subtitle),
             _buildSettingsCard([
               _SettingsTileItem(
                 icon: Iconsax.translate,
-                title: 'Bahasa Subtitle Utama',
-                subtitle: _subtitleLangLabel(_defaultSubtitleLang),
-                trailingText: _defaultSubtitleLang.toUpperCase(),
-                onTap: _showSubtitleLangSheet,
+                title: s.settingsSubLanguage,
+                subtitle: currentSubLang.displayName,
+                trailingWidget: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!currentSubLang.isOff) ...[
+                      ModernFlagBadge(
+                        countryCode: currentSubLang.countryCode,
+                        width: 26,
+                        height: 18,
+                        borderRadius: 4,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      currentSubLang.code.toUpperCase(),
+                      style: GoogleFonts.inter(
+                        color: AppColors.primaryLight,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 13),
+                  ],
+                ),
+                onTap: () => _showSubtitleLangSheet(s),
               ),
               _buildCardDivider(),
               _SettingsToggleItem(
                 icon: Icons.auto_awesome_rounded,
-                title: 'Auto-Terjemah ke Indonesia',
-                subtitle: 'Otomatis terjemahkan subtitle asing ke Indonesia jika tidak ada yang asli',
+                title: s.settingsAutoTranslateTo(currentSubLang.name),
+                subtitle: s.settingsAutoTranslateDesc,
                 value: _autoTranslate,
                 onChanged: (v) async {
                   await SettingsService.setAutoTranslate(v);
@@ -802,46 +941,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _buildCardDivider(),
               _SettingsTileItem(
                 icon: Iconsax.text,
-                title: 'Ukuran Huruf Subtitle',
-                subtitle: _subtitleFontSize,
-                trailingText: _subtitleFontSize,
-                onTap: _showFontSizeSheet,
+                title: s.settingsSubFontSize,
+                subtitle: _localizedFontSize(_subtitleFontSize, s),
+                trailingText: _localizedFontSize(_subtitleFontSize, s),
+                onTap: () => _showFontSizeSheet(s),
               ),
               _buildCardDivider(),
               _SettingsTileItem(
                 icon: Icons.format_paint_rounded,
-                title: 'Latar Belakang Subtitle',
-                subtitle: _subtitleBg,
-                trailingText: _subtitleBg,
-                onTap: _showSubtitleBgSheet,
+                title: s.settingsSubBg,
+                subtitle: _localizedSubtitleBg(_subtitleBg, s),
+                trailingText: _localizedSubtitleBg(_subtitleBg, s),
+                onTap: () => _showSubtitleBgSheet(s),
               ),
             ]),
 
             const SizedBox(height: 20),
 
             // ── SECTION 3: PENYIMPANAN & RIWAYAT ──
-            _buildSectionHeader('Penyimpanan & Riwayat', Iconsax.folder),
+            _buildSectionHeader(s.settingsStorageSection, Iconsax.folder),
             _buildSettingsCard([
               _SettingsTileItem(
                 icon: Icons.download_rounded,
-                title: 'Daftar Unduhan (Download Manager)',
-                subtitle: 'Kelola film & serial TV yang sedang diunduh atau selesai',
+                title: s.isIndonesian ? 'Daftar Unduhan (Download Manager)' : 'Downloads (Download Manager)',
+                subtitle: s.isIndonesian ? 'Kelola film & serial TV yang sedang diunduh atau selesai' : 'Manage ongoing and completed downloads',
                 trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
                 onTap: () => context.push('/downloads'),
               ),
               _buildCardDivider(),
               _SettingsTileItem(
                 icon: Iconsax.play_cricle,
-                title: 'Buka Riwayat Tontonan',
-                subtitle: 'Lihat daftar film & serial TV yang pernah diputar',
+                title: s.isIndonesian ? 'Buka Riwayat Tontonan' : 'Open Watch History',
+                subtitle: s.isIndonesian ? 'Lihat daftar film & serial TV yang pernah diputar' : 'View previously watched movies & TV series',
                 trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
                 onTap: () => context.push('/history'),
               ),
               _buildCardDivider(),
               _SettingsTileItem(
                 icon: Iconsax.trash,
-                title: 'Bersihkan Cache Gambar & Poster',
-                subtitle: 'Membebaskan ruang penyimpanan dan memori sementara',
+                title: s.settingsClearCache,
+                subtitle: s.settingsClearCacheDesc,
                 trailingWidget: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -857,26 +996,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                 ),
-                onTap: _clearCacheAction,
+                onTap: () => _clearCacheAction(s),
               ),
               _buildCardDivider(),
               _SettingsTileItem(
                 icon: Iconsax.clock,
-                title: 'Hapus Riwayat Tontonan',
-                subtitle: 'Menghapus catatan posisi putar dan film yang telah ditonton',
-                onTap: _clearHistoryAction,
+                title: s.settingsClearHistory,
+                subtitle: s.settingsClearHistoryDesc,
+                onTap: () => _clearHistoryAction(s),
               ),
             ]),
 
             const SizedBox(height: 20),
 
             // ── SECTION 4: TENTANG & DUKUNGAN ──
-            _buildSectionHeader('Tentang & Lisensi', Iconsax.info_circle),
+            _buildSectionHeader(s.settingsAboutSection, Iconsax.info_circle),
             _buildSettingsCard([
               _SettingsTileItem(
                 icon: Iconsax.document_text,
-                title: 'Disclaimer & Hak Cipta',
-                subtitle: 'Informasi hukum penggunaan layanan streaming P2P',
+                title: s.settingsDisclaimerTitle,
+                subtitle: s.settingsDisclaimerSubtitle,
                 onTap: () {
                   showDialog(
                     context: context,
@@ -885,18 +1024,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       backgroundColor: AppColors.surface,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       title: Text(
-                        'Disclaimer Hukum',
+                        s.settingsDisclaimerDialogTitle,
                         style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w700),
                       ),
                       content: Text(
-                        'Cineva adalah pemutar media berbasis P2P terdesentralisasi yang mengakses konten publik yang tersedia di internet. Pengguna bertanggung jawab penuh atas media yang diakses sesuai peraturan perundang-undangan yang berlaku.',
+                        s.settingsDisclaimerContent,
                         style: GoogleFonts.inter(color: AppColors.textSecondary, height: 1.5, fontSize: 13),
                       ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
                           child: Text(
-                            'Mengerti',
+                            s.dialogUnderstood,
                             style: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.w600),
                           ),
                         ),
@@ -1111,6 +1250,210 @@ class _SettingsToggleItem extends StatelessWidget {
             inactiveTrackColor: AppColors.surfaceVariant,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Minimalist, high-performance modal sheet for selecting a subtitle language with instant search.
+class _SubtitleLanguagePickerSheet extends StatefulWidget {
+  final String selectedCode;
+  final AppStrings strings;
+  final ValueChanged<String> onSelect;
+
+  const _SubtitleLanguagePickerSheet({
+    required this.selectedCode,
+    required this.strings,
+    required this.onSelect,
+  });
+
+  @override
+  State<_SubtitleLanguagePickerSheet> createState() => _SubtitleLanguagePickerSheetState();
+}
+
+class _SubtitleLanguagePickerSheetState extends State<_SubtitleLanguagePickerSheet> {
+  final TextEditingController _searchCtrl = TextEditingController();
+  List<SubtitleLanguage> _filteredLanguages = SubtitleLanguageCatalog.languages;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchCtrl.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _filteredLanguages = SubtitleLanguageCatalog.search(_searchCtrl.text);
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Drag handle pill
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: Row(
+                children: [
+                  const Icon(Iconsax.translate, color: AppColors.primary, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.strings.settingsSubLanguage,
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: AppColors.textMuted, size: 20),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+
+            // Modern Search Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    width: 0.8,
+                  ),
+                ),
+                child: TextField(
+                  controller: _searchCtrl,
+                  style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                  cursorColor: AppColors.primary,
+                  decoration: InputDecoration(
+                    hintText: widget.strings.settingsSearchLanguage,
+                    hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 13),
+                    prefixIcon: const Icon(Iconsax.search_normal, color: AppColors.primary, size: 18),
+                    suffixIcon: _searchCtrl.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close_rounded, color: AppColors.textMuted, size: 16),
+                            onPressed: () => _searchCtrl.clear(),
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 13, horizontal: 14),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Minimalist Language List (Flags + Name only, no heavy description)
+            Flexible(
+              child: _filteredLanguages.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Text(
+                          widget.strings.settingsNoLanguageFound,
+                          style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(20, 6, 20, bottomPadding + bottomInset + 16),
+                      itemCount: _filteredLanguages.length,
+                      itemBuilder: (ctx, index) {
+                        final lang = _filteredLanguages[index];
+                        final isSelected = widget.selectedCode.toLowerCase() == lang.code.toLowerCase();
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? AppColors.primary : Colors.white.withValues(alpha: 0.05),
+                              width: isSelected ? 1.2 : 0.6,
+                            ),
+                          ),
+                          child: ListTile(
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            leading: lang.isOff
+                                ? Container(
+                                    width: 28,
+                                    height: 19,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.06),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: const Icon(Icons.subtitles_off_rounded, color: AppColors.textMuted, size: 14),
+                                  )
+                                : ModernFlagBadge(
+                                    countryCode: lang.countryCode,
+                                    width: 28,
+                                    height: 19,
+                                    borderRadius: 4,
+                                  ),
+                            title: Text(
+                              lang.displayName,
+                              style: GoogleFonts.inter(
+                                color: isSelected ? AppColors.primary : Colors.white,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                            ),
+                            trailing: isSelected
+                                ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20)
+                                : null,
+                            onTap: () {
+                              Navigator.of(context).pop();
+                              widget.onSelect(lang.code);
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

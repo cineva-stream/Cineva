@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../app/theme/app_colors.dart';
+import '../../core/localization/app_language_provider.dart';
 
 /// Smooth, elegant bottom sheet for confirming app exit when the user
 /// presses the back button on the Home (Beranda) screen.
-class ExitConfirmationBottomSheet extends StatelessWidget {
+class ExitConfirmationBottomSheet extends ConsumerWidget {
   const ExitConfirmationBottomSheet({super.key});
 
   static bool _isShowing = false;
@@ -31,7 +33,8 @@ class ExitConfirmationBottomSheet extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isCompact = screenWidth < 360;
@@ -100,7 +103,7 @@ class ExitConfirmationBottomSheet extends StatelessWidget {
 
           // Title
           Text(
-            'Keluar dari Cineva?',
+            s.dialogExitTitle,
             textAlign: TextAlign.center,
             style: GoogleFonts.outfit(
               fontSize: isCompact ? 18 : 20,
@@ -115,7 +118,7 @@ class ExitConfirmationBottomSheet extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              'Apakah Anda yakin ingin menutup dan keluar dari aplikasi Cineva?',
+              s.dialogExitMessage,
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: isCompact ? 12.5 : 13.5,
@@ -145,7 +148,7 @@ class ExitConfirmationBottomSheet extends StatelessWidget {
                     backgroundColor: AppColors.surfaceVariant.withValues(alpha: 0.5),
                   ),
                   child: Text(
-                    'Batal',
+                    s.dialogCancel,
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -174,7 +177,7 @@ class ExitConfirmationBottomSheet extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'Keluar',
+                    s.dialogExit,
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,

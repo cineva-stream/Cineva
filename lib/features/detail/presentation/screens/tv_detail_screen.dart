@@ -11,33 +11,54 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../watchlist/data/watchlist_repository.dart';
 import '../../../download/presentation/widgets/download_options_modal.dart';
+import '../../../../core/localization/app_language.dart';
+import '../../../../core/localization/app_language_provider.dart';
 
 // ── TV Detail Provider ──
 
 final tvDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((ref, tvId) async {
+  final lang = ref.watch(appLanguageProvider);
+  final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
   final dio = DioClient.createTmdbClient();
   final response = await dio.get('/tv/$tvId', queryParameters: {
-    'language': 'id-ID',
+    'language': tmdbLang,
     'append_to_response': 'credits,external_ids,similar',
   });
-  return response.data;
+  final data = Map<String, dynamic>.from(response.data as Map);
+  final overview = (data['overview'] as String? ?? '').trim();
+  if (overview.isEmpty) {
+    try {
+      final fallbackLang = tmdbLang == 'id-ID' ? 'en-US' : 'id-ID';
+      final fbResponse = await dio.get('/tv/$tvId', queryParameters: {
+        'language': fallbackLang,
+      });
+      final fbOverview = (fbResponse.data['overview'] as String? ?? '').trim();
+      if (fbOverview.isNotEmpty) {
+        data['overview'] = fbOverview;
+      }
+    } catch (_) {}
+  }
+  return data;
 });
 
 // ── TV Season Episodes Provider ──
 
 final tvSeasonEpisodesProvider = FutureProvider.family<List<Map<String, dynamic>>, ({int tvId, int seasonNumber})>((ref, arg) async {
+  final lang = ref.watch(appLanguageProvider);
+  final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
   final dio = DioClient.createTmdbClient();
   try {
     final response = await dio.get('/tv/${arg.tvId}/season/${arg.seasonNumber}', queryParameters: {
-      'language': 'id-ID',
+      'language': tmdbLang,
     });
     final episodes = response.data['episodes'] as List<dynamic>? ?? [];
     return episodes.cast<Map<String, dynamic>>();
   } catch (e) {
-    // Fallback to English if Indonesian translation is not available
+    // Fallback to alternate language
     try {
+      final fallbackLang = tmdbLang == 'id-ID' ? 'en-US' : 'id-ID';
       final response = await dio.get('/tv/${arg.tvId}/season/${arg.seasonNumber}', queryParameters: {
-        'language': 'en-US',
+        'language': fallbackLang,
       });
       final episodes = response.data['episodes'] as List<dynamic>? ?? [];
       return episodes.cast<Map<String, dynamic>>();
@@ -54,6 +75,7 @@ class TvDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final detail = ref.watch(tvDetailProvider(tvId));
 
     return PopScope(
@@ -76,11 +98,11 @@ class TvDetailScreen extends ConsumerWidget {
               children: [
                 const Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
                 const SizedBox(height: 16),
-                Text('Gagal memuat detail', style: Theme.of(context).textTheme.titleMedium),
+                Text(s.detailFailed, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => ref.invalidate(tvDetailProvider(tvId)),
-                  child: const Text('Coba Lagi'),
+                  child: Text(s.detailRetry),
                 ),
               ],
             ),
@@ -117,6 +139,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
     final data = widget.data;
     final name = data['name'] ?? '';
     final overview = data['overview'] ?? '';
@@ -234,7 +257,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '$numberOfSeasons Season • $numberOfEpisodes Episode',
+                            s.detailSeasonEpisodes(numberOfSeasons, numberOfEpisodes),
                             style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
                           ),
                           if (firstAirDate.length >= 4) ...[
@@ -293,7 +316,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                         },
                         icon: const Icon(Icons.play_arrow_rounded, size: 28),
                         label: Text(
-                          'Tonton S$_selectedSeasonNumber : E1',
+                          s.detailWatchTv(_selectedSeasonNumber, 1),
                           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -313,7 +336,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                           'tv',
                         );
                         return Tooltip(
-                          message: isInWatchlist ? 'Hapus dari Watchlist' : 'Tambahkan ke Watchlist',
+                          message: isInWatchlist ? s.detailWatchlistRemoveTooltip : s.detailWatchlistAddTooltip,
                           child: InkWell(
                             onTap: () async {
                               final item = WatchlistItem(
@@ -328,7 +351,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(added ? 'Ditambahkan ke Watchlist' : 'Dihapus dari Watchlist'),
+                                    content: Text(added ? s.detailAddedToWatchlist : s.detailRemovedFromWatchlist),
                                     backgroundColor: AppColors.surfaceVariant,
                                     duration: const Duration(seconds: 2),
                                   ),
@@ -373,10 +396,10 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                 const SizedBox(height: 24),
 
                 // ── Synopsis ──
-                Text('Sinopsis', style: Theme.of(context).textTheme.headlineMedium),
+                Text(s.detailSynopsis, style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 8),
                 Text(
-                  overview.isNotEmpty ? overview : 'Belum ada sinopsis.',
+                  overview.isNotEmpty ? overview : s.detailNoSynopsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6),
                 ),
 
@@ -389,11 +412,11 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                       children: [
                         const Icon(Iconsax.video_play, color: AppColors.primary, size: 22),
                         const SizedBox(width: 8),
-                        Text('Pilih Episode', style: Theme.of(context).textTheme.headlineMedium),
+                        Text(s.detailSelectEpisode, style: Theme.of(context).textTheme.headlineMedium),
                       ],
                     ),
                     Text(
-                      'Season $_selectedSeasonNumber',
+                      '${s.detailSeason} $_selectedSeasonNumber',
                       style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -471,10 +494,10 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                           children: [
                             const Icon(Iconsax.info_circle, color: AppColors.textMuted),
                             const SizedBox(width: 12),
-                            const Expanded(
+                            Expanded(
                               child: Text(
-                                'Daftar episode tidak tersedia saat ini.',
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                s.detailEpisodesUnavailable,
+                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                               ),
                             ),
                             TextButton(
@@ -482,7 +505,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                 tvId: tvId,
                                 seasonNumber: _selectedSeasonNumber,
                               ))),
-                              child: const Text('Coba Lagi'),
+                              child: Text(s.detailRetry),
                             ),
                           ],
                         ),
@@ -497,7 +520,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                               borderRadius: BorderRadius.circular(14),
                             ),
                             child: Text(
-                              'Belum ada episode di Season $_selectedSeasonNumber',
+                              s.detailNoEpisodesInSeason(_selectedSeasonNumber),
                               style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                             ),
                           );
@@ -611,7 +634,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                             children: [
                                               if (epRuntime != null && epRuntime > 0)
                                                 Text(
-                                                  '$epRuntime mnt',
+                                                  '$epRuntime ${s.isIndonesian ? 'mnt' : 'min'}',
                                                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
                                                 ),
                                               if (epRuntime != null && epRuntime > 0 && epAirDate.isNotEmpty)
@@ -666,7 +689,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                             size: 20,
                                             color: AppColors.primary,
                                           ),
-                                          tooltip: 'Unduh Episode $epNum',
+                                          tooltip: s.detailDownloadEpisode(epNum),
                                         ),
                                         const SizedBox(height: 4),
                                         Container(
@@ -697,7 +720,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                 // ── Cast ──
                 if (castList.isNotEmpty) ...[
                   const SizedBox(height: 28),
-                  Text('Pemeran', style: Theme.of(context).textTheme.headlineMedium),
+                  Text(s.detailCast, style: Theme.of(context).textTheme.headlineMedium),
                   const SizedBox(height: 12),
                   SizedBox(
                     height: 130,

@@ -3,6 +3,7 @@ import '../../../../core/constants/app_constants.dart';
 
 /// Centralized service for user preferences stored in Hive.
 class SettingsService {
+  static const String keyAppLanguage = 'app_language';
   static const String keyDefaultSubtitleLang = 'default_subtitle_lang';
   static const String keyAutoTranslate = 'auto_translate_indonesian';
   static const String keyDefaultQuality = 'default_quality';
@@ -12,6 +13,16 @@ class SettingsService {
   static const String keyContentPreference = 'content_preference';
 
   static Box get _box => Hive.box(AppConstants.settingsBox);
+
+  /// App interface language: 'id' (Bahasa Indonesia) or 'en' (English).
+  /// Defaults to 'id'.
+  static String getAppLanguage() {
+    return _box.get(keyAppLanguage, defaultValue: 'id') as String;
+  }
+
+  static Future<void> setAppLanguage(String lang) async {
+    await _box.put(keyAppLanguage, lang);
+  }
 
   /// Content preference: 'all', 'indonesia', 'anime', 'hollywood', 'korea', 'japan', 'bollywood'.
   /// Defaults to 'all'.

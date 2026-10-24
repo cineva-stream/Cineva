@@ -10,6 +10,8 @@ import '../../../../core/constants/api_constants.dart';
 import '../../domain/models/download_item.dart';
 import '../providers/download_provider.dart';
 import '../../data/repositories/download_repository.dart';
+import '../../../../core/localization/app_strings.dart';
+import '../../../../core/localization/app_language_provider.dart';
 
 /// Screen displaying movies and TV series currently downloading and finished.
 /// Supports YouTube-style in-app offline playback and Season-based TV Series management.
@@ -34,6 +36,7 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
     final allDownloads = ref.watch(downloadManagerProvider);
     final inProgress = allDownloads.where((i) => !i.isCompleted).toList();
     final completed = allDownloads.where((i) => i.isCompleted).toList();
@@ -70,7 +73,7 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
             icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           ),
           title: Text(
-            'Unduhan Offline',
+            s.downloadTitle,
             style: GoogleFonts.outfit(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -120,7 +123,7 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
                 children: [
                   Expanded(
                     child: _TabButton(
-                      label: 'Sedang Diunduh',
+                      label: s.downloadTabInProgress,
                       count: inProgress.length,
                       isSelected: _selectedTab == 0,
                       onTap: () => setState(() => _selectedTab = 0),
@@ -128,7 +131,7 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
                   ),
                   Expanded(
                     child: _TabButton(
-                      label: 'Tersimpan Offline',
+                      label: s.downloadTabCompleted,
                       count: completed.length,
                       isSelected: _selectedTab == 1,
                       onTap: () => setState(() => _selectedTab = 1),
@@ -155,11 +158,12 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
   }
 
   Widget _buildInProgressList(List<DownloadItem> items) {
+    final s = ref.watch(appStringsProvider);
     if (items.isEmpty) {
       return _buildEmptyState(
         icon: Icons.download_rounded,
-        title: 'Tidak Ada Unduhan Aktif',
-        description: 'Pilih Film atau Serial TV favorit Anda lalu tekan tombol Unduh.',
+        title: s.isIndonesian ? 'Tidak Ada Unduhan Aktif' : 'No Active Downloads',
+        description: s.isIndonesian ? 'Pilih Film atau Serial TV favorit Anda lalu tekan tombol Unduh.' : 'Select a movie or TV show and tap Download.',
       );
     }
 
@@ -180,11 +184,14 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
     required List<DownloadItem> movies,
     required List<DownloadItem> tvList,
   }) {
+    final s = ref.watch(appStringsProvider);
     if (allCompleted.isEmpty) {
       return _buildEmptyState(
         icon: Iconsax.video_tick,
-        title: 'Belum Ada Konten Tersimpan',
-        description: 'Semua Film & Serial TV yang diunduh akan tersimpan di sini dan siap ditonton kapan saja tanpa internet.',
+        title: s.isIndonesian ? 'Belum Ada Konten Tersimpan' : 'No Saved Content Yet',
+        description: s.isIndonesian
+            ? 'Semua Film & Serial TV yang diunduh akan tersimpan di sini dan siap ditonton kapan saja tanpa internet.'
+            : 'All downloaded movies and shows will be stored here ready for offline viewing.',
       );
     }
 
@@ -203,21 +210,21 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
           child: Row(
             children: [
               _buildFilterChip(
-                label: 'Semua',
+                label: s.homeAllCategory,
                 count: allCompleted.length,
                 isSelected: _completedFilter == 0,
                 onTap: () => setState(() => _completedFilter = 0),
               ),
               const SizedBox(width: 8),
               _buildFilterChip(
-                label: 'Film',
+                label: s.searchTabMovies,
                 count: movies.length,
                 isSelected: _completedFilter == 1,
                 onTap: () => setState(() => _completedFilter = 1),
               ),
               const SizedBox(width: 8),
               _buildFilterChip(
-                label: 'Serial TV',
+                label: s.searchTabTv,
                 count: tvSeriesMap.length,
                 isSelected: _completedFilter == 2,
                 onTap: () => setState(() => _completedFilter = 2),
@@ -235,7 +242,10 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
               // 1. Movie Section (if filter is 0 or 1)
               if ((_completedFilter == 0 || _completedFilter == 1) && movies.isNotEmpty) ...[
                 if (_completedFilter == 0) ...[
-                  _buildSectionHeader('Film Offline', '${movies.length} Film'),
+                  _buildSectionHeader(
+                    s.isIndonesian ? 'Film Offline' : 'Offline Movies',
+                    s.isIndonesian ? '${movies.length} Film' : '${movies.length} Movies',
+                  ),
                   const SizedBox(height: 8),
                 ],
                 ...movies.map((movie) => Padding(
@@ -248,7 +258,10 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
               // 2. TV Series Section (if filter is 0 or 2)
               if ((_completedFilter == 0 || _completedFilter == 2) && tvSeriesMap.isNotEmpty) ...[
                 if (_completedFilter == 0) ...[
-                  _buildSectionHeader('Serial TV Offline', '${tvSeriesMap.length} Judul'),
+                  _buildSectionHeader(
+                    s.isIndonesian ? 'Serial TV Offline' : 'Offline TV Series',
+                    s.isIndonesian ? '${tvSeriesMap.length} Judul' : '${tvSeriesMap.length} Series',
+                  ),
                   const SizedBox(height: 8),
                 ],
                 ...tvSeriesMap.entries.map((entry) {
@@ -487,6 +500,7 @@ class _InProgressCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final notifier = ref.read(downloadManagerProvider.notifier);
     final percent = (item.progress * 100).toInt();
 
@@ -584,7 +598,7 @@ class _InProgressCard extends ConsumerWidget {
               IconButton(
                 onPressed: () => notifier.cancelDownload(item.id),
                 icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.textMuted),
-                tooltip: 'Batalkan',
+                tooltip: s.dialogCancel,
               ),
             ],
           ),
@@ -632,6 +646,7 @@ class _CompletedMovieCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final notifier = ref.read(downloadManagerProvider.notifier);
 
     return Container(
@@ -776,12 +791,12 @@ class _CompletedMovieCard extends ConsumerWidget {
               IconButton(
                 onPressed: () => _playOffline(context),
                 icon: const Icon(Icons.play_circle_fill_rounded, color: AppColors.primary, size: 28),
-                tooltip: 'Putar',
+                tooltip: s.isIndonesian ? 'Putar' : 'Play',
               ),
               IconButton(
-                onPressed: () => _showDeleteDialog(context, notifier),
+                onPressed: () => _showDeleteDialog(context, notifier, s),
                 icon: const Icon(Iconsax.trash, size: 18, color: AppColors.textMuted),
-                tooltip: 'Hapus',
+                tooltip: s.dialogDelete,
               ),
             ],
           ),
@@ -804,21 +819,23 @@ class _CompletedMovieCard extends ConsumerWidget {
     });
   }
 
-  void _showDeleteDialog(BuildContext context, DownloadNotifier notifier) {
+  void _showDeleteDialog(BuildContext context, DownloadNotifier notifier, AppStrings s) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceVariant,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Hapus Unduhan?', style: GoogleFonts.outfit(color: Colors.white)),
+        title: Text(s.isIndonesian ? 'Hapus Unduhan?' : 'Delete Download?', style: GoogleFonts.outfit(color: Colors.white)),
         content: Text(
-          'Film "${item.title}" akan dihapus dari penyimpanan perangkat Anda.',
+          s.isIndonesian
+              ? 'Film "${item.title}" akan dihapus dari penyimpanan perangkat Anda.'
+              : '"${item.title}" will be deleted from your device storage.',
           style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal', style: TextStyle(color: AppColors.textMuted)),
+            child: Text(s.dialogCancel, style: const TextStyle(color: AppColors.textMuted)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -826,7 +843,7 @@ class _CompletedMovieCard extends ConsumerWidget {
               notifier.deleteDownload(item.id);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+            child: Text(s.dialogDelete, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -860,6 +877,7 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final appStrings = ref.watch(appStringsProvider);
     final first = episodes.first;
     final notifier = ref.read(downloadManagerProvider.notifier);
 
@@ -996,6 +1014,7 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
                       episodes: seasonsMap[seasonNum]!,
                       seriesTitle: first.title,
                       notifier: notifier,
+                      s: appStrings,
                     ),
                     const SizedBox(height: 6),
                     for (final ep in seasonsMap[seasonNum]!) ...[
@@ -1021,6 +1040,7 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
     required List<DownloadItem> episodes,
     required String seriesTitle,
     required DownloadNotifier notifier,
+    required AppStrings s,
   }) {
     int seasonBytes = 0;
     for (final ep in episodes) {
@@ -1062,22 +1082,27 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             icon: const Icon(Iconsax.trash, size: 14, color: AppColors.textMuted),
-            tooltip: 'Hapus Season $seasonNum',
+            tooltip: s.isIndonesian ? 'Hapus Season $seasonNum' : 'Delete Season $seasonNum',
             onPressed: () {
               showDialog(
                 context: context,
                 builder: (ctx) => AlertDialog(
                   backgroundColor: AppColors.surfaceVariant,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  title: Text('Hapus Season $seasonNum?', style: GoogleFonts.outfit(color: Colors.white)),
+                  title: Text(
+                    s.isIndonesian ? 'Hapus Season $seasonNum?' : 'Delete Season $seasonNum?',
+                    style: GoogleFonts.outfit(color: Colors.white),
+                  ),
                   content: Text(
-                    'Semua ${episodes.length} episode di Season $seasonNum ($seriesTitle) akan dihapus.',
+                    s.isIndonesian
+                        ? 'Semua ${episodes.length} episode di Season $seasonNum ($seriesTitle) akan dihapus.'
+                        : 'All ${episodes.length} episodes in Season $seasonNum ($seriesTitle) will be deleted.',
                     style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
                   ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Batal', style: TextStyle(color: AppColors.textMuted)),
+                      child: Text(s.dialogCancel, style: const TextStyle(color: AppColors.textMuted)),
                     ),
                     ElevatedButton(
                       onPressed: () {
@@ -1087,7 +1112,7 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
                         }
                       },
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                      child: const Text('Hapus Semua', style: TextStyle(color: Colors.white)),
+                      child: Text(s.isIndonesian ? 'Hapus Semua' : 'Delete All', style: const TextStyle(color: Colors.white)),
                     ),
                   ],
                 ),
@@ -1110,6 +1135,7 @@ class _EpisodeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final notifier = ref.read(downloadManagerProvider.notifier);
 
     return Container(
@@ -1201,7 +1227,7 @@ class _EpisodeCard extends ConsumerWidget {
               });
             },
             icon: const Icon(Icons.play_circle_fill_rounded, color: AppColors.primary, size: 26),
-            tooltip: 'Putar Episode',
+            tooltip: s.isIndonesian ? 'Putar Episode' : 'Play Episode',
           ),
 
           // Delete Button
@@ -1209,22 +1235,27 @@ class _EpisodeCard extends ConsumerWidget {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             icon: const Icon(Iconsax.trash, size: 16, color: AppColors.textMuted),
-            tooltip: 'Hapus Episode',
+            tooltip: s.isIndonesian ? 'Hapus Episode' : 'Delete Episode',
             onPressed: () {
               showDialog(
                 context: context,
                 builder: (ctx) => AlertDialog(
                   backgroundColor: AppColors.surfaceVariant,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  title: Text('Hapus Episode?', style: GoogleFonts.outfit(color: Colors.white)),
+                  title: Text(
+                    s.isIndonesian ? 'Hapus Episode?' : 'Delete Episode?',
+                    style: GoogleFonts.outfit(color: Colors.white),
+                  ),
                   content: Text(
-                    'Episode ${item.episodeNumber ?? 1} (${item.title}) akan dihapus.',
+                    s.isIndonesian
+                        ? 'Episode ${item.episodeNumber ?? 1} (${item.title}) akan dihapus.'
+                        : 'Episode ${item.episodeNumber ?? 1} (${item.title}) will be deleted.',
                     style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
                   ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Batal', style: TextStyle(color: AppColors.textMuted)),
+                      child: Text(s.dialogCancel, style: const TextStyle(color: AppColors.textMuted)),
                     ),
                     ElevatedButton(
                       onPressed: () {
@@ -1232,7 +1263,7 @@ class _EpisodeCard extends ConsumerWidget {
                         notifier.deleteDownload(item.id);
                       },
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                      child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+                      child: Text(s.dialogDelete, style: const TextStyle(color: Colors.white)),
                     ),
                   ],
                 ),

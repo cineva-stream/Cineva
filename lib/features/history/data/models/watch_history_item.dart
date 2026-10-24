@@ -47,8 +47,8 @@ class WatchHistoryItem {
   /// Progress percentage (0 - 100).
   int get progressPercent => (progress * 100).round();
 
-  /// Human-readable progress description.
-  String get progressSubtitle {
+  /// Human-readable progress description with localization support.
+  String localizedProgressSubtitle({bool isIndonesian = true}) {
     if (mediaType == 'tv' && season != null && episode != null) {
       final epLabel = 'S$season:E$episode';
       if (episodeTitle != null && episodeTitle!.isNotEmpty) {
@@ -62,12 +62,15 @@ class WatchHistoryItem {
       if (remMinutes >= 60) {
         final hours = remMinutes ~/ 60;
         final mins = remMinutes % 60;
-        return 'Sisa ${hours}j ${mins}m';
+        return isIndonesian ? 'Sisa ${hours}j ${mins}m' : '${hours}h ${mins}m left';
       }
-      return 'Sisa $remMinutes mnt';
+      return isIndonesian ? 'Sisa $remMinutes mnt' : '$remMinutes mins left';
     }
-    return 'Lanjutkan Menonton';
+    return isIndonesian ? 'Lanjutkan Menonton' : 'Continue Watching';
   }
+
+  /// Human-readable progress description (defaults to Indonesian).
+  String get progressSubtitle => localizedProgressSubtitle(isIndonesian: true);
 
   /// Formatted position timestamp: "01:23 / 02:15:00".
   String get positionTimestamp {

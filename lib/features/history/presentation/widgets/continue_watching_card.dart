@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/localization/app_language_provider.dart';
 import '../../data/models/watch_history_item.dart';
 import '../../data/repositories/watch_history_repository.dart';
 
@@ -20,6 +21,7 @@ class ContinueWatchingCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final imagePath = item.backdropPath ?? item.posterPath;
     final imageUrl = imagePath != null ? 'https://image.tmdb.org/t/p/w780$imagePath' : null;
 
@@ -155,8 +157,10 @@ class ContinueWatchingCard extends ConsumerWidget {
                         ),
                         child: Text(
                           item.mediaType == 'tv'
-                              ? (item.season != null ? 'S${item.season}:E${item.episode}' : 'SERIAL TV')
-                              : 'FILM',
+                              ? (item.season != null
+                                  ? 'S${item.season}:E${item.episode}'
+                                  : (s.isIndonesian ? 'SERIAL TV' : 'TV SERIES'))
+                              : (s.isIndonesian ? 'FILM' : 'MOVIE'),
                           style: GoogleFonts.inter(
                             color: Colors.white,
                             fontSize: 10,
@@ -234,7 +238,7 @@ class ContinueWatchingCard extends ConsumerWidget {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  item.progressSubtitle,
+                  item.localizedProgressSubtitle(isIndonesian: s.isIndonesian),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(

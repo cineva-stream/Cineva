@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/localization/app_language_provider.dart';
 
 /// Top-tier streaming section header with accent bar, icon, title, and action button.
-class SectionHeader extends StatelessWidget {
+class SectionHeader extends ConsumerWidget {
   final String title;
   final IconData? icon;
   final VoidCallback? onSeeAll;
+  final String? seeAllLabel;
 
   const SectionHeader({
     super.key,
     required this.title,
     this.icon,
     this.onSeeAll,
+    this.seeAllLabel,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -75,7 +79,7 @@ class SectionHeader extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Lihat Semua',
+                      seeAllLabel ?? ref.watch(appStringsProvider).homeSeeAll,
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

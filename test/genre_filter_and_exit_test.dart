@@ -137,12 +137,14 @@ void main() {
   group('ExitConfirmationBottomSheet Widget Tests', () {
     testWidgets('Renders exit bottom sheet with Keluar and Batal buttons', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => ElevatedButton(
-                onPressed: () => ExitConfirmationBottomSheet.show(context),
-                child: const Text('Show Sheet'),
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => ExitConfirmationBottomSheet.show(context),
+                  child: const Text('Show Sheet'),
+                ),
               ),
             ),
           ),
@@ -154,9 +156,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Check title and content
-      expect(find.text('Keluar dari Cineva?'), findsOneWidget);
+      expect(find.text('Konfirmasi Keluar'), findsOneWidget);
       expect(
-        find.text('Apakah Anda yakin ingin menutup dan keluar dari aplikasi Cineva?'),
+        find.text('Apakah Anda yakin ingin keluar dari Cineva?'),
         findsOneWidget,
       );
 
@@ -168,7 +170,7 @@ void main() {
       await tester.tap(find.text('Batal'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Keluar dari Cineva?'), findsNothing);
+      expect(find.text('Konfirmasi Keluar'), findsNothing);
     });
   });
 
@@ -210,11 +212,13 @@ void main() {
 
     testWidgets('Home ShellPopScope shows ExitConfirmationBottomSheet on back invocation', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: ShellPopScope(
-              isHome: true,
-              child: Text('Home Page'),
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: ShellPopScope(
+                isHome: true,
+                child: Text('Home Page'),
+              ),
             ),
           ),
         ),
@@ -227,7 +231,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Exit confirmation sheet should appear
-      expect(find.text('Keluar dari Cineva?'), findsOneWidget);
+      expect(find.text('Konfirmasi Keluar'), findsOneWidget);
     });
   });
 

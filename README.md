@@ -150,11 +150,11 @@ flutter test
 
 ## 📄 Lisensi
 
-Proyek ini dilisensikan di bawah lisensi **MIT License**. Hak Cipta (c) 2026 **Primadev Digital Technology**.  
+Proyek ini dilisensikan di bawah lisensi **MIT License**. Hak Cipta (c) 2026 **Cineva Group**.  
 Silakan merujuk ke file [LICENSE](LICENSE) untuk ketentuan lisensi selengkapnya.
 
 ---
 
 ## 👥 Pengembang
 
-Dikembangkan dan dipelihara oleh **Primadev Digital Technology**.
+Dikembangkan dan dipelihara oleh **Cineva Group**.

@@ -35,27 +35,61 @@ class TmdbGenres {
     10768: 'Perang & Politik',
   };
 
+  static const Map<int, String> _genreMapEn = {
+    // Movie genres
+    28: 'Action',
+    12: 'Adventure',
+    16: 'Animation',
+    35: 'Comedy',
+    80: 'Crime',
+    99: 'Documentary',
+    18: 'Drama',
+    10751: 'Family',
+    14: 'Fantasy',
+    36: 'History',
+    27: 'Horror',
+    10402: 'Music',
+    9648: 'Mystery',
+    10749: 'Romance',
+    878: 'Sci-Fi',
+    10770: 'TV Movie',
+    53: 'Thriller',
+    10752: 'War',
+    37: 'Western',
+
+    // TV genres
+    10759: 'Action & Adventure',
+    10762: 'Kids',
+    10763: 'News',
+    10764: 'Reality',
+    10765: 'Sci-Fi & Fantasy',
+    10766: 'Soap',
+    10767: 'Talk',
+    10768: 'War & Politics',
+  };
+
   /// Returns the genre name for a given [id], or empty string if not found.
-  static String getGenreName(int id) {
-    return _genreMap[id] ?? '';
+  static String getGenreName(int id, {bool isIndonesian = true}) {
+    final map = isIndonesian ? _genreMap : _genreMapEn;
+    return map[id] ?? (isIndonesian ? (_genreMapEn[id] ?? '') : (_genreMap[id] ?? ''));
   }
 
   /// Returns a formatted list of genre names (e.g. "Aksi • Sci-Fi") up to [limit].
-  static String getFormattedGenres(List<int> ids, {int limit = 2}) {
+  static String getFormattedGenres(List<int> ids, {int limit = 2, bool isIndonesian = true}) {
     if (ids.isEmpty) return '';
     final names = ids
-        .map((id) => _genreMap[id])
-        .whereType<String>()
+        .map((id) => getGenreName(id, isIndonesian: isIndonesian))
+        .where((n) => n.isNotEmpty)
         .take(limit)
         .toList();
     return names.join(' • ');
   }
 
   /// Returns the first primary genre name or fallback.
-  static String getPrimaryGenre(List<int> ids, {String fallback = 'Film'}) {
+  static String getPrimaryGenre(List<int> ids, {String fallback = 'Film', bool isIndonesian = true}) {
     for (final id in ids) {
-      final name = _genreMap[id];
-      if (name != null) return name;
+      final name = getGenreName(id, isIndonesian: isIndonesian);
+      if (name.isNotEmpty) return name;
     }
     return fallback;
   }

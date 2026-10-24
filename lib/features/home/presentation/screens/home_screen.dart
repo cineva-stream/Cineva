@@ -19,6 +19,8 @@ import '../../domain/entities/tv_series.dart';
 import '../../../history/presentation/widgets/continue_watching_section.dart';
 import '../../../download/presentation/providers/download_provider.dart';
 import '../widgets/genre_selection_bottom_sheet.dart';
+import '../../../../core/localization/app_strings.dart';
+import '../../../../core/localization/app_language_provider.dart';
 
 /// Active category filter on the Home Screen.
 enum HomeCategoryFilter {
@@ -29,6 +31,17 @@ enum HomeCategoryFilter {
   final String label;
   final IconData icon;
   const HomeCategoryFilter(this.label, this.icon);
+
+  String localizedLabel(AppStrings s) {
+    switch (this) {
+      case HomeCategoryFilter.all:
+        return s.homeAllCategory;
+      case HomeCategoryFilter.movies:
+        return s.isIndonesian ? 'Film' : 'Movies';
+      case HomeCategoryFilter.tv:
+        return s.isIndonesian ? 'Serial TV' : 'TV Shows';
+    }
+  }
 }
 
 final homeFilterProvider = StateProvider<HomeCategoryFilter>((ref) => HomeCategoryFilter.all);
@@ -39,6 +52,7 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final activeFilter = ref.watch(homeFilterProvider);
     final activeGenre = ref.watch(selectedHomeGenreProvider);
     final pref = ref.watch(contentPreferenceProvider);
@@ -105,7 +119,7 @@ class HomeScreen extends ConsumerWidget {
                       IconButton(
                         onPressed: () => context.push('/downloads'),
                         icon: const Icon(Icons.download_rounded, color: AppColors.textPrimary, size: 22),
-                        tooltip: 'Unduhan',
+                        tooltip: s.navDownloads,
                       ),
                       if (activeCount > 0)
                         Positioned(
@@ -217,7 +231,7 @@ class HomeScreen extends ConsumerWidget {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                filter.label,
+                                filter.localizedLabel(s),
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -272,7 +286,7 @@ class HomeScreen extends ConsumerWidget {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  isGenreActive ? activeGenre.label : 'Genre',
+                                  isGenreActive ? activeGenre.getLocalizedLabel(s.isIndonesian) : 'Genre',
                                   style: GoogleFonts.inter(
                                     fontSize: 12,
                                     fontWeight: isGenreActive ? FontWeight.w700 : FontWeight.w500,
@@ -329,7 +343,7 @@ class HomeScreen extends ConsumerWidget {
                 },
                 loading: () => const ShimmerHeroCarousel(),
                 error: (e, _) => AppErrorWidget(
-                  message: 'Gagal memuat film trending',
+                  message: s.isIndonesian ? 'Gagal memuat film trending' : 'Failed to load trending movies',
                   onRetry: () => ref.invalidate(trendingMoviesProvider),
                 ),
               ),
@@ -353,7 +367,7 @@ class HomeScreen extends ConsumerWidget {
               activeFilter == HomeCategoryFilter.movies)
             SliverToBoxAdapter(
               child: _SectionWithHeader<Movie>(
-                title: 'Top 10 Hari Ini',
+                title: s.homeTop10,
                 icon: Iconsax.crown,
                 asyncData: popular,
                 filter: filterMovies,
@@ -368,7 +382,7 @@ class HomeScreen extends ConsumerWidget {
               activeFilter == HomeCategoryFilter.movies)
             SliverToBoxAdapter(
               child: _SectionWithHeader<Movie>(
-                title: 'Film Populer',
+                title: s.homePopularMovies,
                 icon: Iconsax.trend_up,
                 asyncData: popular,
                 filter: filterMovies,
@@ -383,7 +397,7 @@ class HomeScreen extends ConsumerWidget {
               activeFilter == HomeCategoryFilter.tv)
             SliverToBoxAdapter(
               child: _SectionWithHeader<TvSeries>(
-                title: 'Serial TV Populer',
+                title: s.homePopularTv,
                 icon: Iconsax.monitor,
                 asyncData: popularTv,
                 filter: filterTv,
@@ -398,7 +412,7 @@ class HomeScreen extends ConsumerWidget {
               activeFilter == HomeCategoryFilter.movies)
             SliverToBoxAdapter(
               child: _SectionWithHeader<Movie>(
-                title: 'Rating Tertinggi',
+                title: s.isIndonesian ? 'Rating Tertinggi' : 'Top Rated',
                 icon: Iconsax.star_1,
                 asyncData: topRated,
                 filter: filterMovies,
@@ -413,7 +427,7 @@ class HomeScreen extends ConsumerWidget {
               activeFilter == HomeCategoryFilter.movies)
             SliverToBoxAdapter(
               child: _SectionWithHeader<Movie>(
-                title: 'Segera Tayang di Bioskop',
+                title: s.isIndonesian ? 'Segera Tayang di Bioskop' : 'Coming Soon in Theaters',
                 icon: Iconsax.calendar,
                 asyncData: upcoming,
                 filter: filterMovies,
@@ -464,7 +478,9 @@ class HomeScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Belum Ada Tayangan Genre ${activeGenre.label}',
+                            s.isIndonesian
+                                ? 'Belum Ada Tayangan Genre ${activeGenre.label}'
+                                : 'No Content in ${activeGenre.getLocalizedLabel(false)}',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.outfit(
                               fontSize: 18,
@@ -474,7 +490,9 @@ class HomeScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Coba pilih genre lain atau atur ulang ke Semua Genre.',
+                            s.isIndonesian
+                                ? 'Coba pilih genre lain atau atur ulang ke Semua Genre.'
+                                : 'Try picking another genre or reset to All Genres.',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(
                               fontSize: 13,
@@ -488,7 +506,7 @@ class HomeScreen extends ConsumerWidget {
                                   GenreConstants.filters.first;
                             },
                             icon: const Icon(Icons.refresh_rounded, size: 18),
-                            label: const Text('Tampilkan Semua Genre'),
+                            label: Text(s.isIndonesian ? 'Tampilkan Semua Genre' : 'Show All Genres'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.black,

@@ -18,6 +18,7 @@ import '../../../home/domain/entities/movie.dart';
 import '../../../home/domain/entities/tv_series.dart';
 import '../../../home/presentation/providers/home_providers.dart';
 import '../providers/search_history_provider.dart';
+import '../../../../core/localization/app_language_provider.dart';
 
 // ── Search Providers ──
 
@@ -88,6 +89,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
     final query = ref.watch(searchQueryProvider);
     final tabIndex = ref.watch(searchTabProvider);
     final movieResults = ref.watch(searchMovieResultsProvider);
@@ -108,7 +110,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Cari',
+                    s.searchTitle,
                     style: Theme.of(context).textTheme.displaySmall,
                   ),
                   if (pref != ContentPreference.all)
@@ -128,7 +130,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           Icon(pref.icon, size: 13, color: AppColors.primary),
                           const SizedBox(width: 5),
                           Text(
-                            'Prioritas ${pref.label}',
+                            s.searchPriority(pref.label),
                             style: GoogleFonts.inter(
                               color: AppColors.primaryLight,
                               fontSize: 11,
@@ -159,7 +161,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 },
                 style: const TextStyle(color: AppColors.textPrimary),
                 decoration: InputDecoration(
-                  hintText: 'Cari film atau serial TV...',
+                  hintText: s.searchHint,
                   prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted),
                   suffixIcon: query.isNotEmpty
                       ? IconButton(
@@ -252,13 +254,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 child: Row(
                   children: [
                     _FilterChip(
-                      label: 'Film',
+                      label: s.searchTabMovies,
                       isSelected: tabIndex == 0,
                       onTap: () => ref.read(searchTabProvider.notifier).state = 0,
                     ),
                     const SizedBox(width: 8),
                     _FilterChip(
-                      label: 'Serial TV',
+                      label: s.searchTabTv,
                       isSelected: tabIndex == 1,
                       onTap: () => ref.read(searchTabProvider.notifier).state = 1,
                     ),
@@ -283,16 +285,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 : movies.where((m) => activeGenre.matchesMovie(m)).toList();
                             if (filtered.isEmpty) {
                               return AppErrorWidget.empty(
-                                message: activeGenre.id == 'all'
-                                    ? 'Tidak ada film ditemukan untuk "$query"'
-                                    : 'Tidak ada film genre "${activeGenre.label}" untuk "$query"',
+                                message: s.searchNoMovies(query),
                               );
                             }
                             return _MovieGrid(movies: filtered);
                           },
                           loading: () => const _SearchLoadingGrid(),
                           error: (e, _) => AppErrorWidget(
-                            message: 'Pencarian gagal',
+                            message: s.searchFailed,
                             onRetry: () => ref.invalidate(searchMovieResultsProvider),
                           ),
                         )
@@ -303,16 +303,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 : tvShows.where((t) => activeGenre.matchesTv(t)).toList();
                             if (filtered.isEmpty) {
                               return AppErrorWidget.empty(
-                                message: activeGenre.id == 'all'
-                                    ? 'Tidak ada serial TV ditemukan untuk "$query"'
-                                    : 'Tidak ada serial TV genre "${activeGenre.label}" untuk "$query"',
+                                message: s.searchNoTv(query),
                               );
                             }
                             return _TvGrid(tvShows: filtered);
                           },
                           loading: () => const _SearchLoadingGrid(),
                           error: (e, _) => AppErrorWidget(
-                            message: 'Pencarian gagal',
+                            message: s.searchFailed,
                             onRetry: () => ref.invalidate(searchTvResultsProvider),
                           ),
                         ),
@@ -380,6 +378,7 @@ class _SearchDiscoveryView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final history = ref.watch(searchHistoryProvider);
     final popularMovies = ref.watch(popularMoviesProvider);
     final popularTv = ref.watch(popularTvProvider);
@@ -398,7 +397,7 @@ class _SearchDiscoveryView extends ConsumerWidget {
                   const Icon(Iconsax.clock, size: 16, color: AppColors.primary),
                   const SizedBox(width: 6),
                   Text(
-                    'Riwayat Pencarian',
+                    s.searchHistory,
                     style: GoogleFonts.outfit(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -412,7 +411,7 @@ class _SearchDiscoveryView extends ConsumerWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
                   child: Text(
-                    'Hapus Semua',
+                    s.searchClearAll,
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: AppColors.textMuted,
@@ -479,7 +478,7 @@ class _SearchDiscoveryView extends ConsumerWidget {
             const Icon(Icons.local_fire_department_rounded, size: 17, color: AppColors.primary),
             const SizedBox(width: 6),
             Text(
-              'Trend Pencarian',
+              s.searchTrending,
               style: GoogleFonts.outfit(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -549,7 +548,7 @@ class _SearchDiscoveryView extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Sering Dicari',
+                  s.searchTopSearched,
                   style: GoogleFonts.outfit(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -557,7 +556,7 @@ class _SearchDiscoveryView extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  'Film & Serial TV terpopuler minggu ini',
+                  s.searchTopSearchedSub,
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     color: AppColors.textMuted,
@@ -733,7 +732,7 @@ class _SearchDiscoveryView extends ConsumerWidget {
                                           borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: Text(
-                                          isMovie ? 'FILM' : 'SERIAL',
+                                          isMovie ? s.searchBadgeMovie : s.searchBadgeTv,
                                           style: GoogleFonts.inter(
                                             color: isMovie ? AppColors.primaryLight : Colors.blue.shade300,
                                             fontSize: 9,
@@ -1086,6 +1085,7 @@ class _GenreExplorerViewState extends ConsumerState<_GenreExplorerView> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
     final popularMovies = ref.watch(popularMoviesProvider);
     final topRatedMovies = ref.watch(topRatedMoviesProvider);
     final popularTv = ref.watch(popularTvProvider);
@@ -1098,13 +1098,13 @@ class _GenreExplorerViewState extends ConsumerState<_GenreExplorerView> {
           child: Row(
             children: [
               _FilterChip(
-                label: 'Film ${widget.activeGenre.label}',
+                label: s.searchGenreMovies(widget.activeGenre.label),
                 isSelected: _tab == 0,
                 onTap: () => setState(() => _tab = 0),
               ),
               const SizedBox(width: 8),
               _FilterChip(
-                label: 'Serial TV ${widget.activeGenre.label}',
+                label: s.searchGenreTv(widget.activeGenre.label),
                 isSelected: _tab == 1,
                 onTap: () => setState(() => _tab = 1),
               ),
@@ -1130,14 +1130,14 @@ class _GenreExplorerViewState extends ConsumerState<_GenreExplorerView> {
 
                     if (filtered.isEmpty) {
                       return AppErrorWidget.empty(
-                        message: 'Belum ada film untuk genre ${widget.activeGenre.label}',
+                        message: s.searchNoGenreMovies(widget.activeGenre.label),
                       );
                     }
                     return _MovieGrid(movies: filtered);
                   },
                   loading: () => const _SearchLoadingGrid(),
                   error: (e, _) => AppErrorWidget(
-                    message: 'Gagal memuat film genre',
+                    message: s.searchGenreErrorMovies,
                     onRetry: () => ref.invalidate(popularMoviesProvider),
                   ),
                 )
@@ -1148,14 +1148,14 @@ class _GenreExplorerViewState extends ConsumerState<_GenreExplorerView> {
                         .toList();
                     if (filtered.isEmpty) {
                       return AppErrorWidget.empty(
-                        message: 'Belum ada serial TV untuk genre ${widget.activeGenre.label}',
+                        message: s.searchNoGenreTv(widget.activeGenre.label),
                       );
                     }
                     return _TvGrid(tvShows: filtered);
                   },
                   loading: () => const _SearchLoadingGrid(),
                   error: (e, _) => AppErrorWidget(
-                    message: 'Gagal memuat serial TV genre',
+                    message: s.searchGenreErrorTv,
                     onRetry: () => ref.invalidate(popularTvProvider),
                   ),
                 ),
