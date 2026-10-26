@@ -24,7 +24,7 @@ import '../../../history/data/models/watch_history_item.dart';
 import '../../../history/data/repositories/watch_history_repository.dart';
 import '../../../download/domain/models/download_item.dart';
 import '../../../download/data/services/local_stream_server.dart';
-import '../../../download/data/services/native_media_muxer.dart';
+import '../../../download/data/services/offline_mp4_builder.dart';
 import '../../../download/presentation/providers/download_provider.dart';
 import '../providers/player_providers.dart';
 import '../widgets/custom_subtitle_overlay.dart';
@@ -723,6 +723,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     await _initOnlineStreaming();
   }
 
+  /// Waits until mpv has parsed the opened media (duration > 0). Returns false on timeout,
+  /// which indicates a corrupt/unsupported file instead of an endless loading spinner.
+  Future<bool> _waitForOfflineMediaReady(Duration timeout) async {
+    if (_player.state.duration > Duration.zero) return true;
+    try {
+      await _player.stream.duration
+          .firstWhere((d) => d > Duration.zero)
+          .timeout(timeout);
+      return true;
+    } catch (_) {
+      return _player.state.duration > Duration.zero;
+    }
+  }
+
   /// Dedicated offline video player handler.
   /// Plays local MP4 video directly from storage without any network traffic or buffering.
   Future<void> _initOfflinePlayback() async {
@@ -752,73 +766,45 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       }
 
       var targetMediaFile = localFile;
+      final mediaDir = localFile.parent;
+      final mp4Candidate = localFile.path.toLowerCase().endsWith('.mp4')
+          ? localFile
+          : File('${mediaDir.path}/${OfflineMp4Builder.mp4Name}');
+      final hlsMaster = File('${mediaDir.path}/master.m3u8');
+      final hasHlsSegments = await File('${mediaDir.path}/v_0000.ts').exists();
 
-      // 1. Check if hardware-muxed video.mp4 exists in the folder
-      if (!targetMediaFile.path.toLowerCase().endsWith('.mp4')) {
-        final mp4Candidate = File('${targetMediaFile.parent.path}/video.mp4');
-        if (await mp4Candidate.exists() && (await mp4Candidate.length()) > 50000) {
+      // 1. If a hardware-muxed MP4 exists, validate it with the native parser BEFORE handing it to mpv.
+      // A corrupt MP4 makes mpv hang forever with duration 00:00 and a black screen.
+      if (await mp4Candidate.exists()) {
+        if (await OfflineMp4Builder.isValidMp4(mp4Candidate)) {
           targetMediaFile = mp4Candidate;
+        } else {
+          debugPrint('[PlayerScreen] Offline MP4 failed validation, discarding: ${mp4Candidate.path}');
+          try {
+            await mp4Candidate.delete();
+          } catch (_) {}
+          if (hasHlsSegments && await hlsMaster.exists()) {
+            targetMediaFile = hlsMaster;
+          } else {
+            throw Exception(s.playerOfflineCorrupted);
+          }
         }
       }
 
-      // 2. If not MP4 yet, but offline TS chunks exist on Android, auto-mux to MP4 for instant zero-buffer playback
-      if (Platform.isAndroid && !targetMediaFile.path.toLowerCase().endsWith('.mp4')) {
-        final parentDir = targetMediaFile.parent;
-        final v0 = File('${parentDir.path}/v_0000.ts');
-        if (await v0.exists()) {
-          try {
-            debugPrint('[PlayerScreen] Found offline TS chunks, auto-muxing to MP4 for optimal offline playback...');
-            if (mounted) setState(() => _loadingStep = _PlayerLoadingStep.preparingMp4);
-            final vTemp = File('${parentDir.path}/temp_video.ts');
-            final aTemp = File('${parentDir.path}/temp_audio.ts');
-            final outMp4 = File('${parentDir.path}/video.mp4');
-
-            final vSink = vTemp.openWrite();
-            final chunks = parentDir.listSync().whereType<File>().toList();
-            final vFiles = chunks.where((f) => f.path.split(RegExp(r'[\\/]')).last.startsWith('v_')).toList()
-              ..sort((a, b) => a.path.compareTo(b.path));
-            for (final f in vFiles) {
-              await vSink.addStream(f.openRead());
-            }
-            await vSink.flush();
-            await vSink.close();
-
-            String? aTempPath;
-            final aFiles = chunks.where((f) => f.path.split(RegExp(r'[\\/]')).last.startsWith('a_')).toList()
-              ..sort((a, b) => a.path.compareTo(b.path));
-            if (aFiles.isNotEmpty) {
-              final aSink = aTemp.openWrite();
-              for (final f in aFiles) {
-                await aSink.addStream(f.openRead());
-              }
-              await aSink.flush();
-              await aSink.close();
-              if (await aTemp.exists() && (await aTemp.length()) > 1000) {
-                aTempPath = aTemp.path;
-              }
-            }
-
-            final success = await NativeMediaMuxer.muxToMp4(
-              videoPath: vTemp.path,
-              audioPath: aTempPath,
-              outputPath: outMp4.path,
-            );
-
-            if (await vTemp.exists()) await vTemp.delete();
-            if (await aTemp.exists()) await aTemp.delete();
-
-            if (success && await outMp4.exists() && (await outMp4.length()) > 50000) {
-              debugPrint('[PlayerScreen] Auto-muxing succeeded: ${outMp4.path}');
-              targetMediaFile = outMp4;
-              for (final f in [...vFiles, ...aFiles]) {
-                try {
-                  await f.delete();
-                } catch (_) {}
-              }
-            }
-          } catch (e) {
-            debugPrint('[PlayerScreen] Auto-muxing note: $e');
-          }
+      // 2. HLS bundle only: on Android, try an (validated) auto-mux to MP4 for instant zero-buffer playback.
+      // Source segments are deleted only if the native side validated the resulting MP4.
+      if (Platform.isAndroid && !targetMediaFile.path.toLowerCase().endsWith('.mp4') && hasHlsSegments) {
+        if (mounted) setState(() => _loadingStep = _PlayerLoadingStep.preparingMp4);
+        final expectedUs = await OfflineMp4Builder.expectedDurationUsFromPlaylist(
+          File('${mediaDir.path}/video.m3u8'),
+        );
+        final built = await OfflineMp4Builder.build(
+          dir: mediaDir,
+          expectedDurationUs: expectedUs,
+          respectFailureMarker: true,
+        );
+        if (built) {
+          targetMediaFile = File('${mediaDir.path}/${OfflineMp4Builder.mp4Name}');
         }
       }
 
@@ -833,11 +819,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (isSingleContainer) {
         debugPrint('[PlayerScreen] Playing offline native media directly from storage: ${targetMediaFile.path}');
         await _player.open(Media(targetMediaFile.path));
+        if (!await _waitForOfflineMediaReady(const Duration(seconds: 12))) {
+          throw Exception(s.playerOfflineCorrupted);
+        }
       } else {
         // Fallback for HLS manifest: try direct file path first, fallback to loopback HTTP server with cache:no
         try {
           debugPrint('[PlayerScreen] Attempting direct local HLS manifest open: ${targetMediaFile.path}');
           await _player.open(Media(targetMediaFile.path));
+          if (!await _waitForOfflineMediaReady(const Duration(seconds: 6))) {
+            throw Exception('Direct HLS open did not produce media info');
+          }
         } catch (_) {
           debugPrint('[PlayerScreen] Direct HLS failed, streaming via LocalStreamServer with zero-network cache');
           final port = await LocalStreamServer.instance.start();
@@ -854,6 +846,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           );
 
           await _player.open(Media(streamUrl));
+          if (!await _waitForOfflineMediaReady(const Duration(seconds: 12))) {
+            throw Exception(s.playerOfflineCorrupted);
+          }
         }
       }
 

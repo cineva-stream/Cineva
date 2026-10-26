@@ -190,6 +190,7 @@ class AppStrings {
   String get playerOfflineFailedTitle => isIndonesian ? 'Gagal Memutar Offline' : 'Offline Playback Failed';
   String get playerOfflineFailedDesc => isIndonesian ? 'Terjadi kendala saat memutar file lokal.\nPastikan proses unduhan telah selesai 100%.' : 'An error occurred while playing local file.\nMake sure download has reached 100%.';
   String get playerBackToDownloads => isIndonesian ? 'Kembali ke Unduhan' : 'Back to Downloads';
+  String get playerOfflineCorrupted => isIndonesian ? 'File unduhan rusak atau tidak dapat diputar. Silakan hapus lalu unduh ulang.' : 'The downloaded file is corrupted or cannot be played. Please delete it and download again.';
   String get playerDownloadNotFound => isIndonesian ? 'File unduhan tidak ditemukan di penyimpanan perangkat. Silakan unduh ulang.' : 'Downloaded file not found on device storage. Please download again.';
 
   String get playerError => isIndonesian ? 'Gagal memutar video' : 'Failed to play video';

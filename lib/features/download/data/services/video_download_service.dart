@@ -8,7 +8,8 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../player/data/services/vixsrc_stream_service.dart';
-import 'native_media_muxer.dart';
+import 'offline_mp4_builder.dart';
+import 'ts_segment_utils.dart';
 
 
 class ResolutionOption {
@@ -486,11 +487,14 @@ class VideoDownloadService {
       final encrypted = enc.Encrypted(alignedCipher);
       final iv = enc.IV(ivBytes);
 
+      // Decryption uses padding: null (raw blocks), so strip the PKCS7 padding here and keep
+      // the segment aligned to 188-byte TS packets. Otherwise concatenated segments lose TS sync.
+      // Never fall back to storing ciphertext: that yields an unplayable file.
       try {
-        return encrypter.decryptBytes(encrypted, iv: iv);
+        final decrypted = encrypter.decryptBytes(encrypted, iv: iv);
+        return TsSegmentUtils.stripPaddingAndAlign(decrypted);
       } catch (e) {
-        debugPrint('[VideoDownloadService] Segment decrypt note: $e');
-        return cipherBytes;
+        throw Exception('Gagal mendekripsi segmen video: $e');
       }
     }
 
@@ -544,7 +548,15 @@ class VideoDownloadService {
           if (encrypter != null) {
             final ivHex = task.isAudio ? audioIvHex : videoIvHex;
             final iv = parseIv(ivHex, task.index);
-            outputBytes = decryptSegment(bytes, encrypter, iv);
+            try {
+              outputBytes = decryptSegment(bytes, encrypter, iv);
+            } catch (e) {
+              if (!hasError) {
+                hasError = true;
+                errorObj = e;
+              }
+              return;
+            }
           }
 
           // Save decrypted segment directly to offline directory
@@ -645,6 +657,7 @@ class VideoDownloadService {
       debugPrint('[VideoDownloadService] Offline HLS bundle successfully created in: ${targetDir.path}');
 
       // 4. On Android, remux to a single hardware-accelerated .mp4 container for instant, zero-buffer offline playback!
+      // Segments are only deleted when the native side validates the MP4; otherwise the HLS bundle stays as fallback.
       if (Platform.isAndroid) {
         onProgress?.call(
           downloadedBytes: downloadedBytes,
@@ -653,68 +666,15 @@ class VideoDownloadService {
           speed: 'Menggabungkan ke MP4...',
         );
 
-        final videoTempFile = File('${targetDir.path}/temp_video.ts');
-        final audioTempFile = File('${targetDir.path}/temp_audio.ts');
-        final mp4File = File('${targetDir.path}/video.mp4');
+        final expectedDurationUs =
+            (videoTasks.fold<double>(0, (sum, t) => sum + t.duration) * 1000000).round();
 
-        try {
-          // Stream concatenate video segments using low-memory Stream
-          final vSink = videoTempFile.openWrite();
-          for (final t in videoTasks) {
-            final f = File('${targetDir.path}/${t.fileName}');
-            if (await f.exists()) {
-              await vSink.addStream(f.openRead());
-            }
-          }
-          await vSink.flush();
-          await vSink.close();
-
-          // Stream concatenate audio segments if available
-          String? audioTempPath;
-          if (hasAudioTrack && audioTasks.isNotEmpty) {
-            final aSink = audioTempFile.openWrite();
-            for (final t in audioTasks) {
-              final f = File('${targetDir.path}/${t.fileName}');
-              if (await f.exists()) {
-                await aSink.addStream(f.openRead());
-              }
-            }
-            await aSink.flush();
-            await aSink.close();
-            if (await audioTempFile.exists() && (await audioTempFile.length()) > 1000) {
-              audioTempPath = audioTempFile.path;
-            }
-          }
-
-          final muxSuccess = await NativeMediaMuxer.muxToMp4(
-            videoPath: videoTempFile.path,
-            audioPath: audioTempPath,
-            outputPath: mp4File.path,
-          );
-
-          if (muxSuccess && await mp4File.exists() && (await mp4File.length()) > 50000) {
-            debugPrint('[VideoDownloadService] Successfully muxed offline media to MP4: ${mp4File.path}');
-            // Clean up temporary files and separate chunk files to free up disk storage
-            try {
-              if (await videoTempFile.exists()) await videoTempFile.delete();
-              if (await audioTempFile.exists()) await audioTempFile.delete();
-              for (final t in allTasks) {
-                final chunk = File('${targetDir.path}/${t.fileName}');
-                if (await chunk.exists()) await chunk.delete();
-              }
-            } catch (e) {
-              debugPrint('[VideoDownloadService] Cleanup note: $e');
-            }
-          } else {
-            debugPrint('[VideoDownloadService] Native muxing did not produce MP4, preserving HLS fallback.');
-          }
-        } catch (e) {
-          debugPrint('[VideoDownloadService] Native mux error: $e. Using offline HLS fallback.');
-        } finally {
-          try {
-            if (await videoTempFile.exists()) await videoTempFile.delete();
-            if (await audioTempFile.exists()) await audioTempFile.delete();
-          } catch (_) {}
+        final muxed = await OfflineMp4Builder.build(
+          dir: targetDir,
+          expectedDurationUs: expectedDurationUs > 0 ? expectedDurationUs : null,
+        );
+        if (!muxed) {
+          debugPrint('[VideoDownloadService] Native muxing failed validation, preserving HLS fallback.');
         }
       }
     } catch (_) {
