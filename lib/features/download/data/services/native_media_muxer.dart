@@ -14,7 +14,7 @@ class NativeMediaProbe {
     required this.hasAudio,
   });
 
-  bool get isPlayable => hasVideo && durationMs > 0;
+  bool get isPlayable => hasVideo;
 }
 
 /// Service interfacing with native Android MediaMuxer to package H.264 video

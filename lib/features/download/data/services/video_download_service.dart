@@ -7,6 +7,7 @@ import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../player/data/services/smart_stream_service.dart';
 import '../../../player/data/services/vixsrc_stream_service.dart';
 import 'offline_mp4_builder.dart';
 import 'ts_segment_utils.dart';
@@ -100,15 +101,24 @@ class VideoDownloadService {
     final effectiveRuntime = runtimeMinutes > 15 ? runtimeMinutes : 90;
     final durationSeconds = effectiveRuntime * 60;
 
+    int? resolvedTmdb = tmdbId;
+    String? resolvedImdb = imdbId;
+    if ((resolvedTmdb == null || resolvedTmdb == 0) && resolvedImdb != null && resolvedImdb.isNotEmpty) {
+      try {
+        final ids = await SmartStreamService.resolveIds(imdbId: resolvedImdb, isTv: season != null);
+        if (ids.tmdbId > 0) resolvedTmdb = ids.tmdbId;
+      } catch (_) {}
+    }
+
     final vixResult = await VixSrcStreamService.resolveStream(
-      tmdbId: tmdbId,
-      imdbId: imdbId,
+      tmdbId: resolvedTmdb,
+      imdbId: resolvedImdb,
       season: season,
       episode: episode,
     );
 
     final masterUrl = vixResult?.playlistUrl ?? '';
-    final qualityUrls = vixResult?.qualityUrls ?? {};
+    final qualityUrls = Map<String, String>.from(vixResult?.qualityUrls ?? {});
 
     int calcSize(int bitrateBps) => ((bitrateBps / 8) * durationSeconds).round();
 
@@ -663,7 +673,7 @@ class VideoDownloadService {
           downloadedBytes: downloadedBytes,
           totalBytes: estimatedSizeBytes > 0 ? estimatedSizeBytes : totalSegments * 1048576,
           progress: 1.0,
-          speed: 'Menggabungkan ke MP4...',
+          speed: 'Menyiapkan media offline...',
         );
 
         final expectedDurationUs =
@@ -672,10 +682,9 @@ class VideoDownloadService {
         final muxed = await OfflineMp4Builder.build(
           dir: targetDir,
           expectedDurationUs: expectedDurationUs > 0 ? expectedDurationUs : null,
+          deleteSegmentsOnSuccess: true,
         );
-        if (!muxed) {
-          debugPrint('[VideoDownloadService] Native muxing failed validation, preserving HLS fallback.');
-        }
+        debugPrint('[VideoDownloadService] Offline build completed: muxedMp4=$muxed');
       }
     } catch (_) {
       rethrow;

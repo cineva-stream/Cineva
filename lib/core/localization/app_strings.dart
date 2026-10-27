@@ -333,4 +333,51 @@ class AppStrings {
   String get libraryResume => isIndonesian ? 'Lanjutkan' : 'Resume';
   String get libraryCompleted => isIndonesian ? 'Selesai' : 'Completed';
   String get libraryDeleteConfirm => isIndonesian ? 'Hapus unduhan ini?' : 'Delete this download?';
+
+  // ── Language Selection & Splash ──
+  String get splashSelectLanguage => isIndonesian ? 'Pilih Bahasa' : 'Select Language';
+  String get splashStartWatching => isIndonesian ? 'Mulai Menonton' : 'Start Watching';
+
+  // ── Profile & Onboarding ──
+  String get profileCreateTitle => isIndonesian ? 'Buat Profil Cineva Anda' : 'Create Your Cineva Profile';
+  String get profileCreateSubtitle => isIndonesian ? 'Personalisasi pengalaman menonton Anda' : 'Personalize your streaming experience';
+  String get profileSkip => isIndonesian ? 'Lewati' : 'Skip';
+  String get profileChooseAvatar => isIndonesian ? 'PILIH AVATAR SINEMA' : 'CHOOSE CINEMA AVATAR';
+  String get profileGallery => isIndonesian ? 'Galeri' : 'Gallery';
+  String get profileNickname => isIndonesian ? 'Nama Panggilan' : 'Nickname';
+  String get profileNicknameHint => isIndonesian ? 'Masukkan nama panggilan' : 'Enter your nickname';
+  String get profileUsername => isIndonesian ? 'Username' : 'Username';
+  String get profileUsernameHint => isIndonesian ? 'username' : 'username';
+  String get profileSaveAndEnter => isIndonesian ? 'Lanjut' : 'Continue';
+  String get profileDefaultName => isIndonesian ? 'Penikmat Film' : 'Movie Fan';
+
+  // ── Avatar Crop Screen ──
+  String get cropTitle => isIndonesian ? 'Sesuaikan Avatar' : 'Adjust Avatar';
+  String get cropRotateTooltip => isIndonesian ? 'Putar Gambar' : 'Rotate Image';
+  String get cropResetTooltip => isIndonesian ? 'Reset' : 'Reset';
+  String get cropInstruction => isIndonesian
+      ? 'Geser dan cubit gambar agar pas dengan lingkaran avatar'
+      : 'Pan and pinch the image to fit inside the avatar circle';
+  String get cropCancel => isIndonesian ? 'Batal' : 'Cancel';
+  String get cropUseAvatar => isIndonesian ? 'Gunakan Avatar' : 'Use Avatar';
+  String get cropFailed => isIndonesian ? 'Gagal memotong gambar' : 'Failed to crop image';
+
+  // ── Edit Profile Sheet ──
+  String get profileEditTitle => isIndonesian ? 'Ubah Profil' : 'Edit Profile';
+  String get profileChooseAvatarShort => isIndonesian ? 'PILIH AVATAR' : 'CHOOSE AVATAR';
+  String get profileSaveChanges => isIndonesian ? 'Simpan Perubahan' : 'Save Changes';
+  String get profileUpdatedSuccess => isIndonesian ? 'Profil berhasil diperbarui' : 'Profile updated successfully';
+  String get profileGalleryError => isIndonesian ? 'Gagal memilih gambar dari galeri' : 'Failed to pick image from gallery';
+
+  // ── Legal Agreement Screen ──
+  String get legalAgreementTitle => isIndonesian ? 'Ketentuan Hukum & Privasi' : 'Terms & Privacy Policy';
+  String get legalAgreementSubtitle => isIndonesian
+      ? 'Harap baca dan pahami seluruh ketentuan hukum sebelum menggunakan Cineva.'
+      : 'Please read and understand all legal terms and policies before using Cineva.';
+  String get legalScrollHint => isIndonesian
+      ? 'Gulir hingga paling bawah untuk menyetujui'
+      : 'Scroll to the bottom to agree';
+  String get legalAgreeButton => isIndonesian ? 'Setuju' : 'Agree';
+  String get legalScrollToBottom => isIndonesian ? 'Gulir ke Bawah' : 'Scroll Down';
+  String get legalFullyRead => isIndonesian ? 'Seluruh ketentuan telah dibaca' : 'All terms fully read';
 }

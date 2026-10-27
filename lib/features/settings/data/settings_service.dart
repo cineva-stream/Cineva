@@ -158,4 +158,15 @@ class SettingsService {
     final historyBox = Hive.box(AppConstants.historyBox);
     await historyBox.clear();
   }
+
+  // ── Legal Terms & Privacy Acceptance ──
+  static const String keyLegalAccepted = 'legal_terms_accepted';
+
+  static bool hasAcceptedLegal() {
+    return _box.get(keyLegalAccepted, defaultValue: false) as bool;
+  }
+
+  static Future<void> setLegalAccepted(bool accepted) async {
+    await _box.put(keyLegalAccepted, accepted);
+  }
 }

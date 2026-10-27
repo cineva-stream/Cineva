@@ -21,6 +21,8 @@ import '../../../download/presentation/providers/download_provider.dart';
 import '../widgets/genre_selection_bottom_sheet.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
+import '../../../profile/presentation/widgets/avatar_display.dart';
 
 /// Active category filter on the Home Screen.
 enum HomeCategoryFilter {
@@ -143,7 +145,24 @@ class HomeScreen extends ConsumerWidget {
                 icon: const Icon(Icons.bookmark_border_rounded, color: AppColors.textPrimary, size: 22),
                 tooltip: 'Daftar Tontonan',
               ),
-              const SizedBox(width: 8),
+              Consumer(
+                builder: (context, ref, _) {
+                  final profile = ref.watch(userProfileProvider);
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 14, left: 6),
+                    child: GestureDetector(
+                      onTap: () => context.go('/settings'),
+                      child: AvatarDisplay(
+                        avatarId: profile.avatarId,
+                        customAvatarPath: profile.customAvatarPath,
+                        size: 32,
+                        borderWidth: 1.5,
+                        borderColor: AppColors.primary,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ],
           ),
 

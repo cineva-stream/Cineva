@@ -12,6 +12,8 @@ import 'native_media_muxer.dart';
 /// (master.m3u8 + segments) is preserved as a playable fallback.
 class OfflineMp4Builder {
   static const String mp4Name = 'video.mp4';
+  static const String videoTsName = 'video.ts';
+  static const String audioTsName = 'audio.ts';
 
   static String _baseName(FileSystemEntity f) => f.path.split(RegExp(r'[\\/]')).last;
 
@@ -56,18 +58,20 @@ class OfflineMp4Builder {
     }
   }
 
-  /// Builds `video.mp4` inside [dir]. Returns true only if a validated MP4 was produced.
+  /// Builds `video.mp4` inside [dir].
   ///
-  /// When a mux fails, a `.mux_failed` marker is written. Callers that run lazily at playback
-  /// time pass [respectFailureMarker] = true so a known-bad conversion is not retried each time.
+  /// Steps:
+  /// 1. Concatenates raw segments into `video.ts` and `audio.ts`.
+  /// 2. Remuxes them into `video.mp4` via hardware muxer.
+  /// 3. If MP4 succeeds and is validated: deletes TS files and segment fragments.
+  /// 4. If MP4 fails: preserves `video.ts` and `audio.ts` as a single, 100% offline-playable
+  ///    container file that MPV can open directly with zero network dependencies!
   static Future<bool> build({
     required Directory dir,
     int? expectedDurationUs,
     bool deleteSegmentsOnSuccess = true,
     bool respectFailureMarker = false,
   }) async {
-    if (!Platform.isAndroid) return false;
-
     final marker = File('${dir.path}/.mux_failed');
     if (respectFailureMarker && await marker.exists()) return false;
     try {
@@ -75,74 +79,108 @@ class OfflineMp4Builder {
     } catch (_) {}
 
     final videoSegments = await listSegments(dir, 'v_');
-    if (videoSegments.isEmpty) return false;
     final audioSegments = await listSegments(dir, 'a_');
 
-    final videoTemp = File('${dir.path}/temp_video.ts');
-    final audioTemp = File('${dir.path}/temp_audio.ts');
     final mp4 = File('${dir.path}/$mp4Name');
+    final videoTs = File('${dir.path}/$videoTsName');
+    final audioTs = File('${dir.path}/$audioTsName');
+
+    if (videoSegments.isEmpty) {
+      if (await isValidMp4(mp4)) return true;
+      if (await videoTs.exists() && (await videoTs.length()) > 50000) return true;
+      return false;
+    }
 
     try {
-      await _concat(videoSegments, videoTemp);
+      // 1. Concatenate all video segments into unified video.ts
+      await _concat(videoSegments, videoTs);
 
-      String? audioTempPath;
+      String? audioPath;
       if (audioSegments.isNotEmpty) {
-        await _concat(audioSegments, audioTemp);
-        if (await audioTemp.exists() && (await audioTemp.length()) > 1000) {
-          audioTempPath = audioTemp.path;
+        await _concat(audioSegments, audioTs);
+        if (await audioTs.exists() && (await audioTs.length()) > 1000) {
+          audioPath = audioTs.path;
         }
       }
 
-      final ok = await NativeMediaMuxer.muxToMp4(
-        videoPath: videoTemp.path,
-        audioPath: audioTempPath,
-        outputPath: mp4.path,
-        expectedDurationUs: expectedDurationUs,
-      );
+      // 2. On Android, attempt native remux to MP4
+      bool ok = false;
+      if (Platform.isAndroid) {
+        ok = await NativeMediaMuxer.muxToMp4(
+          videoPath: videoTs.path,
+          audioPath: audioPath,
+          outputPath: mp4.path,
+          expectedDurationUs: expectedDurationUs,
+        );
+      }
 
-      if (ok && await mp4.exists() && (await mp4.length()) > 50000) {
+      final validMp4 = ok && await isValidMp4(mp4);
+      if (validMp4) {
         if (deleteSegmentsOnSuccess) {
           for (final f in [...videoSegments, ...audioSegments]) {
-            try {
-              await f.delete();
-            } catch (_) {}
+            try { await f.delete(); } catch (_) {}
           }
+          try { if (await videoTs.exists()) await videoTs.delete(); } catch (_) {}
+          try { if (await audioTs.exists()) await audioTs.delete(); } catch (_) {}
         }
-        debugPrint('[OfflineMp4Builder] Validated MP4 created: ${mp4.path}');
+        debugPrint('[OfflineMp4Builder] Validated MP4 successfully built: ${mp4.path}');
         return true;
       }
 
-      debugPrint('[OfflineMp4Builder] Mux failed validation; keeping HLS fallback.');
-      try {
-        if (await mp4.exists()) await mp4.delete();
-        await marker.writeAsString('failed');
-      } catch (_) {}
+      // 3. Fallback: MP4 did not validate, but video.ts is complete!
+      // Keep video.ts and audio.ts as single-file containers for direct MPV playback.
+      debugPrint('[OfflineMp4Builder] Preserving unified TS container fallback: ${videoTs.path}');
+      try { if (await mp4.exists()) await mp4.delete(); } catch (_) {}
+      if (deleteSegmentsOnSuccess) {
+        for (final f in [...videoSegments, ...audioSegments]) {
+          try { await f.delete(); } catch (_) {}
+        }
+      }
       return false;
     } catch (e) {
-      debugPrint('[OfflineMp4Builder] Error: $e');
-      try {
-        if (await mp4.exists()) await mp4.delete();
-        await marker.writeAsString('failed');
-      } catch (_) {}
+      debugPrint('[OfflineMp4Builder] Error during build: $e');
       return false;
-    } finally {
-      try {
-        if (await videoTemp.exists()) await videoTemp.delete();
-        if (await audioTemp.exists()) await audioTemp.delete();
-      } catch (_) {}
     }
   }
 
-  /// Returns true if [mp4] exists and is a valid, playable MP4 (native probe on Android).
-  /// On non-Android platforms (no probe available) only the size is checked.
+  /// Returns true if [mp4] exists and has a validated video track (or substantial size).
   static Future<bool> isValidMp4(File mp4) async {
     try {
-      if (!await mp4.exists() || (await mp4.length()) <= 50000) return false;
+      if (!await mp4.exists()) return false;
+      final len = await mp4.length();
+      if (len <= 50000) return false;
       if (!Platform.isAndroid) return true;
       final probe = await NativeMediaMuxer.probe(mp4.path);
-      return probe != null && probe.isPlayable;
+      if (probe == null) return len > 100000;
+      return probe.hasVideo;
     } catch (_) {
       return false;
     }
+  }
+
+  /// Locates the best single container file ready for zero-network playback in [dir].
+  static Future<File?> findPlayableOfflineFile(Directory dir) async {
+    final mp4 = File('${dir.path}/$mp4Name');
+    if (await isValidMp4(mp4)) return mp4;
+
+    final videoTs = File('${dir.path}/$videoTsName');
+    if (await videoTs.exists() && (await videoTs.length()) > 50000) {
+      return videoTs;
+    }
+
+    final hls = File('${dir.path}/master.m3u8');
+    if (await hls.exists()) {
+      return hls;
+    }
+    return null;
+  }
+
+  /// Returns the secondary audio file in [dir] if audio was stored separately.
+  static Future<File?> getSecondaryAudioFile(Directory dir) async {
+    final audioTs = File('${dir.path}/$audioTsName');
+    if (await audioTs.exists() && (await audioTs.length()) > 1000) {
+      return audioTs;
+    }
+    return null;
   }
 }

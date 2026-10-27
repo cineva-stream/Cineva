@@ -16,6 +16,8 @@ import '../../../home/presentation/providers/home_providers.dart';
 import '../../data/settings_service.dart';
 import '../../data/subtitle_languages.dart';
 import '../../../player/presentation/providers/player_providers.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
+import '../../../profile/presentation/widgets/avatar_display.dart';
 
 /// Modern, informative, and interactive Settings screen for Cineva.
 ///
@@ -709,90 +711,85 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            // ── App Detail Card (Full-width with Smooth Border) ──
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                border: Border(
-                  top: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    width: 0.8,
-                  ),
-                  bottom: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    width: 0.8,
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.4),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(13),
-                      child: Image.asset(
-                        'assets/images/cineva_icon.png',
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          AppConstants.appName,
-                          style: GoogleFonts.outfit(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.2,
+            // ── Full-Width User Profile Header with Smooth Border ──
+            Consumer(
+              builder: (context, ref, _) {
+                final profile = ref.watch(userProfileProvider);
+                return Material(
+                  color: AppColors.background,
+                  child: InkWell(
+                    onTap: () => context.push('/edit-profile'),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        border: Border(
+                          top: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            width: 0.8,
+                          ),
+                          bottom: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            width: 0.8,
                           ),
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          '${s.settingsVersion} $_appVersion (Build $_buildNumber)',
-                          style: GoogleFonts.inter(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                      ),
+                      child: Row(
+                        children: [
+                          AvatarDisplay(
+                            avatarId: profile.avatarId,
+                            customAvatarPath: profile.customAvatarPath,
+                            size: 54,
+                            showGlow: false,
+                            borderWidth: 1.5,
+                            borderColor: AppColors.primary,
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'com.primadev.cineva',
-                          style: GoogleFonts.inter(
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  profile.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  '@${profile.username}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
                             color: AppColors.textMuted,
-                            fontSize: 11,
-                            letterSpacing: 0.2,
+                            size: 16,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
 
             const SizedBox(height: 24),
@@ -1042,7 +1039,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _SettingsTileItem(
                 icon: Icons.info_outline_rounded,
                 title: s.settingsInfoTitle,
-                subtitle: s.settingsInfoSubtitle,
+                subtitle: '$_appVersion ($_buildNumber) • ${s.settingsInfoSubtitle}',
                 trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
                 onTap: () => context.push('/settings/info'),
               ),

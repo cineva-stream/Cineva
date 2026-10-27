@@ -14,6 +14,9 @@ import '../../features/download/presentation/screens/download_list_screen.dart';
 import '../../features/settings/data/legal_content.dart';
 import '../../features/settings/presentation/screens/legal_document_screen.dart';
 import '../../features/settings/presentation/screens/about_info_screen.dart';
+import '../../features/profile/presentation/screens/onboarding_profile_screen.dart';
+import '../../features/profile/presentation/screens/legal_agreement_screen.dart';
+import '../../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 import '../../shared/widgets/shell_pop_scope.dart';
 
@@ -34,6 +37,66 @@ final GoRouter appRouter = GoRouter(
         child: const SplashScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    ),
+
+    // ── Onboarding Profile Screen ──
+    GoRoute(
+      path: '/onboarding-profile',
+      name: 'onboarding-profile',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const OnboardingProfileScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 0.06);
+          const end = Offset.zero;
+          const curve = Curves.easeOutCubic;
+          final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: FadeTransition(opacity: animation, child: child),
+          );
+        },
+      ),
+    ),
+
+    // ── Onboarding Legal Screen ──
+    GoRoute(
+      path: '/onboarding-legal',
+      name: 'onboarding-legal',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const LegalAgreementScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.06, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeOutCubic;
+          final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: FadeTransition(opacity: animation, child: child),
+          );
+        },
+      ),
+    ),
+
+    // ── Edit Profile Screen ──
+    GoRoute(
+      path: '/edit-profile',
+      name: 'edit-profile',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const EditProfileScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.06, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeOutCubic;
+          final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: FadeTransition(opacity: animation, child: child),
+          );
         },
       ),
     ),

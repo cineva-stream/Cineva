@@ -767,51 +767,41 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
       var targetMediaFile = localFile;
       final mediaDir = localFile.parent;
-      final mp4Candidate = localFile.path.toLowerCase().endsWith('.mp4')
-          ? localFile
-          : File('${mediaDir.path}/${OfflineMp4Builder.mp4Name}');
-      final hlsMaster = File('${mediaDir.path}/master.m3u8');
+      final mp4Candidate = File('${mediaDir.path}/${OfflineMp4Builder.mp4Name}');
+      final videoTsCandidate = File('${mediaDir.path}/${OfflineMp4Builder.videoTsName}');
       final hasHlsSegments = await File('${mediaDir.path}/v_0000.ts').exists();
 
-      // 1. If a hardware-muxed MP4 exists, validate it with the native parser BEFORE handing it to mpv.
-      // A corrupt MP4 makes mpv hang forever with duration 00:00 and a black screen.
-      if (await mp4Candidate.exists()) {
-        if (await OfflineMp4Builder.isValidMp4(mp4Candidate)) {
-          targetMediaFile = mp4Candidate;
-        } else {
-          debugPrint('[PlayerScreen] Offline MP4 failed validation, discarding: ${mp4Candidate.path}');
-          try {
-            await mp4Candidate.delete();
-          } catch (_) {}
-          if (hasHlsSegments && await hlsMaster.exists()) {
-            targetMediaFile = hlsMaster;
-          } else {
-            throw Exception(s.playerOfflineCorrupted);
-          }
-        }
-      }
-
-      // 2. HLS bundle only: on Android, try an (validated) auto-mux to MP4 for instant zero-buffer playback.
-      // Source segments are deleted only if the native side validated the resulting MP4.
-      if (Platform.isAndroid && !targetMediaFile.path.toLowerCase().endsWith('.mp4') && hasHlsSegments) {
+      // 1. If valid MP4 exists, use it!
+      if (await OfflineMp4Builder.isValidMp4(mp4Candidate)) {
+        targetMediaFile = mp4Candidate;
+      } else if (await videoTsCandidate.exists() && (await videoTsCandidate.length()) > 50000) {
+        // 2. Fallback to unified video.ts single container
+        targetMediaFile = videoTsCandidate;
+      } else if (hasHlsSegments) {
+        // 3. Raw segments exist, build MP4 or video.ts
         if (mounted) setState(() => _loadingStep = _PlayerLoadingStep.preparingMp4);
         final expectedUs = await OfflineMp4Builder.expectedDurationUsFromPlaylist(
           File('${mediaDir.path}/video.m3u8'),
         );
-        final built = await OfflineMp4Builder.build(
+        await OfflineMp4Builder.build(
           dir: mediaDir,
           expectedDurationUs: expectedUs,
-          respectFailureMarker: true,
         );
-        if (built) {
-          targetMediaFile = File('${mediaDir.path}/${OfflineMp4Builder.mp4Name}');
+        final playable = await OfflineMp4Builder.findPlayableOfflineFile(mediaDir);
+        if (playable != null) {
+          targetMediaFile = playable;
+        }
+      } else {
+        final playable = await OfflineMp4Builder.findPlayableOfflineFile(mediaDir);
+        if (playable != null) {
+          targetMediaFile = playable;
         }
       }
 
       _useNativePlayer = true;
       await _setupMpvOfflineOptions();
 
-      // 3. Play media file directly without HTTP server if it is a container file (MP4, MKV, TS)
+      // 4. Play media file directly without HTTP server if it is a container file (MP4, MKV, TS)
       final isSingleContainer = targetMediaFile.path.toLowerCase().endsWith('.mp4') ||
           targetMediaFile.path.toLowerCase().endsWith('.mkv') ||
           targetMediaFile.path.toLowerCase().endsWith('.ts');
@@ -819,8 +809,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (isSingleContainer) {
         debugPrint('[PlayerScreen] Playing offline native media directly from storage: ${targetMediaFile.path}');
         await _player.open(Media(targetMediaFile.path));
-        if (!await _waitForOfflineMediaReady(const Duration(seconds: 12))) {
-          throw Exception(s.playerOfflineCorrupted);
+
+        // If target is video.ts and separate audio.ts exists, attach audio track!
+        final secondaryAudio = await OfflineMp4Builder.getSecondaryAudioFile(mediaDir);
+        if (targetMediaFile.path.endsWith('.ts') && secondaryAudio != null) {
+          debugPrint('[PlayerScreen] Attaching external audio: ${secondaryAudio.path}');
+          try {
+            await (_player.platform as dynamic)?.command(['audio-add', secondaryAudio.path, 'select']);
+          } catch (e) {
+            debugPrint('[PlayerScreen] audio-add command note: $e');
+          }
+        }
+
+        if (!await _waitForOfflineMediaReady(const Duration(seconds: 10))) {
+          if (!await targetMediaFile.exists() || (await targetMediaFile.length()) < 50000) {
+            throw Exception(s.playerOfflineCorrupted);
+          }
         }
       } else {
         // Fallback for HLS manifest: try direct file path first, fallback to loopback HTTP server with cache:no
@@ -857,7 +861,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       await _player.setVolume(_volume);
       await _player.play();
 
-      final subPath = _currentLocalSubtitlePath ?? widget.localSubtitlePath;
+      var subPath = _currentLocalSubtitlePath ?? widget.localSubtitlePath;
+      if (subPath == null || subPath.isEmpty) {
+        try {
+          final srtFiles = mediaDir.listSync().whereType<File>().where((f) => f.path.endsWith('.srt'));
+          if (srtFiles.isNotEmpty) {
+            subPath = srtFiles.first.path;
+            _currentLocalSubtitlePath = subPath;
+          }
+        } catch (_) {}
+      }
+
       if (subPath != null && subPath.isNotEmpty) {
         try {
           final subFile = File(subPath);

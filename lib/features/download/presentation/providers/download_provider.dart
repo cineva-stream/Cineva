@@ -197,17 +197,13 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       // Wait for both video and subtitle streams to complete
       await Future.wait([videoFuture, subtitleFuture]);
 
-      // Step 3: Use video.mp4 (hardware muxed MP4) only if it passes validation; otherwise keep the HLS bundle
-      final parentDir = File(item.videoPath).parent.path;
-      final mp4File = File('$parentDir/video.mp4');
-      final bool hasMp4 = await OfflineMp4Builder.isValidMp4(mp4File);
-      if (!hasMp4 && await mp4File.exists()) {
-        try {
-          await mp4File.delete();
-        } catch (_) {}
-      }
-      final actualVideoPath = hasMp4 ? mp4File.path : currentItem.videoPath;
-      final actualTotalBytes = hasMp4 ? await mp4File.length() : currentItem.downloadedBytes;
+      // Step 3: Prioritize validated video.mp4, then unified video.ts single container
+      final parentDir = Directory(File(item.videoPath).parent.path);
+      final playableFile = await OfflineMp4Builder.findPlayableOfflineFile(parentDir);
+      final actualVideoPath = playableFile?.path ?? currentItem.videoPath;
+      final actualTotalBytes = (playableFile != null && await playableFile.exists())
+          ? await playableFile.length()
+          : currentItem.downloadedBytes;
 
       final completedItem = currentItem.copyWith(
         status: DownloadStatus.completed,
