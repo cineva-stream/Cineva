@@ -50,7 +50,7 @@ class DownloadRepository {
     if (item != null) {
       try {
         final videoFile = File(item.videoPath);
-        if (item.videoPath.endsWith('master.m3u8')) {
+        if (item.videoPath.endsWith('master.cineva') || item.videoPath.endsWith('master.m3u8')) {
           final parentDir = videoFile.parent;
           if (await parentDir.exists()) {
             await parentDir.delete(recursive: true);
@@ -95,7 +95,7 @@ class DownloadRepository {
       if (item.isCompleted) {
         try {
           final file = File(item.videoPath);
-          if (item.videoPath.endsWith('master.m3u8')) {
+          if (item.videoPath.endsWith('master.cineva') || item.videoPath.endsWith('master.m3u8')) {
             final parentDir = file.parent;
             if (parentDir.existsSync()) {
               int dirSize = 0;

@@ -213,6 +213,87 @@ void main() {
         await tempDir.delete(recursive: true);
       }
     });
+
+    test('Cineva offline package creates master.m3u8 and protects media with .nomedia', () async {
+      final tempDir = await Directory.systemTemp.createTemp('cineva_bundle_test_');
+      try {
+        final bundleDir = Directory('${tempDir.path}/movie_999');
+        await bundleDir.create(recursive: true);
+
+        // .nomedia file prevents indexing by OS gallery/external players
+        final noMedia = File('${bundleDir.path}/.nomedia');
+        await noMedia.writeAsString('');
+        expect(await noMedia.exists(), isTrue);
+
+        final masterM3u8 = File('${bundleDir.path}/master.m3u8');
+        await masterM3u8.writeAsString('#EXTM3U\n#EXT-X-VERSION:3\nvideo.m3u8');
+
+        final videoM3u8 = File('${bundleDir.path}/video.m3u8');
+        await videoM3u8.writeAsString('#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:4.0,\nv_0000.ts\n#EXT-X-ENDLIST');
+
+        final segmentTs = File('${bundleDir.path}/v_0000.ts');
+        await segmentTs.writeAsBytes(List.filled(188 * 10, 0x47));
+
+        expect(await masterM3u8.exists(), isTrue);
+        expect(await videoM3u8.exists(), isTrue);
+        expect(await segmentTs.exists(), isTrue);
+
+        // Verify LocalStreamServer URL generation for master.m3u8
+        final streamUrl = LocalStreamServer.instance.getStreamUrl(
+          dirPath: bundleDir.path,
+          fileName: 'master.m3u8',
+          id: 'movie_999',
+        );
+        expect(streamUrl, contains('/stream/movie_999/master.m3u8'));
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    test('VideoDownloadService.repairOfflineDirectoryIfNeeded migrates legacy .cdat to .ts and fixes playlists', () async {
+      final tempDir = await Directory.systemTemp.createTemp('cineva_repair_test_');
+      try {
+        final bundleDir = Directory('${tempDir.path}/movie_legacy');
+        await bundleDir.create(recursive: true);
+
+        // Write legacy .cdat segment and playlists
+        final segFile = File('${bundleDir.path}/v_0000.cdat');
+        await segFile.writeAsBytes(List.filled(188 * 5, 0x47));
+
+        final videoPlaylist = File('${bundleDir.path}/video.cineva');
+        await videoPlaylist.writeAsString('#EXTM3U\n#EXTINF:4.0,\nv_0000.cdat\n#EXT-X-ENDLIST');
+
+        final masterPlaylist = File('${bundleDir.path}/master.cineva');
+        await masterPlaylist.writeAsString('#EXTM3U\nvideo.cineva');
+
+        expect(await segFile.exists(), isTrue);
+
+        // Run auto-repair
+        await VideoDownloadService.repairOfflineDirectoryIfNeeded(bundleDir);
+
+        // Verify .cdat was renamed to .ts
+        final repairedSeg = File('${bundleDir.path}/v_0000.ts');
+        expect(await repairedSeg.exists(), isTrue);
+        expect(await segFile.exists(), isFalse);
+
+        // Verify playlists point to .ts and .m3u8
+        final repairedVideo = File('${bundleDir.path}/video.m3u8');
+        expect(await repairedVideo.exists(), isTrue);
+        final content = await repairedVideo.readAsString();
+        expect(content, contains('v_0000.ts'));
+        expect(content, isNot(contains('.cdat')));
+
+        // Verify master.m3u8 exists
+        final repairedMaster = File('${bundleDir.path}/master.m3u8');
+        expect(await repairedMaster.exists(), isTrue);
+
+        // Verify .nomedia exists
+        final noMedia = File('${bundleDir.path}/.nomedia');
+        expect(await noMedia.exists(), isTrue);
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
+    });
   });
 }
 

@@ -32,8 +32,13 @@ class WatchHistoryItem {
     this.isCompleted = false,
   });
 
-  /// Key used in Hive: e.g. 'movie_123' or 'tv_456'
-  String get key => '${mediaType}_$id';
+  /// Key used in Hive: e.g. 'movie_123' or 'tv_1399_s1_e2'
+  String get key {
+    if (mediaType == 'tv' && season != null && episode != null) {
+      return '${mediaType}_${id}_s${season}_e$episode';
+    }
+    return '${mediaType}_$id';
+  }
 
   /// Playback progress ratio between 0.0 and 1.0.
   double get progress {

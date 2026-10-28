@@ -9,7 +9,6 @@ import '../../domain/models/download_item.dart';
 import '../../data/repositories/download_repository.dart';
 import '../../data/services/download_file_namer.dart';
 import '../../data/services/download_subtitle_pipeline.dart';
-import '../../data/services/offline_mp4_builder.dart';
 import '../../data/services/video_download_service.dart';
 
 /// State notifier managing all download tasks, persistent storage, and live progress.
@@ -197,13 +196,22 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       // Wait for both video and subtitle streams to complete
       await Future.wait([videoFuture, subtitleFuture]);
 
-      // Step 3: Prioritize validated video.mp4, then unified video.ts single container
+      // Step 3: Compute actual completed package size on disk
       final parentDir = Directory(File(item.videoPath).parent.path);
-      final playableFile = await OfflineMp4Builder.findPlayableOfflineFile(parentDir);
-      final actualVideoPath = playableFile?.path ?? currentItem.videoPath;
-      final actualTotalBytes = (playableFile != null && await playableFile.exists())
-          ? await playableFile.length()
-          : currentItem.downloadedBytes;
+      int actualTotalBytes = 0;
+      try {
+        if (await parentDir.exists()) {
+          await for (final f in parentDir.list(recursive: true)) {
+            if (f is File) actualTotalBytes += await f.length();
+          }
+        }
+      } catch (_) {}
+
+      final masterM3u8 = File('${parentDir.path}/master.m3u8');
+      final masterCineva = File('${parentDir.path}/master.cineva');
+      final actualVideoPath = (await masterM3u8.exists())
+          ? masterM3u8.path
+          : ((await masterCineva.exists()) ? masterCineva.path : currentItem.videoPath);
 
       final completedItem = currentItem.copyWith(
         status: DownloadStatus.completed,

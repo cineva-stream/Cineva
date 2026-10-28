@@ -29,6 +29,31 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        val brightnessChannel = "com.primadev.cineva/brightness"
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, brightnessChannel).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "setBrightness" -> {
+                    val brightness = (call.argument<Double>("brightness") ?: 1.0).toFloat()
+                    val lp = window.attributes
+                    lp.screenBrightness = brightness.coerceIn(0.01f, 1.0f)
+                    window.attributes = lp
+                    result.success(null)
+                }
+                "resetBrightness" -> {
+                    val lp = window.attributes
+                    lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                    window.attributes = lp
+                    result.success(null)
+                }
+                "getBrightness" -> {
+                    val current = window.attributes.screenBrightness
+                    result.success(if (current < 0) null else current.toDouble())
+                }
+                else -> result.notImplemented()
+            }
+        }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "muxToMp4" -> {

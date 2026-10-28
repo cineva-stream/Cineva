@@ -66,5 +66,79 @@ void main() {
       expect(restored.durationMs, 3000000);
       expect(restored.lastWatchedAt.millisecondsSinceEpoch, now.millisecondsSinceEpoch);
     });
+
+    test('Generates episode-specific key for TV series so episodes are not overwritten', () {
+      final ep1 = WatchHistoryItem(
+        id: 1399,
+        mediaType: 'tv',
+        title: 'Game of Thrones',
+        season: 1,
+        episode: 1,
+        positionMs: 3600000,
+        durationMs: 3600000,
+        lastWatchedAt: DateTime.now(),
+        isCompleted: true,
+      );
+
+      final ep2 = WatchHistoryItem(
+        id: 1399,
+        mediaType: 'tv',
+        title: 'Game of Thrones',
+        season: 1,
+        episode: 2,
+        positionMs: 120000,
+        durationMs: 3600000,
+        lastWatchedAt: DateTime.now(),
+        isCompleted: false,
+      );
+
+      final movie = WatchHistoryItem(
+        id: 550,
+        mediaType: 'movie',
+        title: 'Fight Club',
+        positionMs: 5000000,
+        durationMs: 8000000,
+        lastWatchedAt: DateTime.now(),
+      );
+
+      expect(ep1.key, 'tv_1399_s1_e1');
+      expect(ep2.key, 'tv_1399_s1_e2');
+      expect(ep1.key, isNot(equals(ep2.key)));
+      expect(ep1.isCompleted, isTrue);
+      expect(movie.key, 'movie_550');
+    });
+
+    test('Ensures movie marked Belum (< 95% clamped) appears in Continue Watching', () {
+      // Total duration 100 min, user was at 98 min (2 min remaining <= 12 min)
+      // Clamped to 94%
+      final durMs = 100 * 60 * 1000;
+      final clampedPosMs = (durMs * 0.94).toInt();
+      final movieNotYet = WatchHistoryItem(
+        id: 888,
+        mediaType: 'movie',
+        title: 'Dune',
+        positionMs: clampedPosMs,
+        durationMs: durMs,
+        lastWatchedAt: DateTime.now(),
+        isCompleted: false,
+      );
+
+      expect(movieNotYet.progress, closeTo(0.94, 0.001));
+      expect(movieNotYet.isInProgress, isTrue); // Appears in Continue Watching!
+      expect(movieNotYet.isCompleted, isFalse);
+
+      final movieDone = WatchHistoryItem(
+        id: 888,
+        mediaType: 'movie',
+        title: 'Dune',
+        positionMs: durMs,
+        durationMs: durMs,
+        lastWatchedAt: DateTime.now(),
+        isCompleted: true,
+      );
+
+      expect(movieDone.isCompleted, isTrue); // Appears in Completed!
+      expect(movieDone.isInProgress, isFalse);
+    });
   });
 }

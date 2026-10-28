@@ -30,9 +30,15 @@ class WatchHistoryRepository {
     return getAll().where((item) => item.isInProgress).toList();
   }
 
-  /// Finds a specific history item by media type and ID.
-  WatchHistoryItem? getItem(String mediaType, int id) {
+  /// Finds a specific history item by media type and ID, optionally with season & episode for TV series.
+  WatchHistoryItem? getItem(String mediaType, int id, {int? season, int? episode}) {
     try {
+      if (mediaType == 'tv' && season != null && episode != null) {
+        final epRaw = _box.get('${mediaType}_${id}_s${season}_e$episode');
+        if (epRaw is Map) {
+          return WatchHistoryItem.fromJson(epRaw);
+        }
+      }
       final raw = _box.get('${mediaType}_$id');
       if (raw is Map) {
         return WatchHistoryItem.fromJson(raw);

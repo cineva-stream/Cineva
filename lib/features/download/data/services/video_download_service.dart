@@ -9,7 +9,6 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../player/data/services/smart_stream_service.dart';
 import '../../../player/data/services/vixsrc_stream_service.dart';
-import 'offline_mp4_builder.dart';
 import 'ts_segment_utils.dart';
 
 
@@ -87,7 +86,102 @@ class VideoDownloadService {
     if (!await offlineDir.exists()) {
       await offlineDir.create(recursive: true);
     }
+    final noMedia = File('${offlineDir.path}/.nomedia');
+    if (!await noMedia.exists()) {
+      await noMedia.writeAsString('');
+    }
     return offlineDir;
+  }
+
+  /// Seamlessly migrates/repairs legacy or corrupted offline bundles in [dir].
+  /// Renames any .cdat chunks to .ts and fixes playlist references so existing
+  /// downloads immediately become playable without needing a re-download!
+  static Future<void> repairOfflineDirectoryIfNeeded(Directory dir) async {
+    try {
+      if (!await dir.exists()) return;
+
+      // 1. Check if there are any .cdat files
+      final cdatFiles = <File>[];
+      await for (final entity in dir.list()) {
+        if (entity is File && entity.path.toLowerCase().endsWith('.cdat')) {
+          cdatFiles.add(entity);
+        }
+      }
+
+      // 2. Rename .cdat to .ts
+      if (cdatFiles.isNotEmpty) {
+        debugPrint('[VideoDownloadService] Auto-repairing ${cdatFiles.length} .cdat segments in ${dir.path}...');
+        for (final file in cdatFiles) {
+          final newPath = '${file.path.substring(0, file.path.length - 5)}.ts';
+          try {
+            await file.rename(newPath);
+          } catch (_) {
+            try {
+              await file.copy(newPath);
+              await file.delete();
+            } catch (_) {}
+          }
+        }
+      }
+
+      // 3. Ensure playlists reference .ts instead of .cdat and .cineva, and create .m3u8 versions
+      final pairs = [
+        ['video.cineva', 'video.m3u8'],
+        ['audio.cineva', 'audio.m3u8'],
+        ['master.cineva', 'master.m3u8'],
+      ];
+      for (final pair in pairs) {
+        final cinevaFile = File('${dir.path}/${pair[0]}');
+        final m3u8File = File('${dir.path}/${pair[1]}');
+
+        String? content;
+        if (await m3u8File.exists()) {
+          content = await m3u8File.readAsString();
+        } else if (await cinevaFile.exists()) {
+          content = await cinevaFile.readAsString();
+        }
+
+        if (content != null) {
+          final fixed = content
+              .replaceAll('.cdat', '.ts')
+              .replaceAll('video.cineva', 'video.m3u8')
+              .replaceAll('audio.cineva', 'audio.m3u8');
+          await m3u8File.writeAsString(fixed);
+          if (await cinevaFile.exists()) {
+            await cinevaFile.writeAsString(fixed);
+          }
+        }
+      }
+
+      // 4. Ensure master.m3u8 exists if video.m3u8 exists
+      final masterM3u8 = File('${dir.path}/master.m3u8');
+      final videoM3u8 = File('${dir.path}/video.m3u8');
+      final audioM3u8 = File('${dir.path}/audio.m3u8');
+
+      if (await videoM3u8.exists() && !await masterM3u8.exists()) {
+        final hasAudio = await audioM3u8.exists();
+        final sb = StringBuffer()
+          ..writeln('#EXTM3U')
+          ..writeln('#EXT-X-VERSION:3')
+          ..writeln('#EXT-X-INDEPENDENT-SEGMENTS');
+        if (hasAudio) {
+          sb.writeln('#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Audio",DEFAULT=YES,AUTOSELECT=YES,URI="audio.m3u8"');
+          sb.writeln('#EXT-X-STREAM-INF:BANDWIDTH=3000000,AUDIO="audio"');
+        } else {
+          sb.writeln('#EXT-X-STREAM-INF:BANDWIDTH=3000000');
+        }
+        sb.writeln('video.m3u8');
+        await masterM3u8.writeAsString(sb.toString());
+      }
+
+      // 5. Ensure .nomedia exists to protect private sandbox
+      final noMedia = File('${dir.path}/.nomedia');
+      if (!await noMedia.exists()) {
+        await noMedia.writeAsString('');
+      }
+    } catch (e) {
+      debugPrint('[VideoDownloadService] repairOfflineDirectory error: $e');
+    }
   }
 
   /// Resolves stream and computes available resolutions and estimated file sizes.
@@ -192,11 +286,11 @@ class VideoDownloadService {
     final targetDir = targetFile.parent;
     await targetDir.create(recursive: true);
 
-    // Ensure no legacy .nomedia file in download folder so media is discoverable in Android gallery and files
+    // Ensure .nomedia file in download folder so media is strictly private to Cineva and never scanned by gallery
     try {
       final noMedia = File('${targetDir.path}/.nomedia');
-      if (await noMedia.exists()) {
-        await noMedia.delete();
+      if (!await noMedia.exists()) {
+        await noMedia.writeAsString('');
       }
     } catch (_) {}
 
@@ -622,7 +716,15 @@ class VideoDownloadService {
         speed: 'Menyelesaikan unduhan...',
       );
 
-      // 1. Write video.m3u8
+      // Create .nomedia inside targetDir to prevent OS media scanning
+      try {
+        final noMedia = File('${targetDir.path}/.nomedia');
+        if (!await noMedia.exists()) {
+          await noMedia.writeAsString('');
+        }
+      } catch (_) {}
+
+      // 1. Write video.m3u8 (and video.cineva alias)
       final videoM3u8 = StringBuffer()
         ..writeln('#EXTM3U')
         ..writeln('#EXT-X-VERSION:3')
@@ -633,9 +735,11 @@ class VideoDownloadService {
         videoM3u8.writeln(t.fileName);
       }
       videoM3u8.writeln('#EXT-X-ENDLIST');
-      await File('${targetDir.path}/video.m3u8').writeAsString(videoM3u8.toString());
+      final videoContent = videoM3u8.toString();
+      await File('${targetDir.path}/video.m3u8').writeAsString(videoContent);
+      await File('${targetDir.path}/video.cineva').writeAsString(videoContent);
 
-      // 2. Write audio.m3u8 (if separate audio stream exists)
+      // 2. Write audio.m3u8 (and audio.cineva alias) if separate audio stream exists
       if (hasAudioTrack) {
         final audioM3u8 = StringBuffer()
           ..writeln('#EXTM3U')
@@ -647,10 +751,12 @@ class VideoDownloadService {
           audioM3u8.writeln(t.fileName);
         }
         audioM3u8.writeln('#EXT-X-ENDLIST');
-        await File('${targetDir.path}/audio.m3u8').writeAsString(audioM3u8.toString());
+        final audioContent = audioM3u8.toString();
+        await File('${targetDir.path}/audio.m3u8').writeAsString(audioContent);
+        await File('${targetDir.path}/audio.cineva').writeAsString(audioContent);
       }
 
-      // 3. Write master.m3u8
+      // 3. Write master.m3u8 (standard offline HLS playlist)
       final masterM3u8 = StringBuffer()
         ..writeln('#EXTM3U')
         ..writeln('#EXT-X-VERSION:3')
@@ -662,30 +768,17 @@ class VideoDownloadService {
         masterM3u8.writeln('#EXT-X-STREAM-INF:BANDWIDTH=3000000');
       }
       masterM3u8.writeln('video.m3u8');
-      await File('${targetDir.path}/master.m3u8').writeAsString(masterM3u8.toString());
+      final masterContent = masterM3u8.toString();
+      await File('${targetDir.path}/master.m3u8').writeAsString(masterContent);
+      await File('${targetDir.path}/master.cineva').writeAsString(masterContent);
 
-      debugPrint('[VideoDownloadService] Offline HLS bundle successfully created in: ${targetDir.path}');
+      // 4. Write proprietary Cineva package metadata
+      try {
+        final metaFile = File('${targetDir.path}/cineva_package.json');
+        await metaFile.writeAsString('{"version":1,"package":"cineva_offline_bundle","createdAt":"${DateTime.now().toIso8601String()}"}');
+      } catch (_) {}
 
-      // 4. On Android, remux to a single hardware-accelerated .mp4 container for instant, zero-buffer offline playback!
-      // Segments are only deleted when the native side validates the MP4; otherwise the HLS bundle stays as fallback.
-      if (Platform.isAndroid) {
-        onProgress?.call(
-          downloadedBytes: downloadedBytes,
-          totalBytes: estimatedSizeBytes > 0 ? estimatedSizeBytes : totalSegments * 1048576,
-          progress: 1.0,
-          speed: 'Menyiapkan media offline...',
-        );
-
-        final expectedDurationUs =
-            (videoTasks.fold<double>(0, (sum, t) => sum + t.duration) * 1000000).round();
-
-        final muxed = await OfflineMp4Builder.build(
-          dir: targetDir,
-          expectedDurationUs: expectedDurationUs > 0 ? expectedDurationUs : null,
-          deleteSegmentsOnSuccess: true,
-        );
-        debugPrint('[VideoDownloadService] Offline build completed: muxedMp4=$muxed');
-      }
+      debugPrint('[VideoDownloadService] Offline Cineva media package successfully prepared in: ${targetDir.path}');
     } catch (_) {
       rethrow;
     }

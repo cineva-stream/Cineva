@@ -133,9 +133,11 @@ class LocalStreamServer {
     try {
       final ext = fileName.split('.').last.toLowerCase();
       switch (ext) {
+        case 'cineva':
         case 'm3u8':
           response.headers.contentType = ContentType('application', 'vnd.apple.mpegurl', charset: 'utf-8');
           break;
+        case 'cdat':
         case 'ts':
           response.headers.contentType = ContentType('video', 'mp2t');
           break;

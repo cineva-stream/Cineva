@@ -121,10 +121,17 @@ class AppStrings {
   // ── Player Screen ──
   String get playerNextEpisode => isIndonesian ? 'Episode Berikutnya' : 'Next Episode';
   String playerNextEpisodePill(int ep) => isIndonesian ? 'Episode $ep Berikutnya' : 'Next: Episode $ep';
+  String get playerFinishedPromptTitle => isIndonesian ? 'Apakah sudah selesai menonton?' : 'Finished watching?';
+  String playerFinishedPromptDesc(String title) => isIndonesian
+      ? 'Tandai status film "$title" di riwayat menonton Anda.'
+      : 'Set the watch status for "$title" in your history.';
+  String get playerFinishedOptionNo => isIndonesian ? 'Belum' : 'Not Yet';
+  String get playerFinishedOptionYes => isIndonesian ? 'Sudah' : 'Done';
   String get playerSubSettings => isIndonesian ? 'Atur Subtitle' : 'Subtitle Settings';
   String get playerQuality => isIndonesian ? 'Kualitas' : 'Quality';
   String get playerSpeed => isIndonesian ? 'Kecepatan' : 'Speed';
   String get playerAudio => isIndonesian ? 'Audio' : 'Audio';
+  String get playerBrightness => isIndonesian ? 'Kecerahan' : 'Brightness';
   String get playerBuffering => isIndonesian ? 'Memuat video...' : 'Buffering video...';
   String get playerConnecting => isIndonesian ? 'Menghubungkan ke stream...' : 'Connecting to stream...';
   String get playerSearchingStream => isIndonesian ? 'Mencari stream berkecepatan tinggi...' : 'Searching for high-speed stream...';

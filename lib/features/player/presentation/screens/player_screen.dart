@@ -25,6 +25,7 @@ import '../../../history/data/repositories/watch_history_repository.dart';
 import '../../../download/domain/models/download_item.dart';
 import '../../../download/data/services/local_stream_server.dart';
 import '../../../download/data/services/offline_mp4_builder.dart';
+import '../../../download/data/services/video_download_service.dart';
 import '../../../download/presentation/providers/download_provider.dart';
 import '../providers/player_providers.dart';
 import '../widgets/custom_subtitle_overlay.dart';
@@ -151,6 +152,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _showVolumeIndicator = false;
   Timer? _volumeIndicatorTimer;
 
+  // ── Screen Brightness State ──
+  static const MethodChannel _brightnessChannel = MethodChannel('com.primadev.cineva/brightness');
+  double _brightness = 0.5; // 0.05 to 1.0 (5% to 100%)
+  bool _showBrightnessIndicator = false;
+  Timer? _brightnessIndicatorTimer;
+
   // ── Controls & Mini Popups State ──
   bool _showControls = false;
   Timer? _controlsTimer;
@@ -231,17 +238,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _resetControlsTimer();
   }
 
-  /// Sets up zero-latency instant offline playback options for mpv.
-  /// Eliminates network caching delays and prevents loopback buffering freezes.
+  /// Sets up smooth, zero-latency offline playback options for mpv.
+  /// Enables memory ring buffering and allows file and http protocol demuxing.
   Future<void> _setupMpvOfflineOptions() async {
     try {
       final mpv = (_player.platform as dynamic);
-      await mpv?.command(['set', 'cache', 'no']); // ZERO network cache: read directly from local storage
-      await mpv?.command(['set', 'cache-pause', 'no']); // Never pause on local files
-      await mpv?.command(['set', 'cache-pause-initial', 'no']); // Play immediately without waiting
-      await mpv?.command(['set', 'demuxer-readahead-secs', '5']); // Minimal 5s readahead
-      await mpv?.command(['set', 'demuxer-lavf-o', 'fflags=+genpts,allowed_extensions=ALL']);
-      await mpv?.command(['set', 'hr-seek', 'yes']); // Precise seeking
+      await mpv?.command(['set', 'cache', 'yes']);
+      await mpv?.command(['set', 'cache-pause', 'no']);
+      await mpv?.command(['set', 'cache-pause-initial', 'no']);
+      await mpv?.command(['set', 'cache-secs', '30']);
+      await mpv?.command(['set', 'demuxer-readahead-secs', '30']);
+      await mpv?.command(['set', 'demuxer-max-bytes', '64M']);
+      await mpv?.command(['set', 'demuxer-lavf-o', 'protocol_whitelist=file,http,https,tcp,tls,crypto,data,fflags=+genpts']);
+      await mpv?.command(['set', 'hr-seek', 'yes']);
     } catch (e) {
       debugPrint('[PlayerScreen] mpv offline options setup error: $e');
     }
@@ -273,8 +282,144 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   bool _isExiting = false;
 
+  /// Shows a minimalist modal popup when exiting a movie near completion (<= 12 min remaining)
+  Future<bool?> _showFinishedWatchingDialog() async {
+    final s = ref.read(appStringsProvider);
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.75),
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 360),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF141418),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  s.playerFinishedPromptTitle,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  s.playerFinishedPromptDesc(widget.title),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.65),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w400,
+                    height: 1.35,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    // Option 1: Belum / Not Yet -> Continue Watching
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => Navigator.of(ctx).pop(false),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            s.playerFinishedOptionNo,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Option 2: Sudah / Done -> Completed
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => Navigator.of(ctx).pop(true),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            s.playerFinishedOptionYes,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _handleExit() async {
     if (_isExiting) return;
+
+    final isTv = widget.mediaType == 'tv' || (_currentSeason != null && _currentEpisode != null);
+    final durSecs = _duration.inSeconds;
+    final posSecs = _position.inSeconds;
+    final remainingSecs = durSecs - posSecs;
+
+    bool? markCompletedOnExit;
+    // Show confirmation modal for movies when remaining time <= 12 minutes (720 seconds)
+    if (!isTv && durSecs > 180 && remainingSecs <= (12 * 60) && remainingSecs >= -30) {
+      try {
+        _player.pause();
+      } catch (_) {}
+
+      final result = await _showFinishedWatchingDialog();
+      // If user dismissed dialog by tapping outside, resume playback and do not exit
+      if (result == null) {
+        try {
+          _player.play();
+        } catch (_) {}
+        return;
+      }
+      markCompletedOnExit = result;
+    }
+
     _isExiting = true;
 
     // 1. Instantly mute and stop native player audio to kill sound immediately
@@ -313,9 +458,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
 
     // 4. Force save watch history before popping
-    _saveWatchHistory(force: true);
+    _saveWatchHistory(force: true, markCompleted: markCompletedOnExit);
 
-    // 5. Pop player route safely
+    // 5. Restore default system brightness
+    _resetBrightness();
+
+    // 6. Pop player route safely
     if (mounted) {
       context.pop();
     }
@@ -323,9 +471,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   @override
   void dispose() {
-    _saveWatchHistory(force: true);
+    if (!_isExiting) {
+      _saveWatchHistory(force: true);
+    }
+    _resetBrightness();
     _controlsTimer?.cancel();
     _volumeIndicatorTimer?.cancel();
+    _brightnessIndicatorTimer?.cancel();
     _posSub?.cancel();
     _durSub?.cancel();
     _playingSub?.cancel();
@@ -362,7 +514,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (widget.tmdbId == null) return null;
     final mediaType = widget.mediaType ?? (_currentSeason != null ? 'tv' : 'movie');
     final repo = ref.read(watchHistoryRepositoryProvider);
-    final item = repo.getItem(mediaType, widget.tmdbId!);
+    final item = repo.getItem(mediaType, widget.tmdbId!, season: _currentSeason, episode: _currentEpisode);
     if (item != null && !item.isCompleted && item.positionMs > 5000) {
       if (mediaType == 'tv') {
         if (item.season == _currentSeason && item.episode == _currentEpisode) {
@@ -375,16 +527,30 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     return null;
   }
 
-  void _saveWatchHistory({bool force = false}) {
+  void _saveWatchHistory({bool force = false, bool? markCompleted}) {
     final tmdbId = widget.tmdbId;
     if (tmdbId == null || tmdbId == 0) return;
 
-    final posMs = _position.inMilliseconds;
+    var posMs = _position.inMilliseconds;
     final durMs = _duration.inMilliseconds;
-    if (durMs <= 0 || posMs < 3000) return;
+    if (durMs <= 0 || (posMs < 3000 && markCompleted != true)) return;
 
-    final isCompleted = (posMs / durMs) >= 0.95;
     final mediaType = widget.mediaType ?? (_currentSeason != null ? 'tv' : 'movie');
+    final isTv = mediaType == 'tv' || (_currentSeason != null && _currentEpisode != null);
+
+    bool isCompleted;
+    if (markCompleted != null) {
+      isCompleted = markCompleted;
+      // If user explicitly says not yet completed ("Belum") for movie, clamp to ~94% so it remains in Continue Watching
+      if (!isCompleted && (posMs / durMs) >= 0.95) {
+        posMs = (durMs * 0.94).toInt();
+      }
+    } else if (isTv) {
+      final remainingSecs = (_duration - _position).inSeconds;
+      isCompleted = (posMs / durMs) >= 0.92 || (_duration.inSeconds > 30 && remainingSecs <= 60);
+    } else {
+      isCompleted = (posMs / durMs) >= 0.95;
+    }
 
     final item = WatchHistoryItem(
       id: tmdbId,
@@ -738,7 +904,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   /// Dedicated offline video player handler.
-  /// Plays local MP4 video directly from storage without any network traffic or buffering.
+  /// Plays offline videos directly or via local loopback streaming with zero internet requirement.
   Future<void> _initOfflinePlayback() async {
     setState(() {
       _isLoading = true;
@@ -748,10 +914,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     try {
       final s = ref.read(appStringsProvider);
-      final path = _currentLocalVideoPath ?? widget.localVideoPath!;
-      final localFile = File(path);
+      final rawPath = _currentLocalVideoPath ?? widget.localVideoPath!;
+      final localFile = File(rawPath);
       debugPrint('[PlayerScreen] Initializing offline playback: ${localFile.path}');
-      if (!await localFile.exists()) {
+
+      final mediaDir = localFile.parent;
+      if (!await mediaDir.exists()) {
         if (mounted) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -765,95 +933,75 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         return;
       }
 
-      var targetMediaFile = localFile;
-      final mediaDir = localFile.parent;
-      final mp4Candidate = File('${mediaDir.path}/${OfflineMp4Builder.mp4Name}');
-      final videoTsCandidate = File('${mediaDir.path}/${OfflineMp4Builder.videoTsName}');
-      final hasHlsSegments = await File('${mediaDir.path}/v_0000.ts').exists();
+      // 1. Auto-repair any legacy .cdat segments and playlists in mediaDir
+      await VideoDownloadService.repairOfflineDirectoryIfNeeded(mediaDir);
 
-      // 1. If valid MP4 exists, use it!
-      if (await OfflineMp4Builder.isValidMp4(mp4Candidate)) {
-        targetMediaFile = mp4Candidate;
-      } else if (await videoTsCandidate.exists() && (await videoTsCandidate.length()) > 50000) {
-        // 2. Fallback to unified video.ts single container
-        targetMediaFile = videoTsCandidate;
-      } else if (hasHlsSegments) {
-        // 3. Raw segments exist, build MP4 or video.ts
-        if (mounted) setState(() => _loadingStep = _PlayerLoadingStep.preparingMp4);
-        final expectedUs = await OfflineMp4Builder.expectedDurationUsFromPlaylist(
-          File('${mediaDir.path}/video.m3u8'),
-        );
-        await OfflineMp4Builder.build(
-          dir: mediaDir,
-          expectedDurationUs: expectedUs,
-        );
-        final playable = await OfflineMp4Builder.findPlayableOfflineFile(mediaDir);
-        if (playable != null) {
-          targetMediaFile = playable;
-        }
-      } else {
-        final playable = await OfflineMp4Builder.findPlayableOfflineFile(mediaDir);
-        if (playable != null) {
-          targetMediaFile = playable;
-        }
-      }
+      final masterM3u8 = File('${mediaDir.path}/master.m3u8');
+      final masterCineva = File('${mediaDir.path}/master.cineva');
+      final videoM3u8 = File('${mediaDir.path}/video.m3u8');
+      final mp4Candidate = File('${mediaDir.path}/${OfflineMp4Builder.mp4Name}');
 
       _useNativePlayer = true;
       await _setupMpvOfflineOptions();
 
-      // 4. Play media file directly without HTTP server if it is a container file (MP4, MKV, TS)
-      final isSingleContainer = targetMediaFile.path.toLowerCase().endsWith('.mp4') ||
-          targetMediaFile.path.toLowerCase().endsWith('.mkv') ||
-          targetMediaFile.path.toLowerCase().endsWith('.ts');
+      // Case 1: Standalone MP4/MKV file
+      if (await OfflineMp4Builder.isValidMp4(mp4Candidate)) {
+        debugPrint('[PlayerScreen] Playing standalone MP4: ${mp4Candidate.path}');
+        await _player.open(Media(mp4Candidate.path));
+        if (!await _waitForOfflineMediaReady(const Duration(seconds: 10))) {
+          if (!await mp4Candidate.exists() || (await mp4Candidate.length()) < 50000) {
+            throw Exception(s.playerOfflineCorrupted);
+          }
+        }
+      } else if (await masterM3u8.exists() || await masterCineva.exists() || await videoM3u8.exists()) {
+        // Case 2: HLS Offline Bundle (TS segments)
+        final playlistFile = (await masterM3u8.exists())
+            ? masterM3u8
+            : ((await masterCineva.exists()) ? masterCineva : videoM3u8);
+        debugPrint('[PlayerScreen] Playing offline HLS package: ${playlistFile.path}');
 
-      if (isSingleContainer) {
-        debugPrint('[PlayerScreen] Playing offline native media directly from storage: ${targetMediaFile.path}');
-        await _player.open(Media(targetMediaFile.path));
+        // First attempt: Direct file playback via libmpv
+        bool ready = false;
+        try {
+          await _player.open(Media(playlistFile.path));
+          ready = await _waitForOfflineMediaReady(const Duration(seconds: 4));
+        } catch (e) {
+          debugPrint('[PlayerScreen] Direct file open failed: $e');
+          ready = false;
+        }
 
-        // If target is video.ts and separate audio.ts exists, attach audio track!
-        final secondaryAudio = await OfflineMp4Builder.getSecondaryAudioFile(mediaDir);
-        if (targetMediaFile.path.endsWith('.ts') && secondaryAudio != null) {
-          debugPrint('[PlayerScreen] Attaching external audio: ${secondaryAudio.path}');
-          try {
-            await (_player.platform as dynamic)?.command(['audio-add', secondaryAudio.path, 'select']);
-          } catch (e) {
-            debugPrint('[PlayerScreen] audio-add command note: $e');
+        // Second attempt (fallback): Loopback HTTP stream via LocalStreamServer
+        if (!ready) {
+          debugPrint('[PlayerScreen] Direct file not ready, falling back to LocalStreamServer loopback...');
+          final port = await LocalStreamServer.instance.start();
+          if (port > 0) {
+            final fileName = playlistFile.path.split(RegExp(r'[\\/]')).where((s) => s.isNotEmpty).last;
+            final cleanId = 'cineva_${mediaDir.path.hashCode.abs()}';
+
+            final streamUrl = LocalStreamServer.instance.getStreamUrl(
+              dirPath: mediaDir.path,
+              fileName: fileName,
+              id: cleanId,
+            );
+
+            debugPrint('[PlayerScreen] Offline loopback stream URL: $streamUrl');
+            await _player.open(Media(streamUrl));
+            ready = await _waitForOfflineMediaReady(const Duration(seconds: 12));
           }
         }
 
+        if (!ready) {
+          throw Exception(s.playerOfflineCorrupted);
+        }
+      } else if (await localFile.exists() && (await localFile.length()) > 50000) {
+        // Case 3: Direct media file fallback
+        debugPrint('[PlayerScreen] Playing direct media file: ${localFile.path}');
+        await _player.open(Media(localFile.path));
         if (!await _waitForOfflineMediaReady(const Duration(seconds: 10))) {
-          if (!await targetMediaFile.exists() || (await targetMediaFile.length()) < 50000) {
-            throw Exception(s.playerOfflineCorrupted);
-          }
+          throw Exception(s.playerOfflineCorrupted);
         }
       } else {
-        // Fallback for HLS manifest: try direct file path first, fallback to loopback HTTP server with cache:no
-        try {
-          debugPrint('[PlayerScreen] Attempting direct local HLS manifest open: ${targetMediaFile.path}');
-          await _player.open(Media(targetMediaFile.path));
-          if (!await _waitForOfflineMediaReady(const Duration(seconds: 6))) {
-            throw Exception('Direct HLS open did not produce media info');
-          }
-        } catch (_) {
-          debugPrint('[PlayerScreen] Direct HLS failed, streaming via LocalStreamServer with zero-network cache');
-          final port = await LocalStreamServer.instance.start();
-          if (port == 0) {
-            throw Exception('Gagal mengaktifkan server streaming lokal.');
-          }
-
-          final parentDir = targetMediaFile.parent.path;
-          final fileName = targetMediaFile.path.split(RegExp(r'[\\/]')).where((s) => s.isNotEmpty).last;
-
-          final streamUrl = LocalStreamServer.instance.getStreamUrl(
-            dirPath: parentDir,
-            fileName: fileName,
-          );
-
-          await _player.open(Media(streamUrl));
-          if (!await _waitForOfflineMediaReady(const Duration(seconds: 12))) {
-            throw Exception(s.playerOfflineCorrupted);
-          }
-        }
+        throw Exception(s.playerOfflineCorrupted);
       }
 
       await _player.setAudioTrack(AudioTrack.auto());
@@ -892,9 +1040,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           _isLoading = false;
           _isBuffering = false;
           _currentQuality = 'Offline';
-          _resolutionLabel = targetMediaFile.path.toLowerCase().endsWith('.mp4')
+          _resolutionLabel = localFile.path.toLowerCase().endsWith('.mp4')
               ? (isId ? 'Lokal MP4' : 'Local MP4')
-              : (isId ? 'Lokal' : 'Local');
+              : 'Cineva Offline';
         });
       }
     } catch (e) {
@@ -1242,6 +1390,31 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     });
   }
 
+  // ── Screen Brightness Gesture Control ──
+
+  void _setBrightness(double newBrightness) {
+    final clamped = newBrightness.clamp(0.05, 1.0);
+    setState(() {
+      _brightness = clamped;
+      _showBrightnessIndicator = true;
+    });
+
+    try {
+      _brightnessChannel.invokeMethod('setBrightness', {'brightness': clamped});
+    } catch (_) {}
+
+    _brightnessIndicatorTimer?.cancel();
+    _brightnessIndicatorTimer = Timer(const Duration(milliseconds: 1600), () {
+      if (mounted) setState(() => _showBrightnessIndicator = false);
+    });
+  }
+
+  void _resetBrightness() {
+    try {
+      _brightnessChannel.invokeMethod('resetBrightness');
+    } catch (_) {}
+  }
+
   // ── Unified Custom Controls ──
 
   void _togglePlayPause() {
@@ -1354,7 +1527,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
 
     final nextEp = _currentEpisode! + 1;
-    _saveWatchHistory(force: true);
+    _saveWatchHistory(force: true, markCompleted: true);
 
     if (mounted) {
       setState(() {
@@ -1473,33 +1646,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.85),
+            color: Colors.black.withValues(alpha: 0.65),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.primary, width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.35),
-                blurRadius: 12,
-                spreadRadius: 1,
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.6),
-                blurRadius: 6,
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 8,
               ),
             ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: AppColors.primary, size: 18),
+              Icon(icon, color: Colors.white.withValues(alpha: 0.9), size: 18),
               const SizedBox(width: 8),
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.92),
                   fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0.2,
                 ),
               ),
             ],
@@ -2500,20 +2667,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         GestureDetector(
                           onTap: _playNextEpisode,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.2),
+                              color: Colors.black.withValues(alpha: 0.65),
                               borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.skip_next_rounded, color: AppColors.primary, size: 12),
-                                const SizedBox(width: 2),
+                                Icon(Icons.skip_next_rounded, color: Colors.white.withValues(alpha: 0.9), size: 12),
+                                const SizedBox(width: 3),
                                 Text(
                                   'Next Ep ${(_currentEpisode ?? 1) + 1}',
-                                  style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w400,
+                                  ),
                                 ),
                               ],
                             ),
@@ -2584,13 +2754,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _toggleControls,
-              // Vertical swipe gesture on right half of screen to adjust volume
+              // Vertical swipe gesture on right half of screen to adjust volume, left half to adjust brightness
               onVerticalDragUpdate: (details) {
                 final screenWidth = MediaQuery.of(context).size.width;
                 if (details.globalPosition.dx > screenWidth / 2) {
                   // Drag up increases volume, drag down decreases volume
                   final delta = -details.primaryDelta! * 0.5;
                   _setVolume(_volume + delta);
+                } else {
+                  // Drag up increases brightness, drag down decreases brightness
+                  final delta = -details.primaryDelta! / 250.0;
+                  _setBrightness(_brightness + delta);
                 }
               },
               child: Video(
@@ -2641,6 +2815,42 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         _volume > 100.0 ? 'Volume: ${_volume.toInt()}% (Boost)' : 'Volume: ${_volume.toInt()}%',
                         style: TextStyle(
                           color: _volume > 100.0 ? AppColors.primary : Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // ── 3.1 Quick Brightness Indicator HUD Pill ──
+            if (_showBrightnessIndicator)
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _brightness > 0.6
+                            ? Icons.brightness_high_rounded
+                            : (_brightness > 0.3
+                                ? Icons.brightness_medium_rounded
+                                : Icons.brightness_low_rounded),
+                        color: AppColors.primary,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '${s.playerBrightness}: ${(_brightness * 100).round()}%',
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
