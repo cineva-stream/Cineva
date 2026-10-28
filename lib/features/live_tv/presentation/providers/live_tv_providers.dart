@@ -15,6 +15,10 @@ final liveTvSearchQueryProvider = StateProvider<String>((ref) => '');
 /// When true, [MainShell] hides the bottom navigation bar.
 final liveTvFullscreenProvider = StateProvider<bool>((ref) => false);
 
+/// Provider indicating whether Live TV is currently actively playing a channel.
+/// When true, [MainShell] smoothly slides down and hides the bottom navigation bar.
+final liveTvIsPlayingProvider = StateProvider<bool>((ref) => false);
+
 /// Notifier that manages user favorite channel IDs stored in Hive.
 class LiveTvFavoritesNotifier extends StateNotifier<Set<String>> {
   static const String _key = 'live_tv_favorites';

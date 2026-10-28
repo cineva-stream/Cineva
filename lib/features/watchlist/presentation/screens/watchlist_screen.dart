@@ -28,9 +28,25 @@ class WatchlistScreen extends ConsumerWidget {
           children: [
             // ── Header ──
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.fromLTRB(8, 12, 16, 0),
               child: Row(
                 children: [
+                  IconButton(
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/');
+                      }
+                    },
+                    icon: const Icon(
+                      Icons.chevron_left_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                    tooltip: 'Kembali',
+                  ),
+                  const SizedBox(width: 4),
                   Text(s.watchlistTitle, style: Theme.of(context).textTheme.displaySmall),
                   const SizedBox(width: 8),
                   if (items.isNotEmpty)

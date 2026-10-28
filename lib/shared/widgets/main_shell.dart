@@ -22,11 +22,11 @@ class MainShell extends ConsumerWidget {
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/live-tv')) return 1;
-    if (location.startsWith('/watchlist')) return 1;
     if (location.startsWith('/search')) return 2;
     if (location.startsWith('/history')) return 3;
     if (location.startsWith('/settings')) return 4;
-    return 0;
+    if (location == '/' || location.startsWith('/?')) return 0;
+    return -1; // Other routes like /watchlist do not select any bottom navigation tab
   }
 
   void _onTap(BuildContext context, int index) {
@@ -53,17 +53,39 @@ class MainShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
     final currentIndex = _currentIndex(context);
+    final location = GoRouterState.of(context).uri.toString();
+    final isWatchlist = location.startsWith('/watchlist');
+    final isLiveTv = location.startsWith('/live-tv');
+    final isLiveTvPlaying = ref.watch(liveTvIsPlayingProvider);
     final isLiveTvFullscreen = ref.watch(liveTvFullscreenProvider);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isCompact = screenWidth < 360;
 
+    // Smoothly hide bottom nav bar when on Watchlist or when Live TV is actively streaming
+    final bool shouldHideBottomNav =
+        isWatchlist || (isLiveTv && (isLiveTvPlaying || isLiveTvFullscreen));
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        if (isLiveTvFullscreen && currentIndex == 1) {
-          ref.read(liveTvFullscreenProvider.notifier).state = false;
+        if (isLiveTv && (isLiveTvFullscreen || isLiveTvPlaying)) {
+          if (isLiveTvFullscreen) {
+            ref.read(liveTvFullscreenProvider.notifier).state = false;
+            return;
+          }
+          if (isLiveTvPlaying) {
+            ref.read(liveTvIsPlayingProvider.notifier).state = false;
+            return;
+          }
+        }
+        if (isWatchlist) {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/');
+          }
           return;
         }
         final currentIdx = _currentIndex(context);
@@ -80,76 +102,89 @@ class MainShell extends ConsumerWidget {
         extendBody: true,
         extendBodyBehindAppBar: true,
         body: child,
-        bottomNavigationBar: (isLiveTvFullscreen && currentIndex == 1)
+        bottomNavigationBar: (isLiveTvFullscreen && isLiveTv)
             ? null
-            : Container(
-          padding: EdgeInsets.only(bottom: bottomPadding),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            border: Border(
-              top: BorderSide(
-                color: Colors.white.withValues(alpha: 0.08),
-                width: 0.8,
+            : AnimatedSlide(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeInOutCubic,
+                offset: shouldHideBottomNav ? const Offset(0, 1.2) : Offset.zero,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeInOut,
+                  opacity: shouldHideBottomNav ? 0.0 : 1.0,
+                  child: IgnorePointer(
+                    ignoring: shouldHideBottomNav,
+                    child: Container(
+                      padding: EdgeInsets.only(bottom: bottomPadding),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        border: Border(
+                          top: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            width: 0.8,
+                          ),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            blurRadius: 12,
+                            offset: const Offset(0, -2),
+                          ),
+                        ],
+                      ),
+                      child: SizedBox(
+                        height: isCompact ? 56 : 60,
+                        child: Row(
+                          children: [
+                            _NavTab(
+                              icon: Icons.home_outlined,
+                              activeIcon: Icons.home_rounded,
+                              label: s.navHome,
+                              isActive: currentIndex == 0,
+                              isCompact: isCompact,
+                              onTap: () => _onTap(context, 0),
+                            ),
+                            _NavTab(
+                              icon: Icons.live_tv_outlined,
+                              activeIcon: Icons.live_tv_rounded,
+                              label: s.navLiveTv,
+                              isActive: currentIndex == 1,
+                              isCompact: isCompact,
+                              onTap: () => _onTap(context, 1),
+                            ),
+                            _NavTab(
+                              icon: Icons.search_rounded,
+                              activeIcon: Icons.search_rounded,
+                              label: s.navSearch,
+                              isActive: currentIndex == 2,
+                              isCompact: isCompact,
+                              onTap: () => _onTap(context, 2),
+                            ),
+                            _NavTab(
+                              icon: Icons.history_rounded,
+                              activeIcon: Icons.history_rounded,
+                              label: s.navHistory,
+                              isActive: currentIndex == 3,
+                              isCompact: isCompact,
+                              onTap: () => _onTap(context, 3),
+                            ),
+                            _NavTab(
+                              icon: Icons.settings_outlined,
+                              activeIcon: Icons.settings_rounded,
+                              label: s.navSettings,
+                              isActive: currentIndex == 4,
+                              isCompact: isCompact,
+                              onTap: () => _onTap(context, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.35),
-                blurRadius: 12,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: SizedBox(
-            height: isCompact ? 56 : 60,
-            child: Row(
-              children: [
-                _NavTab(
-                  icon: Icons.home_outlined,
-                  activeIcon: Icons.home_rounded,
-                  label: s.navHome,
-                  isActive: currentIndex == 0,
-                  isCompact: isCompact,
-                  onTap: () => _onTap(context, 0),
-                ),
-                _NavTab(
-                  icon: Icons.live_tv_outlined,
-                  activeIcon: Icons.live_tv_rounded,
-                  label: s.navLiveTv,
-                  isActive: currentIndex == 1,
-                  isCompact: isCompact,
-                  onTap: () => _onTap(context, 1),
-                ),
-                _NavTab(
-                  icon: Icons.search_rounded,
-                  activeIcon: Icons.search_rounded,
-                  label: s.navSearch,
-                  isActive: currentIndex == 2,
-                  isCompact: isCompact,
-                  onTap: () => _onTap(context, 2),
-                ),
-                _NavTab(
-                  icon: Icons.history_rounded,
-                  activeIcon: Icons.history_rounded,
-                  label: s.navHistory,
-                  isActive: currentIndex == 3,
-                  isCompact: isCompact,
-                  onTap: () => _onTap(context, 3),
-                ),
-                _NavTab(
-                  icon: Icons.settings_outlined,
-                  activeIcon: Icons.settings_rounded,
-                  label: s.navSettings,
-                  isActive: currentIndex == 4,
-                  isCompact: isCompact,
-                  onTap: () => _onTap(context, 4),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+),
+);
   }
 }
 

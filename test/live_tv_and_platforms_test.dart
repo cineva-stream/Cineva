@@ -15,6 +15,7 @@ import 'package:cineva/features/search/presentation/providers/platform_catalog_p
 import 'package:cineva/features/search/presentation/screens/platform_catalog_screen.dart';
 import 'package:cineva/features/home/domain/entities/movie.dart';
 import 'package:cineva/features/home/domain/entities/tv_series.dart';
+import 'package:cineva/features/watchlist/presentation/screens/watchlist_screen.dart';
 import 'package:cineva/shared/widgets/main_shell.dart';
 
 void main() {
@@ -27,6 +28,7 @@ void main() {
     Hive.init(tempDir.path);
     await Hive.openBox(AppConstants.settingsBox);
     await Hive.openBox(AppConstants.historyBox);
+    await Hive.openBox(AppConstants.watchlistBox);
   });
 
   tearDownAll(() async {
@@ -98,7 +100,7 @@ void main() {
   });
 
   group('LiveTvScreen Widget Tests', () {
-    testWidgets('Renders TV Live header, search bar, and channels', (tester) async {
+    testWidgets('Renders TV Live placeholder, search bar, and channels initially without auto-play', (tester) async {
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -111,13 +113,36 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('TV Live'), findsWidgets);
-      expect(find.text('LIVE'), findsWidgets);
       expect(find.byType(TextField), findsOneWidget);
       expect(find.text('Semua'), findsOneWidget);
       expect(find.text('Olahraga'), findsWidgets);
       expect(find.text('Berita'), findsWidgets);
+      expect(find.text('TVRI Nasional'), findsWidgets);
+      // No channel is auto-played initially
+      expect(find.byIcon(Icons.fullscreen_rounded), findsNothing);
+    });
+
+    testWidgets('Tapping a channel starts playback and reveals controls', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: LiveTvScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Tap on a channel to start playback
+      await tester.tap(find.text('TVRI Nasional').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Video player and controls must appear
+      expect(find.text('LIVE'), findsWidgets);
       expect(find.byIcon(Icons.fullscreen_rounded), findsOneWidget);
-      expect(find.byType(AspectRatio), findsWidgets);
+      expect(find.byIcon(Icons.close_rounded), findsWidgets);
     });
   });
 
@@ -277,6 +302,83 @@ void main() {
       expect(find.text('Beranda'), findsNothing);
       expect(find.text('Cari'), findsNothing);
       expect(find.text('Riwayat'), findsNothing);
+    });
+
+    testWidgets('Bottom navigation bar slides down when Live TV is playing', (tester) async {
+      final router = GoRouter(
+        initialLocation: '/live-tv',
+        routes: [
+          GoRoute(
+            path: '/live-tv',
+            builder: (context, state) => const MainShell(child: Text('Live TV Streaming')),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            liveTvIsPlayingProvider.overrideWith((ref) => true),
+            liveTvFullscreenProvider.overrideWith((ref) => false),
+          ],
+          child: MaterialApp.router(
+            routerConfig: router,
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Live TV Streaming'), findsOneWidget);
+      final animatedSlide = tester.widget<AnimatedSlide>(find.byType(AnimatedSlide).first);
+      expect(animatedSlide.offset, const Offset(0, 1.2));
+
+      final ignorePointer = tester.widget<IgnorePointer>(
+        find.descendant(
+          of: find.byType(AnimatedSlide),
+          matching: find.byType(IgnorePointer),
+        ),
+      );
+      expect(ignorePointer.ignoring, isTrue);
+    });
+
+    testWidgets('Bottom navigation bar is hidden on /watchlist and Watchlist shows Chevron Left', (tester) async {
+      final router = GoRouter(
+        initialLocation: '/watchlist',
+        routes: [
+          GoRoute(
+            path: '/watchlist',
+            builder: (context, state) => const MainShell(child: WatchlistScreen()),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp.router(
+            routerConfig: router,
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Watchlist displays Chevron Left back button
+      expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
+
+      // Bottom bar slides down and ignores pointer
+      final animatedSlide = tester.widget<AnimatedSlide>(find.byType(AnimatedSlide).first);
+      expect(animatedSlide.offset, const Offset(0, 1.2));
+
+      final ignorePointer = tester.widget<IgnorePointer>(
+        find.descendant(
+          of: find.byType(AnimatedSlide),
+          matching: find.byType(IgnorePointer),
+        ),
+      );
+      expect(ignorePointer.ignoring, isTrue);
     });
   });
 

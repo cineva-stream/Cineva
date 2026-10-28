@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,15 +29,15 @@ class LiveTvScreen extends ConsumerStatefulWidget {
 }
 
 class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
-  late LiveTvChannel _currentChannel;
+  LiveTvChannel? _currentChannel;
   Player? _player;
   VideoController? _controller;
 
   bool _isFullscreen = false;
   bool _controlsVisible = true;
   Timer? _hideControlsTimer;
-  bool _isLoading = true;
-  bool _isPlaying = true;
+  bool _isLoading = false;
+  bool _isPlaying = false;
   bool _hasError = false;
   String? _errorMessage;
   BoxFit _videoFit = BoxFit.contain;
@@ -50,17 +49,13 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
   @override
   void initState() {
     super.initState();
-    _currentChannel = LiveTvChannelsData.defaultChannels.isNotEmpty
-        ? LiveTvChannelsData.defaultChannels.first
-        : const LiveTvChannel(
-            id: 'tvri_nasional',
-            name: 'TVRI Nasional',
-            streamUrl: '',
-            category: 'Nasional',
-            country: 'Indonesia',
-          );
+    _currentChannel = null;
+    _isLoading = false;
+    _isPlaying = false;
+  }
 
-    if (!_isTesting) {
+  void _ensurePlayerInitialized() {
+    if (_player == null && !_isTesting) {
       _player = Player(
         configuration: const PlayerConfiguration(
           bufferSize: 16 * 1024 * 1024,
@@ -68,12 +63,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
       );
       _controller = VideoController(_player!);
       _listenPlayerEvents();
-      _playChannel(_currentChannel);
-    } else {
-      _isLoading = false;
     }
-
-    _startHideTimer();
   }
 
   void _listenPlayerEvents() {
@@ -105,12 +95,19 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
   }
 
   Future<void> _playChannel(LiveTvChannel channel) async {
+    _ensurePlayerInitialized();
+
     setState(() {
       _currentChannel = channel;
       _isLoading = true;
+      _isPlaying = true;
       _hasError = false;
       _errorMessage = null;
     });
+
+    // Notify provider to smoothly slide down and hide bottom navigation bar
+    ref.read(liveTvIsPlayingProvider.notifier).state = true;
+    _startHideTimer();
 
     if (_player != null) {
       try {
@@ -133,6 +130,22 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
           });
         }
       }
+    }
+  }
+
+  void _stopPlayback() {
+    _hideControlsTimer?.cancel();
+    _player?.stop();
+    setState(() {
+      _currentChannel = null;
+      _isPlaying = false;
+      _isLoading = false;
+      _hasError = false;
+      _errorMessage = null;
+    });
+    ref.read(liveTvIsPlayingProvider.notifier).state = false;
+    if (_isFullscreen) {
+      _exitFullscreen();
     }
   }
 
@@ -251,7 +264,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                   ),
                   itemBuilder: (context, index) {
                     final ch = channels[index];
-                    final isCurrent = ch.id == _currentChannel.id;
+                    final isCurrent = _currentChannel != null && ch.id == _currentChannel!.id;
                     return ListTile(
                       dense: true,
                       leading: Container(
@@ -339,7 +352,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
     final channels = ref.watch(filteredLiveTvChannelsProvider);
     final favoritesNotifier = ref.read(liveTvFavoritesProvider.notifier);
     final favorites = ref.watch(liveTvFavoritesProvider);
-    final isFav = favorites.contains(_currentChannel.id);
+    final isFav = _currentChannel != null && favorites.contains(_currentChannel!.id);
     final bottomPadding = MediaQuery.of(context).padding.bottom + 80;
 
     final categories = [
@@ -348,33 +361,43 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
     ];
 
     return PopScope(
-      canPop: !_isFullscreen,
+      canPop: !_isFullscreen && _currentChannel == null,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (_isFullscreen) {
           _exitFullscreen();
+          return;
+        }
+        if (_currentChannel != null) {
+          _stopPlayback();
+          return;
         }
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: _isFullscreen
+        body: (_isFullscreen && _currentChannel != null)
             ? _buildFullscreenPlayer(s, isFav, favoritesNotifier)
             : SafeArea(
                 bottom: false,
                 child: Column(
                   children: [
-                    // ── 1. Top YouTube-Style 16:9 Video Player ──
-                    _buildTopPlayer(s),
+                    // ── 1. Top YouTube-Style 16:9 Video Player or Placeholder ──
+                    if (_currentChannel != null)
+                      _buildTopPlayer(s, _currentChannel!)
+                    else
+                      _buildPlaceholder(s),
 
                     // ── 2. Scrollable Channels List & Filter Chips ──
                     Expanded(
                       child: CustomScrollView(
                         physics: const BouncingScrollPhysics(),
                         slivers: [
-                          // Active Channel Info Header
-                          SliverToBoxAdapter(
-                            child: _buildActiveChannelHeader(s, isFav, favoritesNotifier),
-                          ),
+                          // Active Channel Info Header (shown only when a channel is actively selected)
+                          if (_currentChannel != null)
+                            SliverToBoxAdapter(
+                              child: _buildActiveChannelHeader(
+                                  s, isFav, favoritesNotifier, _currentChannel!),
+                            ),
 
                           // Search Bar
                           SliverToBoxAdapter(
@@ -424,8 +447,75 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
     );
   }
 
+  /// Elegant placeholder when no channel is actively chosen yet
+  Widget _buildPlaceholder(AppStrings s) {
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF141416),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 0.8,
+          ),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF18181C),
+              Color(0xFF0E0E10),
+            ],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.live_tv_rounded,
+                  size: 30,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                s.liveTvTitle,
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Pilih saluran siaran TV di bawah untuk mulai menonton',
+                style: GoogleFonts.inter(
+                  fontSize: 11.5,
+                  color: AppColors.textMuted,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Top 16:9 video player widget formatted like YouTube
-  Widget _buildTopPlayer(AppStrings s) {
+  Widget _buildTopPlayer(AppStrings s, LiveTvChannel channel) {
     return AspectRatio(
       aspectRatio: 16 / 9,
       child: Container(
@@ -453,7 +543,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                         const Icon(Icons.live_tv_rounded, size: 36, color: AppColors.primary),
                         const SizedBox(height: 6),
                         Text(
-                          _currentChannel.name,
+                          channel.name,
                           style: GoogleFonts.outfit(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -515,7 +605,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                         ),
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
-                          onPressed: () => _playChannel(_currentChannel),
+                          onPressed: () => _playChannel(channel),
                           icon: const Icon(Icons.refresh_rounded, size: 14),
                           label: Text(s.liveTvRetry, style: const TextStyle(fontSize: 11)),
                           style: ElevatedButton.styleFrom(
@@ -555,40 +645,9 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Top Info Row
+                        // Top Info Row (Badge "TV Live" is removed per user request)
                         Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  width: 0.8,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.live_tv_rounded,
-                                    color: AppColors.primary,
-                                    size: 13,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    s.liveTvTitle,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
@@ -621,7 +680,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                _currentChannel.name,
+                                channel.name,
                                 style: GoogleFonts.outfit(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
@@ -638,13 +697,22 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                _currentChannel.quality,
+                                channel.quality,
                                 style: GoogleFonts.inter(
                                   fontSize: 10,
                                   color: Colors.white70,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
+                            ),
+                            const SizedBox(width: 6),
+                            // Close/Stop Button
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                              tooltip: 'Tutup Siaran',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: _stopPlayback,
                             ),
                           ],
                         ),
@@ -675,7 +743,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                               icon: const Icon(Icons.refresh_rounded,
                                   color: Colors.white, size: 20),
                               tooltip: s.liveTvRetry,
-                              onPressed: () => _playChannel(_currentChannel),
+                              onPressed: () => _playChannel(channel),
                             ),
                             // Square Fullscreen Control Icon
                             IconButton(
@@ -703,6 +771,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
     AppStrings s,
     bool isFav,
     LiveTvFavoritesNotifier favoritesNotifier,
+    LiveTvChannel channel,
   ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
@@ -721,9 +790,9 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                 width: 0.8,
               ),
             ),
-            child: _currentChannel.logoUrl != null && _currentChannel.logoUrl!.isNotEmpty
+            child: channel.logoUrl != null && channel.logoUrl!.isNotEmpty
                 ? CachedNetworkImage(
-                    imageUrl: _currentChannel.logoUrl!,
+                    imageUrl: channel.logoUrl!,
                     fit: BoxFit.contain,
                     errorWidget: (_, _, _) => const Icon(
                       Icons.tv_rounded,
@@ -747,7 +816,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                   children: [
                     Flexible(
                       child: Text(
-                        _currentChannel.name,
+                        channel.name,
                         style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -781,7 +850,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${s.liveTvTitle} • ${_currentChannel.category} • ${_currentChannel.quality} • ${_currentChannel.country}',
+                  '${s.liveTvTitle} • ${channel.category} • ${channel.quality} • ${channel.country}',
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
                     color: AppColors.textMuted,
@@ -792,12 +861,22 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
           ),
           // Favorite Star Toggle
           IconButton(
-            onPressed: () => favoritesNotifier.toggleFavorite(_currentChannel.id),
+            onPressed: () => favoritesNotifier.toggleFavorite(channel.id),
             icon: Icon(
               isFav ? Icons.star_rounded : Icons.star_border_rounded,
               color: isFav ? AppColors.star : Colors.white60,
               size: 24,
             ),
+          ),
+          // Close / Stop Playback Button
+          IconButton(
+            onPressed: _stopPlayback,
+            icon: const Icon(
+              Icons.close_rounded,
+              color: Colors.white60,
+              size: 22,
+            ),
+            tooltip: 'Tutup Siaran',
           ),
         ],
       ),
@@ -910,7 +989,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             final ch = channels[index];
-            final isCurrent = ch.id == _currentChannel.id;
+            final isCurrent = _currentChannel != null && ch.id == _currentChannel!.id;
             final isFav = favorites.contains(ch.id);
 
             return Padding(
@@ -1068,6 +1147,9 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
     bool isFav,
     LiveTvFavoritesNotifier favoritesNotifier,
   ) {
+    final channel = _currentChannel;
+    if (channel == null) return const SizedBox.shrink();
+
     return GestureDetector(
       onTap: _toggleControls,
       behavior: HitTestBehavior.opaque,
@@ -1138,7 +1220,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                       ),
                       const SizedBox(height: 18),
                       ElevatedButton.icon(
-                        onPressed: () => _playChannel(_currentChannel),
+                        onPressed: () => _playChannel(channel),
                         icon: const Icon(Icons.refresh_rounded, size: 16),
                         label: Text(s.liveTvRetry),
                         style: ElevatedButton.styleFrom(
@@ -1186,8 +1268,8 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                               icon: const Icon(Icons.arrow_back_rounded,
                                   color: Colors.white, size: 22),
                             ),
-                            if (_currentChannel.logoUrl != null &&
-                                _currentChannel.logoUrl!.isNotEmpty) ...[
+                            if (channel.logoUrl != null &&
+                                channel.logoUrl!.isNotEmpty) ...[
                               Container(
                                 width: 32,
                                 height: 32,
@@ -1198,7 +1280,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: CachedNetworkImage(
-                                  imageUrl: _currentChannel.logoUrl!,
+                                  imageUrl: channel.logoUrl!,
                                   fit: BoxFit.contain,
                                   errorWidget: (_, _, _) => const Icon(
                                     Icons.tv_rounded,
@@ -1217,7 +1299,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                                     children: [
                                       Flexible(
                                         child: Text(
-                                          _currentChannel.name,
+                                          channel.name,
                                           style: GoogleFonts.outfit(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w700,
@@ -1261,7 +1343,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                                     ],
                                   ),
                                   Text(
-                                    '${_currentChannel.category} • ${_currentChannel.quality}',
+                                    '${channel.category} • ${channel.quality}',
                                     style: GoogleFonts.inter(
                                       fontSize: 11,
                                       color: AppColors.textMuted,
@@ -1272,7 +1354,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                             ),
                             IconButton(
                               onPressed: () =>
-                                  favoritesNotifier.toggleFavorite(_currentChannel.id),
+                                  favoritesNotifier.toggleFavorite(channel.id),
                               icon: Icon(
                                 isFav ? Icons.star_rounded : Icons.star_border_rounded,
                                 color: isFav ? AppColors.star : Colors.white70,
@@ -1328,7 +1410,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                                       color: Colors.white70, size: 20),
                                 ),
                                 IconButton(
-                                  onPressed: () => _playChannel(_currentChannel),
+                                  onPressed: () => _playChannel(channel),
                                   tooltip: s.liveTvRetry,
                                   icon: const Icon(Icons.refresh_rounded,
                                       color: Colors.white70, size: 20),
