@@ -393,4 +393,22 @@ class AppStrings {
   String get legalAgreeButton => isIndonesian ? 'Setuju' : 'Agree';
   String get legalScrollToBottom => isIndonesian ? 'Gulir ke Bawah' : 'Scroll Down';
   String get legalFullyRead => isIndonesian ? 'Seluruh ketentuan telah dibaca' : 'All terms fully read';
+
+  // ── In-App Updater ──
+  String get updateAvailableTitle => isIndonesian ? 'Pembaruan Tersedia' : 'Update Available';
+  String updateNewVersionBadge(String ver) => isIndonesian ? 'Versi $ver' : 'Version $ver';
+  String updateNewVersionSubtitle(String ver) => isIndonesian ? 'Versi $ver telah dirilis dengan peningkatan terbaru.' : 'Version $ver has been released with the latest improvements.';
+  String get updateAction => isIndonesian ? 'Perbarui Sekarang' : 'Update Now';
+  String get updateInstallAction => isIndonesian ? 'Pasang Sekarang' : 'Install Now';
+  String get updateDownloading => isIndonesian ? 'Mengunduh Pembaruan...' : 'Downloading Update...';
+  String get updateFailed => isIndonesian ? 'Gagal mengunduh berkas pembaruan.' : 'Failed to download update file.';
+  String get updateRetry => isIndonesian ? 'Coba Lagi' : 'Retry';
+  String get updateCancel => isIndonesian ? 'Batal' : 'Cancel';
+  String get updateDismissTooltip => isIndonesian ? 'Tutup notifikasi' : 'Dismiss notice';
+  String get updatePermissionTitle => isIndonesian ? 'Izin Pemasangan Diperlukan' : 'Install Permission Required';
+  String get updatePermissionDesc => isIndonesian
+      ? 'Untuk memasang pembaruan Cineva, aktifkan izin "Izinkan dari sumber ini" pada Setelan Android perangkat Anda.'
+      : 'To install the Cineva update, please enable "Allow from this source" in your Android device settings.';
+  String get updateOpenSettings => isIndonesian ? 'Buka Setelan' : 'Open Settings';
+  String get updateApkCleaned => isIndonesian ? 'Cache pembaruan lama telah dibersihkan' : 'Old update cache has been cleaned';
 }

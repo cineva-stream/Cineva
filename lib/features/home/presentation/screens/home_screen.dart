@@ -23,6 +23,7 @@ import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../profile/presentation/widgets/avatar_display.dart';
+import '../../../updater/presentation/widgets/in_app_update_banner.dart';
 
 /// Active category filter on the Home Screen.
 enum HomeCategoryFilter {
@@ -345,6 +346,11 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
           ),
+          ),
+
+          // ── In-App Update Notification Banner ──
+          const SliverToBoxAdapter(
+            child: InAppUpdateBanner(),
           ),
 
           // ── Hero Billboard Carousel (Trending) ──
