@@ -30,4 +30,6 @@ abstract class MovieRepository {
   });
   Future<List<Movie>> searchMovies(String query, {int page = 1});
   Future<List<TvSeries>> searchTvSeries(String query, {int page = 1});
+  Future<List<Movie>> getMoviesByWatchProvider({required int providerId, int page = 1});
+  Future<List<TvSeries>> getTvByWatchProvider({required int providerId, int page = 1});
 }

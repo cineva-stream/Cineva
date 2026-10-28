@@ -20,6 +20,8 @@ import '../../../home/presentation/providers/home_providers.dart';
 import '../providers/search_history_provider.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/localization/app_strings.dart';
+import '../../domain/entities/streaming_platform.dart';
+import 'platform_catalog_screen.dart';
 
 // ── Search Providers ──
 
@@ -424,19 +426,6 @@ class _SearchDiscoveryView extends ConsumerWidget {
 
   const _SearchDiscoveryView({required this.onSelectQuery});
 
-  static const _trendingKeywords = [
-    'Deadpool & Wolverine',
-    'Squid Game',
-    'Arcane',
-    'Dune: Part Two',
-    'The Last of Us',
-    'Oppenheimer',
-    'Horor Indonesia',
-    'Anime',
-    'Action Thriller',
-    'Stranger Things',
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
@@ -533,69 +522,95 @@ class _SearchDiscoveryView extends ConsumerWidget {
           const SizedBox(height: 24),
         ],
 
-        // ── 2. TREND PENCARIAN ──
+        // ── 2. PILIH SESUAI PLATFORM ──
         Row(
           children: [
-            const Icon(Icons.local_fire_department_rounded, size: 17, color: AppColors.primary),
+            const Icon(Icons.subscriptions_rounded, size: 17, color: AppColors.primary),
             const SizedBox(width: 6),
-            Text(
-              s.searchTrending,
-              style: GoogleFonts.outfit(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  s.searchPlatforms,
+                  style: GoogleFonts.outfit(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  s.searchPlatformsSub,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _trendingKeywords.map((trend) {
-            return Container(
-              decoration: BoxDecoration(
-                color: AppColors.surfaceVariant.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.25),
-                  width: 0.8,
-                ),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () => onSelectQuery(trend),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    child: Row(
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: StreamingPlatform.supportedPlatforms.map((platform) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => PlatformCatalogScreen(platform: platform),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 104,
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: platform.brandColor.withValues(alpha: 0.35),
+                        width: 1.0,
+                      ),
+                    ),
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          '#',
-                          style: GoogleFonts.inter(
-                            color: AppColors.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: platform.brandColor.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            platform.icon,
+                            color: platform.brandColor,
+                            size: 20,
                           ),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(height: 8),
                         Text(
-                          trend,
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
+                          platform.name,
+                          style: GoogleFonts.outfit(
                             fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
-            );
-          }).toList(),
+              );
+            }).toList(),
+          ),
         ),
 
         const SizedBox(height: 26),

@@ -17,6 +17,9 @@ import '../../features/settings/presentation/screens/about_info_screen.dart';
 import '../../features/profile/presentation/screens/onboarding_profile_screen.dart';
 import '../../features/profile/presentation/screens/legal_agreement_screen.dart';
 import '../../features/profile/presentation/screens/edit_profile_screen.dart';
+import '../../features/live_tv/presentation/screens/live_tv_screen.dart';
+import '../../features/search/domain/entities/streaming_platform.dart';
+import '../../features/search/presentation/screens/platform_catalog_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 import '../../shared/widgets/shell_pop_scope.dart';
 
@@ -110,6 +113,13 @@ final GoRouter appRouter = GoRouter(
           name: 'home',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: ShellPopScope(isHome: true, child: HomeScreen()),
+          ),
+        ),
+        GoRoute(
+          path: '/live-tv',
+          name: 'liveTv',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: ShellPopScope(child: LiveTvScreen()),
           ),
         ),
         GoRoute(
@@ -319,6 +329,30 @@ final GoRouter appRouter = GoRouter(
           );
         },
       ),
+    ),
+    GoRoute(
+      path: '/platform/:id',
+      name: 'platformCatalog',
+      pageBuilder: (context, state) {
+        final platformId = state.pathParameters['id'] ?? 'netflix';
+        final platform = StreamingPlatform.fromId(platformId);
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: PlatformCatalogScreen(platform: platform),
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 250),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.06, 0),
+                end: Offset.zero,
+              ).animate(curved),
+              child: FadeTransition(opacity: curved, child: child),
+            );
+          },
+        );
+      },
     ),
   ],
 );

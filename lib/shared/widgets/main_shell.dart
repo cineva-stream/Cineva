@@ -20,6 +20,7 @@ class MainShell extends ConsumerWidget {
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
+    if (location.startsWith('/live-tv')) return 1;
     if (location.startsWith('/watchlist')) return 1;
     if (location.startsWith('/search')) return 2;
     if (location.startsWith('/history')) return 3;
@@ -33,7 +34,7 @@ class MainShell extends ConsumerWidget {
         context.go('/');
         break;
       case 1:
-        context.go('/watchlist');
+        context.go('/live-tv');
         break;
       case 2:
         context.go('/search');
@@ -104,9 +105,9 @@ class MainShell extends ConsumerWidget {
                   onTap: () => _onTap(context, 0),
                 ),
                 _NavTab(
-                  icon: Icons.bookmark_border_rounded,
-                  activeIcon: Icons.bookmark_rounded,
-                  label: s.navWatchlist,
+                  icon: Icons.live_tv_outlined,
+                  activeIcon: Icons.live_tv_rounded,
+                  label: s.navLiveTv,
                   isActive: currentIndex == 1,
                   isCompact: isCompact,
                   onTap: () => _onTap(context, 1),

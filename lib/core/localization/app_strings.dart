@@ -411,4 +411,14 @@ class AppStrings {
       : 'To install the Cineva update, please enable "Allow from this source" in your Android device settings.';
   String get updateOpenSettings => isIndonesian ? 'Buka Setelan' : 'Open Settings';
   String get updateApkCleaned => isIndonesian ? 'Cache pembaruan lama telah dibersihkan' : 'Old update cache has been cleaned';
+
+  // ── TV Live ──
+  String get navLiveTv => 'TV Live';
+  String get liveTvTitle => 'TV Live';
+  String get liveTvSearchHint => isIndonesian ? 'Cari saluran siaran TV...' : 'Search TV channels...';
+  String get liveTvNoChannels => isIndonesian ? 'Tidak ada saluran TV ditemukan' : 'No TV channels found';
+
+  // ── Streaming Platforms ──
+  String get searchPlatforms => isIndonesian ? 'Pilih Sesuai Platform' : 'Choose by Platform';
+  String get searchPlatformsSub => isIndonesian ? 'Jelajahi film & serial original pilihan' : 'Explore original movies & series';
 }

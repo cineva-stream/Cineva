@@ -304,6 +304,58 @@ class TmdbRemoteDatasource {
     }
   }
 
+  /// Discover movies available on a specific streaming provider (e.g. Netflix = 8, Prime = 9, Disney+ = 337).
+  Future<List<MovieModel>> getMoviesByWatchProvider({
+    required int providerId,
+    int page = 1,
+    String watchRegion = 'US',
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/discover/movie',
+        queryParameters: {
+          'page': page,
+          'language': languageCode,
+          'sort_by': 'popularity.desc',
+          'with_watch_providers': providerId,
+          'watch_region': watchRegion,
+        },
+      );
+      return _parseMovieList(response.data);
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.statusMessage ?? 'Failed to fetch provider movies',
+        e.response?.statusCode,
+      );
+    }
+  }
+
+  /// Discover TV series available on a specific streaming provider.
+  Future<List<TvSeriesModel>> getTvByWatchProvider({
+    required int providerId,
+    int page = 1,
+    String watchRegion = 'US',
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/discover/tv',
+        queryParameters: {
+          'page': page,
+          'language': languageCode,
+          'sort_by': 'popularity.desc',
+          'with_watch_providers': providerId,
+          'watch_region': watchRegion,
+        },
+      );
+      return _parseTvList(response.data);
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.statusMessage ?? 'Failed to fetch provider TV series',
+        e.response?.statusCode,
+      );
+    }
+  }
+
   List<MovieModel> _parseMovieList(dynamic data) {
     final results = data['results'] as List<dynamic>? ?? [];
     return results.map((json) => MovieModel.fromJson(json)).toList();

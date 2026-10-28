@@ -67,4 +67,14 @@ class MovieRepositoryImpl implements MovieRepository {
   Future<List<TvSeries>> searchTvSeries(String query, {int page = 1}) {
     return _remoteDatasource.searchTvSeries(query, page: page);
   }
+
+  @override
+  Future<List<Movie>> getMoviesByWatchProvider({required int providerId, int page = 1}) {
+    return _remoteDatasource.getMoviesByWatchProvider(providerId: providerId, page: page);
+  }
+
+  @override
+  Future<List<TvSeries>> getTvByWatchProvider({required int providerId, int page = 1}) {
+    return _remoteDatasource.getTvByWatchProvider(providerId: providerId, page: page);
+  }
 }
