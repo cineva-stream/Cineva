@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../core/localization/app_language_provider.dart';
+import '../../features/live_tv/presentation/providers/live_tv_providers.dart';
 import 'exit_confirmation_bottom_sheet.dart';
 
 /// Lightweight, modern, and minimalist bottom navigation shell.
@@ -52,6 +53,7 @@ class MainShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
     final currentIndex = _currentIndex(context);
+    final isLiveTvFullscreen = ref.watch(liveTvFullscreenProvider);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isCompact = screenWidth < 360;
@@ -60,6 +62,10 @@ class MainShell extends ConsumerWidget {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+        if (isLiveTvFullscreen && currentIndex == 1) {
+          ref.read(liveTvFullscreenProvider.notifier).state = false;
+          return;
+        }
         final currentIdx = _currentIndex(context);
         if (currentIdx != 0) {
           // If anywhere other than Beranda, back button returns to Beranda
@@ -74,7 +80,9 @@ class MainShell extends ConsumerWidget {
         extendBody: true,
         extendBodyBehindAppBar: true,
         body: child,
-        bottomNavigationBar: Container(
+        bottomNavigationBar: (isLiveTvFullscreen && currentIndex == 1)
+            ? null
+            : Container(
           padding: EdgeInsets.only(bottom: bottomPadding),
           decoration: BoxDecoration(
             color: AppColors.background,

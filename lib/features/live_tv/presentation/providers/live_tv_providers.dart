@@ -11,6 +11,10 @@ final liveTvCategoryProvider = StateProvider<String>((ref) => 'Semua');
 /// Search query for filtering live channels
 final liveTvSearchQueryProvider = StateProvider<String>((ref) => '');
 
+/// Provider indicating whether Live TV is currently in full-screen mode.
+/// When true, [MainShell] hides the bottom navigation bar.
+final liveTvFullscreenProvider = StateProvider<bool>((ref) => false);
+
 /// Notifier that manages user favorite channel IDs stored in Hive.
 class LiveTvFavoritesNotifier extends StateNotifier<Set<String>> {
   static const String _key = 'live_tv_favorites';

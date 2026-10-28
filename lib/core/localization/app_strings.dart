@@ -417,6 +417,13 @@ class AppStrings {
   String get liveTvTitle => 'TV Live';
   String get liveTvSearchHint => isIndonesian ? 'Cari saluran siaran TV...' : 'Search TV channels...';
   String get liveTvNoChannels => isIndonesian ? 'Tidak ada saluran TV ditemukan' : 'No TV channels found';
+  String get liveTvConnecting => isIndonesian ? 'Menghubungkan ke siaran live...' : 'Connecting to live stream...';
+  String get liveTvFailed => isIndonesian ? 'Gagal Memuat Siaran Live' : 'Failed to Load Live Stream';
+  String get liveTvRetry => isIndonesian ? 'Coba Lagi' : 'Retry';
+  String get liveTvNowPlaying => isIndonesian ? 'Diputar' : 'Playing';
+  String get liveTvChannelList => isIndonesian ? 'Daftar Saluran' : 'Channel List';
+  String get liveTvFullscreen => isIndonesian ? 'Layar Penuh' : 'Full Screen';
+  String get liveTvExitFullscreen => isIndonesian ? 'Keluar Layar Penuh' : 'Exit Full Screen';
 
   // ── Streaming Platforms ──
   String get searchPlatforms => isIndonesian ? 'Pilih Sesuai Platform' : 'Choose by Platform';

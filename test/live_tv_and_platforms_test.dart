@@ -116,6 +116,8 @@ void main() {
       expect(find.text('Semua'), findsOneWidget);
       expect(find.text('Olahraga'), findsWidgets);
       expect(find.text('Berita'), findsWidgets);
+      expect(find.byIcon(Icons.fullscreen_rounded), findsOneWidget);
+      expect(find.byType(AspectRatio), findsWidgets);
     });
   });
 
@@ -209,6 +211,72 @@ void main() {
 
       expect(find.text('TV Live'), findsOneWidget);
       expect(find.byIcon(Icons.live_tv_outlined), findsOneWidget);
+    });
+
+    testWidgets('Bottom navigation bar remains visible on /live-tv in portrait mode', (tester) async {
+      final router = GoRouter(
+        initialLocation: '/live-tv',
+        routes: [
+          GoRoute(
+            path: '/live-tv',
+            builder: (context, state) => const MainShell(child: Text('Live TV Portrait Content')),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            liveTvFullscreenProvider.overrideWith((ref) => false),
+          ],
+          child: MaterialApp.router(
+            routerConfig: router,
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Bottom bar elements must be visible
+      expect(find.text('Beranda'), findsOneWidget);
+      expect(find.text('TV Live'), findsOneWidget);
+      expect(find.text('Cari'), findsOneWidget);
+      expect(find.text('Riwayat'), findsOneWidget);
+      expect(find.text('Live TV Portrait Content'), findsOneWidget);
+    });
+
+    testWidgets('Bottom navigation bar is hidden on /live-tv when fullscreen is true', (tester) async {
+      final router = GoRouter(
+        initialLocation: '/live-tv',
+        routes: [
+          GoRoute(
+            path: '/live-tv',
+            builder: (context, state) => const MainShell(child: Text('Live TV Fullscreen Content')),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            liveTvFullscreenProvider.overrideWith((ref) => true),
+          ],
+          child: MaterialApp.router(
+            routerConfig: router,
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Main body content is visible
+      expect(find.text('Live TV Fullscreen Content'), findsOneWidget);
+      // Bottom navigation tabs must NOT be present when fullscreen is active
+      expect(find.text('Beranda'), findsNothing);
+      expect(find.text('Cari'), findsNothing);
+      expect(find.text('Riwayat'), findsNothing);
     });
   });
 
