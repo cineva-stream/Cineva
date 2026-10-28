@@ -2678,7 +2678,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                 Icon(Icons.skip_next_rounded, color: Colors.white.withValues(alpha: 0.9), size: 12),
                                 const SizedBox(width: 3),
                                 Text(
-                                  'Next Ep ${(_currentEpisode ?? 1) + 1}',
+                                  s.playerNextEpShort((_currentEpisode ?? 1) + 1),
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.9),
                                     fontSize: 10,

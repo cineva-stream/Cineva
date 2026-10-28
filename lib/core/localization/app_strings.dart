@@ -121,6 +121,7 @@ class AppStrings {
   // ── Player Screen ──
   String get playerNextEpisode => isIndonesian ? 'Episode Berikutnya' : 'Next Episode';
   String playerNextEpisodePill(int ep) => isIndonesian ? 'Episode $ep Berikutnya' : 'Next: Episode $ep';
+  String playerNextEpShort(int ep) => isIndonesian ? 'Ep $ep Lanjut' : 'Next Ep $ep';
   String get playerFinishedPromptTitle => isIndonesian ? 'Apakah sudah selesai menonton?' : 'Finished watching?';
   String playerFinishedPromptDesc(String title) => isIndonesian
       ? 'Tandai status film "$title" di riwayat menonton Anda.'

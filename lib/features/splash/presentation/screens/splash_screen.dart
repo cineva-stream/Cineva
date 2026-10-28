@@ -10,6 +10,7 @@ import '../../../../shared/widgets/modern_flag_badge.dart';
 import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/localization/app_strings.dart';
+import '../../../profile/data/profile_service.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../settings/data/settings_service.dart';
 
@@ -60,8 +61,24 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       duration: const Duration(seconds: 35),
     )..repeat();
 
-    Future.delayed(const Duration(milliseconds: 2200), () {
-      if (mounted) {
+    _handleNavigationFlow();
+  }
+
+  void _handleNavigationFlow() {
+    Future.delayed(const Duration(milliseconds: 2000), () {
+      if (!mounted) return;
+      final profile = ref.read(userProfileProvider);
+      final isConfigured = profile.isConfigured || ProfileService.hasConfiguredProfile();
+      final hasAcceptedLegal = SettingsService.hasAcceptedLegal();
+
+      if (isConfigured && hasAcceptedLegal) {
+        // User has already set up their profile & accepted terms, proceed directly to Home
+        context.go('/');
+      } else if (isConfigured && !hasAcceptedLegal) {
+        // Profile was created but terms not yet accepted
+        context.go('/onboarding-legal');
+      } else {
+        // First-time user install: show initial language selection and CTA
         setState(() {
           _showLanguageSelection = true;
         });
@@ -77,7 +94,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   void _onStartWatching() {
     final profile = ref.read(userProfileProvider);
-    if (!profile.isConfigured) {
+    final isConfigured = profile.isConfigured || ProfileService.hasConfiguredProfile();
+    if (!isConfigured) {
       context.push('/onboarding-profile');
     } else if (!SettingsService.hasAcceptedLegal()) {
       context.push('/onboarding-legal');
@@ -204,7 +222,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     crossFadeState: _showLanguageSelection
                         ? CrossFadeState.showSecond
                         : CrossFadeState.showFirst,
-                    firstChild: _buildIntroPhase(),
+                    firstChild: _buildIntroPhase(
+                      ref.watch(appStringsProvider),
+                    ),
                     secondChild: _buildLanguagePhase(
                       ref.watch(appLanguageProvider),
                       ref.watch(appStringsProvider),
@@ -273,7 +293,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     );
   }
 
-  Widget _buildIntroPhase() {
+  Widget _buildIntroPhase(AppStrings s) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -292,7 +312,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             ),
         const SizedBox(height: 14),
         Text(
-          'Nonton Film & Serial TV Favorit Tanpa Batas',
+          s.isIndonesian
+              ? 'Nonton Film & Serial TV Favorit Tanpa Batas'
+              : 'Stream Unlimited Movies & TV Series',
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             color: AppColors.textPrimary,
@@ -303,7 +325,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         ).animate(delay: 200.ms).fadeIn(duration: 450.ms),
         const SizedBox(height: 6),
         Text(
-          'Koleksi Terlengkap • Kualitas Ultra HD • Subtitle Indonesia',
+          s.isIndonesian
+              ? 'Koleksi Terlengkap • Kualitas Ultra HD • Subtitle Indonesia'
+              : 'Complete Library • Ultra HD Quality • World Subtitles',
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             color: AppColors.textMuted,

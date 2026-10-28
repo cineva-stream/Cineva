@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/utils/tmdb_genres.dart';
 import '../../domain/entities/movie.dart';
 
@@ -17,16 +19,16 @@ import '../../domain/entities/movie.dart';
 /// - Cinema Amber trending badge & quality pills (4K Ultra HD, HDR10)
 /// - Prominent dual CTA buttons ("Nonton Sekarang" & "Detail")
 /// - Smooth animated page indicator pills
-class MovieCarousel extends StatefulWidget {
+class MovieCarousel extends ConsumerStatefulWidget {
   final List<Movie> movies;
 
   const MovieCarousel({super.key, required this.movies});
 
   @override
-  State<MovieCarousel> createState() => _MovieCarouselState();
+  ConsumerState<MovieCarousel> createState() => _MovieCarouselState();
 }
 
-class _MovieCarouselState extends State<MovieCarousel> {
+class _MovieCarouselState extends ConsumerState<MovieCarousel> {
   late final PageController _pageController;
   int _currentPage = 0;
   Timer? _autoSlideTimer;
@@ -62,6 +64,7 @@ class _MovieCarouselState extends State<MovieCarousel> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
     final movies = widget.movies.take(7).toList();
     if (movies.isEmpty) return const SizedBox.shrink();
 
@@ -313,7 +316,7 @@ class _MovieCarouselState extends State<MovieCarousel> {
                                       onPressed: () => context.push('/movie/${movie.id}'),
                                       icon: Icon(Icons.play_arrow_rounded, color: Colors.black, size: isCompact ? 20 : 24),
                                       label: Text(
-                                        'Tonton Sekarang',
+                                        s.homeWatchNow,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: GoogleFonts.inter(
@@ -341,7 +344,7 @@ class _MovieCarouselState extends State<MovieCarousel> {
                                       onPressed: () => context.push('/movie/${movie.id}'),
                                       icon: Icon(Icons.info_outline_rounded, color: Colors.white, size: isCompact ? 16 : 18),
                                       label: Text(
-                                        'Detail',
+                                        s.homeDetail,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: GoogleFonts.inter(

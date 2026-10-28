@@ -1,36 +1,34 @@
-# Cineva v1.0.1 - Release Notes
+# Cineva v1.0.2 - Release Notes
 
-Pembaruan Cineva versi 1.0.1 merupakan pembaruan pemeliharaan yang berfokus pada perbaikan pencatatan riwayat menonton, penyempurnaan logika status selesai pada film dan serial TV, serta pembaruan antarmuka pemutar media.
+Pembaruan Cineva versi 1.0.2 berfokus pada penyempurnaan alur peluncuran aplikasi, perbaikan lokalisasi bahasa pada beranda, serta memastikan seluruh komponen antarmuka mendukung Bahasa Indonesia dan English secara konsisten.
 
 ---
 
 ## Ringkasan Perubahan
 
-### 1. Perbaikan Status Selesai Serial TV
-- Memperbaiki masalah di mana episode serial TV belum ditandai selesai saat pengguna menekan tombol Episode Berikutnya (Next Episode).
-- Episode yang telah selesai kini langsung tercatat dengan benar pada tab Selesai di halaman Riwayat Tontonan.
-- Setiap episode serial TV kini disimpan secara mandiri sehingga progres episode sebelumnya tetap tersimpan utuh saat berpindah episode.
+### 1. Perbaikan Alur Masuk Splash Screen
+- Memperbaiki masalah di mana pemilihan bahasa muncul setiap kali membuka aplikasi meskipun profil telah dibuat dan disimpan di perangkat.
+- Pengguna yang telah memiliki profil dan menyetujui ketentuan kini otomatis langsung diarahkan ke Beranda setelah tampilan splash screen.
+- Pemilihan bahasa awal hanya ditampilkan pada pemasangan baru aplikasi.
 
-### 2. Dialog Konfirmasi Selesai untuk Film
-- Menambahkan modal konfirmasi minimalis saat pengguna menekan tombol kembali (baik melalui gestur/navigasi Android maupun ikon kembali pada aplikasi) ketika sisa durasi film 12 menit atau kurang.
-- Pilihan "Belum": Film tetap ditandai belum selesai dan tetap muncul pada daftar Lanjutkan Menonton di Beranda maupun Riwayat.
-- Pilihan "Sudah": Film langsung ditandai sebagai selesai dan masuk ke tab Selesai di halaman Riwayat.
+### 2. Perbaikan Lokalisasi Tombol Hero Beranda
+- Memperbaiki tombol aksi pada carousel banner utama Beranda agar mengikuti bahasa aktif aplikasi.
+- Tombol kini tampil sebagai "Watch Now" dan "Details" saat menggunakan bahasa English, serta "Tonton Sekarang" dan "Detail" saat menggunakan Bahasa Indonesia.
 
-### 3. Pembaruan Desain Tombol Episode Berikutnya
-- Menghapus garis tepi (border) pada tombol Episode Berikutnya.
-- Mengganti latar belakang menjadi warna hitam transparan dengan teks putih halus reguler untuk tampilan yang lebih bersih dan menyatu dengan tayangan video.
+### 3. Dukungan Penuh Bilingual pada Seluruh Fitur Baru
+- Memastikan seluruh teks baru pada pemutar media mendukung Bahasa Indonesia dan English, termasuk dialog konfirmasi selesai menonton film, indikator kecerahan layar, dan lencana episode.
 
-### 4. Gestur Kecerahan Layar di Sisi Kiri Pemutar
-- Menambahkan gestur usap vertikal di sisi kiri layar saat menonton untuk mengatur tingkat kecerahan layar secara langsung (usap ke atas untuk mencerahkan, usap ke bawah untuk meredupkan).
-- Dirancang minimalis tanpa penambahan tombol atau menu pada antarmuka kontrol pemutar agar tetap bersih dan intuitif.
-
-### 5. Pemberitahuan Fitur Unduhan
-- Fitur unduhan offline saat ini masih dalam tahap pemeliharaan dan pengoptimalan sistem. Peningkatan stabilitas unduhan akan dihadirkan pada pembaruan mendatang.
+### 4. Ringkasan Peningkatan Sebelumnya (v1.0.1)
+- Pencatatan otomatis status selesai menonton pada episode serial TV saat menekan tombol Episode Berikutnya.
+- Dialog konfirmasi selesai menonton minimalis untuk film saat sisa durasi 12 menit atau kurang.
+- Redesain tombol Episode Berikutnya tanpa border dengan latar belakang hitam transparan dan teks halus.
+- Gestur usap vertikal di sisi kiri pemutar untuk mengatur kecerahan layar secara langsung tanpa menu tambahan.
+- Pemberitahuan bahwa fitur unduhan offline masih dalam tahap pemeliharaan sistem.
 
 ---
 
 ## Informasi Versi
 
-- Versi Aplikasi: 1.0.1
-- Build: 2
+- Versi Aplikasi: 1.0.2
+- Build: 3
 - Target Sistem Operasi: Android 5.0 (API 21) ke atas
