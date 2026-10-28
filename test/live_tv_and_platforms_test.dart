@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:cineva/features/history/data/models/watch_history_item.dart';
+import 'package:cineva/features/history/data/repositories/watch_history_repository.dart';
 import 'package:cineva/core/constants/app_constants.dart';
 import 'package:cineva/features/live_tv/data/datasources/live_tv_channels_data.dart';
 import 'package:cineva/features/live_tv/presentation/providers/live_tv_providers.dart';
@@ -24,6 +26,7 @@ void main() {
     tempDir = await Directory.systemTemp.createTemp('cineva_livetv_test_');
     Hive.init(tempDir.path);
     await Hive.openBox(AppConstants.settingsBox);
+    await Hive.openBox(AppConstants.historyBox);
   });
 
   tearDownAll(() async {
@@ -206,6 +209,86 @@ void main() {
 
       expect(find.text('TV Live'), findsOneWidget);
       expect(find.byIcon(Icons.live_tv_outlined), findsOneWidget);
+    });
+  });
+
+  group('Watch History TV Series & Deduplication Tests', () {
+    test('Overwrites previous in-progress TV episode with completed status and removes duplicates', () async {
+      final repo = WatchHistoryRepository();
+      await repo.clearAll();
+
+      final inProgressEp2 = WatchHistoryItem(
+        id: 84958,
+        mediaType: 'tv',
+        title: 'The Rookie',
+        episodeTitle: 'S1:E2 Crash Course',
+        season: 1,
+        episode: 2,
+        positionMs: 600000,
+        durationMs: 2500000,
+        lastWatchedAt: DateTime.now().subtract(const Duration(minutes: 10)),
+        isCompleted: false,
+      );
+
+      await repo.saveProgress(inProgressEp2);
+      expect(repo.getAll().length, 1);
+      expect(repo.getAll().first.isInProgress, isTrue);
+      expect(repo.getAll().first.isCompleted, isFalse);
+
+      // Next Episode: Ep 2 is saved as 100% completed
+      final completedEp2 = inProgressEp2.copyWith(
+        positionMs: 2500000,
+        isCompleted: true,
+        lastWatchedAt: DateTime.now(),
+      );
+
+      await repo.saveProgress(completedEp2);
+
+      final all = repo.getAll();
+      expect(all.length, 1);
+      expect(all.first.isCompleted, isTrue);
+      expect(all.first.isInProgress, isFalse);
+    });
+
+    test('Consolidates in-progress TV series so only the latest episode is shown in Continue Watching', () async {
+      final repo = WatchHistoryRepository();
+      await repo.clearAll();
+
+      final ep1 = WatchHistoryItem(
+        id: 84958,
+        mediaType: 'tv',
+        title: 'The Rookie',
+        episodeTitle: 'S1:E1 Pilot',
+        season: 1,
+        episode: 1,
+        positionMs: 500000,
+        durationMs: 2500000,
+        lastWatchedAt: DateTime.now().subtract(const Duration(hours: 1)),
+        isCompleted: false,
+      );
+
+      final ep2 = WatchHistoryItem(
+        id: 84958,
+        mediaType: 'tv',
+        title: 'The Rookie',
+        episodeTitle: 'S1:E2 Crash Course',
+        season: 1,
+        episode: 2,
+        positionMs: 300000,
+        durationMs: 2500000,
+        lastWatchedAt: DateTime.now(),
+        isCompleted: false,
+      );
+
+      await repo.saveProgress(ep1);
+      await repo.saveProgress(ep2);
+
+      final container = ProviderContainer();
+      final inProgress = container.read(inProgressWatchHistoryProvider);
+
+      // Should only contain 1 entry for The Rookie (the latest one, Episode 2)
+      expect(inProgress.where((i) => i.id == 84958).length, 1);
+      expect(inProgress.firstWhere((i) => i.id == 84958).episode, 2);
     });
   });
 }

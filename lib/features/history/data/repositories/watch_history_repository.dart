@@ -8,19 +8,56 @@ import '../models/watch_history_item.dart';
 class WatchHistoryRepository {
   Box get _box => Hive.box(AppConstants.historyBox);
 
-  /// Returns all watch history items, sorted by most recently watched.
+  /// Returns all watch history items, deduplicated and sorted by most recently watched.
   List<WatchHistoryItem> getAll() {
-    final list = <WatchHistoryItem>[];
+    final map = <String, WatchHistoryItem>{};
     for (final key in _box.keys) {
       try {
         final raw = _box.get(key);
         if (raw is Map) {
-          list.add(WatchHistoryItem.fromJson(raw));
+          final item = WatchHistoryItem.fromJson(raw);
+          // Normalized unique identification:
+          // For TV episodes: tv_<id>_s<season>_e<episode>
+          // For movies: movie_<id>
+          final uniqueKey = (item.mediaType == 'tv' && item.season != null && item.episode != null)
+              ? 'tv_${item.id}_s${item.season}_e${item.episode}'
+              : '${item.mediaType}_${item.id}';
+
+          if (map.containsKey(uniqueKey)) {
+            final existing = map[uniqueKey]!;
+            // If duplicate exists, favor completed status or later timestamp
+            if (!existing.isCompleted && item.isCompleted) {
+              map[uniqueKey] = item;
+            } else if (existing.isCompleted && !item.isCompleted) {
+              // Keep completed item
+            } else if (item.lastWatchedAt.isAfter(existing.lastWatchedAt)) {
+              map[uniqueKey] = item;
+            }
+          } else {
+            map[uniqueKey] = item;
+          }
         }
       } catch (_) {
         // Skip corrupted entry
       }
     }
+
+    // Filter out obsolete generic TV entries ('tv_<id>') if specific episode entries exist
+    final specificTvIds = <int>{};
+    for (final item in map.values) {
+      if (item.mediaType == 'tv' && item.season != null && item.episode != null) {
+        specificTvIds.add(item.id);
+      }
+    }
+
+    final list = map.values.where((item) {
+      if (item.mediaType == 'tv' && (item.season == null || item.episode == null)) {
+        // If a specific episode entry exists for this series, drop the generic entry
+        if (specificTvIds.contains(item.id)) return false;
+      }
+      return true;
+    }).toList();
+
     list.sort((a, b) => b.lastWatchedAt.compareTo(a.lastWatchedAt));
     return list;
   }
@@ -47,8 +84,19 @@ class WatchHistoryRepository {
     return null;
   }
 
-  /// Saves or updates watch progress.
+  /// Saves or updates watch progress and cleans up obsolete keys.
   Future<void> saveProgress(WatchHistoryItem item) async {
+    // If saving a specific TV episode, clean up any generic key for this TV show
+    if (item.mediaType == 'tv' && item.season != null && item.episode != null) {
+      final genericTvKey = 'tv_${item.id}';
+      if (_box.containsKey(genericTvKey)) {
+        await _box.delete(genericTvKey);
+      }
+      final genericMovieKey = 'movie_${item.id}';
+      if (_box.containsKey(genericMovieKey)) {
+        await _box.delete(genericMovieKey);
+      }
+    }
     await _box.put(item.key, item.toJson());
   }
 
@@ -103,5 +151,16 @@ final watchHistoryProvider = StateNotifierProvider<WatchHistoryNotifier, List<Wa
 /// Real-time provider for in-progress items (for Home Screen "Lanjutkan Menonton").
 final inProgressWatchHistoryProvider = Provider<List<WatchHistoryItem>>((ref) {
   final all = ref.watch(watchHistoryProvider);
-  return all.where((item) => item.isInProgress).toList();
+  final inProgress = <WatchHistoryItem>[];
+  final seenTvIds = <int>{};
+
+  for (final item in all) {
+    if (!item.isInProgress) continue;
+    if (item.mediaType == 'tv') {
+      if (seenTvIds.contains(item.id)) continue;
+      seenTvIds.add(item.id);
+    }
+    inProgress.add(item);
+  }
+  return inProgress;
 });

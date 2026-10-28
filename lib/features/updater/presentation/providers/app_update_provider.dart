@@ -81,7 +81,10 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
     // 1. Automatically delete old downloaded APK files from previous updates
     await _service.cleanupDownloadedApks();
 
-    // 2. Perform background check for new release
+    // 2. Schedule persistent background update checks via Android WorkManager
+    await _service.scheduleBackgroundUpdateCheck();
+
+    // 3. Perform immediate check for new release
     await checkForUpdate();
   }
 
@@ -98,6 +101,8 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
         updateInfo: info,
         isDismissed: false,
       );
+      // Automatically post system notification with dynamic version and changelog
+      await _service.showUpdateNotification(info);
     } else {
       state = state.copyWith(
         status: AppUpdateStatus.idle,

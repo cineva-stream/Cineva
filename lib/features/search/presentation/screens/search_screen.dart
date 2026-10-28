@@ -846,73 +846,30 @@ class _SearchDiscoveryView extends ConsumerWidget {
         );
       },
       child: Container(
-        width: 148,
-        height: 52,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        width: 104,
+        height: 50,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(
-            color: platform.brandColor.withValues(alpha: 0.35),
-            width: 1.0,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: platform.brandColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(
-                  color: platform.brandColor.withValues(alpha: 0.35),
-                  width: 0.8,
-                ),
-              ),
-              child: Image.asset(
-                platform.logoAsset,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => Icon(
-                  platform.icon,
-                  color: platform.brandColor,
-                  size: 18,
-                ),
-              ),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    platform.name,
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    'Katalog',
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.white.withValues(alpha: 0.25),
-              size: 16,
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.22),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
+        ),
+        child: Center(
+          child: Image.asset(
+            platform.logoAsset,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => Icon(
+              platform.icon,
+              color: platform.brandColor,
+              size: 24,
+            ),
+          ),
         ),
       ),
     );

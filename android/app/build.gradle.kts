@@ -133,4 +133,5 @@ dependencies {
     implementation("androidx.media3:media3-transformer:$media3Version")
     implementation("androidx.media3:media3-muxer:$media3Version")
     implementation("androidx.media3:media3-extractor:$media3Version")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 }

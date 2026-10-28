@@ -172,6 +172,35 @@ class AppUpdateService {
     }
   }
 
+  /// Schedules periodic background update checks using Android WorkManager.
+  /// Runs reliably even when the app is completely terminated or closed.
+  Future<bool> scheduleBackgroundUpdateCheck() async {
+    if (kIsWeb || !Platform.isAndroid) return false;
+    try {
+      final bool? success = await _channel.invokeMethod<bool>('scheduleBackgroundUpdateCheck');
+      return success ?? false;
+    } catch (e) {
+      debugPrint('[AppUpdateService] scheduleBackgroundUpdateCheck error: $e');
+      return false;
+    }
+  }
+
+  /// Displays a system notification for the available update with dynamic version, title, and changelog.
+  Future<bool> showUpdateNotification(AppUpdateInfo info) async {
+    if (kIsWeb || !Platform.isAndroid) return false;
+    try {
+      final bool? success = await _channel.invokeMethod<bool>('showUpdateNotification', {
+        'version': info.latestVersion,
+        'title': info.releaseTitle,
+        'body': info.changelog,
+      });
+      return success ?? false;
+    } catch (e) {
+      debugPrint('[AppUpdateService] showUpdateNotification error: $e');
+      return false;
+    }
+  }
+
   /// Automatically or manually cleans up old update APK files from temporary and cache storage.
   /// This frees up internal device storage after updates or interrupted downloads.
   Future<int> cleanupDownloadedApks() async {

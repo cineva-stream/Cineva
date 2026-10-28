@@ -810,6 +810,8 @@ class _CompletedMovieCard extends ConsumerWidget {
       'title': item.title,
       'episodeTitle': item.episodeTitle,
       'mediaType': item.mediaType,
+      'season': item.seasonNumber,
+      'episode': item.episodeNumber,
       'tmdbId': item.tmdbId,
       'posterPath': item.posterPath,
       'backdropPath': item.backdropPath,

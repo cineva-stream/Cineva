@@ -528,6 +528,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   void _saveWatchHistory({bool force = false, bool? markCompleted}) {
+    if (_isSwitchingEpisode && markCompleted != true) return;
+    if (_isExiting && markCompleted == null && !force) return;
+
     final tmdbId = widget.tmdbId;
     if (tmdbId == null || tmdbId == 0) return;
 
@@ -535,14 +538,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final durMs = _duration.inMilliseconds;
     if (durMs <= 0 || (posMs < 3000 && markCompleted != true)) return;
 
-    final mediaType = widget.mediaType ?? (_currentSeason != null ? 'tv' : 'movie');
-    final isTv = mediaType == 'tv' || (_currentSeason != null && _currentEpisode != null);
+    final mediaType = (_currentSeason != null || _currentEpisode != null)
+        ? 'tv'
+        : (widget.mediaType ?? 'movie');
+    final isTv = mediaType == 'tv';
 
     bool isCompleted;
     if (markCompleted != null) {
       isCompleted = markCompleted;
-      // If user explicitly says not yet completed ("Belum") for movie, clamp to ~94% so it remains in Continue Watching
-      if (!isCompleted && (posMs / durMs) >= 0.95) {
+      if (isCompleted) {
+        posMs = durMs > 0 ? durMs : posMs; // 100% completion ensures isInProgress is false
+      } else if ((posMs / durMs) >= 0.95) {
+        // If user explicitly says not yet completed ("Belum") for movie, clamp to ~94% so it remains in Continue Watching
         posMs = (durMs * 0.94).toInt();
       }
     } else if (isTv) {
@@ -568,6 +575,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       isCompleted: isCompleted,
     );
 
+    _lastHistorySaveTime = DateTime.now();
     ref.read(watchHistoryProvider.notifier).saveProgress(item);
   }
 
@@ -626,10 +634,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       }
 
       // Save watch history periodically every 5 seconds
-      final now = DateTime.now();
-      if (now.difference(_lastHistorySaveTime).inSeconds >= 5) {
-        _lastHistorySaveTime = now;
-        _saveWatchHistory();
+      if (!_isSwitchingEpisode && !_isExiting) {
+        final now = DateTime.now();
+        if (now.difference(_lastHistorySaveTime).inSeconds >= 5) {
+          _lastHistorySaveTime = now;
+          _saveWatchHistory();
+        }
       }
     });
     _durSub = _player.stream.duration.listen((dur) {
@@ -1527,7 +1537,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
 
     final nextEp = _currentEpisode! + 1;
+    // Mark previous episode 100% completed in watch history
     _saveWatchHistory(force: true, markCompleted: true);
+    _lastHistorySaveTime = DateTime.now();
+
+    // Advance episode state immediately
+    _currentEpisode = nextEp;
+    _currentEpisodeTitle = 'Episode $nextEp';
 
     if (mounted) {
       setState(() {
@@ -1575,10 +1591,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _hasAutoPlayedNext = false;
     _initialPositionMs = null;
     _activePopup = _PlayerMiniPopup.none;
-
-    // 5. Advance episode state
-    _currentEpisode = nextEp;
-    _currentEpisodeTitle = 'Episode $nextEp';
 
     // Check if the next episode was downloaded locally
     String? nextLocalVideo;

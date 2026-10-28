@@ -76,12 +76,15 @@ class PlatformCatalogScreen extends ConsumerWidget {
                     height: 42,
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: platform.brandColor.withValues(alpha: 0.18),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: platform.brandColor.withValues(alpha: 0.5),
-                        width: 1.0,
-                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Image.asset(
                       platform.logoAsset,

@@ -29,6 +29,7 @@ class MainActivity : FlutterActivity() {
             window.attributes.layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
+        UpdateCheckWorker.schedule(applicationContext)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -115,6 +116,41 @@ class MainActivity : FlutterActivity() {
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to launch package installer: ${e.message}", e)
                         result.error("INSTALL_ERROR", e.message, null)
+                    }
+                }
+                "scheduleBackgroundUpdateCheck" -> {
+                    try {
+                        UpdateCheckWorker.schedule(applicationContext)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to schedule background update: ${e.message}", e)
+                        result.error("SCHEDULE_ERROR", e.message, null)
+                    }
+                }
+                "checkUpdateNow" -> {
+                    try {
+                        UpdateCheckWorker.checkNow(applicationContext)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to trigger update check now: ${e.message}", e)
+                        result.error("TRIGGER_ERROR", e.message, null)
+                    }
+                }
+                "showUpdateNotification" -> {
+                    try {
+                        val version = call.argument<String>("version") ?: ""
+                        val title = call.argument<String>("title") ?: ""
+                        val body = call.argument<String>("body") ?: ""
+                        UpdateCheckWorker.showNotification(
+                            context = applicationContext,
+                            version = version,
+                            title = title,
+                            body = body
+                        )
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to show update notification: ${e.message}", e)
+                        result.error("NOTIFICATION_ERROR", e.message, null)
                     }
                 }
                 else -> result.notImplemented()
