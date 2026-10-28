@@ -69,6 +69,7 @@ class MainShell extends ConsumerWidget {
         }
       },
       child: Scaffold(
+        backgroundColor: AppColors.background,
         extendBody: true,
         extendBodyBehindAppBar: true,
         body: child,

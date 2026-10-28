@@ -19,6 +19,7 @@ import '../../../home/domain/entities/tv_series.dart';
 import '../../../home/presentation/providers/home_providers.dart';
 import '../providers/search_history_provider.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/localization/app_strings.dart';
 
 // ── Search Providers ──
 
@@ -48,7 +49,7 @@ final searchTvResultsProvider = FutureProvider<List<TvSeries>>((ref) async {
   return [...matches, ...others];
 });
 
-/// Search tab index: 0 = Movies, 1 = TV Series
+/// Search tab index: 0 = All, 1 = Movies, 2 = TV Series
 final searchTabProvider = StateProvider<int>((ref) => 0);
 
 /// Search screen with real-time TMDB search, history, trends, and top searches.
@@ -74,9 +75,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     _debouncer.run(() {
       final clean = value.trim();
       ref.read(searchQueryProvider.notifier).state = clean;
-      if (clean.isNotEmpty) {
-        ref.read(searchHistoryProvider.notifier).addQuery(clean);
-      }
     });
   }
 
@@ -98,6 +96,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final activeGenre = ref.watch(selectedSearchGenreProvider);
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -251,20 +250,30 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    _FilterChip(
-                      label: s.searchTabMovies,
-                      isSelected: tabIndex == 0,
-                      onTap: () => ref.read(searchTabProvider.notifier).state = 0,
-                    ),
-                    const SizedBox(width: 8),
-                    _FilterChip(
-                      label: s.searchTabTv,
-                      isSelected: tabIndex == 1,
-                      onTap: () => ref.read(searchTabProvider.notifier).state = 1,
-                    ),
-                  ],
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      _FilterChip(
+                        label: s.searchTabAll,
+                        isSelected: tabIndex == 0,
+                        onTap: () => ref.read(searchTabProvider.notifier).state = 0,
+                      ),
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: s.searchTabMovies,
+                        isSelected: tabIndex == 1,
+                        onTap: () => ref.read(searchTabProvider.notifier).state = 1,
+                      ),
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: s.searchTabTv,
+                        isSelected: tabIndex == 2,
+                        onTap: () => ref.read(searchTabProvider.notifier).state = 2,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -278,46 +287,98 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       ? _SearchDiscoveryView(onSelectQuery: _selectQuery)
                       : _GenreExplorerView(activeGenre: activeGenre))
                   : tabIndex == 0
-                      ? movieResults.when(
-                          data: (movies) {
-                            final filtered = activeGenre.id == 'all'
-                                ? movies
-                                : movies.where((m) => activeGenre.matchesMovie(m)).toList();
-                            if (filtered.isEmpty) {
-                              return AppErrorWidget.empty(
-                                message: s.searchNoMovies(query),
-                              );
-                            }
-                            return _MovieGrid(movies: filtered);
-                          },
-                          loading: () => const _SearchLoadingGrid(),
-                          error: (e, _) => AppErrorWidget(
-                            message: s.searchFailed,
-                            onRetry: () => ref.invalidate(searchMovieResultsProvider),
-                          ),
+                      ? _buildAllResults(
+                          movieResults: movieResults,
+                          tvResults: tvResults,
+                          activeGenre: activeGenre,
+                          query: query,
+                          s: s,
+                          ref: ref,
                         )
-                      : tvResults.when(
-                          data: (tvShows) {
-                            final filtered = activeGenre.id == 'all'
-                                ? tvShows
-                                : tvShows.where((t) => activeGenre.matchesTv(t)).toList();
-                            if (filtered.isEmpty) {
-                              return AppErrorWidget.empty(
-                                message: s.searchNoTv(query),
-                              );
-                            }
-                            return _TvGrid(tvShows: filtered);
-                          },
-                          loading: () => const _SearchLoadingGrid(),
-                          error: (e, _) => AppErrorWidget(
-                            message: s.searchFailed,
-                            onRetry: () => ref.invalidate(searchTvResultsProvider),
-                          ),
-                        ),
+                      : tabIndex == 1
+                          ? movieResults.when(
+                              data: (movies) {
+                                final filtered = activeGenre.id == 'all'
+                                    ? movies
+                                    : movies.where((m) => activeGenre.matchesMovie(m)).toList();
+                                if (filtered.isEmpty) {
+                                  return AppErrorWidget.empty(
+                                    message: s.searchNoMovies(query),
+                                  );
+                                }
+                                return _MovieGrid(movies: filtered);
+                              },
+                              loading: () => const _SearchLoadingGrid(),
+                              error: (e, _) => AppErrorWidget(
+                                message: s.searchFailed,
+                                onRetry: () => ref.invalidate(searchMovieResultsProvider),
+                              ),
+                            )
+                          : tvResults.when(
+                              data: (tvShows) {
+                                final filtered = activeGenre.id == 'all'
+                                    ? tvShows
+                                    : tvShows.where((t) => activeGenre.matchesTv(t)).toList();
+                                if (filtered.isEmpty) {
+                                  return AppErrorWidget.empty(
+                                    message: s.searchNoTv(query),
+                                  );
+                                }
+                                return _TvGrid(tvShows: filtered);
+                              },
+                              loading: () => const _SearchLoadingGrid(),
+                              error: (e, _) => AppErrorWidget(
+                                message: s.searchFailed,
+                                onRetry: () => ref.invalidate(searchTvResultsProvider),
+                              ),
+                            ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAllResults({
+    required AsyncValue<List<Movie>> movieResults,
+    required AsyncValue<List<TvSeries>> tvResults,
+    required GenreFilter activeGenre,
+    required String query,
+    required AppStrings s,
+    required WidgetRef ref,
+  }) {
+    if (movieResults.isLoading || tvResults.isLoading) {
+      return const _SearchLoadingGrid();
+    }
+    if (movieResults.hasError && tvResults.hasError) {
+      return AppErrorWidget(
+        message: s.searchFailed,
+        onRetry: () {
+          ref.invalidate(searchMovieResultsProvider);
+          ref.invalidate(searchTvResultsProvider);
+        },
+      );
+    }
+
+    final movies = movieResults.valueOrNull ?? [];
+    final tvShows = tvResults.valueOrNull ?? [];
+
+    final filteredMovies = activeGenre.id == 'all'
+        ? movies
+        : movies.where((m) => activeGenre.matchesMovie(m)).toList();
+    final filteredTv = activeGenre.id == 'all'
+        ? tvShows
+        : tvShows.where((t) => activeGenre.matchesTv(t)).toList();
+
+    if (filteredMovies.isEmpty && filteredTv.isEmpty) {
+      return AppErrorWidget.empty(
+        message: s.searchNoResults(query),
+      );
+    }
+
+    return _AllSearchResultsView(
+      movies: filteredMovies,
+      tvShows: filteredTv,
     );
   }
 }
@@ -579,11 +640,15 @@ class _SearchDiscoveryView extends ConsumerWidget {
                 children: List.generate(
                   4,
                   (index) => Container(
-                    margin: const EdgeInsets.only(bottom: 10),
+                    margin: const EdgeInsets.symmetric(horizontal: -16),
                     height: 68,
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(14),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          width: 0.8,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -635,19 +700,19 @@ class _SearchDiscoveryView extends ConsumerWidget {
                 );
 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
+                  margin: const EdgeInsets.symmetric(horizontal: -16),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.06),
-                      width: 0.8,
+                    color: Colors.transparent,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        width: 0.8,
+                      ),
                     ),
                   ),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
                       onTap: () {
                         if (isMovie) {
                           context.push('/movie/${item.id}');
@@ -656,30 +721,23 @@ class _SearchDiscoveryView extends ConsumerWidget {
                         }
                       },
                       child: Padding(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: Row(
                           children: [
-                            // Rank Number Badge
-                            Container(
-                              width: 26,
-                              height: 26,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: isTop3
-                                    ? AppColors.primary
-                                    : AppColors.surfaceVariant,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
+                            // Rank Number Badge (smooth text, no background)
+                            SizedBox(
+                              width: 24,
                               child: Text(
                                 '${index + 1}',
+                                textAlign: TextAlign.center,
                                 style: GoogleFonts.outfit(
-                                  color: isTop3 ? Colors.black : AppColors.textMuted,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
+                                  color: isTop3 ? AppColors.primary : AppColors.textMuted,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 12),
 
                             // Thumbnail
                             ClipRRect(
@@ -835,96 +893,124 @@ class _MovieGrid extends ConsumerWidget {
       itemBuilder: (context, index) {
         final movie = movies[index];
         final isPreferred = pref != ContentPreference.all && pref.matchesMovie(movie);
-
-        return GestureDetector(
-          onTap: () => context.push('/movie/${movie.id}'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: isPreferred
-                        ? Border.all(color: AppColors.primary, width: 1.2)
-                        : null,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CachedNetworkImage(
-                          imageUrl: ApiConstants.imageUrl(movie.posterPath),
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
-                          errorWidget: (_, _, _) => Container(
-                            color: AppColors.surfaceVariant,
-                            child: const Icon(Icons.movie, color: AppColors.textMuted),
-                          ),
-                        ),
-                        if (isPreferred)
-                          Positioned(
-                            top: 6,
-                            left: 6,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.6),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                pref.label.split(' ').first,
-                                style: GoogleFonts.inter(
-                                  color: Colors.black,
-                                  fontSize: 8.5,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                movie.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
-              ),
-              Row(
-                children: [
-                  const Icon(Icons.star, size: 12, color: AppColors.star),
-                  const SizedBox(width: 3),
-                  Text(
-                    movie.voteAverage.toStringAsFixed(1),
-                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                  ),
-                  if (movie.year.isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      movie.year,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
-        ).animate().fadeIn(delay: (30 * index).ms, duration: 300.ms);
+        return _MovieSearchCard(
+          movie: movie,
+          isPreferred: isPreferred,
+          index: index,
+        );
       },
     );
+  }
+}
+
+class _MovieSearchCard extends ConsumerWidget {
+  final Movie movie;
+  final bool isPreferred;
+  final int index;
+
+  const _MovieSearchCard({
+    required this.movie,
+    required this.isPreferred,
+    required this.index,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pref = ref.watch(contentPreferenceProvider);
+
+    return GestureDetector(
+      onTap: () {
+        final currentQuery = ref.read(searchQueryProvider).trim();
+        if (currentQuery.isNotEmpty) {
+          ref.read(searchHistoryProvider.notifier).addQuery(currentQuery);
+        }
+        context.push('/movie/${movie.id}');
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: isPreferred
+                    ? Border.all(color: AppColors.primary, width: 1.2)
+                    : null,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CachedNetworkImage(
+                      imageUrl: ApiConstants.imageUrl(movie.posterPath),
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
+                      errorWidget: (_, _, _) => Container(
+                        color: AppColors.surfaceVariant,
+                        child: const Icon(Icons.movie, color: AppColors.textMuted),
+                      ),
+                    ),
+                    if (isPreferred)
+                      Positioned(
+                        top: 6,
+                        left: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            pref.label.split(' ').first,
+                            style: GoogleFonts.inter(
+                              color: Colors.black,
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            movie.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+          ),
+          Row(
+            children: [
+              const Icon(Icons.star, size: 12, color: AppColors.star),
+              const SizedBox(width: 3),
+              Text(
+                movie.voteAverage.toStringAsFixed(1),
+                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+              ),
+              if (movie.year.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                Text(
+                  movie.year,
+                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: (30 * index).ms, duration: 300.ms);
   }
 }
 
@@ -951,95 +1037,292 @@ class _TvGrid extends ConsumerWidget {
       itemBuilder: (context, index) {
         final tv = tvShows[index];
         final isPreferred = pref != ContentPreference.all && pref.matchesTv(tv);
+        return _TvSearchCard(
+          tv: tv,
+          isPreferred: isPreferred,
+          index: index,
+        );
+      },
+    );
+  }
+}
 
-        return GestureDetector(
-          onTap: () => context.push('/tv/${tv.id}'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: isPreferred
-                        ? Border.all(color: AppColors.primary, width: 1.2)
-                        : null,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CachedNetworkImage(
-                          imageUrl: ApiConstants.imageUrl(tv.posterPath),
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
-                          errorWidget: (_, _, _) => Container(
-                            color: AppColors.surfaceVariant,
-                            child: const Icon(Icons.tv, color: AppColors.textMuted),
+class _TvSearchCard extends ConsumerWidget {
+  final TvSeries tv;
+  final bool isPreferred;
+  final int index;
+
+  const _TvSearchCard({
+    required this.tv,
+    required this.isPreferred,
+    required this.index,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pref = ref.watch(contentPreferenceProvider);
+
+    return GestureDetector(
+      onTap: () {
+        final currentQuery = ref.read(searchQueryProvider).trim();
+        if (currentQuery.isNotEmpty) {
+          ref.read(searchHistoryProvider.notifier).addQuery(currentQuery);
+        }
+        context.push('/tv/${tv.id}');
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: isPreferred
+                    ? Border.all(color: AppColors.primary, width: 1.2)
+                    : null,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CachedNetworkImage(
+                      imageUrl: ApiConstants.imageUrl(tv.posterPath),
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
+                      errorWidget: (_, _, _) => Container(
+                        color: AppColors.surfaceVariant,
+                        child: const Icon(Icons.tv, color: AppColors.textMuted),
+                      ),
+                    ),
+                    if (isPreferred)
+                      Positioned(
+                        top: 6,
+                        left: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
-                        ),
-                        if (isPreferred)
-                          Positioned(
-                            top: 6,
-                            left: 6,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.6),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                pref.label.split(' ').first,
-                                style: GoogleFonts.inter(
-                                  color: Colors.black,
-                                  fontSize: 8.5,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
+                          child: Text(
+                            pref.label.split(' ').first,
+                            style: GoogleFonts.inter(
+                              color: Colors.black,
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
-                      ],
-                    ),
-                  ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 6),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            tv.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+          ),
+          Row(
+            children: [
+              const Icon(Icons.star, size: 12, color: AppColors.star),
+              const SizedBox(width: 3),
               Text(
-                tv.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+                tv.voteAverage.toStringAsFixed(1),
+                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
-              Row(
-                children: [
-                  const Icon(Icons.star, size: 12, color: AppColors.star),
-                  const SizedBox(width: 3),
-                  Text(
-                    tv.voteAverage.toStringAsFixed(1),
-                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                  ),
-                  if (tv.year.isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      tv.year,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                    ),
-                  ],
-                ],
-              ),
+              if (tv.year.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                Text(
+                  tv.year,
+                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                ),
+              ],
             ],
           ),
-        ).animate().fadeIn(delay: (30 * index).ms, duration: 300.ms);
-      },
+        ],
+      ),
+    ).animate().fadeIn(delay: (30 * index).ms, duration: 300.ms);
+  }
+}
+
+/// Rich Combined View for "All" filter chip, rendering Movies & TV Series in separate sections.
+class _AllSearchResultsView extends ConsumerWidget {
+  final List<Movie> movies;
+  final List<TvSeries> tvShows;
+
+  const _AllSearchResultsView({
+    required this.movies,
+    required this.tvShows,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
+    final pref = ref.watch(contentPreferenceProvider);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final crossAxisCount = screenWidth < 340 ? 2 : 3;
+    final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
+    final spacing = screenWidth < 360 ? 8.0 : 10.0;
+    final bottomPadding = MediaQuery.of(context).padding.bottom + 84;
+
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        // ── 1. Movies Section ──
+        if (movies.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.movie_rounded, size: 16, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    s.searchTabMovies,
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${movies.length}',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                childAspectRatio: childAspectRatio,
+                crossAxisSpacing: spacing,
+                mainAxisSpacing: spacing,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final movie = movies[index];
+                  final isPreferred = pref != ContentPreference.all && pref.matchesMovie(movie);
+                  return _MovieSearchCard(
+                    movie: movie,
+                    isPreferred: isPreferred,
+                    index: index,
+                  );
+                },
+                childCount: movies.length,
+              ),
+            ),
+          ),
+        ],
+
+        // ── Section Divider ──
+        if (movies.isNotEmpty && tvShows.isNotEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Divider(
+                color: Colors.white10,
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+              ),
+            ),
+          ),
+
+        // ── 2. TV Shows Section ──
+        if (tvShows.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.tv_rounded, size: 16, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    s.searchTabTv,
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${tvShows.length}',
+                      style: TextStyle(
+                        color: Colors.blue.shade300,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                childAspectRatio: childAspectRatio,
+                crossAxisSpacing: spacing,
+                mainAxisSpacing: spacing,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final tv = tvShows[index];
+                  final isPreferred = pref != ContentPreference.all && pref.matchesTv(tv);
+                  return _TvSearchCard(
+                    tv: tv,
+                    isPreferred: isPreferred,
+                    index: index,
+                  );
+                },
+                childCount: tvShows.length,
+              ),
+            ),
+          ),
+        ],
+
+        SliverToBoxAdapter(
+          child: SizedBox(height: bottomPadding),
+        ),
+      ],
     );
   }
 }

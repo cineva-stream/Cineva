@@ -1,34 +1,41 @@
-# Cineva v1.0.2 - Release Notes
+# Cineva v1.0.3 - Release Notes 🎬
 
-Pembaruan Cineva versi 1.0.2 berfokus pada penyempurnaan alur peluncuran aplikasi, perbaikan lokalisasi bahasa pada beranda, serta memastikan seluruh komponen antarmuka mendukung Bahasa Indonesia dan English secara konsisten.
+Pembaruan Cineva versi 1.0.3 menghadirkan penyegaran estetika antarmuka dengan tema latar belakang pure smooth black, serta standarisasi tata letak daftar pada halaman Watchlist, Pencarian, dan Riwayat menjadi tampilan full-width yang bersih dan modern.
 
 ---
 
 ## Ringkasan Perubahan
 
-### 1. Perbaikan Alur Masuk Splash Screen
-- Memperbaiki masalah di mana pemilihan bahasa muncul setiap kali membuka aplikasi meskipun profil telah dibuat dan disimpan di perangkat.
-- Pengguna yang telah memiliki profil dan menyetujui ketentuan kini otomatis langsung diarahkan ke Beranda setelah tampilan splash screen.
-- Pemilihan bahasa awal hanya ditampilkan pada pemasangan baru aplikasi.
+### 1. Tema Latar Belakang Pure Smooth Black
+- Menerapkan latar belakang hitam pekat halus (pure smooth black OLED) pada seluruh halaman aplikasi.
+- Memperbarui menu navigasi bawah (bottom navigation bar) dengan latar belakang pure smooth black yang menyatu mulus dengan layar dan bilah navigasi sistem.
 
-### 2. Perbaikan Lokalisasi Tombol Hero Beranda
-- Memperbaiki tombol aksi pada carousel banner utama Beranda agar mengikuti bahasa aktif aplikasi.
-- Tombol kini tampil sebagai "Watch Now" dan "Details" saat menggunakan bahasa English, serta "Tonton Sekarang" dan "Detail" saat menggunakan Bahasa Indonesia.
+### 2. Desain Full-Width Halaman Watchlist
+- Mengubah daftar film dan serial TV pada halaman Watchlist dari format kartu (card) menjadi tata letak full-width.
+- Menggantikan batas kartu yang tebal dengan garis pembatas halus dan tipis untuk tampilan yang lebih lapang dan rapi.
+- Menambahkan umpan balik sentuhan ripple tanpa sudut melengkung pada setiap baris item.
 
-### 3. Dukungan Penuh Bilingual pada Seluruh Fitur Baru
-- Memastikan seluruh teks baru pada pemutar media mendukung Bahasa Indonesia dan English, termasuk dialog konfirmasi selesai menonton film, indikator kecerahan layar, dan lencana episode.
+### 3. Redesain Bagian Sering Dicari (Top Searches)
+- Mengubah daftar "Sering Dicari" pada halaman Pencarian menjadi format full-width dengan garis pembatas halus di setiap item.
+- Menghilangkan kotak latar belakang pada lencana nomor urut peringkat dan menggantikannya dengan tipografi teks halus yang elegan.
 
-### 4. Ringkasan Peningkatan Sebelumnya (v1.0.1)
-- Pencatatan otomatis status selesai menonton pada episode serial TV saat menekan tombol Episode Berikutnya.
-- Dialog konfirmasi selesai menonton minimalis untuk film saat sisa durasi 12 menit atau kurang.
-- Redesain tombol Episode Berikutnya tanpa border dengan latar belakang hitam transparan dan teks halus.
-- Gestur usap vertikal di sisi kiri pemutar untuk mengatur kecerahan layar secara langsung tanpa menu tambahan.
-- Pemberitahuan bahwa fitur unduhan offline masih dalam tahap pemeliharaan sistem.
+### 4. Standarisasi Tampilan Halaman Riwayat Tontonan
+- Mengadaptasi tata letak riwayat tontonan ke format full-width yang seragam dengan halaman Watchlist dan Pencarian.
+- Menggantikan kontainer kartu dengan batas garis tipis halus untuk konsistensi visual di seluruh aplikasi.
+
+### 5. Penyempurnaan Penyimpanan Riwayat Pencarian
+- Memperbaiki logika penyimpanan riwayat pencarian agar hanya mencatat kata kunci secara utuh saat pengguna menekan tombol Enter pada keyboard atau memilih hasil tontonan.
+- Mencegah tersimpannya penggalan kata yang belum selesai saat pengguna sedang mengetik jeda.
+- Pencarian dan pembaruan hasil tetap berjalan secara instan dan responsif secara real-time untuk setiap karakter yang dimasukkan.
+
+### 6. Filter Chip Semua pada Hasil Pencarian
+- Menambahkan filter chip "Semua" (All) di samping kiri filter "Film" (Movies) dan "Serial TV" (TV Shows) pada hasil pencarian.
+- Ketika memilih filter "Semua", menampilkan seluruh hasil baik Film maupun Serial TV yang dipisahkan ke dalam dua bagian judul yang terorganisir ("Film" dan "Serial TV") lengkap dengan indikator jumlah konten yang ditemukan.
 
 ---
 
 ## Informasi Versi
 
-- Versi Aplikasi: 1.0.2
-- Build: 3
+- Versi Aplikasi: 1.0.3
+- Build: 4
 - Target Sistem Operasi: Android 5.0 (API 21) ke atas

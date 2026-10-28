@@ -17,8 +17,8 @@ class AppColors {
   static const Color accentDark = Color(0xFFCC9300);
   static const Color accentLight = Color(0xFFFFD466);
 
-  // ── Background (Deep Obsidian OLED) ──
-  static const Color background = Color(0xFF0A0A0C);     // Deep Obsidian Black
+  // ── Background (Pure Smooth Black OLED) ──
+  static const Color background = Color(0xFF000000);     // Pure Smooth Black
   static const Color surface = Color(0xFF121217);        // Charcoal Obsidian
   static const Color surfaceVariant = Color(0xFF181820); // Card Backgrounds
   static const Color surfaceElevated = Color(0xFF22222E);// Elevated Modals / Popups
@@ -51,7 +51,7 @@ class AppColors {
   );
 
   static const LinearGradient heroOverlay = LinearGradient(
-    colors: [Colors.transparent, Color(0x990A0A0C), Color(0xFF0A0A0C)],
+    colors: [Colors.transparent, Color(0x99000000), Color(0xFF000000)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     stops: [0.0, 0.65, 1.0],

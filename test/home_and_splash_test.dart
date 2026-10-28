@@ -32,9 +32,9 @@ void main() {
   });
 
   group('AppColors launcher icon alignment tests', () {
-    test('Primary color is Cinema Amber and background is Deep Obsidian', () {
+    test('Primary color is Cinema Amber and background is Pure Smooth Black', () {
       expect(AppColors.primary, equals(const Color(0xFFFF9500)));
-      expect(AppColors.background, equals(const Color(0xFF0A0A0C)));
+      expect(AppColors.background, equals(const Color(0xFF000000)));
       expect(AppColors.surface, equals(const Color(0xFF121217)));
     });
   });

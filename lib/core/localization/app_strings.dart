@@ -34,8 +34,10 @@ class AppStrings {
   String get searchHint => isIndonesian ? 'Cari film atau serial TV...' : 'Search movies or TV shows...';
   String get searchGenres => isIndonesian ? 'Kategori & Genre' : 'Categories & Genres';
   String get searchResults => isIndonesian ? 'Hasil Pencarian' : 'Search Results';
+  String get searchTabAll => isIndonesian ? 'Semua' : 'All';
   String get searchTabMovies => isIndonesian ? 'Film' : 'Movies';
   String get searchTabTv => isIndonesian ? 'Serial TV' : 'TV Shows';
+  String searchNoResults(String q) => isIndonesian ? 'Tidak ada hasil ditemukan untuk "$q"' : 'No results found for "$q"';
   String searchNoMovies(String q) => isIndonesian ? 'Tidak ada film ditemukan untuk "$q"' : 'No movies found for "$q"';
   String searchNoTv(String q) => isIndonesian ? 'Tidak ada serial TV ditemukan untuk "$q"' : 'No TV shows found for "$q"';
   String get searchFailed => isIndonesian ? 'Pencarian gagal' : 'Search failed';
@@ -92,6 +94,9 @@ class AppStrings {
       ? 'Film dan serial TV yang kamu simpan\nakan muncul di sini'
       : 'Movies and TV shows you save\nwill appear here';
   String get watchlistExploreButton => isIndonesian ? 'Jelajahi Film' : 'Explore Movies';
+  String watchlistRemoved(String title) => isIndonesian ? '$title dihapus dari watchlist' : '$title removed from watchlist';
+  String get watchlistUndo => isIndonesian ? 'Batalkan' : 'Undo';
+  String watchlistAddedDate(String date) => isIndonesian ? 'Ditambahkan $date' : 'Added $date';
 
   // ── History Screen ──
   String get historyTitle => isIndonesian ? 'Riwayat Tontonan' : 'Watch History';

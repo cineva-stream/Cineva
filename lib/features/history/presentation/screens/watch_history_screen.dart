@@ -175,7 +175,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
                   ? _buildEmptyState(s)
                   : ListView.builder(
                       physics: const BouncingScrollPhysics(),
-                      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 84),
+                      padding: EdgeInsets.fromLTRB(0, 8, 0, MediaQuery.of(context).padding.bottom + 84),
                       itemCount: filteredList.length,
                       itemBuilder: (context, index) {
                         final item = filteredList[index];
@@ -220,19 +220,18 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
     final imageUrl = imagePath != null ? 'https://image.tmdb.org/t/p/w780$imagePath' : null;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-          width: 0.8,
+        color: Colors.transparent,
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 0.8,
+          ),
         ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
           onTap: () async {
             await context.push('/player', extra: {
               'title': item.title,
@@ -254,7 +253,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
             SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
           },
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
                 // ── Thumbnail with Progress Bar ──
