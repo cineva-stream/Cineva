@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -257,10 +258,11 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  // Channel Icon Container
+                                  // Channel Logo Container
                                   Container(
-                                    width: 44,
-                                    height: 44,
+                                    width: 48,
+                                    height: 48,
+                                    padding: const EdgeInsets.all(5),
                                     decoration: BoxDecoration(
                                       color: AppColors.surfaceVariant,
                                       borderRadius: BorderRadius.circular(10),
@@ -269,13 +271,35 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                                         width: 0.8,
                                       ),
                                     ),
-                                    child: Center(
-                                      child: Icon(
-                                        _getCategoryIcon(ch.category),
-                                        color: AppColors.primary,
-                                        size: 22,
-                                      ),
-                                    ),
+                                    child: ch.logoUrl != null && ch.logoUrl!.isNotEmpty
+                                        ? CachedNetworkImage(
+                                            imageUrl: ch.logoUrl!,
+                                            fit: BoxFit.contain,
+                                            placeholder: (_, _) => Center(
+                                              child: SizedBox(
+                                                width: 14,
+                                                height: 14,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 1.5,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                            ),
+                                            errorWidget: (_, _, _) => Center(
+                                              child: Icon(
+                                                _getCategoryIcon(ch.category),
+                                                color: AppColors.primary,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          )
+                                        : Center(
+                                            child: Icon(
+                                              _getCategoryIcon(ch.category),
+                                              color: AppColors.primary,
+                                              size: 20,
+                                            ),
+                                          ),
                                   ),
                                   const SizedBox(width: 12),
 

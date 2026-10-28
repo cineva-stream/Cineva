@@ -73,3 +73,4 @@ flutter:
   assets:
     - .env
     - assets/images/
+    - assets/images/platforms/

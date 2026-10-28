@@ -72,8 +72,9 @@ class PlatformCatalogScreen extends ConsumerWidget {
                   ),
                   const SizedBox(width: 14),
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 42,
+                    height: 42,
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: platform.brandColor.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(12),
@@ -82,10 +83,14 @@ class PlatformCatalogScreen extends ConsumerWidget {
                         width: 1.0,
                       ),
                     ),
-                    child: Icon(
-                      platform.icon,
-                      color: platform.brandColor,
-                      size: 20,
+                    child: Image.asset(
+                      platform.logoAsset,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => Icon(
+                        platform.icon,
+                        color: platform.brandColor,
+                        size: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),

@@ -9,6 +9,7 @@ class StreamingPlatform {
   final Color brandColor;
   final String tagline;
   final IconData icon;
+  final String logoAsset;
 
   const StreamingPlatform({
     required this.id,
@@ -17,6 +18,7 @@ class StreamingPlatform {
     required this.brandColor,
     required this.tagline,
     required this.icon,
+    required this.logoAsset,
   });
 
   static const List<StreamingPlatform> supportedPlatforms = [
@@ -27,6 +29,7 @@ class StreamingPlatform {
       brandColor: Color(0xFFE50914),
       tagline: 'Netflix Originals & Populer',
       icon: Icons.movie_filter_rounded,
+      logoAsset: 'assets/images/platforms/netflix.png',
     ),
     StreamingPlatform(
       id: 'prime',
@@ -35,6 +38,7 @@ class StreamingPlatform {
       brandColor: Color(0xFF00A8E1),
       tagline: 'Amazon Originals & Blockbusters',
       icon: Icons.video_library_rounded,
+      logoAsset: 'assets/images/platforms/amazon_prime.png',
     ),
     StreamingPlatform(
       id: 'disney',
@@ -43,6 +47,7 @@ class StreamingPlatform {
       brandColor: Color(0xFF113CCF),
       tagline: 'Disney, Marvel, Pixar & Star Wars',
       icon: Icons.auto_awesome_rounded,
+      logoAsset: 'assets/images/platforms/disney_plus.png',
     ),
     StreamingPlatform(
       id: 'apple',
@@ -51,14 +56,16 @@ class StreamingPlatform {
       brandColor: Color(0xFF9E9E9E),
       tagline: 'Apple Original Series & Film',
       icon: Icons.apple_rounded,
+      logoAsset: 'assets/images/platforms/apple_tv.png',
     ),
     StreamingPlatform(
       id: 'max',
-      name: 'Max (HBO)',
+      name: 'Max',
       providerId: 384,
       brandColor: Color(0xFF002BE7),
       tagline: 'HBO Originals & Warner Bros',
       icon: Icons.theater_comedy_rounded,
+      logoAsset: 'assets/images/platforms/hbo_max.png',
     ),
     StreamingPlatform(
       id: 'hulu',
@@ -67,6 +74,7 @@ class StreamingPlatform {
       brandColor: Color(0xFF1CE783),
       tagline: 'Exclusive TV Shows & Movies',
       icon: Icons.slideshow_rounded,
+      logoAsset: 'assets/images/platforms/hulu.png',
     ),
     StreamingPlatform(
       id: 'paramount',
@@ -75,6 +83,7 @@ class StreamingPlatform {
       brandColor: Color(0xFF0064FF),
       tagline: 'Paramount Pictures & CBS',
       icon: Icons.star_border_purple500_rounded,
+      logoAsset: 'assets/images/platforms/paramount.png',
     ),
     StreamingPlatform(
       id: 'peacock',
@@ -83,6 +92,7 @@ class StreamingPlatform {
       brandColor: Color(0xFFF9C000),
       tagline: 'NBCUniversal & Live Sports',
       icon: Icons.live_tv_rounded,
+      logoAsset: 'assets/images/platforms/peacock.png',
     ),
   ];
 

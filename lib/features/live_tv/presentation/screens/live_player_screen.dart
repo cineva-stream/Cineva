@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -195,19 +196,36 @@ class _LivePlayerScreenState extends ConsumerState<LivePlayerScreen> {
                     return ListTile(
                       dense: true,
                       leading: Container(
-                        width: 34,
-                        height: 34,
+                        width: 36,
+                        height: 36,
+                        padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
                           color: isCurrent
                               ? AppColors.primary.withValues(alpha: 0.2)
                               : Colors.white.withValues(alpha: 0.05),
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isCurrent
+                                ? AppColors.primary.withValues(alpha: 0.6)
+                                : Colors.white10,
+                            width: 0.8,
+                          ),
                         ),
-                        child: Icon(
-                          Icons.tv_rounded,
-                          color: isCurrent ? AppColors.primary : Colors.white70,
-                          size: 16,
-                        ),
+                        child: ch.logoUrl != null && ch.logoUrl!.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: ch.logoUrl!,
+                                fit: BoxFit.contain,
+                                errorWidget: (_, _, _) => Icon(
+                                  Icons.tv_rounded,
+                                  color: isCurrent ? AppColors.primary : Colors.white70,
+                                  size: 16,
+                                ),
+                              )
+                            : Icon(
+                                Icons.tv_rounded,
+                                color: isCurrent ? AppColors.primary : Colors.white70,
+                                size: 16,
+                              ),
                       ),
                       title: Text(
                         ch.name,
@@ -371,7 +389,28 @@ class _LivePlayerScreenState extends ConsumerState<LivePlayerScreen> {
                                 icon: const Icon(Icons.arrow_back_rounded,
                                     color: Colors.white, size: 22),
                               ),
-                              const SizedBox(width: 8),
+                              if (_currentChannel.logoUrl != null && _currentChannel.logoUrl!.isNotEmpty) ...[
+                                Container(
+                                  width: 32,
+                                  height: 32,
+                                  padding: const EdgeInsets.all(3),
+                                  margin: const EdgeInsets.only(left: 4, right: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white10,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: CachedNetworkImage(
+                                    imageUrl: _currentChannel.logoUrl!,
+                                    fit: BoxFit.contain,
+                                    errorWidget: (_, _, _) => const Icon(
+                                      Icons.tv_rounded,
+                                      color: Colors.white70,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                              ] else
+                                const SizedBox(width: 8),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,

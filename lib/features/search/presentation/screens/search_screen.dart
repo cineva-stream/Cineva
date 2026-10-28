@@ -553,63 +553,35 @@ class _SearchDiscoveryView extends ConsumerWidget {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           physics: const BouncingScrollPhysics(),
-          child: Row(
-            children: StreamingPlatform.supportedPlatforms.map((platform) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => PlatformCatalogScreen(platform: platform),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: 104,
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: platform.brandColor.withValues(alpha: 0.35),
-                        width: 1.0,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  for (int i = 0; i < 4; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: _buildPlatformChip(
+                        context,
+                        StreamingPlatform.supportedPlatforms[i],
                       ),
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: platform.brandColor.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            platform.icon,
-                            color: platform.brandColor,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          platform.name,
-                          style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  for (int i = 4; i < 8; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: _buildPlatformChip(
+                        context,
+                        StreamingPlatform.supportedPlatforms[i],
+                      ),
                     ),
-                  ),
-                ),
-              );
-            }).toList(),
+                ],
+              ),
+            ],
           ),
         ),
 
@@ -861,6 +833,88 @@ class _SearchDiscoveryView extends ConsumerWidget {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildPlatformChip(BuildContext context, StreamingPlatform platform) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PlatformCatalogScreen(platform: platform),
+          ),
+        );
+      },
+      child: Container(
+        width: 148,
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(
+            color: platform.brandColor.withValues(alpha: 0.35),
+            width: 1.0,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: platform.brandColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(
+                  color: platform.brandColor.withValues(alpha: 0.35),
+                  width: 0.8,
+                ),
+              ),
+              child: Image.asset(
+                platform.logoAsset,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => Icon(
+                  platform.icon,
+                  color: platform.brandColor,
+                  size: 18,
+                ),
+              ),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    platform.name,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Katalog',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white.withValues(alpha: 0.25),
+              size: 16,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
