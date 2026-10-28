@@ -53,6 +53,7 @@
 
 # AndroidX WorkManager & Worker classes
 -keep class com.primadev.cineva.UpdateCheckWorker { *; }
+-keep class com.primadev.cineva.UpdateAlarmReceiver { *; }
 -keep class androidx.work.** { *; }
 -keep class * extends androidx.work.ListenableWorker {
     public <init>(android.content.Context, androidx.work.WorkerParameters);

@@ -1,10 +1,13 @@
 package com.primadev.cineva
 
+import android.app.AlarmManager
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -30,12 +33,15 @@ class UpdateCheckWorker(
         const val NOTIFICATION_ID = 9901
         const val PREFS_NAME = "cineva_update_prefs"
         const val KEY_LAST_NOTIFIED = "last_notified_version"
+        const val KEY_LAST_NOTIFIED_TIME = "last_notified_timestamp"
         const val WORK_NAME = "CinevaUpdateCheckWork"
         private const val GITHUB_API_URL = "https://api.github.com/repos/iamwisnu99/Cineva/releases/latest"
 
         /**
-         * Schedules periodic background update checks using WorkManager.
-         * Runs even when the app is completely closed.
+         * Schedules multi-layered background update checks:
+         * 1. 15-minute periodic WorkManager (minimum allowed by Android)
+         * 2. Short-delay OneTimeWorkRequest (executes ~2m after scheduling, ensuring fast checks after app is backgrounded)
+         * 3. AlarmManager safety fallback against aggressive OEM task killers
          */
         fun schedule(context: Context) {
             try {
@@ -43,21 +49,79 @@ class UpdateCheckWorker(
                     .setRequiredNetworkType(NetworkType.CONNECTED)
                     .build()
 
-                val workRequest = PeriodicWorkRequestBuilder<UpdateCheckWorker>(
-                    6, TimeUnit.HOURS,
-                    15, TimeUnit.MINUTES
+                // Layer 1: Frequent 15-minute Periodic WorkManager with flex interval
+                val periodicWorkRequest = PeriodicWorkRequestBuilder<UpdateCheckWorker>(
+                    15, TimeUnit.MINUTES,
+                    5, TimeUnit.MINUTES
                 )
                     .setConstraints(constraints)
                     .build()
 
                 WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                     WORK_NAME,
-                    ExistingPeriodicWorkPolicy.KEEP,
-                    workRequest
+                    ExistingPeriodicWorkPolicy.UPDATE,
+                    periodicWorkRequest
                 )
-                Log.i(TAG, "Background update check scheduled successfully (every 6h)")
+                Log.i(TAG, "Periodic WorkManager update check scheduled (15m interval)")
+
+                // Layer 2: Fast one-time check (runs 2 minutes after scheduling)
+                val oneTimeRequest = OneTimeWorkRequestBuilder<UpdateCheckWorker>()
+                    .setConstraints(constraints)
+                    .setInitialDelay(2, TimeUnit.MINUTES)
+                    .build()
+
+                WorkManager.getInstance(context).enqueueUniqueWork(
+                    "${WORK_NAME}_OneTime",
+                    ExistingWorkPolicy.REPLACE,
+                    oneTimeRequest
+                )
+                Log.i(TAG, "One-time fast background check scheduled (2m initial delay)")
+
+                // Layer 3: AlarmManager fallback for OEM background killer survival
+                scheduleAlarmFallback(context)
             } catch (t: Throwable) {
                 Log.e(TAG, "Failed to schedule background update check: ${t.message}", t)
+            }
+        }
+
+        /**
+         * Fallback scheduler using Android AlarmManager.
+         * Wakes up every 30 minutes to ensure background check runs even if WorkManager is restricted by OEM.
+         */
+        fun scheduleAlarmFallback(context: Context) {
+            try {
+                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+                    ?: return
+
+                val intent = Intent(context, UpdateAlarmReceiver::class.java).apply {
+                    action = UpdateAlarmReceiver.ACTION_CHECK_UPDATE
+                }
+
+                val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                } else {
+                    PendingIntent.FLAG_UPDATE_CURRENT
+                }
+
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    9902,
+                    intent,
+                    flags
+                )
+
+                val triggerAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(30)
+                val interval = TimeUnit.MINUTES.toMillis(30)
+
+                alarmManager.setInexactRepeating(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAt,
+                    interval,
+                    pendingIntent
+                )
+                Log.i(TAG, "AlarmManager fallback scheduled (every 30m)")
+            } catch (t: Throwable) {
+                Log.w(TAG, "Non-fatal: Failed to schedule AlarmManager fallback: ${t.message}")
             }
         }
 
@@ -100,6 +164,8 @@ class UpdateCheckWorker(
                     description = "Notifikasi pembaruan versi terbaru aplikasi Cineva"
                     enableLights(true)
                     enableVibration(true)
+                    setShowBadge(true)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 }
                 notificationManager.createNotificationChannel(channel)
             }
@@ -126,7 +192,7 @@ class UpdateCheckWorker(
             }
 
             val largeIconBitmap = try {
-                android.graphics.BitmapFactory.decodeResource(context.resources, R.drawable.logo_cineva)
+                BitmapFactory.decodeResource(context.resources, R.drawable.logo_cineva)
             } catch (_: Throwable) {
                 null
             }
@@ -142,9 +208,16 @@ class UpdateCheckWorker(
                         .setSummaryText("Cineva v$version")
                 )
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setColor(0xFFF59E0B.toInt()) // Cineva Gold / Primary
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
+                .addAction(
+                    R.drawable.logo_cineva,
+                    "Perbarui Sekarang",
+                    pendingIntent
+                )
 
             if (largeIconBitmap != null) {
                 notificationBuilder.setLargeIcon(largeIconBitmap)
@@ -226,11 +299,21 @@ class UpdateCheckWorker(
                 return@withContext Result.success()
             }
 
-            // Check if user was already notified for this release
+            // Cooldown check:
+            // Alert user immediately when new release is detected.
+            // If already notified for this exact version, only re-notify after 4 hours
+            // if the user has still not updated the app.
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val lastNotified = prefs.getString(KEY_LAST_NOTIFIED, null)
-            if (lastNotified == cleanRemoteVersion) {
-                Log.i(TAG, "Notification for v$cleanRemoteVersion already displayed previously.")
+            val lastNotifiedTime = prefs.getLong(KEY_LAST_NOTIFIED_TIME, 0L)
+            val currentTime = System.currentTimeMillis()
+            val fourHoursMs = TimeUnit.HOURS.toMillis(4)
+
+            val shouldNotify = (lastNotified != cleanRemoteVersion) ||
+                    (currentTime - lastNotifiedTime > fourHoursMs)
+
+            if (!shouldNotify) {
+                Log.i(TAG, "Notification for v$cleanRemoteVersion is within cooldown interval.")
                 return@withContext Result.success()
             }
 
@@ -244,8 +327,11 @@ class UpdateCheckWorker(
                 body = changelogBody
             )
 
-            // Mark this version as notified
-            prefs.edit().putString(KEY_LAST_NOTIFIED, cleanRemoteVersion).apply()
+            // Mark this version as notified and record timestamp
+            prefs.edit()
+                .putString(KEY_LAST_NOTIFIED, cleanRemoteVersion)
+                .putLong(KEY_LAST_NOTIFIED_TIME, currentTime)
+                .apply()
             Log.i(TAG, "Background update check completed: notification shown for v$cleanRemoteVersion")
 
             Result.success()

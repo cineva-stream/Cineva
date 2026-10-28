@@ -29,10 +29,29 @@ class MainActivity : FlutterActivity() {
             window.attributes.layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
+
+        // Request POST_NOTIFICATIONS permission on Android 13+ (API 33+) so background notifications can appear
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1002)
+            }
+        }
+
         try {
             UpdateCheckWorker.schedule(applicationContext)
         } catch (t: Throwable) {
             Log.w(TAG, "Non-fatal: Failed to schedule update check in onCreate: ${t.message}")
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        try {
+            // Re-arm background periodic & fast one-time checks when the app is backgrounded or closed
+            UpdateCheckWorker.schedule(applicationContext)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Non-fatal: Failed to schedule update check in onStop: ${t.message}")
         }
     }
 
@@ -156,6 +175,22 @@ class MainActivity : FlutterActivity() {
                         Log.e(TAG, "Failed to show update notification: ${e.message}", e)
                         result.error("NOTIFICATION_ERROR", e.message, null)
                     }
+                }
+                "hasNotificationPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+                                android.content.pm.PackageManager.PERMISSION_GRANTED
+                        result.success(granted)
+                    } else {
+                        val manager = androidx.core.app.NotificationManagerCompat.from(this)
+                        result.success(manager.areNotificationsEnabled())
+                    }
+                }
+                "requestNotificationPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1002)
+                    }
+                    result.success(true)
                 }
                 else -> result.notImplemented()
             }

@@ -201,6 +201,28 @@ class AppUpdateService {
     }
   }
 
+  /// Checks if system notification permission is granted on Android.
+  Future<bool> hasNotificationPermission() async {
+    if (kIsWeb || !Platform.isAndroid) return false;
+    try {
+      final bool? granted = await _channel.invokeMethod<bool>('hasNotificationPermission');
+      return granted ?? false;
+    } catch (e) {
+      debugPrint('[AppUpdateService] hasNotificationPermission error: $e');
+      return false;
+    }
+  }
+
+  /// Explicitly requests system notification permission on Android 13+ (API 33+).
+  Future<void> requestNotificationPermission() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod('requestNotificationPermission');
+    } catch (e) {
+      debugPrint('[AppUpdateService] requestNotificationPermission error: $e');
+    }
+  }
+
   /// Automatically or manually cleans up old update APK files from temporary and cache storage.
   /// This frees up internal device storage after updates or interrupted downloads.
   Future<int> cleanupDownloadedApks() async {
