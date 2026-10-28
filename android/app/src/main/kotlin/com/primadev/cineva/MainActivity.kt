@@ -29,7 +29,11 @@ class MainActivity : FlutterActivity() {
             window.attributes.layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
-        UpdateCheckWorker.schedule(applicationContext)
+        try {
+            UpdateCheckWorker.schedule(applicationContext)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Non-fatal: Failed to schedule update check in onCreate: ${t.message}")
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

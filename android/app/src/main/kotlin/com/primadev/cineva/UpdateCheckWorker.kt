@@ -38,38 +38,46 @@ class UpdateCheckWorker(
          * Runs even when the app is completely closed.
          */
         fun schedule(context: Context) {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
+            try {
+                val constraints = Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
 
-            val workRequest = PeriodicWorkRequestBuilder<UpdateCheckWorker>(
-                6, TimeUnit.HOURS,
-                15, TimeUnit.MINUTES
-            )
-                .setConstraints(constraints)
-                .build()
+                val workRequest = PeriodicWorkRequestBuilder<UpdateCheckWorker>(
+                    6, TimeUnit.HOURS,
+                    15, TimeUnit.MINUTES
+                )
+                    .setConstraints(constraints)
+                    .build()
 
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
-                workRequest
-            )
-            Log.i(TAG, "Background update check scheduled successfully (every 6h)")
+                WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                    WORK_NAME,
+                    ExistingPeriodicWorkPolicy.KEEP,
+                    workRequest
+                )
+                Log.i(TAG, "Background update check scheduled successfully (every 6h)")
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to schedule background update check: ${t.message}", t)
+            }
         }
 
         /**
          * Triggers an immediate one-time background check.
          */
         fun checkNow(context: Context) {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
+            try {
+                val constraints = Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
 
-            val oneTimeRequest = OneTimeWorkRequestBuilder<UpdateCheckWorker>()
-                .setConstraints(constraints)
-                .build()
+                val oneTimeRequest = OneTimeWorkRequestBuilder<UpdateCheckWorker>()
+                    .setConstraints(constraints)
+                    .build()
 
-            WorkManager.getInstance(context).enqueue(oneTimeRequest)
+                WorkManager.getInstance(context).enqueue(oneTimeRequest)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to trigger update check now: ${t.message}", t)
+            }
         }
 
         /**
@@ -96,7 +104,8 @@ class UpdateCheckWorker(
                 notificationManager.createNotificationChannel(channel)
             }
 
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+            val launchIntent = (context.packageManager.getLaunchIntentForPackage(context.packageName)
+                ?: Intent(context, MainActivity::class.java)).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("from_update_notification", true)
                 putExtra("update_version", version)
@@ -116,8 +125,14 @@ class UpdateCheckWorker(
                 "Versi terbaru $version telah rilis dengan berbagai fitur baru dan perbaikan stabilitas."
             }
 
-            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+            val largeIconBitmap = try {
+                android.graphics.BitmapFactory.decodeResource(context.resources, R.drawable.logo_cineva)
+            } catch (_: Throwable) {
+                null
+            }
+
+            val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.logo_cineva)
                 .setContentTitle(displayTitle)
                 .setContentText("Versi $version rilis! Ketuk untuk memperbarui.")
                 .setStyle(
@@ -130,7 +145,12 @@ class UpdateCheckWorker(
                 .setColor(0xFFF59E0B.toInt()) // Cineva Gold / Primary
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
-                .build()
+
+            if (largeIconBitmap != null) {
+                notificationBuilder.setLargeIcon(largeIconBitmap)
+            }
+
+            val notification = notificationBuilder.build()
 
             try {
                 NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)

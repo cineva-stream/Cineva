@@ -50,3 +50,10 @@
 -dontwarn io.flutter.**
 -dontwarn com.alexmercerind.**
 -dontwarn dev.fluttercommunity.**
+
+# AndroidX WorkManager & Worker classes
+-keep class com.primadev.cineva.UpdateCheckWorker { *; }
+-keep class androidx.work.** { *; }
+-keep class * extends androidx.work.ListenableWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}
