@@ -35,7 +35,7 @@ class UpdateCheckWorker(
         const val KEY_LAST_NOTIFIED = "last_notified_version"
         const val KEY_LAST_NOTIFIED_TIME = "last_notified_timestamp"
         const val WORK_NAME = "CinevaUpdateCheckWork"
-        private const val GITHUB_API_URL = "https://api.github.com/repos/iamwisnu99/Cineva/releases/latest"
+        private const val GITHUB_API_URL = "https://api.github.com/repos/cineva-stream/Cineva/releases/latest"
 
         /**
          * Schedules multi-layered background update checks:

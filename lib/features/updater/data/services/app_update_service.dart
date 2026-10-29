@@ -10,34 +10,49 @@ import '../../domain/entities/app_update_info.dart';
 /// Service that handles GitHub release checking, APK download with streaming progress,
 /// native package installer execution, and automated cache cleanup.
 class AppUpdateService {
-  static const MethodChannel _channel = MethodChannel('com.primadev.cineva/updater');
+  static const MethodChannel _channel = MethodChannel(
+    'com.primadev.cineva/updater',
+  );
   static const String _latestReleaseUrl =
-      'https://api.github.com/repos/iamwisnu99/Cineva/releases/latest';
+      'https://api.github.com/repos/cineva-stream/Cineva/releases/latest';
 
   final Dio _dio;
 
   AppUpdateService({Dio? dio})
-      : _dio = dio ??
-            Dio(
-              BaseOptions(
-                connectTimeout: const Duration(seconds: 10),
-                receiveTimeout: const Duration(seconds: 15),
-                headers: {
-                  'Accept': 'application/vnd.github.v3+json',
-                },
-              ),
-            );
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 10),
+              receiveTimeout: const Duration(seconds: 15),
+              headers: {'Accept': 'application/vnd.github.v3+json'},
+            ),
+          );
 
   /// Compares whether [remoteVer] is strictly greater than [currentVer] using semantic versioning.
   static bool isVersionNewer(String remoteVer, String currentVer) {
     try {
-      final cleanRemote = remoteVer.toLowerCase().replaceAll(RegExp(r'[^0-9.]'), '');
-      final cleanCurrent = currentVer.toLowerCase().replaceAll(RegExp(r'[^0-9.]'), '');
+      final cleanRemote = remoteVer.toLowerCase().replaceAll(
+        RegExp(r'[^0-9.]'),
+        '',
+      );
+      final cleanCurrent = currentVer.toLowerCase().replaceAll(
+        RegExp(r'[^0-9.]'),
+        '',
+      );
 
-      final rParts = cleanRemote.split('.').map((p) => int.tryParse(p) ?? 0).toList();
-      final cParts = cleanCurrent.split('.').map((p) => int.tryParse(p) ?? 0).toList();
+      final rParts = cleanRemote
+          .split('.')
+          .map((p) => int.tryParse(p) ?? 0)
+          .toList();
+      final cParts = cleanCurrent
+          .split('.')
+          .map((p) => int.tryParse(p) ?? 0)
+          .toList();
 
-      final maxLen = rParts.length > cParts.length ? rParts.length : cParts.length;
+      final maxLen = rParts.length > cParts.length
+          ? rParts.length
+          : cParts.length;
       for (int i = 0; i < maxLen; i++) {
         final r = i < rParts.length ? rParts[i] : 0;
         final c = i < cParts.length ? cParts[i] : 0;
@@ -63,19 +78,25 @@ class AppUpdateService {
 
       final data = response.data as Map<String, dynamic>;
       final tagName = data['tag_name']?.toString() ?? '';
-      final cleanRemoteVersion = tagName.replaceFirst(RegExp(r'^[vV]'), '').trim();
+      final cleanRemoteVersion = tagName
+          .replaceFirst(RegExp(r'^[vV]'), '')
+          .trim();
 
       if (!isVersionNewer(cleanRemoteVersion, currentVersion)) {
         return null;
       }
 
-      final releaseTitle = data['name']?.toString() ?? 'Cineva v$cleanRemoteVersion';
+      final releaseTitle =
+          data['name']?.toString() ?? 'Cineva v$cleanRemoteVersion';
       final changelog = data['body']?.toString() ?? '';
       final publishedAtStr = data['published_at']?.toString();
-      final publishedAt = publishedAtStr != null ? DateTime.tryParse(publishedAtStr) : null;
+      final publishedAt = publishedAtStr != null
+          ? DateTime.tryParse(publishedAtStr)
+          : null;
 
       // Locate the APK asset in release
-      final assets = (data['assets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final assets =
+          (data['assets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       final apkAsset = assets.firstWhere(
         (a) => a['name']?.toString().toLowerCase().endsWith('.apk') ?? false,
         orElse: () => <String, dynamic>{},
@@ -86,7 +107,8 @@ class AppUpdateService {
         return null;
       }
 
-      final apkFileName = apkAsset['name']?.toString() ?? 'Cineva_v$cleanRemoteVersion.apk';
+      final apkFileName =
+          apkAsset['name']?.toString() ?? 'Cineva_v$cleanRemoteVersion.apk';
       final apkSizeBytes = (apkAsset['size'] as num?)?.toInt() ?? 0;
 
       return AppUpdateInfo(
@@ -140,7 +162,9 @@ class AppUpdateService {
   Future<bool> canRequestPackageInstalls() async {
     if (kIsWeb || !Platform.isAndroid) return false;
     try {
-      final bool? allowed = await _channel.invokeMethod<bool>('canRequestPackageInstalls');
+      final bool? allowed = await _channel.invokeMethod<bool>(
+        'canRequestPackageInstalls',
+      );
       return allowed ?? false;
     } catch (e) {
       debugPrint('[AppUpdateService] canRequestPackageInstalls error: $e');
@@ -177,7 +201,9 @@ class AppUpdateService {
   Future<bool> scheduleBackgroundUpdateCheck() async {
     if (kIsWeb || !Platform.isAndroid) return false;
     try {
-      final bool? success = await _channel.invokeMethod<bool>('scheduleBackgroundUpdateCheck');
+      final bool? success = await _channel.invokeMethod<bool>(
+        'scheduleBackgroundUpdateCheck',
+      );
       return success ?? false;
     } catch (e) {
       debugPrint('[AppUpdateService] scheduleBackgroundUpdateCheck error: $e');
@@ -189,11 +215,12 @@ class AppUpdateService {
   Future<bool> showUpdateNotification(AppUpdateInfo info) async {
     if (kIsWeb || !Platform.isAndroid) return false;
     try {
-      final bool? success = await _channel.invokeMethod<bool>('showUpdateNotification', {
-        'version': info.latestVersion,
-        'title': info.releaseTitle,
-        'body': info.changelog,
-      });
+      final bool? success = await _channel
+          .invokeMethod<bool>('showUpdateNotification', {
+            'version': info.latestVersion,
+            'title': info.releaseTitle,
+            'body': info.changelog,
+          });
       return success ?? false;
     } catch (e) {
       debugPrint('[AppUpdateService] showUpdateNotification error: $e');
@@ -205,7 +232,9 @@ class AppUpdateService {
   Future<bool> hasNotificationPermission() async {
     if (kIsWeb || !Platform.isAndroid) return false;
     try {
-      final bool? granted = await _channel.invokeMethod<bool>('hasNotificationPermission');
+      final bool? granted = await _channel.invokeMethod<bool>(
+        'hasNotificationPermission',
+      );
       return granted ?? false;
     } catch (e) {
       debugPrint('[AppUpdateService] hasNotificationPermission error: $e');
@@ -236,9 +265,13 @@ class AppUpdateService {
             try {
               await file.delete();
               deletedCount++;
-              debugPrint('[AppUpdateService] Cleaned up cached APK: ${file.path}');
+              debugPrint(
+                '[AppUpdateService] Cleaned up cached APK: ${file.path}',
+              );
             } catch (e) {
-              debugPrint('[AppUpdateService] Failed to delete APK: ${file.path}, error: $e');
+              debugPrint(
+                '[AppUpdateService] Failed to delete APK: ${file.path}, error: $e',
+              );
             }
           }
         }
@@ -253,11 +286,14 @@ class AppUpdateService {
               if (await extDir.exists()) {
                 final files = extDir.listSync();
                 for (final file in files) {
-                  if (file is File && file.path.toLowerCase().endsWith('.apk')) {
+                  if (file is File &&
+                      file.path.toLowerCase().endsWith('.apk')) {
                     try {
                       await file.delete();
                       deletedCount++;
-                      debugPrint('[AppUpdateService] Cleaned up external cached APK: ${file.path}');
+                      debugPrint(
+                        '[AppUpdateService] Cleaned up external cached APK: ${file.path}',
+                      );
                     } catch (_) {}
                   }
                 }
