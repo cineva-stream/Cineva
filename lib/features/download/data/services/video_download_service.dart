@@ -9,6 +9,8 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../player/data/services/smart_stream_service.dart';
 import '../../../player/data/services/vixsrc_stream_service.dart';
+import 'hls_url_resolver.dart';
+import 'offline_mp4_builder.dart';
 import 'ts_segment_utils.dart';
 
 
@@ -174,7 +176,43 @@ class VideoDownloadService {
         await masterM3u8.writeAsString(sb.toString());
       }
 
-      // 5. Ensure .nomedia exists to protect private sandbox
+      // 5. If raw segments are gone but video.ts exists, construct synthetic m3u8 manifests
+      // so LocalStreamServer plays both video.ts and audio.ts seamlessly with A/V sync!
+      final videoTs = File('${dir.path}/video.ts');
+      final audioTs = File('${dir.path}/audio.ts');
+      if (await videoTs.exists() && (await videoTs.length()) > 50000) {
+        final segments = await OfflineMp4Builder.listSegments(dir, 'v_');
+        if (segments.isEmpty) {
+          debugPrint('[VideoDownloadService] Synthesizing HLS manifests for unified TS files in ${dir.path}...');
+          final hasAudio = await audioTs.exists() && (await audioTs.length()) > 1000;
+          await videoM3u8.writeAsString(
+            '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:7200\n#EXTINF:7200.0,\nvideo.ts\n#EXT-X-ENDLIST\n',
+          );
+          if (hasAudio) {
+            await audioM3u8.writeAsString(
+              '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:7200\n#EXTINF:7200.0,\naudio.ts\n#EXT-X-ENDLIST\n',
+            );
+          }
+          final sb = StringBuffer()
+            ..writeln('#EXTM3U')
+            ..writeln('#EXT-X-VERSION:3')
+            ..writeln('#EXT-X-INDEPENDENT-SEGMENTS');
+          if (hasAudio) {
+            sb.writeln('#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Audio",DEFAULT=YES,AUTOSELECT=YES,URI="audio.m3u8"');
+            sb.writeln('#EXT-X-STREAM-INF:BANDWIDTH=3000000,AUDIO="audio"');
+          } else {
+            sb.writeln('#EXT-X-STREAM-INF:BANDWIDTH=3000000');
+          }
+          sb.writeln('video.m3u8');
+          await masterM3u8.writeAsString(sb.toString());
+        } else if (segments.length > 5) {
+          // Raw segments are intact, redundant temporary video.ts/audio.ts can be cleaned
+          try { await videoTs.delete(); } catch (_) {}
+          try { if (await audioTs.exists()) await audioTs.delete(); } catch (_) {}
+        }
+      }
+
+      // 6. Ensure .nomedia exists to protect private sandbox
       final noMedia = File('${dir.path}/.nomedia');
       if (!await noMedia.exists()) {
         await noMedia.writeAsString('');
@@ -357,9 +395,7 @@ class VideoDownloadService {
           final uriMatch = RegExp(r'URI="([^"]+)"').firstMatch(line);
           if (uriMatch != null) {
             final rawUri = uriMatch.group(1)!;
-            final fullUri = rawUri.startsWith('http')
-                ? rawUri
-                : Uri.parse(masterUrlToInspect).resolve(rawUri).toString();
+            final fullUri = HlsUrlResolver.resolve(rawUri, masterUrlToInspect);
             if (line.contains('DEFAULT=YES') ||
                 line.contains('LANGUAGE="eng"') ||
                 targetAudioPlaylistUrl == null) {
@@ -373,9 +409,7 @@ class VideoDownloadService {
             i + 1 < masterLines.length) {
           final nextLine = masterLines[i + 1].trim();
           if (nextLine.isNotEmpty && !nextLine.startsWith('#')) {
-            targetVideoPlaylistUrl = nextLine.startsWith('http')
-                ? nextLine
-                : Uri.parse(masterUrlToInspect).resolve(nextLine).toString();
+            targetVideoPlaylistUrl = HlsUrlResolver.resolve(nextLine, masterUrlToInspect);
           }
         }
       }
@@ -398,9 +432,7 @@ class VideoDownloadService {
       orElse: () => '',
     );
     if (childM3u8Line.isNotEmpty) {
-      targetVideoPlaylistUrl = childM3u8Line.startsWith('http')
-          ? childM3u8Line
-          : Uri.parse(targetVideoPlaylistUrl).resolve(childM3u8Line.trim()).toString();
+      targetVideoPlaylistUrl = HlsUrlResolver.resolve(childM3u8Line.trim(), targetVideoPlaylistUrl);
 
       final childRes = await _dio.get<String>(
         targetVideoPlaylistUrl,
@@ -431,9 +463,7 @@ class VideoDownloadService {
         if (i + 1 < videoLines.length) {
           final nextLine = videoLines[i + 1].trim();
           if (nextLine.isNotEmpty && !nextLine.startsWith('#')) {
-            final segUrl = nextLine.startsWith('http')
-                ? nextLine
-                : Uri.parse(targetVideoPlaylistUrl).resolve(nextLine).toString();
+            final segUrl = HlsUrlResolver.resolve(nextLine, targetVideoPlaylistUrl);
             final taskIndex = videoTasks.length;
             videoTasks.add(_HlsSegmentTask(
               index: taskIndex,
@@ -471,9 +501,7 @@ class VideoDownloadService {
           orElse: () => '',
         );
         if (audioChildM3u8.isNotEmpty) {
-          targetAudioPlaylistUrl = audioChildM3u8.startsWith('http')
-              ? audioChildM3u8
-              : Uri.parse(targetAudioPlaylistUrl).resolve(audioChildM3u8.trim()).toString();
+          targetAudioPlaylistUrl = HlsUrlResolver.resolve(audioChildM3u8.trim(), targetAudioPlaylistUrl);
 
           final aChildRes = await _dio.get<String>(
             targetAudioPlaylistUrl,
@@ -499,9 +527,7 @@ class VideoDownloadService {
             if (i + 1 < audioLines.length) {
               final nextLine = audioLines[i + 1].trim();
               if (nextLine.isNotEmpty && !nextLine.startsWith('#')) {
-                final segUrl = nextLine.startsWith('http')
-                    ? nextLine
-                    : Uri.parse(targetAudioPlaylistUrl).resolve(nextLine).toString();
+                final segUrl = HlsUrlResolver.resolve(nextLine, targetAudioPlaylistUrl);
                 final taskIndex = audioTasks.length;
                 audioTasks.add(_HlsSegmentTask(
                   index: taskIndex,
@@ -623,7 +649,7 @@ class VideoDownloadService {
         List<int>? bytes;
         int retries = 0;
 
-        while (retries < 3 && bytes == null) {
+        while (retries < 5 && bytes == null) {
           if (cancelToken?.isCancelled ?? false) break;
           try {
             final response = await _dio.get<List<int>>(
@@ -634,14 +660,14 @@ class VideoDownloadService {
             bytes = response.data;
           } catch (e) {
             retries++;
-            if (retries >= 3) {
+            if (retries >= 5) {
               if (!hasError) {
                 hasError = true;
                 errorObj = e;
               }
               return;
             }
-            await Future.delayed(Duration(milliseconds: 150 * retries));
+            await Future.delayed(Duration(milliseconds: 200 * (1 << retries)));
           }
         }
 
@@ -661,6 +687,8 @@ class VideoDownloadService {
               }
               return;
             }
+          } else {
+            outputBytes = TsSegmentUtils.stripPaddingAndAlign(outputBytes);
           }
 
           // Save decrypted segment directly to offline directory
@@ -787,15 +815,8 @@ class VideoDownloadService {
 
   /// Resolves an AES key URI correctly against origin or master playlist
   String _resolveKeyUrl(String uriRaw, String playlistUrl, String masterUrl) {
-    if (uriRaw.startsWith('http')) return uriRaw;
-    if (uriRaw.startsWith('/')) {
-      final masterUri = Uri.tryParse(masterUrl);
-      if (masterUri != null && masterUri.hasScheme) {
-        return '${masterUri.scheme}://${masterUri.host}$uriRaw';
-      }
-      return 'https://vixsrc.to$uriRaw';
-    }
-    return Uri.parse(playlistUrl).resolve(uriRaw).toString();
+    final base = playlistUrl.isNotEmpty ? playlistUrl : masterUrl;
+    return HlsUrlResolver.resolve(uriRaw, base);
   }
 
   /// Downloads AES-128 16-byte decryption key with automatic fallback to primary origin
@@ -804,6 +825,8 @@ class VideoDownloadService {
       primaryUrl,
       if (primaryUrl.contains('/storage/enc.key') && !primaryUrl.startsWith('https://vixsrc.to'))
         'https://vixsrc.to/storage/enc.key',
+      if (primaryUrl.contains('?'))
+        primaryUrl.split('?').first,
     ];
 
     for (final url in candidateUrls) {
@@ -813,6 +836,7 @@ class VideoDownloadService {
           options: Options(
             responseType: ResponseType.bytes,
             headers: {
+              ...VixSrcStreamService.headers,
               'origin': 'https://vixsrc.to',
               'referer': 'https://vixsrc.to/',
             },

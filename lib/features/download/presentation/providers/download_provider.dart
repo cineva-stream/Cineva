@@ -9,6 +9,7 @@ import '../../domain/models/download_item.dart';
 import '../../data/repositories/download_repository.dart';
 import '../../data/services/download_file_namer.dart';
 import '../../data/services/download_subtitle_pipeline.dart';
+import '../../data/services/offline_mp4_builder.dart';
 import '../../data/services/video_download_service.dart';
 
 /// State notifier managing all download tasks, persistent storage, and live progress.
@@ -196,8 +197,23 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       // Wait for both video and subtitle streams to complete
       await Future.wait([videoFuture, subtitleFuture]);
 
-      // Step 3: Compute actual completed package size on disk
+      // Step 3: Build unified offline media container (video.mp4 with video.ts fallback)
       final parentDir = Directory(File(item.videoPath).parent.path);
+      try {
+        if (await parentDir.exists()) {
+          debugPrint('[DownloadNotifier] Building offline media package in: ${parentDir.path}');
+          await OfflineMp4Builder.build(
+            dir: parentDir,
+            deleteSegmentsOnSuccess: true,
+          );
+        }
+      } catch (e) {
+        debugPrint('[DownloadNotifier] OfflineMp4Builder build note: $e');
+      }
+
+      // Step 4: Resolve the best validated playable file and compute actual size
+      final playableFile = await OfflineMp4Builder.findPlayableOfflineFile(parentDir);
+
       int actualTotalBytes = 0;
       try {
         if (await parentDir.exists()) {
@@ -209,9 +225,11 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
 
       final masterM3u8 = File('${parentDir.path}/master.m3u8');
       final masterCineva = File('${parentDir.path}/master.cineva');
-      final actualVideoPath = (await masterM3u8.exists())
+      final fallbackPath = (await masterM3u8.exists())
           ? masterM3u8.path
           : ((await masterCineva.exists()) ? masterCineva.path : currentItem.videoPath);
+
+      final actualVideoPath = playableFile?.path ?? fallbackPath;
 
       final completedItem = currentItem.copyWith(
         status: DownloadStatus.completed,

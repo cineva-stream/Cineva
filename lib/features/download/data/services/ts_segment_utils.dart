@@ -3,12 +3,34 @@ class TsSegmentUtils {
   static const int tsPacketSize = 188;
   static const int tsSyncByte = 0x47;
 
+  /// Unwraps disguised segments that prepend fake image headers (PNG, JPEG, etc.).
+  /// Searches for the first TS sync byte `0x47` that repeats at 188-byte intervals.
+  static List<int> unwrapDisguisedSegment(List<int> bytes) {
+    if (bytes.isEmpty) return bytes;
+    if (bytes.first == tsSyncByte) return bytes;
+
+    // Search up to the first 2048 bytes for the TS sync byte
+    final searchLimit = bytes.length > 2048 ? 2048 : bytes.length;
+    for (int i = 0; i < searchLimit; i++) {
+      if (bytes[i] == tsSyncByte) {
+        if (i + tsPacketSize < bytes.length) {
+          if (bytes[i + tsPacketSize] == tsSyncByte) {
+            return bytes.sublist(i);
+          }
+        } else {
+          return bytes.sublist(i);
+        }
+      }
+    }
+    return bytes;
+  }
+
   /// Removes PKCS7 padding (if valid) left behind by AES-128-CBC decryption with
   /// `padding: null`, then trims any trailing bytes so that the segment is a whole
   /// number of 188-byte TS packets. Without this, concatenated segments become
   /// misaligned and demuxers lose TS sync.
   static List<int> stripPaddingAndAlign(List<int> decrypted) {
-    var out = decrypted;
+    var out = unwrapDisguisedSegment(decrypted);
 
     if (out.isNotEmpty) {
       final n = out.last;

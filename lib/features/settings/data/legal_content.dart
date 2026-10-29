@@ -206,9 +206,9 @@ class LegalContentRepository {
           ),
           LegalSection(
             number: '2',
-            title: 'Penyediaan Piranti Lunak "Sebagaimana Adanya" (As-Is Provision)',
+            title: 'Lisensi Sumber Terbuka (GPL-3.0) & Penyediaan "Sebagaimana Adanya" (As-Is Provision)',
             body:
-                'Aplikasi Cineva disediakan secara mutlak atas dasar "SEBAGAIMANA ADANYA" ("AS IS") dan "SEBAGAIMANA TERSEDIA" ("AS AVAILABLE"), tanpa jaminan dalam bentuk apa pun, baik tersurat maupun tersirat, termasuk namun tidak terbatas pada jaminan tersirat atas kelayakan untuk diperdagangkan (merchantability), kesesuaian untuk tujuan tertentu (fitness for a particular purpose), ketiadaan pelanggaran hak pihak ketiga, serta kebebasan dari cacat, galat, atau gangguan operasional.',
+                'Piranti lunak Cineva didistribusikan sebagai perangkat lunak bebas dan sumber terbuka di bawah lisensi GNU General Public License v3.0 (GPL-3.0). Aplikasi Cineva disediakan secara mutlak atas dasar "SEBAGAIMANA ADANYA" ("AS IS") dan "SEBAGAIMANA TERSEDIA" ("AS AVAILABLE"), tanpa jaminan dalam bentuk apa pun, baik tersurat maupun tersirat, termasuk namun tidak terbatas pada jaminan tersirat atas kelayakan untuk diperdagangkan (merchantability), kesesuaian untuk tujuan tertentu (fitness for a particular purpose), ketiadaan pelanggaran hak pihak ketiga, serta kebebasan dari cacat, galat, atau gangguan operasional.',
           ),
           LegalSection(
             number: '3',
@@ -268,9 +268,9 @@ class LegalContentRepository {
           ),
           LegalSection(
             number: '2',
-            title: 'Provision of Software "As-Is" and "As-Available"',
+            title: 'Open Source Licensing (GPL-3.0) & "As-Is" Provision',
             body:
-                'Cineva is provided strictly on an "AS IS" and "AS AVAILABLE" basis, devoid of any warranties whatsoever, express, statutory, or implied. To the maximum extent permitted under applicable worldwide law, the developers disclaim all warranties including, without limitation, merchantability, fitness for a particular purpose, non-infringement, reliability, uptime, uninterrupted functionality, or error-free execution.',
+                'Cineva software is distributed as free and open-source software under the GNU General Public License v3.0 (GPL-3.0). Cineva is provided strictly on an "AS IS" and "AS AVAILABLE" basis, devoid of any warranties whatsoever, express, statutory, or implied. To the maximum extent permitted under applicable worldwide law, the developers disclaim all warranties including, without limitation, merchantability, fitness for a particular purpose, non-infringement, reliability, uptime, uninterrupted functionality, or error-free execution.',
           ),
           LegalSection(
             number: '3',

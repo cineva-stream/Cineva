@@ -33,8 +33,9 @@ void main() {
       expect(docId.calloutSummary, contains('BUKAN layanan komersial'));
       expect(docId.sections.length, 6);
 
-      // 1. As-Is clause
+      // 1. As-Is clause and GPL-3.0 license
       expect(docId.sections.any((s) => s.body.contains('SEBAGAIMANA ADANYA')), isTrue);
+      expect(docId.sections.any((s) => s.body.contains('GPL-3.0')), isTrue);
       // 2. Third-party content ownership
       expect(docId.sections.any((s) => s.bulletPoints.any((b) => b.contains('BUKAN merupakan milik aplikasi Cineva'))), isTrue);
       // 3. Not commercial & not a substitute for official streaming
@@ -50,6 +51,7 @@ void main() {
       expect(docEn.calloutSummary, contains('NOT a substitute'));
       expect(docEn.sections.length, 6);
       expect(docEn.sections.any((s) => s.body.contains('AS IS')), isTrue);
+      expect(docEn.sections.any((s) => s.body.contains('GPL-3.0')), isTrue);
       expect(docEn.sections.any((s) => s.bulletPoints.any((b) => b.contains('NOT the property of Cineva'))), isTrue);
       expect(docEn.sections.any((s) => s.bulletPoints.any((b) => b.contains('NOT a substitute or alternative for licensed commercial streaming'))), isTrue);
       expect(docEn.sections.any((s) => s.body.contains('NOT ALL movies or TV series are guaranteed')), isTrue);

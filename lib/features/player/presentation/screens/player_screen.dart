@@ -239,18 +239,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   /// Sets up smooth, zero-latency offline playback options for mpv.
-  /// Enables memory ring buffering and allows file and http protocol demuxing.
   Future<void> _setupMpvOfflineOptions() async {
     try {
       final mpv = (_player.platform as dynamic);
       await mpv?.command(['set', 'cache', 'yes']);
       await mpv?.command(['set', 'cache-pause', 'no']);
       await mpv?.command(['set', 'cache-pause-initial', 'no']);
-      await mpv?.command(['set', 'cache-secs', '30']);
-      await mpv?.command(['set', 'demuxer-readahead-secs', '30']);
-      await mpv?.command(['set', 'demuxer-max-bytes', '64M']);
-      await mpv?.command(['set', 'demuxer-lavf-o', 'protocol_whitelist=file,http,https,tcp,tls,crypto,data,fflags=+genpts']);
+      await mpv?.command(['set', 'cache-secs', '60']);
+      await mpv?.command(['set', 'demuxer-readahead-secs', '60']);
+      await mpv?.command(['set', 'demuxer-max-bytes', '67108864']); // 64 MB
       await mpv?.command(['set', 'hr-seek', 'yes']);
+      await mpv?.command(['set', 'network-timeout', '10']);
     } catch (e) {
       debugPrint('[PlayerScreen] mpv offline options setup error: $e');
     }
@@ -895,22 +894,32 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       return;
     }
 
+    // Auto-detect if title is already completed in offline downloads (offline playback without internet)
+    if (widget.tmdbId != null && widget.tmdbId! > 0) {
+      try {
+        final existing = ref.read(downloadManagerProvider.notifier).findExisting(
+          mediaType: widget.mediaType ?? 'movie',
+          tmdbId: widget.tmdbId!,
+          season: widget.season,
+          episode: widget.episode,
+        );
+        if (existing != null && existing.isCompleted && existing.videoPath.isNotEmpty) {
+          final f = File(existing.videoPath);
+          if (await f.exists() || await f.parent.exists()) {
+            debugPrint('[PlayerScreen] Auto-switching to offline download: ${existing.videoPath}');
+            _currentLocalVideoPath = existing.videoPath;
+            _currentLocalSubtitlePath = existing.subtitlePath;
+            await _initOfflinePlayback();
+            return;
+          }
+        }
+      } catch (e) {
+        debugPrint('[PlayerScreen] Existing offline check note: $e');
+      }
+    }
+
     // 1. ONLINE STREAMING FLOW
     await _initOnlineStreaming();
-  }
-
-  /// Waits until mpv has parsed the opened media (duration > 0). Returns false on timeout,
-  /// which indicates a corrupt/unsupported file instead of an endless loading spinner.
-  Future<bool> _waitForOfflineMediaReady(Duration timeout) async {
-    if (_player.state.duration > Duration.zero) return true;
-    try {
-      await _player.stream.duration
-          .firstWhere((d) => d > Duration.zero)
-          .timeout(timeout);
-      return true;
-    } catch (_) {
-      return _player.state.duration > Duration.zero;
-    }
   }
 
   /// Dedicated offline video player handler.
@@ -946,72 +955,56 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // 1. Auto-repair any legacy .cdat segments and playlists in mediaDir
       await VideoDownloadService.repairOfflineDirectoryIfNeeded(mediaDir);
 
-      final masterM3u8 = File('${mediaDir.path}/master.m3u8');
-      final masterCineva = File('${mediaDir.path}/master.cineva');
-      final videoM3u8 = File('${mediaDir.path}/video.m3u8');
-      final mp4Candidate = File('${mediaDir.path}/${OfflineMp4Builder.mp4Name}');
+      // 2. Discover the best offline playable file (MP4 -> HLS playlist -> TS fallback)
+      final playable = await OfflineMp4Builder.findPlayableOfflineFile(mediaDir) ?? localFile;
 
       _useNativePlayer = true;
       await _setupMpvOfflineOptions();
 
-      // Case 1: Standalone MP4/MKV file
-      if (await OfflineMp4Builder.isValidMp4(mp4Candidate)) {
-        debugPrint('[PlayerScreen] Playing standalone MP4: ${mp4Candidate.path}');
-        await _player.open(Media(mp4Candidate.path));
-        if (!await _waitForOfflineMediaReady(const Duration(seconds: 10))) {
-          if (!await mp4Candidate.exists() || (await mp4Candidate.length()) < 50000) {
-            throw Exception(s.playerOfflineCorrupted);
-          }
-        }
-      } else if (await masterM3u8.exists() || await masterCineva.exists() || await videoM3u8.exists()) {
-        // Case 2: HLS Offline Bundle (TS segments)
-        final playlistFile = (await masterM3u8.exists())
-            ? masterM3u8
-            : ((await masterCineva.exists()) ? masterCineva : videoM3u8);
-        debugPrint('[PlayerScreen] Playing offline HLS package: ${playlistFile.path}');
+      final path = playable.path;
+      final ext = path.split('.').last.toLowerCase();
+      debugPrint('[PlayerScreen] Resolved offline playable: $path (ext: $ext)');
 
-        // First attempt: Direct file playback via libmpv
-        bool ready = false;
-        try {
-          await _player.open(Media(playlistFile.path));
-          ready = await _waitForOfflineMediaReady(const Duration(seconds: 4));
-        } catch (e) {
-          debugPrint('[PlayerScreen] Direct file open failed: $e');
-          ready = false;
-        }
+      if (ext == 'mp4' || ext == 'mkv') {
+        // Direct standalone hardware container
+        await _player.open(Media(path));
+      } else {
+        // Check if master.m3u8, master.cineva, or video.m3u8 exists in mediaDir to use LocalStreamServer
+        final masterFile = File('${mediaDir.path}/master.m3u8');
+        final masterCineva = File('${mediaDir.path}/master.cineva');
+        final videoM3u8File = File('${mediaDir.path}/video.m3u8');
+        final hlsFile = (await masterFile.exists())
+            ? masterFile
+            : ((await masterCineva.exists())
+                ? masterCineva
+                : ((await videoM3u8File.exists()) ? videoM3u8File : null));
 
-        // Second attempt (fallback): Loopback HTTP stream via LocalStreamServer
-        if (!ready) {
-          debugPrint('[PlayerScreen] Direct file not ready, falling back to LocalStreamServer loopback...');
+        if (hlsFile != null) {
           final port = await LocalStreamServer.instance.start();
           if (port > 0) {
-            final fileName = playlistFile.path.split(RegExp(r'[\\/]')).where((s) => s.isNotEmpty).last;
+            final fileName = hlsFile.path.split(RegExp(r'[\\/]')).where((s) => s.isNotEmpty).last;
             final cleanId = 'cineva_${mediaDir.path.hashCode.abs()}';
-
             final streamUrl = LocalStreamServer.instance.getStreamUrl(
               dirPath: mediaDir.path,
               fileName: fileName,
               id: cleanId,
             );
-
-            debugPrint('[PlayerScreen] Offline loopback stream URL: $streamUrl');
+            debugPrint('[PlayerScreen] Opening local loopback HLS: $streamUrl');
             await _player.open(Media(streamUrl));
-            ready = await _waitForOfflineMediaReady(const Duration(seconds: 12));
+          } else {
+            await _player.open(Media(path));
+          }
+        } else {
+          // Fallback: direct media file (e.g. video.ts without playlist)
+          await _player.open(Media(path));
+          final secondaryAudio = await OfflineMp4Builder.getSecondaryAudioFile(mediaDir);
+          if (secondaryAudio != null && await secondaryAudio.exists()) {
+            try {
+              final mpv = (_player.platform as dynamic);
+              await mpv?.command(['audio-add', secondaryAudio.path, 'auto', 'Audio']);
+            } catch (_) {}
           }
         }
-
-        if (!ready) {
-          throw Exception(s.playerOfflineCorrupted);
-        }
-      } else if (await localFile.exists() && (await localFile.length()) > 50000) {
-        // Case 3: Direct media file fallback
-        debugPrint('[PlayerScreen] Playing direct media file: ${localFile.path}');
-        await _player.open(Media(localFile.path));
-        if (!await _waitForOfflineMediaReady(const Duration(seconds: 10))) {
-          throw Exception(s.playerOfflineCorrupted);
-        }
-      } else {
-        throw Exception(s.playerOfflineCorrupted);
       }
 
       await _player.setAudioTrack(AudioTrack.auto());
@@ -1019,12 +1012,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       await _player.setVolume(_volume);
       await _player.play();
 
+      // Load offline subtitle if available
       var subPath = _currentLocalSubtitlePath ?? widget.localSubtitlePath;
       if (subPath == null || subPath.isEmpty) {
         try {
-          final srtFiles = mediaDir.listSync().whereType<File>().where((f) => f.path.endsWith('.srt'));
-          if (srtFiles.isNotEmpty) {
-            subPath = srtFiles.first.path;
+          final subFiles = mediaDir.listSync().whereType<File>().where(
+            (f) => f.path.endsWith('.srt') || f.path.endsWith('.vtt'),
+          );
+          if (subFiles.isNotEmpty) {
+            subPath = subFiles.first.path;
             _currentLocalSubtitlePath = subPath;
           }
         } catch (_) {}
@@ -1038,6 +1034,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             final cues = SubtitleCue.parseSrt(content);
             ref.read(activeSubtitleCuesProvider.notifier).state = cues;
             debugPrint('[PlayerScreen] Loaded offline subtitle: ${cues.length} cues');
+            if (mounted) {
+              setState(() {
+                _streamSubtitles = [
+                  SubtitleInfo(
+                    id: 'offline_sub',
+                    language: 'id',
+                    languageName: 'Bahasa Indonesia (Offline)',
+                    fileName: subPath!.split(RegExp(r'[\\/]')).last,
+                    downloadCount: 1,
+                    downloadUrl: subPath,
+                  ),
+                ];
+                _selectedSubtitle = _streamSubtitles.first;
+              });
+            }
           }
         } catch (e) {
           debugPrint('[PlayerScreen] Failed to load offline subtitle: $e');
@@ -1050,7 +1061,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           _isLoading = false;
           _isBuffering = false;
           _currentQuality = 'Offline';
-          _resolutionLabel = localFile.path.toLowerCase().endsWith('.mp4')
+          _resolutionLabel = path.toLowerCase().endsWith('.mp4')
               ? (isId ? 'Lokal MP4' : 'Local MP4')
               : 'Cineva Offline';
         });

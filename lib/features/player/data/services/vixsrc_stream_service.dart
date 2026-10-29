@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'subtitle_service.dart';
+import '../../../download/data/services/hls_url_resolver.dart';
 
 class VixSrcStreamResult {
   final String playlistUrl;
@@ -136,9 +137,7 @@ class VixSrcStreamService {
               if (i + 1 < lines.length) {
                 final nextLine = lines[i + 1].trim();
                 if (nextLine.isNotEmpty && !nextLine.startsWith('#')) {
-                  final resolvedQualityUrl = nextLine.startsWith('http')
-                      ? nextLine
-                      : Uri.parse(masterPlaylistUrl).resolve(nextLine).toString();
+                  final resolvedQualityUrl = HlsUrlResolver.resolve(nextLine, masterPlaylistUrl);
                   qualityMap[label] = resolvedQualityUrl;
                 }
               }
@@ -151,9 +150,7 @@ class VixSrcStreamService {
               final langMatch = RegExp(r'LANGUAGE="([^"]+)"').firstMatch(line);
               if (subUriMatch != null) {
                 final subUriRaw = subUriMatch.group(1)!;
-                final subUri = subUriRaw.startsWith('http')
-                    ? subUriRaw
-                    : Uri.parse(masterPlaylistUrl).resolve(subUriRaw).toString();
+                final subUri = HlsUrlResolver.resolve(subUriRaw, masterPlaylistUrl);
                 final name = nameMatch?.group(1) ?? 'Subtitle';
                 final lang = (langMatch?.group(1) ?? 'en').toLowerCase();
                 String normLang = lang;

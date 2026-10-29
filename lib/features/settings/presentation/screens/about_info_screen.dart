@@ -201,11 +201,22 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Version & Build Badge
-                  _buildBadge(
-                    icon: Icons.verified_rounded,
-                    label: 'v$_version (Build $_buildNumber)',
-                    isPrimary: true,
+                  // Version & License Badges
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildBadge(
+                        icon: Icons.verified_rounded,
+                        label: 'v$_version (Build $_buildNumber)',
+                        isPrimary: true,
+                      ),
+                      _buildBadge(
+                        icon: Icons.gavel_rounded,
+                        label: 'GPL-3.0 License',
+                        isPrimary: false,
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 24),

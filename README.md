@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/Flutter-3.12+-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
   <img src="https://img.shields.io/badge/Dart-3.0+-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" />
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Platform" />
-  <img src="https://img.shields.io/badge/License-MIT-FFA000?style=for-the-badge" alt="License" />
+  <img src="https://img.shields.io/badge/License-GPL--3.0-FFA000?style=for-the-badge" alt="License GPL-3.0" />
 </p>
 
 ---
@@ -150,7 +150,7 @@ flutter test
 
 ## 📄 Lisensi
 
-Proyek ini dilisensikan di bawah lisensi **MIT License**. Hak Cipta (c) 2026 **Cineva Group**.  
+Proyek ini dilisensikan di bawah lisensi **GNU General Public License v3.0 (GPL-3.0)**. Hak Cipta © 2026 **Cineva Group**.  
 Silakan merujuk ke file [LICENSE](LICENSE) untuk ketentuan lisensi selengkapnya.
 
 ---

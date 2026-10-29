@@ -169,6 +169,13 @@ class LocalStreamServer {
             ? int.tryParse(parts[1]) ?? (fileSize - 1)
             : fileSize - 1;
 
+        if (start >= fileSize) {
+          response.statusCode = HttpStatus.requestedRangeNotSatisfiable;
+          response.headers.set('content-range', 'bytes */$fileSize');
+          await response.close();
+          return;
+        }
+
         if (start < fileSize && end < fileSize && start <= end) {
           final length = end - start + 1;
           response.statusCode = HttpStatus.partialContent;

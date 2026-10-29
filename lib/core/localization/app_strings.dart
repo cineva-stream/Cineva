@@ -320,8 +320,8 @@ class AppStrings {
       : 'Open software utility project with zero commercial monetization, no intrusive ads, and no registration required.';
   String get aboutCreditsTitle => isIndonesian ? 'Ekosistem & Kontributor Terbuka' : 'Open Ecosystem & Acknowledgements';
   String get aboutCreditsDesc => isIndonesian
-      ? 'Cineva dibangun dengan rasa hormat mendalam kepada ekosistem open-source dan API publik dunia: Flutter, MediaKit, Riverpod, The Movie Database (TMDB), OpenSubtitles, Hive, dan komunitas Torrentio.'
-      : 'Cineva is crafted with deep gratitude to the worldwide open-source ecosystem and public APIs: Flutter, MediaKit, Riverpod, The Movie Database (TMDB), OpenSubtitles, Hive, and the Torrentio community.';
+      ? 'Cineva adalah perangkat lunak bebas dan sumber terbuka di bawah lisensi GNU General Public License v3.0 (GPL-3.0), dibangun dengan rasa hormat mendalam kepada ekosistem open-source dan API publik dunia: Flutter, MediaKit, Riverpod, The Movie Database (TMDB), OpenSubtitles, Hive, dan komunitas Torrentio.'
+      : 'Cineva is free and open-source software under the GNU General Public License v3.0 (GPL-3.0), crafted with deep gratitude to the worldwide open-source ecosystem and public APIs: Flutter, MediaKit, Riverpod, The Movie Database (TMDB), OpenSubtitles, Hive, and the Torrentio community.';
 
   // ── Dialogs & Actions ──
   String get dialogExitTitle => isIndonesian ? 'Konfirmasi Keluar' : 'Exit Confirmation';
