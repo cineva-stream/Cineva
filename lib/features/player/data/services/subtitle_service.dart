@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'vixsrc_stream_service.dart';
 
@@ -77,11 +78,12 @@ class SubtitleService {
     final apiKey = dotenv.env['OPENSUBTITLES_API_KEY'] ?? '';
     _dio = Dio(BaseOptions(
       baseUrl: 'https://api.opensubtitles.com/api/v1',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
       headers: {
-        'Api-Key': apiKey,
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
+        'Api-Key': apiKey,
         'User-Agent': 'Cineva v1.0.1',
       },
     ));
@@ -127,6 +129,7 @@ class SubtitleService {
           .map((item) => SubtitleInfo.fromOpenSubtitlesJson(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
+      debugPrint('[SubtitleService] searchByImdbId error: $e');
       return [];
     }
   }
@@ -158,6 +161,7 @@ class SubtitleService {
           .map((item) => SubtitleInfo.fromOpenSubtitlesJson(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
+      debugPrint('[SubtitleService] searchByQuery error: $e');
       return [];
     }
   }
@@ -166,16 +170,24 @@ class SubtitleService {
   Future<String?> getDownloadUrl(String fileId) async {
     try {
       if (fileId.startsWith('http')) return fileId;
+      final fileIdInt = int.tryParse(fileId);
       final response = await _dio.post(
         '/download',
         data: {
-          'file_id': int.tryParse(fileId) ?? fileId,
+          'file_id': fileIdInt ?? fileId,
         },
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        ),
       );
 
       final data = response.data;
       return data?['link'] as String?;
     } catch (e) {
+      debugPrint('[SubtitleService] getDownloadUrl error for fileId $fileId: $e');
       return null;
     }
   }
@@ -192,8 +204,12 @@ class SubtitleService {
       }
 
       final client = Dio(BaseOptions(
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {
+          'User-Agent': 'Cineva/1.0.9',
+          'Accept': '*/*',
+        },
       ));
       final response = await client.get<String>(
         downloadUrl,
@@ -202,6 +218,7 @@ class SubtitleService {
       client.close();
       return response.data;
     } catch (e) {
+      debugPrint('[SubtitleService] downloadSubtitleContent error for $downloadUrl: $e');
       return null;
     }
   }

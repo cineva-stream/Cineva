@@ -10,6 +10,7 @@ import 'package:cineva/core/constants/app_constants.dart';
 import 'package:cineva/features/live_tv/data/datasources/live_tv_channels_data.dart';
 import 'package:cineva/features/live_tv/presentation/providers/live_tv_providers.dart';
 import 'package:cineva/features/live_tv/presentation/screens/live_tv_screen.dart';
+import 'package:cineva/features/live_tv/presentation/screens/live_tv_player_screen.dart';
 import 'package:cineva/features/search/domain/entities/streaming_platform.dart';
 import 'package:cineva/features/search/presentation/providers/platform_catalog_provider.dart';
 import 'package:cineva/features/search/presentation/screens/platform_catalog_screen.dart';
@@ -100,7 +101,7 @@ void main() {
   });
 
   group('LiveTvScreen Widget Tests', () {
-    testWidgets('Renders TV Live placeholder, search bar, and channels initially without auto-play', (tester) async {
+    testWidgets('Renders TV Live header, search bar, and full channel catalog without stream card', (tester) async {
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -118,15 +119,19 @@ void main() {
       expect(find.text('Olahraga'), findsWidgets);
       expect(find.text('Berita'), findsWidgets);
       expect(find.text('TVRI Nasional'), findsWidgets);
-      // No channel is auto-played initially
+      // No stream player on the channel browsing screen
       expect(find.byIcon(Icons.fullscreen_rounded), findsNothing);
     });
+  });
 
-    testWidgets('Tapping a channel starts playback and reveals controls', (tester) async {
+  group('LiveTvPlayerScreen Widget Tests', () {
+    testWidgets('Renders dedicated player with channel title, live badge, and controls', (tester) async {
+      final initialChannel = LiveTvChannelsData.defaultChannels.first;
+
       await tester.pumpWidget(
-        const ProviderScope(
+        ProviderScope(
           child: MaterialApp(
-            home: LiveTvScreen(),
+            home: LiveTvPlayerScreen(initialChannel: initialChannel),
           ),
         ),
       );
@@ -134,15 +139,12 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Tap on a channel to start playback
-      await tester.tap(find.text('TVRI Nasional').first);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
-      // Video player and controls must appear
+      // Player and controls must appear
       expect(find.text('LIVE'), findsWidgets);
+      expect(find.text(initialChannel.name), findsWidgets);
       expect(find.byIcon(Icons.fullscreen_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.close_rounded), findsWidgets);
+      expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
+      expect(find.byType(AspectRatio), findsWidgets);
     });
   });
 

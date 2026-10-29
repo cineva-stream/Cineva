@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/services/app_update_service.dart';
 import '../../domain/entities/app_update_info.dart';
+import '../../../settings/data/settings_service.dart';
 
 /// Service provider
 final appUpdateServiceProvider = Provider<AppUpdateService>((ref) {
@@ -102,7 +103,11 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
         isDismissed: false,
       );
       // Automatically post system notification with dynamic version and changelog
-      await _service.showUpdateNotification(info);
+      final isId = SettingsService.getAppLanguage() == 'id';
+      final body = isId
+          ? 'Update Tersedia, Segera update sekarang untuk menikmati layanan streaming dengan lebih baik.'
+          : 'New version available, Update now to improve your streaming.';
+      await _service.showUpdateNotification(info, customBody: body);
     } else {
       state = state.copyWith(
         status: AppUpdateStatus.idle,

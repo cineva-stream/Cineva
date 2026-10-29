@@ -184,11 +184,29 @@ class UpdateCheckWorker(
                 PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
             )
 
-            val displayTitle = if (title.isNotEmpty()) title else "Pembaruan Cineva v$version Tersedia! 🎬"
-            val cleanBody = if (body.isNotEmpty()) {
-                body.lines().filter { it.isNotBlank() }.take(6).joinToString("\n")
+            val isIndonesian = try {
+                val lang = java.util.Locale.getDefault().language.lowercase()
+                lang == "in" || lang == "id"
+            } catch (_: Throwable) {
+                true
+            }
+
+            val defaultMessage = if (isIndonesian) {
+                "Update Tersedia, Segera update sekarang untuk menikmati layanan streaming dengan lebih baik."
             } else {
-                "Versi terbaru $version telah rilis dengan berbagai fitur baru dan perbaikan stabilitas."
+                "New version available, Update now to improve your streaming."
+            }
+
+            val cleanBody = if (body.isNotBlank() && (body.contains("Update") || body.contains("streaming") || body.contains("stream"))) {
+                body
+            } else {
+                defaultMessage
+            }
+
+            val displayTitle = if (title.isNotEmpty() && !title.startsWith("https://")) {
+                title
+            } else {
+                if (isIndonesian) "Pembaruan Cineva v$version Tersedia! 🎬" else "Cineva v$version Update Available! 🎬"
             }
 
             val largeIconBitmap = try {
@@ -200,7 +218,7 @@ class UpdateCheckWorker(
             val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.logo_cineva)
                 .setContentTitle(displayTitle)
-                .setContentText("Versi $version rilis! Ketuk untuk memperbarui.")
+                .setContentText(cleanBody)
                 .setStyle(
                     NotificationCompat.BigTextStyle()
                         .bigText(cleanBody)
@@ -215,7 +233,7 @@ class UpdateCheckWorker(
                 .setContentIntent(pendingIntent)
                 .addAction(
                     R.drawable.logo_cineva,
-                    "Perbarui Sekarang",
+                    if (isIndonesian) "Perbarui Sekarang" else "Update Now",
                     pendingIntent
                 )
 
@@ -324,7 +342,7 @@ class UpdateCheckWorker(
                 context = context,
                 version = cleanRemoteVersion,
                 title = releaseTitle,
-                body = changelogBody
+                body = ""
             )
 
             // Mark this version as notified and record timestamp

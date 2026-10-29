@@ -53,11 +53,13 @@ void main() {
       expect(id.updateDownloading, 'Mengunduh Pembaruan...');
       expect(id.updateFailed, 'Gagal mengunduh berkas pembaruan.');
       expect(id.updatePermissionTitle, 'Izin Pemasangan Diperlukan');
+      expect(id.updateNotificationBody, 'Update Tersedia, Segera update sekarang untuk menikmati layanan streaming dengan lebih baik.');
 
       final en = AppStrings(AppLanguage.en);
       expect(en.updateAvailableTitle, 'Update Available');
       expect(en.updateAction, 'Update Now');
       expect(en.updateInstallAction, 'Install Now');
+      expect(en.updateNotificationBody, 'New version available, Update now to improve your streaming.');
       expect(en.updateDownloading, 'Downloading Update...');
       expect(en.updateFailed, 'Failed to download update file.');
       expect(en.updatePermissionTitle, 'Install Permission Required');

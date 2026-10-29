@@ -211,15 +211,18 @@ class AppUpdateService {
     }
   }
 
-  /// Displays a system notification for the available update with dynamic version, title, and changelog.
-  Future<bool> showUpdateNotification(AppUpdateInfo info) async {
+  /// Displays a system notification for the available update with dynamic version, title, and localized message.
+  Future<bool> showUpdateNotification(AppUpdateInfo info, {String? customBody}) async {
     if (kIsWeb || !Platform.isAndroid) return false;
     try {
+      final bodyText = (customBody != null && customBody.isNotEmpty)
+          ? customBody
+          : 'Update Tersedia, Segera update sekarang untuk menikmati layanan streaming dengan lebih baik.';
       final bool? success = await _channel
           .invokeMethod<bool>('showUpdateNotification', {
             'version': info.latestVersion,
             'title': info.releaseTitle,
-            'body': info.changelog,
+            'body': bodyText,
           });
       return success ?? false;
     } catch (e) {

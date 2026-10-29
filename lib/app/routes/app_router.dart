@@ -18,6 +18,8 @@ import '../../features/profile/presentation/screens/onboarding_profile_screen.da
 import '../../features/profile/presentation/screens/legal_agreement_screen.dart';
 import '../../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../../features/live_tv/presentation/screens/live_tv_screen.dart';
+import '../../features/live_tv/presentation/screens/live_tv_player_screen.dart';
+import '../../features/live_tv/domain/entities/live_tv_channel.dart';
 import '../../features/search/domain/entities/streaming_platform.dart';
 import '../../features/search/presentation/screens/platform_catalog_screen.dart';
 import '../../shared/widgets/main_shell.dart';
@@ -225,6 +227,33 @@ final GoRouter appRouter = GoRouter(
           transitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: '/live-tv/player',
+      name: 'liveTvPlayer',
+      pageBuilder: (context, state) {
+        final channel = state.extra as LiveTvChannel?;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: LiveTvPlayerScreen(initialChannel: channel),
+          transitionDuration: const Duration(milliseconds: 320),
+          reverseTransitionDuration: const Duration(milliseconds: 260),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curved = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInCubic,
+            );
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(1.0, 0.0),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            );
           },
         );
       },

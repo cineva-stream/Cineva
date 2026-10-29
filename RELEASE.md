@@ -1,49 +1,43 @@
-# Cineva v1.0.8 - Release Notes 🎬
+# Cineva v1.0.9 - Release Notes 🎬
 
-Pembaruan Cineva versi 1.0.8 menghadirkan perbaikan navigasi pada halaman Watchlist/Favorit dengan animasi transisi bottom navigation menu yang halus, penambahan tombol navigasi Chevron Left pada AppBar Watchlist, redesain alur pemutaran TV Live (eksplorasi manual tanpa auto-play, penutupan halus menu navigasi bawah saat siaran dimulai, dan pembersihan badge overlay), peningkatan keandalan notifikasi pembaruan latar belakang, penyempurnaan total fitur Unduhan & Pemutaran Offline (In-App Offline Playback), serta pembaruan lisensi proyek menjadi GNU General Public License v3.0 (GPL-3.0).
+Pembaruan Cineva versi 1.0.9 menghadirkan redesain alur eksplorasi TV Live dengan halaman katalog saluran yang lebih luas dan bersih, pemisahan pemutar siaran ke halaman baru (*dedicated player screen*) dengan animasi *slide* yang halus, perbaikan tuntas masalah kegagalan pengunduhan subtitle (OpenSubtitles API & direct stream), serta kustomisasi pesan notifikasi pembaruan aplikasi dwibahasa (*bilingual update notice*).
 
 ---
 
 ## Ringkasan Perubahan
 
-### 1. Perbaikan Navigasi & Animasi Watchlist / Favorit
-- **Penyelesaian Bug Tab Selection**: Memperbaiki masalah di mana menekan ikon Watchlist/Favorit pada AppBar menyebabkan tab bottom navigation berpindah dan menyorot tab TV Live. Tab navigasi kini tidak lagi salah menyorot tab lain.
-- **Animasi Slide-Down Halus**: Bottom navigation menu kini disembunyikan secara halus dengan animasi geser ke bawah (*slide down*) dan transisi *fade out* menggunakan `AnimatedSlide` dan `AnimatedOpacity` saat pengguna berada di halaman Watchlist.
-- **Tombol Chevron Left pada AppBar**: Menambahkan tombol kembali (*Chevron Left*) berikon `Icons.chevron_left_rounded` di sisi kiri AppBar Watchlist, memudahkan pengguna untuk kembali ke halaman sebelumnya atau ke Beranda secara intuitif.
+### 1. Redesain Eksplorasi TV Live & Halaman Pemutar Terpisah (*Dedicated Player Screen*)
+- **Katalog Saluran TV Lebih Luas Tanpa Stream Card**: Saat membuka tab TV Live melalui menu navigasi bawah, halaman kini sepenuhnya menyajikan daftar saluran lengkap tanpa memunculkan pemutar atau *card stream* di bagian atas. Hal ini memberikan ruang pandang yang jauh lebih luas bagi pengguna untuk mencari dan menyaring saluran favorit.
+- **Transisi Halus ke Halaman Pemutar (*Smooth Slide Transition*)**: Ketika pengguna memilih salah satu saluran, aplikasi akan membuka halaman pemutar baru (`LiveTvPlayerScreen`) dengan transisi geser horizontal (*slide transition*) yang mulus.
+- **Kontrol Pemutar Siaran Lengkap**:
+  - Pemutar 16:9 di bagian atas dengan tombol kembali (*Chevron Left*), penanda status *LIVE*, pengatur rasio aspek (16:9, Cover, Fill), tombol muat ulang, serta tombol putar/jeda.
+  - Mode layar penuh (*fullscreen*) imersif dengan orientasi lanskap otomatis dan laci saluran cepat (*Quick Channel Drawer*).
+  - Daftar pengganti saluran (*Channel Switcher*) di bawah pemutar memudahkan pengguna berpindah saluran secara instan tanpa perlu keluar dari layar pemutar.
 
-### 2. Redesain Alur Pemutaran TV Live (Manual Selection & Clean Controls)
-- **Eksplorasi Manual Tanpa Auto-Play**: Tab TV Live tidak lagi otomatis memutar saluran pertama saat baru dibuka. Pengguna disajikan tampilan *placeholder* elegan dengan bilah pencarian, filter kategori, dan daftar saluran lengkap agar dapat mencari dan memilih siaran sesuai keinginan.
-- **Transisi Halus Saat Menonton**: Begitu pengguna menekan saluran pilihan, siaran langsung akan dimulai dan bottom navigation menu secara otomatis meluncur turun (*slide down*) secara halus untuk memaksimalkan area tontonan.
-- **Pembersihan Kontrol Pemutar**: Badge teks "TV Live" di pojok kiri atas kontrol *overlay* pemutar telah dihilangkan sehingga tampilan video lebih bersih dan leluasa.
-- **Tombol Tutup / Stop Siaran**: Tersedia tombol tutup (*Close/Stop*) untuk menghentikan pemutaran saluran kapan saja, yang mengembalikan layar ke mode penjelajahan saluran dan menampilkan kembali bottom navigation menu.
+### 2. Perbaikan Masalah Pengunduhan Subtitle (*Subtitle Download Fix*)
+- **Perbaikan Galat HTTP 503 OpenSubtitles**: Menambahkan header wajib `'Accept': 'application/json'` pada permintaan API OpenSubtitles (`/download`), yang sebelumnya menyebabkan respons HTML *Service Temporarily Unavailable* (503) dan memicu peringatan *"Failed to Download Subtitle"*.
+- **Pemanfaatan Direct Download URL**: Memperbaiki logika `_applySubtitle` pada `PlayerScreen` agar langsung memanfaatkan URL unduhan yang telah tersedia (`sub.downloadUrl`) dari stream VixSrc dan CDN lokal tanpa melakukan *round-trip* API tambahan.
+- **Dukungan UTF-8 BOM pada Parser Subtitle**: Membersihkan *Byte Order Mark* (BOM `\uFEFF`) pada parser `SubtitleCue.parseSrt` untuk memastikan berkas subtitle hasil unduhan dapat dibaca dan disinkronkan secara sempurna tanpa galat format.
 
-### 3. Peningkatan Keandalan Notifikasi Pembaruan Latar Belakang
-- Menambahkan fallback penjadwalan `AlarmManager` melalui `UpdateAlarmReceiver` guna mendukung pengecekan rilis GitHub saat aplikasi tidak aktif atau setelah perangkat dinyalakan ulang (*boot completed*).
-- Memastikan permintaan izin runtime `POST_NOTIFICATIONS` pada Android 13 (API 33) ke atas agar notifikasi pembaruan dapat ditampilkan tanpa hambatan.
-
-### 4. Penyempurnaan Total Fitur Unduhan & Pemutaran Offline (In-App Offline Playback)
-- **Perbaikan Masalah Layar Hitam & Modal Popup Galat**: Mengeliminasi timeout artifisial durasi pada pemutar offline yang sebelumnya memicu modal popup peringatan unduhan belum selesai. Pemutar kini langsung membuka berkas lokal dan memulai pemutaran seketika (*instant start*).
-- **Perbaikan Opsi Protokol MPV (`demuxer-lavf-o`)**: Menghapus opsi pembatas protokol yang tidak valid yang sebelumnya memblokir koneksi server loopback lokal `http://127.0.0.1` pada FFmpeg libavformat, memulihkan pemutaran HLS offline seutuhnya.
-- **Pemutaran HLS Loopback Langsung (`LocalStreamServer`)**: Berkas paket unduhan HLS (`master.m3u8` dan segmen MPEG-TS) diputar secara langsung melalui server loopback tersemat dengan sinkronisasi audio-video akurat, dukungan pencarian durasi (*seeking*), dan mode jeda (*pause/resume*).
-- **Perlindungan Berkas Segmen & Self-Healing Manifest**: Berkas segmen asli tidak lagi dihapus jika muxing MP4 gagal. Ditambahkan mekanisme *self-healing* otomatis untuk menyusun playlist HLS sintetis jika berkas tersimpan dalam bentuk kontainer TS terpisah.
-- **Token-Preserving HLS URL Resolution (`HlsUrlResolver`)**: Mengatasi masalah kegagalan unduhan segmen dan kunci enkripsi AES-128 pada stream VixSrc dan CDN modern yang menggunakan query parameter bertanda tangan (`?token=...&expires=...`).
-- **Segment Unwrapping & Auto-Padding (`unwrapDisguisedSegment`)**: Mendeteksi dan mengupas header gambar palsu (PNG/JPEG/GIF fake prefixes) serta menyelaraskan padding 188-byte MPEG-TS secara otomatis.
-- **Dukungan Subtitle Offline Lengkap**: Subtitle lokal (`.srt` maupun `.vtt`) dimuat otomatis dan ditampilkan di menu pilihan subtitle pemutar.
-
-### 5. Pembaruan Lisensi ke GNU General Public License v3.0 (GPL-3.0)
-- **Migrasi Lisensi ke GPL-3.0**: Menyelaraskan seluruh lisensi proyek Cineva dari MIT License menjadi GNU General Public License v3.0 (GPL-3.0) demi keseragaman ekosistem Cineva (seperti pada repositori `cineva-web`).
-- **Pembaruan Dokumen & Komponen Aplikasi**: Memperbarui berkas `LICENSE` resmi GPL-3.0, badge lisensi di `README.md` dan menu Tentang Aplikasi (`AboutInfoScreen`), teks Syarat & Ketentuan hukum pada `legal_content.dart` (Bahasa Indonesia & English), serta deskripsi kredit pada lokalisasi `app_strings.dart`.
-
+### 3. Kustomisasi Pesan Notifikasi Pembaruan Dwibahasa (*Bilingual Update Notice*)
+- Menyesuaikan isi pesan (*notification body*) saat terdapat rilis baru agar tidak menampilkan teks mentah (*raw body*) changelog GitHub, melainkan pesan ramah pengguna:
+  - **Bahasa Indonesia**: *"Update Tersedia, Segera update sekarang untuk menikmati layanan streaming dengan lebih baik."*
+  - **English**: *"New version available, Update now to improve your streaming."*
+- Pesan ini diterapkan secara konsisten baik pada notifikasi di dalam aplikasi (*in-app update checker*) maupun pada notifikasi latar belakang Android melalui WorkManager dan AlarmManager (`UpdateCheckWorker.kt`).
 
 ---
 
 ## Riwayat Versi Sebelumnya
 
+### Cineva v1.0.8
+- **Perbaikan Navigasi & Animasi Watchlist**: Penyesuaian tab navigasi bawah dan animasi *slide-down* halus pada halaman Watchlist serta tombol Chevron Left.
+- **Penyempurnaan Total Fitur Unduhan & Pemutaran Offline**: Pemutaran loopback HLS langsung (`LocalStreamServer`), *token-preserving URL resolution* (`HlsUrlResolver`), dan perlindungan berkas segmen.
+- **Pembaruan Lisensi ke GPL-3.0**: Penyelarasan seluruh lisensi proyek menjadi GNU General Public License v3.0.
+
 ### Cineva v1.0.7
 - **Redesain Pemutar TV Live Bergaya YouTube**: Pemutar 16:9 di bagian atas dengan daftar saluran interaktif di bawahnya.
 - **Mode Layar Penuh dengan Tombol Persegi Bawaan**: Tombol fullscreen persegi imersif dengan kontrol lengkap dan pengatur rasio aspek.
-- **Perbaikan Force Close**: Penanganan eksepsi WorkManager dan aturan ProGuard R8 untuk mencegah cold-start crash pada rilis release.
-- **Ikon Notifikasi Transparan**: Aset `logo_cineva.png` transparan tanpa kotak putih solid di status bar Android.
+- **Perbaikan Force Close**: Penanganan eksepsi WorkManager dan aturan ProGuard R8 untuk mencegah cold-start crash.
 
 ### Cineva v1.0.6
 - **Notifikasi Pembaruan Otomatis di Latar Belakang**: Pengecekan otomatis rilis GitHub dengan Jetpack WorkManager.
@@ -54,6 +48,6 @@ Pembaruan Cineva versi 1.0.8 menghadirkan perbaikan navigasi pada halaman Watchl
 
 ## Informasi Versi
 
-- Versi Aplikasi: 1.0.8
-- Build: 9
+- Versi Aplikasi: 1.0.9
+- Build: 10
 - Target Sistem Operasi: Android 5.0 (API 21) ke atas

@@ -17,7 +17,10 @@ class SubtitleCue {
   /// Parses raw SRT or WebVTT content into an ordered list of [SubtitleCue].
   static List<SubtitleCue> parseSrt(String content) {
     final cues = <SubtitleCue>[];
-    final normalized = content.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final normalized = content
+        .replaceFirst('\uFEFF', '')
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n');
     final blocks = normalized.split('\n\n');
 
     for (final block in blocks) {

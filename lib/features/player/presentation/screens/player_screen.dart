@@ -43,7 +43,14 @@ enum _PlayerLoadingStep {
   preparingEpisode,
 }
 
-enum _PlayerMiniPopup { none, quality, subtitle, subtitleSettings, volume, server }
+enum _PlayerMiniPopup {
+  none,
+  quality,
+  subtitle,
+  subtitleSettings,
+  volume,
+  server,
+}
 
 /// Full-featured Cinema Player Screen with edge-to-edge notch rendering,
 /// audio amplification (up to 150%), customizable subtitle background,
@@ -141,11 +148,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final appLang = ref.read(appLanguageProvider);
     return appLang == AppLanguage.en ? 'en' : 'id';
   }
+
   Duration _position = Duration.zero;
-  final ValueNotifier<Duration> _positionNotifier = ValueNotifier<Duration>(Duration.zero);
+  final ValueNotifier<Duration> _positionNotifier = ValueNotifier<Duration>(
+    Duration.zero,
+  );
   Duration _duration = Duration.zero;
   bool _isPlaying = true;
-  BoxFit _fitMode = BoxFit.cover; // Default cover to expand through camera cutout!
+  BoxFit _fitMode =
+      BoxFit.cover; // Default cover to expand through camera cutout!
 
   // ── Audio Volume & Boost State ──
   double _volume = 100.0; // 0 to 150% (boosted)
@@ -153,7 +164,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Timer? _volumeIndicatorTimer;
 
   // ── Screen Brightness State ──
-  static const MethodChannel _brightnessChannel = MethodChannel('com.primadev.cineva/brightness');
+  static const MethodChannel _brightnessChannel = MethodChannel(
+    'com.primadev.cineva/brightness',
+  );
   double _brightness = 0.5; // 0.05 to 1.0 (5% to 100%)
   bool _showBrightnessIndicator = false;
   Timer? _brightnessIndicatorTimer;
@@ -182,7 +195,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   // ── TV Series Episode & Media State (Allows seamless in-place episode skipping) ──
   late final int? _currentSeason = widget.season;
   late int? _currentEpisode = widget.episode;
-  late String? _currentEpisodeTitle = widget.episodeTitle ?? (widget.episode != null ? 'Episode ${widget.episode}' : null);
+  late String? _currentEpisodeTitle =
+      widget.episodeTitle ??
+      (widget.episode != null ? 'Episode ${widget.episode}' : null);
   late String? _currentLocalVideoPath = widget.localVideoPath;
   late String? _currentLocalSubtitlePath = widget.localSubtitlePath;
   late int? _initialPositionMs = widget.initialPositionMs;
@@ -208,14 +223,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     // Initialize media_kit Player with 32 MB initial demuxer footprint (dynamically caches up to 128 MB)
     _player = Player(
-      configuration: const PlayerConfiguration(
-        bufferSize: 32 * 1024 * 1024,
-      ),
+      configuration: const PlayerConfiguration(bufferSize: 32 * 1024 * 1024),
     );
     _videoController = VideoController(
       _player,
       configuration: const VideoControllerConfiguration(
-        enableHardwareAcceleration: true, // Hardware MediaCodec decoding on Android GPU
+        enableHardwareAcceleration:
+            true, // Hardware MediaCodec decoding on Android GPU
       ),
     );
 
@@ -228,7 +242,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     _listenToPlayerStreams();
     _player.setVolume(_volume); // Explicitly ensure 100% base audio volume
-    if ((_currentLocalVideoPath != null && _currentLocalVideoPath!.isNotEmpty) ||
+    if ((_currentLocalVideoPath != null &&
+            _currentLocalVideoPath!.isNotEmpty) ||
         (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty)) {
       _setupMpvOfflineOptions();
     } else {
@@ -262,17 +277,49 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // Fast start: initial buffer within ~3-7 seconds
       // Avoid setting demuxer-lavf-probesize to a small value (256KB) because HLS master playlists
       // and variant MPEG-TS chunks need adequate probe size to discover video codecs and streams.
-      await mpv?.command(['set', 'demuxer-lavf-analyzeduration', '2.0']); // 2s analyze duration
-      await mpv?.command(['set', 'cache-pause-initial', 'no']); // Start playing immediately without waiting
-      await mpv?.command(['set', 'cache-pause-wait', '3']); // Low 3s re-buffer threshold on stalls
+      await mpv?.command([
+        'set',
+        'demuxer-lavf-analyzeduration',
+        '2.0',
+      ]); // 2s analyze duration
+      await mpv?.command([
+        'set',
+        'cache-pause-initial',
+        'no',
+      ]); // Start playing immediately without waiting
+      await mpv?.command([
+        'set',
+        'cache-pause-wait',
+        '3',
+      ]); // Low 3s re-buffer threshold on stalls
 
       // Progressive 3-minute background cache:
       await mpv?.command(['set', 'cache', 'yes']);
-      await mpv?.command(['set', 'demuxer-readahead-secs', '180']); // Buffer up to 180s (3 minutes) ahead while watching!
-      await mpv?.command(['set', 'cache-secs', '180']); // 180s forward cache in memory
-      await mpv?.command(['set', 'demuxer-max-bytes', '134217728']); // 128 MB RAM max
-      await mpv?.command(['set', 'demuxer-max-back-bytes', '33554432']); // 32 MB backward buffer for instant rewind
-      await mpv?.command(['set', 'stream-buffer-size', '524288']); // 512 KB chunk reads
+      await mpv?.command([
+        'set',
+        'demuxer-readahead-secs',
+        '180',
+      ]); // Buffer up to 180s (3 minutes) ahead while watching!
+      await mpv?.command([
+        'set',
+        'cache-secs',
+        '180',
+      ]); // 180s forward cache in memory
+      await mpv?.command([
+        'set',
+        'demuxer-max-bytes',
+        '134217728',
+      ]); // 128 MB RAM max
+      await mpv?.command([
+        'set',
+        'demuxer-max-back-bytes',
+        '33554432',
+      ]); // 32 MB backward buffer for instant rewind
+      await mpv?.command([
+        'set',
+        'stream-buffer-size',
+        '524288',
+      ]); // 512 KB chunk reads
       await mpv?.command(['set', 'network-timeout', '30']);
     } catch (e) {
       debugPrint('[PlayerScreen] mpv buffer setup error: $e');
@@ -291,7 +338,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       builder: (ctx) {
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
           child: Container(
             constraints: const BoxConstraints(maxWidth: 360),
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
@@ -396,14 +446,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Future<void> _handleExit() async {
     if (_isExiting) return;
 
-    final isTv = widget.mediaType == 'tv' || (_currentSeason != null && _currentEpisode != null);
+    final isTv =
+        widget.mediaType == 'tv' ||
+        (_currentSeason != null && _currentEpisode != null);
     final durSecs = _duration.inSeconds;
     final posSecs = _position.inSeconds;
     final remainingSecs = durSecs - posSecs;
 
     bool? markCompletedOnExit;
     // Show confirmation modal for movies when remaining time <= 12 minutes (720 seconds)
-    if (!isTv && durSecs > 180 && remainingSecs <= (12 * 60) && remainingSecs >= -30) {
+    if (!isTv &&
+        durSecs > 180 &&
+        remainingSecs <= (12 * 60) &&
+        remainingSecs >= -30) {
       try {
         _player.pause();
       } catch (_) {}
@@ -433,7 +488,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // 2. Kill WebView playback & audio if web player fallback was active
     try {
       await _webViewController?.runJavaScript(
-        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }'
+        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }',
       );
       await _webViewController?.loadRequest(Uri.parse('about:blank'));
     } catch (e) {
@@ -493,7 +548,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     try {
       _webViewController?.runJavaScript(
-        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }'
+        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }',
       );
       _webViewController?.loadRequest(Uri.parse('about:blank'));
     } catch (_) {}
@@ -511,9 +566,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   int? _getSavedPositionMs() {
     if (widget.tmdbId == null) return null;
-    final mediaType = widget.mediaType ?? (_currentSeason != null ? 'tv' : 'movie');
+    final mediaType =
+        widget.mediaType ?? (_currentSeason != null ? 'tv' : 'movie');
     final repo = ref.read(watchHistoryRepositoryProvider);
-    final item = repo.getItem(mediaType, widget.tmdbId!, season: _currentSeason, episode: _currentEpisode);
+    final item = repo.getItem(
+      mediaType,
+      widget.tmdbId!,
+      season: _currentSeason,
+      episode: _currentEpisode,
+    );
     if (item != null && !item.isCompleted && item.positionMs > 5000) {
       if (mediaType == 'tv') {
         if (item.season == _currentSeason && item.episode == _currentEpisode) {
@@ -546,14 +607,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (markCompleted != null) {
       isCompleted = markCompleted;
       if (isCompleted) {
-        posMs = durMs > 0 ? durMs : posMs; // 100% completion ensures isInProgress is false
+        posMs = durMs > 0
+            ? durMs
+            : posMs; // 100% completion ensures isInProgress is false
       } else if ((posMs / durMs) >= 0.95) {
         // If user explicitly says not yet completed ("Belum") for movie, clamp to ~94% so it remains in Continue Watching
         posMs = (durMs * 0.94).toInt();
       }
     } else if (isTv) {
       final remainingSecs = (_duration - _position).inSeconds;
-      isCompleted = (posMs / durMs) >= 0.92 || (_duration.inSeconds > 30 && remainingSecs <= 60);
+      isCompleted =
+          (posMs / durMs) >= 0.92 ||
+          (_duration.inSeconds > 30 && remainingSecs <= 60);
     } else {
       isCompleted = (posMs / durMs) >= 0.95;
     }
@@ -594,10 +659,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       }
 
       // Restore position once video duration is known and playback starts
-      if (!_hasRestoredPosition && _duration.inMilliseconds > 0 && pos.inMilliseconds > 0) {
+      if (!_hasRestoredPosition &&
+          _duration.inMilliseconds > 0 &&
+          pos.inMilliseconds > 0) {
         _hasRestoredPosition = true;
         final resumeMs = _initialPositionMs ?? _getSavedPositionMs();
-        if (resumeMs != null && resumeMs > 5000 && resumeMs < _duration.inMilliseconds - 10000) {
+        if (resumeMs != null &&
+            resumeMs > 5000 &&
+            resumeMs < _duration.inMilliseconds - 10000) {
           debugPrint('[PlayerScreen] Resuming playback at ${resumeMs}ms');
           _player.seek(Duration(milliseconds: resumeMs));
         }
@@ -609,7 +678,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         final remainingSecs = (_duration - pos).inSeconds;
 
         // Auto next episode when 5 seconds or less remain
-        if (remainingSecs <= 5 && remainingSecs >= 0 && !_hasAutoPlayedNext && !_isSwitchingEpisode) {
+        if (remainingSecs <= 5 &&
+            remainingSecs >= 0 &&
+            !_hasAutoPlayedNext &&
+            !_isSwitchingEpisode) {
           _hasAutoPlayedNext = true;
           if (_nextEpisodeButtonVisible && mounted) {
             setState(() => _nextEpisodeButtonVisible = false);
@@ -654,7 +726,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       }
     });
     _bufferingSub = _player.stream.buffering.listen((buffering) {
-      final isOffline = (_currentLocalVideoPath != null && _currentLocalVideoPath!.isNotEmpty) ||
+      final isOffline =
+          (_currentLocalVideoPath != null &&
+              _currentLocalVideoPath!.isNotEmpty) ||
           (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty);
       if (isOffline) {
         // Offline playback: never show full-screen buffering spinner unless player is completely stopped/not playing
@@ -664,7 +738,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         }
         return;
       }
-      if (mounted && _isBuffering != buffering) setState(() => _isBuffering = buffering);
+      if (mounted && _isBuffering != buffering)
+        setState(() => _isBuffering = buffering);
     });
     _trackSub = _player.stream.track.listen((track) {
       // libmpv auto-detects internal stream subtitles and selects one by default.
@@ -674,21 +749,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         _player.setSubtitleTrack(SubtitleTrack.no());
       }
       // Ensure video track remains active and does not drop to 'no'
-      if (track.video == VideoTrack.no() && _player.state.tracks.video.isNotEmpty) {
-        debugPrint('[PlayerScreen] Video track was none, restoring auto video track');
+      if (track.video == VideoTrack.no() &&
+          _player.state.tracks.video.isNotEmpty) {
+        debugPrint(
+          '[PlayerScreen] Video track was none, restoring auto video track',
+        );
         _player.setVideoTrack(VideoTrack.auto());
       }
     });
     _tracksSub = _player.stream.tracks.listen((tracks) {
-      if (tracks.video.isNotEmpty && _player.state.track.video == VideoTrack.no()) {
-        debugPrint('[PlayerScreen] New video tracks detected, setting auto video track');
+      if (tracks.video.isNotEmpty &&
+          _player.state.track.video == VideoTrack.no()) {
+        debugPrint(
+          '[PlayerScreen] New video tracks detected, setting auto video track',
+        );
         _player.setVideoTrack(VideoTrack.auto());
       }
     });
   }
 
   Future<void> _loadSubtitles() async {
-    final prefLang = SettingsService.getDefaultSubtitleLang(); // 'id', 'en', 'off'
+    final prefLang =
+        SettingsService.getDefaultSubtitleLang(); // 'id', 'en', 'off'
     if (prefLang == 'off') {
       debugPrint('[PlayerScreen] Subtitle preference is OFF');
       ref.read(activeSubtitleCuesProvider.notifier).state = [];
@@ -726,29 +808,44 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       }
 
       // Priority 1: Check if native subtitle in preferred language is found
-      final nativeSub = allSubs.where((s) => s.language.toLowerCase() == prefLang.toLowerCase()).firstOrNull;
+      final nativeSub = allSubs
+          .where((s) => s.language.toLowerCase() == prefLang.toLowerCase())
+          .firstOrNull;
       if (nativeSub != null) {
-        debugPrint('[PlayerScreen] Native ${nativeSub.languageName} subtitle found: ${nativeSub.fileName}');
+        debugPrint(
+          '[PlayerScreen] Native ${nativeSub.languageName} subtitle found: ${nativeSub.fileName}',
+        );
         final success = await _applySubtitle(nativeSub);
         if (success) {
           final s = ref.read(appStringsProvider);
           _showToastSubtitle(s.playerSubActiveToast(nativeSub.languageName));
           return;
         }
-        debugPrint('[PlayerScreen] Native subtitle download failed, falling back to auto-translation...');
+        debugPrint(
+          '[PlayerScreen] Native subtitle download failed, falling back to auto-translation...',
+        );
       }
 
       // Priority 2: Fallback to English / available track + Auto-translate
       final autoTranslate = SettingsService.getAutoTranslate();
-      final fallbackSub = _streamSubtitles.where((s) => s.language.toLowerCase() == 'en').firstOrNull
-          ?? allSubs.where((s) => s.language.toLowerCase() == 'en').firstOrNull
-          ?? allSubs.first;
-      debugPrint('[PlayerScreen] Fallback to ${fallbackSub.languageName} (Target: $prefLang, Auto-translate: $autoTranslate)');
+      final fallbackSub =
+          _streamSubtitles
+              .where((s) => s.language.toLowerCase() == 'en')
+              .firstOrNull ??
+          allSubs.where((s) => s.language.toLowerCase() == 'en').firstOrNull ??
+          allSubs.first;
+      debugPrint(
+        '[PlayerScreen] Fallback to ${fallbackSub.languageName} (Target: $prefLang, Auto-translate: $autoTranslate)',
+      );
 
       final s = ref.read(appStringsProvider);
-      if (autoTranslate && prefLang.toLowerCase() != fallbackSub.language.toLowerCase()) {
+      if (autoTranslate &&
+          prefLang.toLowerCase() != fallbackSub.language.toLowerCase()) {
         final target = _getTargetTranslateLang();
-        final translated = await _applyAndAutoTranslateSubtitle(fallbackSub, targetLang: target);
+        final translated = await _applyAndAutoTranslateSubtitle(
+          fallbackSub,
+          targetLang: target,
+        );
         if (!translated) {
           await _applySubtitle(fallbackSub);
           _showToastSubtitle(s.playerSubActiveToast(fallbackSub.languageName));
@@ -772,21 +869,34 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       await _player.setSubtitleTrack(SubtitleTrack.no());
 
       final subService = ref.read(subtitleServiceProvider);
-      final downloadUrl = await subService.getDownloadUrl(sub.id);
+      final downloadUrl =
+          (sub.downloadUrl != null && sub.downloadUrl!.isNotEmpty)
+          ? sub.downloadUrl
+          : await subService.getDownloadUrl(sub.id);
       if (downloadUrl != null) {
         final content = await subService.downloadSubtitleContent(downloadUrl);
         if (content != null && mounted) {
           final cues = SubtitleCue.parseSrt(content);
           if (cues.isNotEmpty) {
-            final refinedCues = cues.map((c) => SubtitleCue(
+            final refinedCues = cues
+                .map(
+                  (c) => SubtitleCue(
                     start: c.start,
                     end: c.end,
                     text: sub.language.toLowerCase() == 'id'
                         ? SubtitleTranslatorService.balanceSubtitleLines(
                             SubtitleTranslatorService.smartFormatIndonesianSubtitle(
-                                SubtitleTranslatorService.refineIndonesianPronouns(c.text)))
-                        : SubtitleTranslatorService.balanceSubtitleLines(c.text),
-                  )).toList();
+                              SubtitleTranslatorService.refineIndonesianPronouns(
+                                c.text,
+                              ),
+                            ),
+                          )
+                        : SubtitleTranslatorService.balanceSubtitleLines(
+                            c.text,
+                          ),
+                  ),
+                )
+                .toList();
             ref.read(activeSubtitleCuesProvider.notifier).state = refinedCues;
             return true;
           }
@@ -798,7 +908,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     return false;
   }
 
-  Future<bool> _applyAndAutoTranslateSubtitle(SubtitleInfo sub, {String? targetLang}) async {
+  Future<bool> _applyAndAutoTranslateSubtitle(
+    SubtitleInfo sub, {
+    String? targetLang,
+  }) async {
     setState(() {
       _selectedSubtitle = sub;
       _isAutoTranslating = true;
@@ -811,23 +924,35 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       await _player.setSubtitleTrack(SubtitleTrack.no());
 
       final subService = ref.read(subtitleServiceProvider);
-      final downloadUrl = await subService.getDownloadUrl(sub.id);
+      final downloadUrl =
+          (sub.downloadUrl != null && sub.downloadUrl!.isNotEmpty)
+          ? sub.downloadUrl
+          : await subService.getDownloadUrl(sub.id);
       if (downloadUrl != null) {
         final content = await subService.downloadSubtitleContent(downloadUrl);
         if (content != null && mounted) {
           final originalCues = SubtitleCue.parseSrt(content);
           if (originalCues.isNotEmpty) {
             // Immediately show original cues with line balancing while background translating
-            final balancedOriginalCues = originalCues.map((c) => SubtitleCue(
-              start: c.start,
-              end: c.end,
-              text: SubtitleTranslatorService.balanceSubtitleLines(c.text),
-            )).toList();
-            ref.read(activeSubtitleCuesProvider.notifier).state = balancedOriginalCues;
+            final balancedOriginalCues = originalCues
+                .map(
+                  (c) => SubtitleCue(
+                    start: c.start,
+                    end: c.end,
+                    text: SubtitleTranslatorService.balanceSubtitleLines(
+                      c.text,
+                    ),
+                  ),
+                )
+                .toList();
+            ref.read(activeSubtitleCuesProvider.notifier).state =
+                balancedOriginalCues;
 
-            final targetLanguage = (targetLang ?? _getTargetTranslateLang()).toLowerCase();
+            final targetLanguage = (targetLang ?? _getTargetTranslateLang())
+                .toLowerCase();
             final translator = ref.read(subtitleTranslatorServiceProvider);
-            final cacheKey = 'sub_${widget.imdbId ?? widget.tmdbId}_auto_${targetLanguage}_${sub.id.hashCode}_s${_currentSeason ?? 0}_e${_currentEpisode ?? 0}';
+            final cacheKey =
+                'sub_${widget.imdbId ?? widget.tmdbId}_auto_${targetLanguage}_${sub.id.hashCode}_s${_currentSeason ?? 0}_e${_currentEpisode ?? 0}';
 
             final translatedCues = await translator.translateCues(
               cues: originalCues,
@@ -841,12 +966,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             );
 
             if (mounted && translatedCues.isNotEmpty) {
-              ref.read(activeSubtitleCuesProvider.notifier).state = translatedCues;
+              ref.read(activeSubtitleCuesProvider.notifier).state =
+                  translatedCues;
               setState(() {
                 _isAutoTranslating = false;
                 _isSubtitleTranslated = true;
               });
-              final langObj = SubtitleLanguageCatalog.findByCode(targetLanguage);
+              final langObj = SubtitleLanguageCatalog.findByCode(
+                targetLanguage,
+              );
               _showToastSubtitle(s.playerSubAutoTranslatedToast(langObj.name));
               return true;
             }
@@ -871,7 +999,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           children: [
             const Icon(Iconsax.subtitle, color: AppColors.primary, size: 18),
             const SizedBox(width: 8),
-            Expanded(child: Text(message, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ],
         ),
         duration: const Duration(milliseconds: 2500),
@@ -888,7 +1024,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _nextEpisodeButtonVisible = false;
 
     // 0. OFFLINE LOCAL FILE PLAYBACK (Completely isolated from online streaming)
-    if ((_currentLocalVideoPath != null && _currentLocalVideoPath!.isNotEmpty) ||
+    if ((_currentLocalVideoPath != null &&
+            _currentLocalVideoPath!.isNotEmpty) ||
         (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty)) {
       await _initOfflinePlayback();
       return;
@@ -897,16 +1034,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // Auto-detect if title is already completed in offline downloads (offline playback without internet)
     if (widget.tmdbId != null && widget.tmdbId! > 0) {
       try {
-        final existing = ref.read(downloadManagerProvider.notifier).findExisting(
-          mediaType: widget.mediaType ?? 'movie',
-          tmdbId: widget.tmdbId!,
-          season: widget.season,
-          episode: widget.episode,
-        );
-        if (existing != null && existing.isCompleted && existing.videoPath.isNotEmpty) {
+        final existing = ref
+            .read(downloadManagerProvider.notifier)
+            .findExisting(
+              mediaType: widget.mediaType ?? 'movie',
+              tmdbId: widget.tmdbId!,
+              season: widget.season,
+              episode: widget.episode,
+            );
+        if (existing != null &&
+            existing.isCompleted &&
+            existing.videoPath.isNotEmpty) {
           final f = File(existing.videoPath);
           if (await f.exists() || await f.parent.exists()) {
-            debugPrint('[PlayerScreen] Auto-switching to offline download: ${existing.videoPath}');
+            debugPrint(
+              '[PlayerScreen] Auto-switching to offline download: ${existing.videoPath}',
+            );
             _currentLocalVideoPath = existing.videoPath;
             _currentLocalSubtitlePath = existing.subtitlePath;
             await _initOfflinePlayback();
@@ -935,7 +1078,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final s = ref.read(appStringsProvider);
       final rawPath = _currentLocalVideoPath ?? widget.localVideoPath!;
       final localFile = File(rawPath);
-      debugPrint('[PlayerScreen] Initializing offline playback: ${localFile.path}');
+      debugPrint(
+        '[PlayerScreen] Initializing offline playback: ${localFile.path}',
+      );
 
       final mediaDir = localFile.parent;
       if (!await mediaDir.exists()) {
@@ -956,7 +1101,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       await VideoDownloadService.repairOfflineDirectoryIfNeeded(mediaDir);
 
       // 2. Discover the best offline playable file (MP4 -> HLS playlist -> TS fallback)
-      final playable = await OfflineMp4Builder.findPlayableOfflineFile(mediaDir) ?? localFile;
+      final playable =
+          await OfflineMp4Builder.findPlayableOfflineFile(mediaDir) ??
+          localFile;
 
       _useNativePlayer = true;
       await _setupMpvOfflineOptions();
@@ -976,13 +1123,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         final hlsFile = (await masterFile.exists())
             ? masterFile
             : ((await masterCineva.exists())
-                ? masterCineva
-                : ((await videoM3u8File.exists()) ? videoM3u8File : null));
+                  ? masterCineva
+                  : ((await videoM3u8File.exists()) ? videoM3u8File : null));
 
         if (hlsFile != null) {
           final port = await LocalStreamServer.instance.start();
           if (port > 0) {
-            final fileName = hlsFile.path.split(RegExp(r'[\\/]')).where((s) => s.isNotEmpty).last;
+            final fileName = hlsFile.path
+                .split(RegExp(r'[\\/]'))
+                .where((s) => s.isNotEmpty)
+                .last;
             final cleanId = 'cineva_${mediaDir.path.hashCode.abs()}';
             final streamUrl = LocalStreamServer.instance.getStreamUrl(
               dirPath: mediaDir.path,
@@ -997,11 +1147,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         } else {
           // Fallback: direct media file (e.g. video.ts without playlist)
           await _player.open(Media(path));
-          final secondaryAudio = await OfflineMp4Builder.getSecondaryAudioFile(mediaDir);
+          final secondaryAudio = await OfflineMp4Builder.getSecondaryAudioFile(
+            mediaDir,
+          );
           if (secondaryAudio != null && await secondaryAudio.exists()) {
             try {
               final mpv = (_player.platform as dynamic);
-              await mpv?.command(['audio-add', secondaryAudio.path, 'auto', 'Audio']);
+              await mpv?.command([
+                'audio-add',
+                secondaryAudio.path,
+                'auto',
+                'Audio',
+              ]);
             } catch (_) {}
           }
         }
@@ -1033,7 +1190,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             final content = await subFile.readAsString();
             final cues = SubtitleCue.parseSrt(content);
             ref.read(activeSubtitleCuesProvider.notifier).state = cues;
-            debugPrint('[PlayerScreen] Loaded offline subtitle: ${cues.length} cues');
+            debugPrint(
+              '[PlayerScreen] Loaded offline subtitle: ${cues.length} cues',
+            );
             if (mounted) {
               setState(() {
                 _streamSubtitles = [
@@ -1075,14 +1234,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           context: context,
           builder: (ctx) => AlertDialog(
             backgroundColor: AppColors.surfaceVariant,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: Text(
               s.playerOfflineFailedTitle,
-              style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             content: Text(
               '${s.playerOfflineFailedDesc}\n\n$e',
-              style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
+              style: GoogleFonts.inter(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
             ),
             actions: [
               ElevatedButton(
@@ -1128,7 +1295,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         isTv: isTv,
       );
       if (resolved.tmdbId > 0) _currentTmdbId = resolved.tmdbId;
-      if (resolved.imdbId != null && resolved.imdbId!.isNotEmpty) _currentImdbId = resolved.imdbId;
+      if (resolved.imdbId != null && resolved.imdbId!.isNotEmpty)
+        _currentImdbId = resolved.imdbId;
     } catch (e) {
       debugPrint('[PlayerScreen] resolveIds exception: $e');
     }
@@ -1144,7 +1312,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         );
 
         if (vixResult != null && vixResult.playlistUrl.isNotEmpty) {
-          debugPrint('[PlayerScreen] Playing native Master HLS M3U8: ${vixResult.playlistUrl}');
+          debugPrint(
+            '[PlayerScreen] Playing native Master HLS M3U8: ${vixResult.playlistUrl}',
+          );
           _useNativePlayer = true;
           _streamSubtitles = vixResult.subtitles;
 
@@ -1186,7 +1356,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
       // If Direct HLS fails or returns 404 (e.g. Kimetsu No Yaiba, Naruto, or certain films),
       // intelligently auto-failover to Server 2: VidLink HD!
-      debugPrint('[PlayerScreen] Direct HLS not available for this title. Auto-failover to VidLink HD...');
+      debugPrint(
+        '[PlayerScreen] Direct HLS not available for this title. Auto-failover to VidLink HD...',
+      );
       _currentServer = SmartStreamService.servers[1]; // VidLink HD
       if (mounted) {
         setState(() {
@@ -1218,7 +1390,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       episode: _currentEpisode,
     );
 
-    debugPrint('[PlayerScreen] Loading web stream from ${server.name}: $streamUrl');
+    debugPrint(
+      '[PlayerScreen] Loading web stream from ${server.name}: $streamUrl',
+    );
 
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -1232,7 +1406,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (url) {
-            if (mounted) setState(() => _loadingStep = _PlayerLoadingStep.preparingBackup);
+            if (mounted)
+              setState(() => _loadingStep = _PlayerLoadingStep.preparingBackup);
           },
           onPageFinished: (url) async {
             try {
@@ -1240,10 +1415,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               await _webViewController?.runJavaScript(
                 "const style = document.createElement('style');"
                 "style.innerHTML = `${SmartStreamService.cinemaCleanerCss.replaceAll('`', r'\`')}`;"
-                "document.head.appendChild(style);"
+                "document.head.appendChild(style);",
               );
               // 2. Inject stream sniffer JS to detect .m3u8 / .mp4 video stream URLs
-              await _webViewController?.runJavaScript(SmartStreamService.streamSnifferJs);
+              await _webViewController?.runJavaScript(
+                SmartStreamService.streamSnifferJs,
+              );
             } catch (_) {}
             if (mounted) setState(() => _isLoading = false);
           },
@@ -1302,11 +1479,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _upgradeToNativePlayer(String directStreamUrl) async {
     if (_useNativePlayer) return;
-    debugPrint('[PlayerScreen] Sniffed direct stream URL! Upgrading to native player: $directStreamUrl');
+    debugPrint(
+      '[PlayerScreen] Sniffed direct stream URL! Upgrading to native player: $directStreamUrl',
+    );
     try {
       // Pause & clear webview
       await _webViewController?.runJavaScript(
-        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }'
+        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }',
       );
       await _setupMpvFastBufferOptions();
       await _player.open(Media(directStreamUrl));
@@ -1338,7 +1517,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _activePopup = _PlayerMiniPopup.none;
       _isLoading = true;
       _loadingStep = _PlayerLoadingStep.connecting;
-      _customLoadingStatus = ref.read(appStringsProvider).playerServerSwitched(server.name);
+      _customLoadingStatus = ref
+          .read(appStringsProvider)
+          .playerServerSwitched(server.name);
     });
 
     try {
@@ -1348,7 +1529,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     try {
       await _webViewController?.runJavaScript(
-        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }'
+        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }',
       );
       await _webViewController?.loadRequest(Uri.parse('about:blank'));
       _webViewController = null;
@@ -1382,12 +1563,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (quality == 'Auto') {
         await _player.setVideoTrack(VideoTrack.auto());
       } else {
-        final targetH = int.tryParse(quality.replaceAll(RegExp(r'[^0-9]'), '')) ?? 1080;
-        VideoTrack? matchedTrack = videoTracks.where((t) => (t.h ?? 0) == targetH).firstOrNull;
+        final targetH =
+            int.tryParse(quality.replaceAll(RegExp(r'[^0-9]'), '')) ?? 1080;
+        VideoTrack? matchedTrack = videoTracks
+            .where((t) => (t.h ?? 0) == targetH)
+            .firstOrNull;
         if (matchedTrack == null) {
           final sorted = List<VideoTrack>.from(videoTracks)
             ..sort((a, b) => (a.h ?? 0).compareTo(b.h ?? 0));
-          matchedTrack = sorted.where((t) => (t.h ?? 0) <= targetH).lastOrNull ?? sorted.first;
+          matchedTrack =
+              sorted.where((t) => (t.h ?? 0) <= targetH).lastOrNull ??
+              sorted.first;
         }
         await _player.setVideoTrack(matchedTrack);
       }
@@ -1444,7 +1630,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _player.playOrPause();
     } else {
       _webViewController?.runJavaScript(
-        'var v = document.querySelector("video"); if (v) { if (v.paused) { v.play(); } else { v.pause(); } }'
+        'var v = document.querySelector("video"); if (v) { if (v.paused) { v.play(); } else { v.pause(); } }',
       );
       setState(() {
         _isWebPlaying = !_isWebPlaying;
@@ -1463,7 +1649,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _player.seek(clamped);
     } else {
       _webViewController?.runJavaScript(
-        'var v = document.querySelector("video"); if (v) { v.currentTime = Math.max(0, v.currentTime + $seconds); }'
+        'var v = document.querySelector("video"); if (v) { v.currentTime = Math.max(0, v.currentTime + $seconds); }',
       );
     }
   }
@@ -1477,14 +1663,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _player.seek(target);
     } else {
       _webViewController?.runJavaScript(
-        'var v = document.querySelector("video"); if (v) { v.currentTime = $seconds; }'
+        'var v = document.querySelector("video"); if (v) { v.currentTime = $seconds; }',
       );
     }
   }
 
   void _resetControlsTimer() {
     _controlsTimer?.cancel();
-    if (_activePopup != _PlayerMiniPopup.none) return; // Keep controls active when popup is open
+    if (_activePopup != _PlayerMiniPopup.none)
+      return; // Keep controls active when popup is open
     _controlsTimer = Timer(const Duration(seconds: 4), () {
       if (mounted && _activePopup == _PlayerMiniPopup.none) {
         setState(() => _showControls = false);
@@ -1493,7 +1680,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   void _toggleControls() {
-    if (_isLoading) return; // Do not toggle controls while processing/searching server
+    if (_isLoading)
+      return; // Do not toggle controls while processing/searching server
     if (_activePopup != _PlayerMiniPopup.none) {
       setState(() => _activePopup = _PlayerMiniPopup.none);
       _resetControlsTimer();
@@ -1573,13 +1761,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       await _player.pause();
       await _player.stop();
     } catch (e) {
-      debugPrint('[PlayerScreen] Error stopping native player on next episode: $e');
+      debugPrint(
+        '[PlayerScreen] Error stopping native player on next episode: $e',
+      );
     }
 
     // 2. Kill WebView playback & audio if web player was active
     try {
       await _webViewController?.runJavaScript(
-        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }'
+        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }',
       );
       await _webViewController?.loadRequest(Uri.parse('about:blank'));
       _webViewController = null;
@@ -1608,20 +1798,25 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     String? nextLocalSub;
     try {
       final downloadItems = ref.read(downloadManagerProvider);
-      final nextDownload = downloadItems.where((d) =>
-        d.tmdbId == widget.tmdbId &&
-        d.mediaType == 'tv' &&
-        d.seasonNumber == _currentSeason &&
-        d.episodeNumber == nextEp &&
-        d.status == DownloadStatus.completed
-      ).firstOrNull;
+      final nextDownload = downloadItems
+          .where(
+            (d) =>
+                d.tmdbId == widget.tmdbId &&
+                d.mediaType == 'tv' &&
+                d.seasonNumber == _currentSeason &&
+                d.episodeNumber == nextEp &&
+                d.status == DownloadStatus.completed,
+          )
+          .firstOrNull;
 
       if (nextDownload != null) {
         final f = File(nextDownload.videoPath);
         if (f.existsSync() && f.lengthSync() > 10000) {
           nextLocalVideo = nextDownload.videoPath;
           nextLocalSub = nextDownload.subtitlePath;
-          debugPrint('[PlayerScreen] Next episode found in offline downloads: $nextLocalVideo');
+          debugPrint(
+            '[PlayerScreen] Next episode found in offline downloads: $nextLocalVideo',
+          );
         }
       }
     } catch (_) {}
@@ -1641,8 +1836,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     // 7. Initialize streaming for next episode in-place
     try {
-      if ((_currentLocalVideoPath != null && _currentLocalVideoPath!.isNotEmpty) ||
-          (widget.localVideoPath != null && widget.localVideoPath!.isNotEmpty)) {
+      if ((_currentLocalVideoPath != null &&
+              _currentLocalVideoPath!.isNotEmpty) ||
+          (widget.localVideoPath != null &&
+              widget.localVideoPath!.isNotEmpty)) {
         await _initOfflinePlayback();
       } else {
         await _initOnlineStreaming();
@@ -1699,8 +1896,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-
-
   String _formatDuration(Duration d) {
     final hours = d.inHours;
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -1726,54 +1921,69 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             padding: const EdgeInsets.only(bottom: 8, left: 4),
             child: Text(
               '${s.playerQualityTitle}: $_resolutionLabel',
-              style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           ...qualities.map((q) {
-          final isSelected = _currentQuality == q;
-          String label = q == 'Auto' ? s.playerQualityAutoAdaptive : '$q HD';
-          if (q == '1080p') label = '1080p FHD (${s.playerQualityClear})';
-          if (q == '720p') label = '720p HD (${s.playerQualityStandard})';
-          if (q == '480p') label = '480p SD (${s.playerQualityDataSaver})';
-          if (q == '360p') label = '360p ${s.playerQualityLow} (< 500 Kbps)';
+            final isSelected = _currentQuality == q;
+            String label = q == 'Auto' ? s.playerQualityAutoAdaptive : '$q HD';
+            if (q == '1080p') label = '1080p FHD (${s.playerQualityClear})';
+            if (q == '720p') label = '720p HD (${s.playerQualityStandard})';
+            if (q == '480p') label = '480p SD (${s.playerQualityDataSaver})';
+            if (q == '360p') label = '360p ${s.playerQualityLow} (< 500 Kbps)';
 
-          return InkWell(
-            onTap: () => _setQuality(q),
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              margin: const EdgeInsets.only(bottom: 4),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary.withValues(alpha: 0.18) : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                    size: 16,
-                    color: isSelected ? AppColors.primary : AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        color: isSelected ? AppColors.primary : Colors.white,
-                        fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            return InkWell(
+              onTap: () => _setQuality(q),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                margin: const EdgeInsets.only(bottom: 4),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primary.withValues(alpha: 0.18)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      size: 16,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: isSelected ? AppColors.primary : Colors.white,
+                          fontSize: 12,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          );
-        }),
-      ],
-    ),
-  );
-}
+            );
+          }),
+        ],
+      ),
+    );
+  }
 
   Widget _buildVolumeMiniPopup(AppStrings s) {
     return _buildMiniPopupContainer(
@@ -1788,7 +1998,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _volume > 100.0 ? 'Boost: ${_volume.toInt()}%' : 'Level: ${_volume.toInt()}%',
+                _volume > 100.0
+                    ? 'Boost: ${_volume.toInt()}%'
+                    : 'Level: ${_volume.toInt()}%',
                 style: TextStyle(
                   color: _volume > 100.0 ? AppColors.primary : Colors.white,
                   fontWeight: FontWeight.bold,
@@ -1797,12 +2009,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ),
               if (_volume > 100.0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text(s.playerAudioBoost, style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    s.playerAudioBoost,
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -1810,7 +2032,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             data: SliderTheme.of(context).copyWith(
               trackHeight: 3,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-              activeTrackColor: _volume > 100.0 ? AppColors.primary : Colors.white,
+              activeTrackColor: _volume > 100.0
+                  ? AppColors.primary
+                  : Colors.white,
             ),
             child: Slider(
               value: _volume,
@@ -1861,20 +2085,30 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Widget _buildSubtitleMiniPopup(AppStrings s) {
     return _buildMiniPopupContainer(
       width: 350,
-      title: _isShowingSubtitleSettingsInPopup ? s.playerSubSettingsTitle : s.playerSubtitleTrack,
-      icon: _isShowingSubtitleSettingsInPopup ? Iconsax.setting_2 : Iconsax.subtitle,
+      title: _isShowingSubtitleSettingsInPopup
+          ? s.playerSubSettingsTitle
+          : s.playerSubtitleTrack,
+      icon: _isShowingSubtitleSettingsInPopup
+          ? Iconsax.setting_2
+          : Iconsax.subtitle,
       leading: _isShowingSubtitleSettingsInPopup
           ? GestureDetector(
-              onTap: () => setState(() => _isShowingSubtitleSettingsInPopup = false),
+              onTap: () =>
+                  setState(() => _isShowingSubtitleSettingsInPopup = false),
               child: const Padding(
                 padding: EdgeInsets.only(right: 4),
-                child: Icon(Icons.arrow_back_rounded, color: Colors.white, size: 18),
+                child: Icon(
+                  Icons.arrow_back_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
               ),
             )
           : null,
       trailing: !_isShowingSubtitleSettingsInPopup
           ? GestureDetector(
-              onTap: () => setState(() => _isShowingSubtitleSettingsInPopup = true),
+              onTap: () =>
+                  setState(() => _isShowingSubtitleSettingsInPopup = true),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
@@ -1884,11 +2118,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Iconsax.setting_2, size: 12, color: AppColors.primary),
+                    const Icon(
+                      Iconsax.setting_2,
+                      size: 12,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       s.playerSubSettings,
-                      style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -1902,23 +2144,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         transitionBuilder: (Widget child, Animation<double> animation) {
           final isSettings = child.key == const ValueKey('sub_settings_view');
           final inTween = Tween<Offset>(
-            begin: isSettings ? const Offset(0.35, 0.0) : const Offset(-0.35, 0.0),
+            begin: isSettings
+                ? const Offset(0.35, 0.0)
+                : const Offset(-0.35, 0.0),
             end: Offset.zero,
           );
           return SlideTransition(
-            position: inTween.animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            )),
-            child: FadeTransition(
-              opacity: animation,
-              child: child,
+            position: inTween.animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
             ),
+            child: FadeTransition(opacity: animation, child: child),
           );
         },
         child: _isShowingSubtitleSettingsInPopup
-            ? _buildSubtitleSettingsContent(s, key: const ValueKey('sub_settings_view'))
-            : _buildSubtitleTracksContent(s, key: const ValueKey('sub_tracks_view')),
+            ? _buildSubtitleSettingsContent(
+                s,
+                key: const ValueKey('sub_settings_view'),
+              )
+            : _buildSubtitleTracksContent(
+                s,
+                key: const ValueKey('sub_tracks_view'),
+              ),
       ),
     );
   }
@@ -1949,18 +2195,31 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: _selectedSubtitle == null ? AppColors.primary.withValues(alpha: 0.18) : Colors.transparent,
+              color: _selectedSubtitle == null
+                  ? AppColors.primary.withValues(alpha: 0.18)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
               children: [
                 Icon(
-                  _selectedSubtitle == null ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                  _selectedSubtitle == null
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
                   size: 16,
-                  color: _selectedSubtitle == null ? AppColors.primary : AppColors.textMuted,
+                  color: _selectedSubtitle == null
+                      ? AppColors.primary
+                      : AppColors.textMuted,
                 ),
                 const SizedBox(width: 10),
-                Text(s.playerDisableSubtitle, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                Text(
+                  s.playerDisableSubtitle,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1980,15 +2239,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Iconsax.setting_2, size: 16, color: AppColors.primary),
+                const Icon(
+                  Iconsax.setting_2,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     s.playerSubSettings,
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.primary),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: AppColors.primary,
+                ),
               ],
             ),
           ),
@@ -1998,7 +2269,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         const Divider(color: Colors.white12, height: 16),
 
         // 3. 1-Tap Auto-Translate Action (TANPA BORDER, border pembatas smooth)
-        if (_selectedSubtitle != null && _selectedSubtitle!.language.toLowerCase() != targetLangCode.toLowerCase()) ...[
+        if (_selectedSubtitle != null &&
+            _selectedSubtitle!.language.toLowerCase() !=
+                targetLangCode.toLowerCase()) ...[
           if (_isAutoTranslating) ...[
             LinearProgressIndicator(
               value: _translationProgress > 0 ? _translationProgress : null,
@@ -2007,17 +2280,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
             const SizedBox(height: 6),
             Center(
-              child: Text(s.playerTranslatingTo(targetLangObj.name), style: const TextStyle(color: AppColors.primary, fontSize: 11)),
+              child: Text(
+                s.playerTranslatingTo(targetLangObj.name),
+                style: const TextStyle(color: AppColors.primary, fontSize: 11),
+              ),
             ),
           ] else ...[
             InkWell(
               onTap: () {
-                _applyAndAutoTranslateSubtitle(_selectedSubtitle!, targetLang: targetLangCode);
+                _applyAndAutoTranslateSubtitle(
+                  _selectedSubtitle!,
+                  targetLang: targetLangCode,
+                );
               },
               borderRadius: BorderRadius.circular(8),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
@@ -2026,13 +2308,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Iconsax.magic_star, color: AppColors.primary, size: 14),
+                    const Icon(
+                      Iconsax.magic_star,
+                      color: AppColors.primary,
+                      size: 14,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       _isSubtitleTranslated
-                          ? s.playerTranslateActive(targetLangCode.toUpperCase())
+                          ? s.playerTranslateActive(
+                              targetLangCode.toUpperCase(),
+                            )
                           : s.playerTranslateTo(targetLangObj.name),
-                      style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -2047,13 +2339,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Center(
-              child: Text(s.playerNoSubtitleFound, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              child: Text(
+                s.playerNoSubtitleFound,
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                ),
+              ),
             ),
           )
         else
           ..._availableSubtitles.map((sub) {
             final isSelected = _selectedSubtitle?.id == sub.id;
-            final isPreferred = sub.language.toLowerCase() == targetLangCode.toLowerCase();
+            final isPreferred =
+                sub.language.toLowerCase() == targetLangCode.toLowerCase();
 
             return InkWell(
               onTap: () async {
@@ -2061,7 +2360,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 if (!success && mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(s.playerFailedDownloadSub(sub.languageName)),
+                      content: Text(
+                        s.playerFailedDownloadSub(sub.languageName),
+                      ),
                       backgroundColor: AppColors.error,
                     ),
                   );
@@ -2074,30 +2375,46 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               },
               borderRadius: BorderRadius.circular(10),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 margin: const EdgeInsets.only(bottom: 4),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary.withValues(alpha: 0.18) : Colors.transparent,
+                  color: isSelected
+                      ? AppColors.primary.withValues(alpha: 0.18)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   children: [
                     Icon(
-                      isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked_rounded,
                       size: 16,
-                      color: isSelected ? AppColors.primary : AppColors.textMuted,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textMuted,
                     ),
                     const SizedBox(width: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        color: isPreferred ? AppColors.success.withValues(alpha: 0.25) : AppColors.surfaceElevated,
+                        color: isPreferred
+                            ? AppColors.success.withValues(alpha: 0.25)
+                            : AppColors.surfaceElevated,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         sub.language.toUpperCase(),
                         style: TextStyle(
-                          color: isPreferred ? AppColors.success : Colors.white70,
+                          color: isPreferred
+                              ? AppColors.success
+                              : Colors.white70,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
@@ -2106,11 +2423,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        sub.fileName.isNotEmpty ? sub.fileName : sub.languageName,
+                        sub.fileName.isNotEmpty
+                            ? sub.fileName
+                            : sub.languageName,
                         style: TextStyle(
                           color: isSelected ? AppColors.primary : Colors.white,
                           fontSize: 12,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -2144,14 +2465,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   decoration: BoxDecoration(
-                    color: _subtitleSettingsTab == 0 ? AppColors.primary : AppColors.surfaceElevated,
+                    color: _subtitleSettingsTab == 0
+                        ? AppColors.primary
+                        : AppColors.surfaceElevated,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Center(
                     child: Text(
                       s.playerTabSync,
                       style: TextStyle(
-                        color: _subtitleSettingsTab == 0 ? Colors.black : Colors.white,
+                        color: _subtitleSettingsTab == 0
+                            ? Colors.black
+                            : Colors.white,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -2168,14 +2493,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   decoration: BoxDecoration(
-                    color: _subtitleSettingsTab == 1 ? AppColors.primary : AppColors.surfaceElevated,
+                    color: _subtitleSettingsTab == 1
+                        ? AppColors.primary
+                        : AppColors.surfaceElevated,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Center(
                     child: Text(
                       s.playerTabAppearance,
                       style: TextStyle(
-                        color: _subtitleSettingsTab == 1 ? Colors.black : Colors.white,
+                        color: _subtitleSettingsTab == 1
+                            ? Colors.black
+                            : Colors.white,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -2199,7 +2528,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       ? s.playerSyncOnTime
                       : '${style.syncOffsetMs > 0 ? "+" : ""}${(style.syncOffsetMs / 1000.0).toStringAsFixed(2)}s',
                   style: TextStyle(
-                    color: style.syncOffsetMs != 0 ? AppColors.primary : Colors.white,
+                    color: style.syncOffsetMs != 0
+                        ? AppColors.primary
+                        : Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                   ),
@@ -2209,9 +2540,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   style.syncOffsetMs == 0
                       ? s.playerSyncDefault
                       : style.syncOffsetMs > 0
-                          ? s.playerSyncDelayed
-                          : s.playerSyncAdvanced,
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                      ? s.playerSyncDelayed
+                      : s.playerSyncAdvanced,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -2227,11 +2561,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               OutlinedButton(
                 onPressed: () => notifier.resetSyncOffset(),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   minimumSize: const Size(48, 30),
                   side: const BorderSide(color: AppColors.surfaceElevated),
                 ),
-                child: Text(s.playerReset, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                child: Text(
+                  s.playerReset,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 11,
+                  ),
+                ),
               ),
               const SizedBox(width: 6),
               _buildSyncChip('+100ms', () => notifier.adjustSyncOffset(100)),
@@ -2244,119 +2587,239 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                  // Background Opacity Controls (Transparan vs Background)
-                  Text(s.playerSubBackground, style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      _buildBgChip(s.playerBgTransparent, 0.0, style.backgroundOpacity, notifier),
-                      const SizedBox(width: 6),
-                      _buildBgChip('Semi 40%', 0.4, style.backgroundOpacity, notifier),
-                      const SizedBox(width: 6),
-                      _buildBgChip('${s.playerBgDark} 75%', 0.75, style.backgroundOpacity, notifier),
-                      const SizedBox(width: 6),
-                      _buildBgChip('${s.playerBgSolid} 100%', 1.0, style.backgroundOpacity, notifier),
-                    ],
+              // Background Opacity Controls (Transparan vs Background)
+              Text(
+                s.playerSubBackground,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  _buildBgChip(
+                    s.playerBgTransparent,
+                    0.0,
+                    style.backgroundOpacity,
+                    notifier,
                   ),
-                  Row(
-                    children: [
-                      SizedBox(width: 80, child: Text(s.playerBgOpacity, style: const TextStyle(color: Colors.white70, fontSize: 11))),
-                      Expanded(
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(trackHeight: 2, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5)),
-                          child: Slider(
-                            value: style.backgroundOpacity,
-                            min: 0.0,
-                            max: 1.0,
-                            divisions: 20,
-                            activeColor: AppColors.primary,
-                            onChanged: (v) => notifier.updateBackgroundOpacity(v),
-                          ),
-                        ),
-                      ),
-                      Text('${(style.backgroundOpacity * 100).toInt()}%', style: const TextStyle(color: Colors.white, fontSize: 11)),
-                    ],
+                  const SizedBox(width: 6),
+                  _buildBgChip(
+                    'Semi 40%',
+                    0.4,
+                    style.backgroundOpacity,
+                    notifier,
                   ),
-                  const Divider(color: Colors.white24, height: 12),
-
-                  // Font Size Slider
-                  Row(
-                    children: [
-                      SizedBox(width: 80, child: Text(s.playerFontSize, style: const TextStyle(color: Colors.white70, fontSize: 11))),
-                      Expanded(
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(trackHeight: 2, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5)),
-                          child: Slider(
-                            value: style.fontSize,
-                            min: 14.0,
-                            max: 30.0,
-                            divisions: 8,
-                            activeColor: AppColors.primary,
-                            onChanged: (v) => notifier.updateFontSize(v),
-                          ),
-                        ),
-                      ),
-                      Text('${style.fontSize.toInt()}pt', style: const TextStyle(color: Colors.white, fontSize: 11)),
-                    ],
+                  const SizedBox(width: 6),
+                  _buildBgChip(
+                    '${s.playerBgDark} 75%',
+                    0.75,
+                    style.backgroundOpacity,
+                    notifier,
                   ),
-
-                  // Stroke Thickness Slider
-                  Row(
-                    children: [
-                      SizedBox(width: 80, child: Text(s.playerStrokeWidth, style: const TextStyle(color: Colors.white70, fontSize: 11))),
-                      Expanded(
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(trackHeight: 2, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5)),
-                          child: Slider(
-                            value: style.strokeWidth,
-                            min: 0.0,
-                            max: 5.0,
-                            divisions: 10,
-                            activeColor: AppColors.primary,
-                            onChanged: (v) => notifier.updateStrokeWidth(v),
-                          ),
-                        ),
-                      ),
-                      Text('${style.strokeWidth.toStringAsFixed(1)}px', style: const TextStyle(color: Colors.white, fontSize: 11)),
-                    ],
-                  ),
-
-                  // Bottom Offset Slider
-                  Row(
-                    children: [
-                      SizedBox(width: 80, child: Text(s.playerSubPosition, style: const TextStyle(color: Colors.white70, fontSize: 11))),
-                      Expanded(
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(trackHeight: 2, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5)),
-                          child: Slider(
-                            value: style.bottomOffset.clamp(10.0, 120.0),
-                            min: 10.0,
-                            max: 120.0,
-                            divisions: 22,
-                            activeColor: AppColors.primary,
-                            onChanged: (v) => notifier.updateBottomOffset(v),
-                          ),
-                        ),
-                      ),
-                      Text('${style.bottomOffset.toInt()}px', style: const TextStyle(color: Colors.white, fontSize: 11)),
-                    ],
-                  ),
-
-                  // Color selection chips
-                  Row(
-                    children: [
-                      SizedBox(width: 80, child: Text(s.playerSubColor, style: const TextStyle(color: Colors.white70, fontSize: 11))),
-                      _buildColorMiniDot(const Color(0xFFFFFFFF), style.textColor, notifier),
-                      const SizedBox(width: 8),
-                      _buildColorMiniDot(const Color(0xFFFFD700), style.textColor, notifier),
-                      const SizedBox(width: 8),
-                      _buildColorMiniDot(const Color(0xFF00E5FF), style.textColor, notifier),
-                      const SizedBox(width: 8),
-                      _buildColorMiniDot(const Color(0xFF00E676), style.textColor, notifier),
-                    ],
+                  const SizedBox(width: 6),
+                  _buildBgChip(
+                    '${s.playerBgSolid} 100%',
+                    1.0,
+                    style.backgroundOpacity,
+                    notifier,
                   ),
                 ],
               ),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      s.playerBgOpacity,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 2,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 5,
+                        ),
+                      ),
+                      child: Slider(
+                        value: style.backgroundOpacity,
+                        min: 0.0,
+                        max: 1.0,
+                        divisions: 20,
+                        activeColor: AppColors.primary,
+                        onChanged: (v) => notifier.updateBackgroundOpacity(v),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${(style.backgroundOpacity * 100).toInt()}%',
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                ],
+              ),
+              const Divider(color: Colors.white24, height: 12),
+
+              // Font Size Slider
+              Row(
+                children: [
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      s.playerFontSize,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 2,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 5,
+                        ),
+                      ),
+                      child: Slider(
+                        value: style.fontSize,
+                        min: 14.0,
+                        max: 30.0,
+                        divisions: 8,
+                        activeColor: AppColors.primary,
+                        onChanged: (v) => notifier.updateFontSize(v),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${style.fontSize.toInt()}pt',
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                ],
+              ),
+
+              // Stroke Thickness Slider
+              Row(
+                children: [
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      s.playerStrokeWidth,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 2,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 5,
+                        ),
+                      ),
+                      child: Slider(
+                        value: style.strokeWidth,
+                        min: 0.0,
+                        max: 5.0,
+                        divisions: 10,
+                        activeColor: AppColors.primary,
+                        onChanged: (v) => notifier.updateStrokeWidth(v),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${style.strokeWidth.toStringAsFixed(1)}px',
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                ],
+              ),
+
+              // Bottom Offset Slider
+              Row(
+                children: [
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      s.playerSubPosition,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 2,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 5,
+                        ),
+                      ),
+                      child: Slider(
+                        value: style.bottomOffset.clamp(10.0, 120.0),
+                        min: 10.0,
+                        max: 120.0,
+                        divisions: 22,
+                        activeColor: AppColors.primary,
+                        onChanged: (v) => notifier.updateBottomOffset(v),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${style.bottomOffset.toInt()}px',
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                ],
+              ),
+
+              // Color selection chips
+              Row(
+                children: [
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      s.playerSubColor,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  _buildColorMiniDot(
+                    const Color(0xFFFFFFFF),
+                    style.textColor,
+                    notifier,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildColorMiniDot(
+                    const Color(0xFFFFD700),
+                    style.textColor,
+                    notifier,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildColorMiniDot(
+                    const Color(0xFF00E5FF),
+                    style.textColor,
+                    notifier,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildColorMiniDot(
+                    const Color(0xFF00E676),
+                    style.textColor,
+                    notifier,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ],
       ],
     );
@@ -2367,7 +2830,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     return _buildSubtitleMiniPopup(s);
   }
 
-  Widget _buildBgChip(String label, double val, double current, dynamic notifier) {
+  Widget _buildBgChip(
+    String label,
+    double val,
+    double current,
+    dynamic notifier,
+  ) {
     final isSelected = (current - val).abs() < 0.05;
     return InkWell(
       onTap: () => notifier.updateBackgroundOpacity(val),
@@ -2400,7 +2868,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           color: AppColors.surfaceElevated,
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -2437,7 +2912,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             padding: const EdgeInsets.only(bottom: 8, left: 4),
             child: Text(
               s.playerServerDesc,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+              ),
             ),
           ),
           ...SmartStreamService.servers.map((srv) {
@@ -2446,19 +2924,32 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               onTap: () => _switchServer(srv),
               borderRadius: BorderRadius.circular(10),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 margin: const EdgeInsets.only(bottom: 4),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary.withValues(alpha: 0.18) : Colors.transparent,
+                  color: isSelected
+                      ? AppColors.primary.withValues(alpha: 0.18)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
-                  border: isSelected ? Border.all(color: AppColors.primary.withValues(alpha: 0.5)) : null,
+                  border: isSelected
+                      ? Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.5),
+                        )
+                      : null,
                 ),
                 child: Row(
                   children: [
                     Icon(
-                      isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked_rounded,
                       size: 16,
-                      color: isSelected ? AppColors.primary : AppColors.textMuted,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textMuted,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -2468,9 +2959,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           Text(
                             srv.name,
                             style: TextStyle(
-                              color: isSelected ? AppColors.primary : Colors.white,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : Colors.white,
                               fontSize: 12,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                             ),
                           ),
                           Text(
@@ -2487,7 +2982,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     ),
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: srv.isDirectHls
                             ? const Color(0xFF00E676).withValues(alpha: 0.15)
@@ -2497,7 +2995,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       child: Text(
                         srv.isDirectHls ? 'DIRECT' : 'HD',
                         style: TextStyle(
-                          color: srv.isDirectHls ? const Color(0xFF00E676) : Colors.white70,
+                          color: srv.isDirectHls
+                              ? const Color(0xFF00E676)
+                              : Colors.white70,
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
                         ),
@@ -2535,7 +3035,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.82),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18), width: 1.2),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.18),
+              width: 1.2,
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.5),
@@ -2563,7 +3066,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       const SizedBox(width: 8),
                       Text(
                         title,
-                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -2588,7 +3095,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             color: Colors.white10,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.close, color: Colors.white70, size: 14),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white70,
+                            size: 14,
+                          ),
                         ),
                       ),
                     ],
@@ -2654,7 +3165,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 color: Colors.black.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+              child: const Icon(
+                Icons.arrow_back,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -2690,7 +3205,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         GestureDetector(
                           onTap: _playNextEpisode,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.65),
                               borderRadius: BorderRadius.circular(4),
@@ -2698,10 +3216,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.skip_next_rounded, color: Colors.white.withValues(alpha: 0.9), size: 12),
+                                Icon(
+                                  Icons.skip_next_rounded,
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  size: 12,
+                                ),
                                 const SizedBox(width: 3),
                                 Text(
-                                  s.playerNextEpShort((_currentEpisode ?? 1) + 1),
+                                  s.playerNextEpShort(
+                                    (_currentEpisode ?? 1) + 1,
+                                  ),
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.9),
                                     fontSize: 10,
@@ -2738,7 +3262,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           // Mini Popup Button: Volume & Audio Boost (Native Player only) - Icon only without border
           if (_useNativePlayer)
             _buildTopBarIconButton(
-              icon: _volume == 0 ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+              icon: _volume == 0
+                  ? Icons.volume_off_rounded
+                  : Icons.volume_up_rounded,
               isActive: _activePopup == _PlayerMiniPopup.volume,
               onTap: () => _togglePopup(_PlayerMiniPopup.volume),
             ),
@@ -2747,7 +3273,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           _buildTopBarIconButton(
             icon: Iconsax.subtitle,
             isActive: _activePopup == _PlayerMiniPopup.subtitle,
-            inactiveColor: _selectedSubtitle != null ? AppColors.primary : Colors.white,
+            inactiveColor: _selectedSubtitle != null
+                ? AppColors.primary
+                : Colors.white,
             onTap: () => _togglePopup(_PlayerMiniPopup.subtitle),
           ),
         ],
@@ -2769,40 +3297,42 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // ── 1. Video Layer: Passes all the way through camera cutout / notch ──
-          if (_useNativePlayer)
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _toggleControls,
-              // Vertical swipe gesture on right half of screen to adjust volume, left half to adjust brightness
-              onVerticalDragUpdate: (details) {
-                final screenWidth = MediaQuery.of(context).size.width;
-                if (details.globalPosition.dx > screenWidth / 2) {
-                  // Drag up increases volume, drag down decreases volume
-                  final delta = -details.primaryDelta! * 0.5;
-                  _setVolume(_volume + delta);
-                } else {
-                  // Drag up increases brightness, drag down decreases brightness
-                  final delta = -details.primaryDelta! / 250.0;
-                  _setBrightness(_brightness + delta);
-                }
-              },
-              child: Video(
-                controller: _videoController,
-                controls: NoVideoControls, // Guarantees NO built-in media_kit controls!
-                subtitleViewConfiguration: const SubtitleViewConfiguration(
-                  visible: false, // Ensures media_kit never renders its own internal subtitle
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // ── 1. Video Layer: Passes all the way through camera cutout / notch ──
+            if (_useNativePlayer)
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _toggleControls,
+                // Vertical swipe gesture on right half of screen to adjust volume, left half to adjust brightness
+                onVerticalDragUpdate: (details) {
+                  final screenWidth = MediaQuery.of(context).size.width;
+                  if (details.globalPosition.dx > screenWidth / 2) {
+                    // Drag up increases volume, drag down decreases volume
+                    final delta = -details.primaryDelta! * 0.5;
+                    _setVolume(_volume + delta);
+                  } else {
+                    // Drag up increases brightness, drag down decreases brightness
+                    final delta = -details.primaryDelta! / 250.0;
+                    _setBrightness(_brightness + delta);
+                  }
+                },
+                child: Video(
+                  controller: _videoController,
+                  controls:
+                      NoVideoControls, // Guarantees NO built-in media_kit controls!
+                  subtitleViewConfiguration: const SubtitleViewConfiguration(
+                    visible:
+                        false, // Ensures media_kit never renders its own internal subtitle
+                  ),
+                  fit: _fitMode,
                 ),
-                fit: _fitMode,
-              ),
-            )
-          else if (_webViewController != null)
-            WebViewWidget(controller: _webViewController!)
-          else
-            const SizedBox.shrink(),
+              )
+            else if (_webViewController != null)
+              WebViewWidget(controller: _webViewController!)
+            else
+              const SizedBox.shrink(),
 
             // ── 2. Synchronized Custom Subtitles Layer (Direct child of Stack!) ──
             CustomSubtitleOverlay(
@@ -2815,7 +3345,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             if (_showVolumeIndicator)
               Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.75),
                     borderRadius: BorderRadius.circular(16),
@@ -2828,16 +3361,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         _volume == 0
                             ? Icons.volume_off_rounded
                             : _volume > 100.0
-                                ? Icons.volume_up_rounded
-                                : Icons.volume_down_rounded,
-                        color: _volume > 100.0 ? AppColors.primary : Colors.white,
+                            ? Icons.volume_up_rounded
+                            : Icons.volume_down_rounded,
+                        color: _volume > 100.0
+                            ? AppColors.primary
+                            : Colors.white,
                         size: 24,
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        _volume > 100.0 ? 'Volume: ${_volume.toInt()}% (Boost)' : 'Volume: ${_volume.toInt()}%',
+                        _volume > 100.0
+                            ? 'Volume: ${_volume.toInt()}% (Boost)'
+                            : 'Volume: ${_volume.toInt()}%',
                         style: TextStyle(
-                          color: _volume > 100.0 ? AppColors.primary : Colors.white,
+                          color: _volume > 100.0
+                              ? AppColors.primary
+                              : Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -2851,7 +3390,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             if (_showBrightnessIndicator)
               Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.75),
                     borderRadius: BorderRadius.circular(16),
@@ -2864,8 +3406,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         _brightness > 0.6
                             ? Icons.brightness_high_rounded
                             : (_brightness > 0.3
-                                ? Icons.brightness_medium_rounded
-                                : Icons.brightness_low_rounded),
+                                  ? Icons.brightness_medium_rounded
+                                  : Icons.brightness_low_rounded),
                         color: AppColors.primary,
                         size: 24,
                       ),
@@ -2902,7 +3444,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                               color: Colors.white.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                            child: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),
@@ -2921,7 +3467,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             ),
                             const SizedBox(height: 20),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 40),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 40,
+                              ),
                               child: Text(
                                 widget.title,
                                 style: const TextStyle(
@@ -2937,7 +3485,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             const SizedBox(height: 8),
                             Text(
                               _getLoadingStatusText(s),
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                              ),
                             ),
                           ],
                         ),
@@ -2948,7 +3499,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ),
 
             // Unified center buffering indicator when controls are hidden: pure orange spinner, no background box
-            if (_useNativePlayer && !_showControls && _isBuffering && !_isLoading)
+            if (_useNativePlayer &&
+                !_showControls &&
+                _isBuffering &&
+                !_isLoading)
               const IgnorePointer(
                 child: Center(
                   child: SizedBox(
@@ -2962,7 +3516,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 ),
               ),
 
-                        // ── 5. Native Mode: The ONLY Control Overlay: Cineva Custom Cinema Controls ──
+            // ── 5. Native Mode: The ONLY Control Overlay: Cineva Custom Cinema Controls ──
             if (!_isLoading && _useNativePlayer)
               AnimatedOpacity(
                 opacity: _showControls ? 1.0 : 0.0,
@@ -2996,14 +3550,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             children: [
                               IconButton(
                                 onPressed: () => _seekRelative(-10),
-                                icon: const Icon(Icons.replay_10_rounded, color: Colors.white, size: 44),
+                                icon: const Icon(
+                                  Icons.replay_10_rounded,
+                                  color: Colors.white,
+                                  size: 44,
+                                ),
                               ),
                               const SizedBox(width: 36),
                               GestureDetector(
                                 onTap: _isBuffering ? null : _togglePlayPause,
                                 behavior: HitTestBehavior.opaque,
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
                                   child: _isBuffering
                                       ? const SizedBox(
                                           width: 54,
@@ -3014,7 +3575,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                           ),
                                         )
                                       : Icon(
-                                          _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                          _isPlaying
+                                              ? Icons.pause_rounded
+                                              : Icons.play_arrow_rounded,
                                           color: AppColors.primary,
                                           size: 58,
                                         ),
@@ -3023,7 +3586,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                               const SizedBox(width: 36),
                               IconButton(
                                 onPressed: () => _seekRelative(10),
-                                icon: const Icon(Icons.forward_10_rounded, color: Colors.white, size: 44),
+                                icon: const Icon(
+                                  Icons.forward_10_rounded,
+                                  color: Colors.white,
+                                  size: 44,
+                                ),
                               ),
                             ],
                           ),
@@ -3048,17 +3615,25 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                       child: SliderTheme(
                                         data: SliderTheme.of(context).copyWith(
                                           trackHeight: 3.5,
-                                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                                          thumbShape:
+                                              const RoundSliderThumbShape(
+                                                enabledThumbRadius: 6,
+                                              ),
+                                          overlayShape:
+                                              const RoundSliderOverlayShape(
+                                                overlayRadius: 14,
+                                              ),
                                           activeTrackColor: AppColors.primary,
                                           inactiveTrackColor: Colors.white24,
                                           thumbColor: AppColors.primary,
                                         ),
                                         child: Slider(
                                           value: _duration.inSeconds > 0
-                                              ? pos.inSeconds
-                                                  .toDouble()
-                                                  .clamp(0.0, _duration.inSeconds.toDouble())
+                                              ? pos.inSeconds.toDouble().clamp(
+                                                  0.0,
+                                                  _duration.inSeconds
+                                                      .toDouble(),
+                                                )
                                               : 0.0,
                                           min: 0.0,
                                           max: _duration.inSeconds > 0
@@ -3081,8 +3656,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                       onPressed: _toggleFitMode,
                                       tooltip: 'Aspect Ratio & Notch Mode',
                                       icon: Icon(
-                                        _fitMode == BoxFit.cover ? Icons.fullscreen_rounded : Icons.aspect_ratio_rounded,
-                                        color: _fitMode == BoxFit.cover ? AppColors.primary : Colors.white70,
+                                        _fitMode == BoxFit.cover
+                                            ? Icons.fullscreen_rounded
+                                            : Icons.aspect_ratio_rounded,
+                                        color: _fitMode == BoxFit.cover
+                                            ? AppColors.primary
+                                            : Colors.white70,
                                         size: 22,
                                       ),
                                     ),
@@ -3135,10 +3714,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           ],
                         ),
                       ),
-                      child: SafeArea(
-                        bottom: false,
-                        child: _buildTopBar(s),
-                      ),
+                      child: SafeArea(bottom: false, child: _buildTopBar(s)),
                     ),
                   ),
                 ),
@@ -3164,7 +3740,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 ),
               ),
 
-// ── 6. Compact Semi-Transparent Mini Popups Layer ──
+            // ── 6. Compact Semi-Transparent Mini Popups Layer ──
             if (!_isLoading && _activePopup != _PlayerMiniPopup.none) ...[
               // Outside tap dismisser (transparent, non-blocking)
               Positioned.fill(
@@ -3188,7 +3764,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   _PlayerMiniPopup.quality => _buildQualityMiniPopup(s),
                   _PlayerMiniPopup.volume => _buildVolumeMiniPopup(s),
                   _PlayerMiniPopup.subtitle => _buildSubtitleMiniPopup(s),
-                  _PlayerMiniPopup.subtitleSettings => _buildSubtitleSettingsMiniPopup(s),
+                  _PlayerMiniPopup.subtitleSettings =>
+                    _buildSubtitleSettingsMiniPopup(s),
                   _PlayerMiniPopup.server => _buildServerMiniPopup(s),
                   _PlayerMiniPopup.none => const SizedBox.shrink(),
                 },
