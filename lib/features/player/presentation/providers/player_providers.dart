@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/services/torrent_source_service.dart';
@@ -77,11 +78,17 @@ class SubtitleStyleNotifier extends StateNotifier<SubtitleStyleSettings> {
     state = state.copyWith(
       fontSize: SettingsService.getSubtitleFontSizePoints(),
       backgroundOpacity: SettingsService.getSubtitleBackgroundOpacity(),
+      strokeWidth: SettingsService.getSubtitleStrokeWidth(),
+      bottomOffset: SettingsService.getSubtitleBottomOffset(),
+      textColor: Color(SettingsService.getSubtitleTextColorValue()),
     );
   }
 
   void updateStrokeWidth(double width) {
     state = state.copyWith(strokeWidth: width);
+    try {
+      SettingsService.setSubtitleStrokeWidth(width);
+    } catch (_) {}
   }
 
   void updateFontSize(double size) {
@@ -98,11 +105,18 @@ class SubtitleStyleNotifier extends StateNotifier<SubtitleStyleSettings> {
   }
 
   void updateTextColor(dynamic color) {
-    state = state.copyWith(textColor: color);
+    final colorObj = color is Color ? color : Color(color as int);
+    state = state.copyWith(textColor: colorObj);
+    try {
+      SettingsService.setSubtitleTextColorValue(colorObj.toARGB32());
+    } catch (_) {}
   }
 
   void updateBottomOffset(double offset) {
     state = state.copyWith(bottomOffset: offset);
+    try {
+      SettingsService.setSubtitleBottomOffset(offset);
+    } catch (_) {}
   }
 
   void updateBackgroundOpacity(double opacity) {

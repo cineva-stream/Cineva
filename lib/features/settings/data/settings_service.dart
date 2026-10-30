@@ -100,6 +100,9 @@ class SettingsService {
   }
 
   static const String keySubtitleBackground = 'subtitle_background';
+  static const String keySubtitleStrokeWidth = 'subtitle_stroke_width';
+  static const String keySubtitleBottomOffset = 'subtitle_bottom_offset';
+  static const String keySubtitleTextColor = 'subtitle_text_color';
   static const String keyHardwareAcceleration = 'hardware_acceleration';
   static const String keyDownloadLimit = 'download_limit';
   static const String keyUploadLimit = 'upload_limit';
@@ -127,6 +130,51 @@ class SettingsService {
     } catch (_) {
       return 0.0;
     }
+  }
+
+  /// Subtitle stroke width (outline) in pixels. Default: 2.5
+  static double getSubtitleStrokeWidth() {
+    try {
+      final val = _box.get(keySubtitleStrokeWidth);
+      if (val is num) return val.toDouble();
+      return 2.5;
+    } catch (_) {
+      return 2.5;
+    }
+  }
+
+  static Future<void> setSubtitleStrokeWidth(double width) async {
+    await _box.put(keySubtitleStrokeWidth, width);
+  }
+
+  /// Subtitle vertical position (bottom offset) in pixels. Default: 32.0
+  static double getSubtitleBottomOffset() {
+    try {
+      final val = _box.get(keySubtitleBottomOffset);
+      if (val is num) return val.toDouble();
+      return 32.0;
+    } catch (_) {
+      return 32.0;
+    }
+  }
+
+  static Future<void> setSubtitleBottomOffset(double offset) async {
+    await _box.put(keySubtitleBottomOffset, offset);
+  }
+
+  /// Subtitle text color as ARGB integer. Default: 0xFFFFFFFF (White)
+  static int getSubtitleTextColorValue() {
+    try {
+      final val = _box.get(keySubtitleTextColor);
+      if (val is int) return val;
+      return 0xFFFFFFFF;
+    } catch (_) {
+      return 0xFFFFFFFF;
+    }
+  }
+
+  static Future<void> setSubtitleTextColorValue(int colorValue) async {
+    await _box.put(keySubtitleTextColor, colorValue);
   }
 
   static bool getHardwareAcceleration() {

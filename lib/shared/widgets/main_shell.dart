@@ -71,14 +71,10 @@ class MainShell extends ConsumerWidget {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         if (isLiveTv && (isLiveTvFullscreen || isLiveTvPlaying)) {
-          if (isLiveTvFullscreen) {
-            ref.read(liveTvFullscreenProvider.notifier).state = false;
-            return;
-          }
-          if (isLiveTvPlaying) {
-            ref.read(liveTvIsPlayingProvider.notifier).state = false;
-            return;
-          }
+          ref.read(liveTvFullscreenProvider.notifier).state = false;
+          ref.read(liveTvIsPlayingProvider.notifier).state = false;
+          context.go('/');
+          return;
         }
         if (isWatchlist) {
           if (context.canPop()) {

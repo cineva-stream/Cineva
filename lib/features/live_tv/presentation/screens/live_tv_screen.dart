@@ -27,13 +27,29 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) {
+        ref.read(liveTvIsPlayingProvider.notifier).state = false;
+        ref.read(liveTvFullscreenProvider.notifier).state = false;
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  void _onChannelSelected(LiveTvChannel channel) {
-    context.push('/live-tv/player', extra: channel);
+  void _onChannelSelected(LiveTvChannel channel) async {
+    ref.read(liveTvIsPlayingProvider.notifier).state = true;
+    await context.push('/live-tv/player', extra: channel);
+    if (mounted) {
+      ref.read(liveTvIsPlayingProvider.notifier).state = false;
+      ref.read(liveTvFullscreenProvider.notifier).state = false;
+    }
   }
 
   @override
@@ -226,134 +242,131 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                     )
                   : ListView.builder(
                       physics: const BouncingScrollPhysics(),
-                      padding: EdgeInsets.fromLTRB(16, 4, 16, bottomPadding),
+                      padding: EdgeInsets.fromLTRB(0, 4, 0, bottomPadding),
                       itemCount: channels.length,
                       itemBuilder: (context, index) {
                         final channel = channels[index];
                         final isFavorite = favorites.contains(channel.id);
                         return Container(
-                          margin: const EdgeInsets.only(bottom: 10),
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.06),
-                              width: 0.8,
+                            color: Colors.transparent,
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.08),
+                                width: 0.8,
+                              ),
                             ),
                           ),
-                          child: InkWell(
-                            onTap: () => _onChannelSelected(channel),
-                            borderRadius: BorderRadius.circular(14),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                              child: Row(
-                                children: [
-                                  // Logo
-                                  Container(
-                                    width: 44,
-                                    height: 44,
-                                    padding: const EdgeInsets.all(5),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.05),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: Colors.white10,
-                                        width: 0.8,
-                                      ),
-                                    ),
-                                    child: channel.logoUrl != null && channel.logoUrl!.isNotEmpty
-                                        ? CachedNetworkImage(
-                                            imageUrl: channel.logoUrl!,
-                                            fit: BoxFit.contain,
-                                            errorWidget: (_, _, _) => const Icon(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => _onChannelSelected(channel),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                child: Row(
+                                  children: [
+                                    // Logo (clean, without container background)
+                                    SizedBox(
+                                      width: 44,
+                                      height: 44,
+                                      child: channel.logoUrl != null && channel.logoUrl!.isNotEmpty
+                                          ? CachedNetworkImage(
+                                              imageUrl: channel.logoUrl!,
+                                              httpHeaders: const {
+                                                'User-Agent':
+                                                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                                              },
+                                              fit: BoxFit.contain,
+                                              errorWidget: (_, _, _) => const Icon(
+                                                Icons.tv_rounded,
+                                                color: Colors.white70,
+                                                size: 24,
+                                              ),
+                                            )
+                                          : const Icon(
                                               Icons.tv_rounded,
                                               color: Colors.white70,
-                                              size: 20,
+                                              size: 24,
                                             ),
-                                          )
-                                        : const Icon(
-                                            Icons.tv_rounded,
-                                            color: Colors.white70,
-                                            size: 20,
-                                          ),
-                                  ),
-                                  const SizedBox(width: 14),
-
-                                  // Name and Category
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          channel.name,
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          channel.category,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            color: AppColors.textMuted,
-                                          ),
-                                        ),
-                                      ],
                                     ),
-                                  ),
+                                    const SizedBox(width: 14),
 
-                                  // Favorite Button
-                                  IconButton(
-                                    onPressed: () {
-                                      favoritesNotifier.toggleFavorite(channel.id);
-                                    },
-                                    icon: Icon(
-                                      isFavorite
-                                          ? Icons.favorite_rounded
-                                          : Icons.favorite_border_rounded,
-                                      color: isFavorite ? Colors.redAccent : Colors.white54,
-                                      size: 20,
-                                    ),
-                                    tooltip: isFavorite
-                                        ? 'Hapus dari Favorit'
-                                        : 'Simpan ke Favorit',
-                                  ),
-
-                                  // Play icon pill
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: AppColors.primary.withValues(alpha: 0.4),
-                                        width: 0.8,
+                                    // Name and Category
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            channel.name,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            channel.category,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.play_arrow_rounded,
-                                          color: AppColors.primary,
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          s.isIndonesian ? 'Tonton' : 'Watch',
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-                                      ],
+
+                                    // Favorite Button
+                                    IconButton(
+                                      onPressed: () {
+                                        favoritesNotifier.toggleFavorite(channel.id);
+                                      },
+                                      icon: Icon(
+                                        isFavorite
+                                            ? Icons.favorite_rounded
+                                            : Icons.favorite_border_rounded,
+                                        color: isFavorite ? Colors.redAccent : Colors.white54,
+                                        size: 20,
+                                      ),
+                                      tooltip: isFavorite
+                                          ? 'Hapus dari Favorit'
+                                          : 'Simpan ke Favorit',
                                     ),
-                                  ),
-                                ],
+
+                                    // Play icon pill
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: AppColors.primary.withValues(alpha: 0.4),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.play_arrow_rounded,
+                                            color: AppColors.primary,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            s.isIndonesian ? 'Tonton' : 'Watch',
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),

@@ -166,6 +166,12 @@ void main() {
       await SettingsService.setDefaultQuality('1080p');
       expect(SettingsService.getDefaultQuality(), equals('1080p'));
 
+      await SettingsService.setDefaultQuality('720p');
+      expect(SettingsService.getDefaultQuality(), equals('720p'));
+
+      await SettingsService.setDefaultQuality('480p');
+      expect(SettingsService.getDefaultQuality(), equals('480p'));
+
       await SettingsService.setDefaultQuality('Auto');
       expect(SettingsService.getDefaultQuality(), equals('Auto'));
     });

@@ -201,7 +201,6 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
-      DeviceOrientation.portraitUp,
     ]);
     _startHideTimer();
   }
@@ -270,36 +269,27 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                     final isCurrent = ch.id == _currentChannel.id;
                     return ListTile(
                       dense: true,
-                      leading: Container(
+                      leading: SizedBox(
                         width: 36,
                         height: 36,
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: isCurrent
-                              ? AppColors.primary.withValues(alpha: 0.2)
-                              : Colors.white.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isCurrent
-                                ? AppColors.primary.withValues(alpha: 0.6)
-                                : Colors.white10,
-                            width: 0.8,
-                          ),
-                        ),
                         child: ch.logoUrl != null && ch.logoUrl!.isNotEmpty
                             ? CachedNetworkImage(
                                 imageUrl: ch.logoUrl!,
+                                httpHeaders: const {
+                                  'User-Agent':
+                                      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                                },
                                 fit: BoxFit.contain,
                                 errorWidget: (_, _, _) => Icon(
                                   Icons.tv_rounded,
                                   color: isCurrent ? AppColors.primary : Colors.white70,
-                                  size: 16,
+                                  size: 18,
                                 ),
                               )
                             : Icon(
                                 Icons.tv_rounded,
                                 color: isCurrent ? AppColors.primary : Colors.white70,
-                                size: 16,
+                                size: 18,
                               ),
                       ),
                       title: Text(
@@ -333,11 +323,26 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
     ).then((_) => _startHideTimer());
   }
 
+  void _navigateBack() {
+    if (_isFullscreen) {
+      _exitFullscreen();
+    }
+    ref.read(liveTvIsPlayingProvider.notifier).state = false;
+    ref.read(liveTvFullscreenProvider.notifier).state = false;
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/live-tv');
+    }
+  }
+
   @override
-  void dispose() {
-    _hideControlsTimer?.cancel();
-    _player?.dispose();
-    _searchController.dispose();
+  void deactivate() {
     if (_isFullscreen) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setPreferredOrientations([
@@ -345,6 +350,21 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
         DeviceOrientation.portraitDown,
       ]);
     }
+    ref.read(liveTvIsPlayingProvider.notifier).state = false;
+    ref.read(liveTvFullscreenProvider.notifier).state = false;
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _hideControlsTimer?.cancel();
+    _player?.dispose();
+    _searchController.dispose();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
     Future.microtask(() {
       try {
         ref.read(liveTvIsPlayingProvider.notifier).state = false;
@@ -372,7 +392,11 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
     return PopScope(
       canPop: !_isFullscreen,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
+        if (didPop) {
+          ref.read(liveTvIsPlayingProvider.notifier).state = false;
+          ref.read(liveTvFullscreenProvider.notifier).state = false;
+          return;
+        }
         if (_isFullscreen) {
           _exitFullscreen();
         }
@@ -558,13 +582,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                         child: Row(
                           children: [
                             IconButton(
-                              onPressed: () {
-                                if (context.canPop()) {
-                                  context.pop();
-                                } else {
-                                  context.go('/live-tv');
-                                }
-                              },
+                              onPressed: _navigateBack,
                               icon: const Icon(Icons.chevron_left_rounded,
                                   color: Colors.white, size: 28),
                               tooltip: 'Kembali ke Saluran',
@@ -723,6 +741,10 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
               ),
               child: CachedNetworkImage(
                 imageUrl: channel.logoUrl!,
+                httpHeaders: const {
+                  'User-Agent':
+                      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                },
                 fit: BoxFit.contain,
                 errorWidget: (_, _, _) => const Icon(
                   Icons.tv_rounded,
@@ -1010,58 +1032,51 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
   Widget _buildChannelCard(
       LiveTvChannel channel, bool isPlaying, bool isFavorite) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isPlaying
-              ? AppColors.primary.withValues(alpha: 0.6)
-              : Colors.white.withValues(alpha: 0.06),
-          width: isPlaying ? 1.2 : 0.8,
+        color: isPlaying
+            ? AppColors.primary.withValues(alpha: 0.10)
+            : Colors.transparent,
+        border: Border(
+          bottom: BorderSide(
+            color: isPlaying
+                ? AppColors.primary.withValues(alpha: 0.4)
+                : Colors.white.withValues(alpha: 0.08),
+            width: 0.8,
+          ),
         ),
       ),
       child: Material(
-        color: isPlaying
-            ? AppColors.primary.withValues(alpha: 0.12)
-            : AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.transparent,
         child: InkWell(
           onTap: () {
             _playChannel(channel);
           },
-          borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                Container(
+                // Channel Logo (Clean, no background box)
+                SizedBox(
                   width: 40,
                   height: 40,
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isPlaying
-                          ? AppColors.primary.withValues(alpha: 0.6)
-                          : Colors.white10,
-                      width: 0.8,
-                    ),
-                  ),
                   child: channel.logoUrl != null && channel.logoUrl!.isNotEmpty
                       ? CachedNetworkImage(
                           imageUrl: channel.logoUrl!,
+                          httpHeaders: const {
+                            'User-Agent':
+                                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                          },
                           fit: BoxFit.contain,
                           errorWidget: (_, _, _) => Icon(
                             Icons.tv_rounded,
                             color: isPlaying ? AppColors.primary : Colors.white70,
-                            size: 18,
+                            size: 20,
                           ),
                         )
                       : Icon(
                           Icons.tv_rounded,
                           color: isPlaying ? AppColors.primary : Colors.white70,
-                          size: 18,
+                          size: 20,
                         ),
                 ),
                 const SizedBox(width: 12),

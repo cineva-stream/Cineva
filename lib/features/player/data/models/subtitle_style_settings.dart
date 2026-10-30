@@ -69,6 +69,9 @@ class SubtitleStyleSettings {
       return SubtitleStyleSettings(
         fontSize: SettingsService.getSubtitleFontSizePoints(),
         backgroundOpacity: SettingsService.getSubtitleBackgroundOpacity(),
+        strokeWidth: SettingsService.getSubtitleStrokeWidth(),
+        bottomOffset: SettingsService.getSubtitleBottomOffset(),
+        textColor: Color(SettingsService.getSubtitleTextColorValue()),
       );
     } catch (_) {
       return const SubtitleStyleSettings();

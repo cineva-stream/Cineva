@@ -1,53 +1,49 @@
-# Cineva v1.0.9 - Release Notes 🎬
+# Cineva v1.1.0 - Release Notes 🎬
 
-Pembaruan Cineva versi 1.0.9 menghadirkan redesain alur eksplorasi TV Live dengan halaman katalog saluran yang lebih luas dan bersih, pemisahan pemutar siaran ke halaman baru (*dedicated player screen*) dengan animasi *slide* yang halus, perbaikan tuntas masalah kegagalan pengunduhan subtitle (OpenSubtitles API & direct stream), serta kustomisasi pesan notifikasi pembaruan aplikasi dwibahasa (*bilingual update notice*).
+Pembaruan Cineva versi 1.1.0 menghadirkan perbaikan alur navigasi kembali saat menonton TV Live dengan pemulihan menu navigasi bawah (*bottom navigation menu*) secara langsung dan animasi *slide-up* yang mulus, redesain daftar saluran TV Live yang konsisten tanpa *card* menggunakan garis batas (*border*) tipis yang halus, pemulihan seluruh logo saluran TV yang akurat dengan latar belakang transparan, serta penyimpanan permanen (*persistence*) untuk pengaturan *stroke/outline* dan posisi vertikal subtitle pada menu mini popup pemutar film dan serial TV.
 
 ---
 
 ## Ringkasan Perubahan
 
-### 1. Redesain Eksplorasi TV Live & Halaman Pemutar Terpisah (*Dedicated Player Screen*)
-- **Katalog Saluran TV Lebih Luas Tanpa Stream Card**: Saat membuka tab TV Live melalui menu navigasi bawah, halaman kini sepenuhnya menyajikan daftar saluran lengkap tanpa memunculkan pemutar atau *card stream* di bagian atas. Hal ini memberikan ruang pandang yang jauh lebih luas bagi pengguna untuk mencari dan menyaring saluran favorit.
-- **Transisi Halus ke Halaman Pemutar (*Smooth Slide Transition*)**: Ketika pengguna memilih salah satu saluran, aplikasi akan membuka halaman pemutar baru (`LiveTvPlayerScreen`) dengan transisi geser horizontal (*slide transition*) yang mulus.
-- **Kontrol Pemutar Siaran Lengkap**:
-  - Pemutar 16:9 di bagian atas dengan tombol kembali (*Chevron Left*), penanda status *LIVE*, pengatur rasio aspek (16:9, Cover, Fill), tombol muat ulang, serta tombol putar/jeda.
-  - Mode layar penuh (*fullscreen*) imersif dengan orientasi lanskap otomatis dan laci saluran cepat (*Quick Channel Drawer*).
-  - Daftar pengganti saluran (*Channel Switcher*) di bawah pemutar memudahkan pengguna berpindah saluran secara instan tanpa perlu keluar dari layar pemutar.
+### 1. Perbaikan Navigasi Kembali dari TV Live & Animasi Slide-Up Bottom Navigation Bar
+- **Pemulihan Menu Navigasi Bawah Secara Langsung**: Memperbaiki masalah di mana pengguna harus menekan tombol kembali (*back button*) dua kali agar *bottom navigation bar* muncul kembali setelah keluar dari pemutar TV Live.
+- **Transisi Halus Slide-Up**: Status pemutar siaran TV disinkronkan dan direset secara instan saat navigasi kembali dipicu (baik melalui tombol navigasi Android maupun ikon *Chevron Left* Cineva), sehingga menu navigasi bawah langsung meluncur naik (*slide-up*) dengan animasi `easeInOutCubic` yang halus dan responsif.
+- **Kunci Otomatis Orientasi Lanskap Layar Penuh**: Menekan ikon persegi putus-putus fullscreen (`Icons.fullscreen_rounded`) kini secara instan mengunci dan memutar orientasi layar ke lanskap (`landscapeLeft` / `landscapeRight`) meskipun pengguna mematikan fitur *Auto-Rotate* di pengaturan sistem Android, serta mengembalikan orientasi ke potret secara otomatis saat keluar dari mode layar penuh.
+- **Pembersihan Logika PopScope**: Mencegah penahanan (*trapping*) tombol kembali pada rute cangkang utama (`MainShell`) ketika berada di halaman katalog saluran TV Live.
 
-### 2. Perbaikan Masalah Pengunduhan Subtitle (*Subtitle Download Fix*)
-- **Perbaikan Galat HTTP 503 OpenSubtitles**: Menambahkan header wajib `'Accept': 'application/json'` pada permintaan API OpenSubtitles (`/download`), yang sebelumnya menyebabkan respons HTML *Service Temporarily Unavailable* (503) dan memicu peringatan *"Failed to Download Subtitle"*.
-- **Pemanfaatan Direct Download URL**: Memperbaiki logika `_applySubtitle` pada `PlayerScreen` agar langsung memanfaatkan URL unduhan yang telah tersedia (`sub.downloadUrl`) dari stream VixSrc dan CDN lokal tanpa melakukan *round-trip* API tambahan.
-- **Dukungan UTF-8 BOM pada Parser Subtitle**: Membersihkan *Byte Order Mark* (BOM `\uFEFF`) pada parser `SubtitleCue.parseSrt` untuk memastikan berkas subtitle hasil unduhan dapat dibaca dan disinkronkan secara sempurna tanpa galat format.
+### 2. Redesain Daftar TV Live Bergaya Garis Tipis Minimalis & Pemulihan Logo Saluran
+- **Konsistensi Tampilan Tanpa Card**: Mengubah tampilan daftar saluran pada katalog TV Live (`LiveTvScreen`) dan pemutar TV Live (`LiveTvPlayerScreen`) dari bentuk kontainer *Card* tebal berlatar abu-abu menjadi daftar minimalis dengan garis batas tipis halus (*subtle divider border* 0.8px) di setiap pemisah item, selaras dengan daftar Watchlist dan Riwayat Tontonan.
+- **Logo Saluran Berlatar Transparan**: Menghilangkan kotak latar belakang berwarna di belakang logo saluran, sehingga logo setiap saluran tampil bersih, elegan, dan menyatu secara alami dengan latar belakang aplikasi.
+- **Pemulihan 100% Logo Saluran TV**:
+  - Memperbarui tautan logo untuk seluruh saluran siaran (seperti TVRI Nasional, TVRI World, DAAI TV, Garuda TV, Indonesiana TV, DW News, Bloomberg TV+, Golf Channel, Pluto TV Movies, dan NASA TV) dengan resolusi standar produksi yang diverifikasi aktif (HTTP 200 OK).
+  - Menyematkan header User-Agent browser standar pada pemanggilan `CachedNetworkImage` agar tidak lagi diblokir atau menghasilkan galat 400/429 oleh CDN.
 
-### 3. Kustomisasi Pesan Notifikasi Pembaruan Dwibahasa (*Bilingual Update Notice*)
-- Menyesuaikan isi pesan (*notification body*) saat terdapat rilis baru agar tidak menampilkan teks mentah (*raw body*) changelog GitHub, melainkan pesan ramah pengguna:
-  - **Bahasa Indonesia**: *"Update Tersedia, Segera update sekarang untuk menikmati layanan streaming dengan lebih baik."*
-  - **English**: *"New version available, Update now to improve your streaming."*
-- Pesan ini diterapkan secara konsisten baik pada notifikasi di dalam aplikasi (*in-app update checker*) maupun pada notifikasi latar belakang Android melalui WorkManager dan AlarmManager (`UpdateCheckWorker.kt`).
+### 3. Penyimpanan Permanen Pengaturan Stroke / Outline & Posisi Subtitle (*Subtitle Persistence*)
+- **Penyimpanan Nilai Kustomisasi Subtitle**: Memperbaiki bug di mana pengaturan *stroke/outline* dan posisi vertikal (*bottom offset*) pada menu mini popup pemutar film atau serial TV tidak tersimpan dan selalu ter-reset ke nilai bawaan saat berpindah episode atau mengganti judul film.
+- **Sinkronisasi Menyeluruh dengan Hive Settings**: Menambahkan kunci penyimpanan permanen (`keySubtitleStrokeWidth`, `keySubtitleBottomOffset`, dan `keySubtitleTextColor`) pada `SettingsService`.
+- **Inisialisasi Otomatis**: Memastikan `SubtitleStyleSettings.fromSettings()` dan fungsi `reloadFromSettings()` memuat kembali seluruh preferensi pengguna (ukuran huruf, latar belakang, tebal stroke, posisi, serta warna huruf) setiap kali pemutar dibuka.
+
+### 4. Perbaikan Kualitas Streaming Default & Kelanjutan Posisi Pemutaran (*Seamless Quality Switching*)
+- **Penerapan Otomatis Default Streaming Quality**: Memperbaiki bug di mana preferensi "Default Streaming Quality" (seperti 720p, 1080p, atau 480p) yang telah dipilih di menu pengaturan tidak diterapkan dan selalu kembali ke "Auto" saat memutar film atau serial TV. Sekarang pemutar secara otomatis membaca preferensi kualitas pengguna dan memilih *video track* yang sesuai dari master playlist HLS saat *stream* dimulai.
+- **Peralihan Resolusi Mulus Tanpa Mengulang dari Awal**: Memperbaiki masalah di mana saat pengguna mengganti kualitas resolusi di mini popup saat streaming sedang berlangsung, video mendadak mengulang dari detik ke-0. Sekarang posisi tontonan saat ini disimpan secara presisi dan dipulihkan kembali (*seek*) seketika setelah *video track* baru dimuat, disertai penguncian *timeline* sementara agar slider dan waktu tontonan tidak melompat.
 
 ---
 
 ## Riwayat Versi Sebelumnya
+
+### Cineva v1.0.9
+- **Redesain Eksplorasi TV Live & Halaman Pemutar Terpisah**: Katalog saluran penuh tanpa pemutar di bagian atas dan pembukaan pemutar baru (`LiveTvPlayerScreen`) dengan transisi *slide* horizontal halus.
+- **Perbaikan Masalah Pengunduhan Subtitle**: Penambahan header wajib `'Accept': 'application/json'` untuk OpenSubtitles API dan pembersihan UTF-8 BOM pada parser SRT.
+- **Kustomisasi Pesan Notifikasi Pembaruan Dwibahasa**: Notifikasi pembaruan ramah pengguna dalam Bahasa Indonesia dan Bahasa Inggris pada pengecekan in-app dan latar belakang Android.
 
 ### Cineva v1.0.8
 - **Perbaikan Navigasi & Animasi Watchlist**: Penyesuaian tab navigasi bawah dan animasi *slide-down* halus pada halaman Watchlist serta tombol Chevron Left.
 - **Penyempurnaan Total Fitur Unduhan & Pemutaran Offline**: Pemutaran loopback HLS langsung (`LocalStreamServer`), *token-preserving URL resolution* (`HlsUrlResolver`), dan perlindungan berkas segmen.
 - **Pembaruan Lisensi ke GPL-3.0**: Penyelarasan seluruh lisensi proyek menjadi GNU General Public License v3.0.
 
-### Cineva v1.0.7
-- **Redesain Pemutar TV Live Bergaya YouTube**: Pemutar 16:9 di bagian atas dengan daftar saluran interaktif di bawahnya.
-- **Mode Layar Penuh dengan Tombol Persegi Bawaan**: Tombol fullscreen persegi imersif dengan kontrol lengkap dan pengatur rasio aspek.
-- **Perbaikan Force Close**: Penanganan eksepsi WorkManager dan aturan ProGuard R8 untuk mencegah cold-start crash.
-
-### Cineva v1.0.6
-- **Notifikasi Pembaruan Otomatis di Latar Belakang**: Pengecekan otomatis rilis GitHub dengan Jetpack WorkManager.
-- **Perbaikan Riwayat Tontonan & Status Selesai**: Penanganan episode serial TV dan deduplikasi riwayat.
-- **Redesain "Pilih Sesuai Platform"**: Pelat logo resmi platform streaming berlatar belakang putih bersih di halaman pencarian.
-
----
-
 ## Informasi Versi
 
-- Versi Aplikasi: 1.0.9
-- Build: 10
+- Versi Aplikasi: 1.1.0
+- Build: 11
 - Target Sistem Operasi: Android 5.0 (API 21) ke atas

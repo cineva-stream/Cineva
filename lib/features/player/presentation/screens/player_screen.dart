@@ -117,8 +117,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _isBuffering = false;
   _PlayerLoadingStep _loadingStep = _PlayerLoadingStep.searching;
   String? _customLoadingStatus;
-  String _resolutionLabel = '1080p FHD';
-  String _currentQuality = 'Auto';
+
+  static String _formatResolutionLabel(String quality) {
+    if (quality == 'Auto') {
+      return 'Auto (1080p)';
+    } else if (quality == '1080p') {
+      return '1080p FHD';
+    } else if (quality == '720p') {
+      return '720p HD';
+    } else if (quality == '480p' || quality == '360p') {
+      return '$quality SD';
+    } else {
+      return '$quality HD';
+    }
+  }
+
+  late String _currentQuality = SettingsService.getDefaultQuality();
+  late String _resolutionLabel = _formatResolutionLabel(_currentQuality);
+  bool _hasAppliedDefaultQuality = false;
+  bool _isSwitchingQuality = false;
+  Duration? _qualityRestorePos;
 
   String _getLoadingStatusText(AppStrings s) {
     if (_customLoadingStatus != null) return _customLoadingStatus!;
@@ -589,6 +607,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _saveWatchHistory({bool force = false, bool? markCompleted}) {
     if (_isSwitchingEpisode && markCompleted != true) return;
+    if (_isSwitchingQuality && markCompleted != true) return;
     if (_isExiting && markCompleted == null && !force) return;
 
     final tmdbId = widget.tmdbId;
@@ -645,6 +664,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _listenToPlayerStreams() {
     _posSub = _player.stream.position.listen((pos) {
+      // While switching quality, ignore momentary 0s updates to prevent seekbar flickering
+      if (_isSwitchingQuality && _qualityRestorePos != null) {
+        if (pos.inSeconds < 1 && _qualityRestorePos!.inSeconds > 2) {
+          return;
+        }
+      }
+
       _position = pos;
       _positionNotifier.value = pos;
 
@@ -738,8 +764,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         }
         return;
       }
-      if (mounted && _isBuffering != buffering)
+      if (mounted && _isBuffering != buffering) {
         setState(() => _isBuffering = buffering);
+      }
     });
     _trackSub = _player.stream.track.listen((track) {
       // libmpv auto-detects internal stream subtitles and selects one by default.
@@ -758,12 +785,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       }
     });
     _tracksSub = _player.stream.tracks.listen((tracks) {
-      if (tracks.video.isNotEmpty &&
-          _player.state.track.video == VideoTrack.no()) {
-        debugPrint(
-          '[PlayerScreen] New video tracks detected, setting auto video track',
-        );
-        _player.setVideoTrack(VideoTrack.auto());
+      if (tracks.video.isNotEmpty) {
+        if (!_hasAppliedDefaultQuality) {
+          _hasAppliedDefaultQuality = true;
+          final targetQuality =
+              _currentQuality.isNotEmpty && _currentQuality != 'Offline'
+                  ? _currentQuality
+                  : SettingsService.getDefaultQuality();
+          if (targetQuality != 'Auto') {
+            _selectQualityTrack(targetQuality);
+          } else if (_player.state.track.video == VideoTrack.no()) {
+            _player.setVideoTrack(VideoTrack.auto());
+          }
+        } else if (_player.state.track.video == VideoTrack.no()) {
+          _player.setVideoTrack(VideoTrack.auto());
+        }
       }
     });
   }
@@ -1294,9 +1330,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         imdbId: _currentImdbId,
         isTv: isTv,
       );
-      if (resolved.tmdbId > 0) _currentTmdbId = resolved.tmdbId;
-      if (resolved.imdbId != null && resolved.imdbId!.isNotEmpty)
+      if (resolved.tmdbId > 0) {
+        _currentTmdbId = resolved.tmdbId;
+      }
+      if (resolved.imdbId != null && resolved.imdbId!.isNotEmpty) {
         _currentImdbId = resolved.imdbId;
+      }
     } catch (e) {
       debugPrint('[PlayerScreen] resolveIds exception: $e');
     }
@@ -1338,12 +1377,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           await _player.setSubtitleTrack(SubtitleTrack.no());
           await _player.setVolume(_volume);
 
+          final defaultQuality = SettingsService.getDefaultQuality();
+          final targetQuality =
+              _currentQuality.isNotEmpty && _currentQuality != 'Offline'
+                  ? _currentQuality
+                  : defaultQuality;
+          _hasAppliedDefaultQuality = false;
+
           if (mounted) {
             setState(() {
               _isLoading = false;
-              _currentQuality = 'Auto';
-              _resolutionLabel = '1080p FHD';
+              _currentQuality = targetQuality;
+              _resolutionLabel = _formatResolutionLabel(targetQuality);
             });
+          }
+
+          if (_player.state.tracks.video.isNotEmpty) {
+            _hasAppliedDefaultQuality = true;
+            if (targetQuality != 'Auto') {
+              unawaited(_selectQualityTrack(targetQuality));
+            }
           }
 
           // Subtitles loaded asynchronously in background so video playback begins immediately!
@@ -1406,8 +1459,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (url) {
-            if (mounted)
+            if (mounted) {
               setState(() => _loadingStep = _PlayerLoadingStep.preparingBackup);
+            }
           },
           onPageFinished: (url) async {
             try {
@@ -1492,13 +1546,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       await _player.setSubtitleTrack(SubtitleTrack.no());
       await _player.setVolume(_volume);
 
+      final defaultQuality = SettingsService.getDefaultQuality();
+      final targetQuality =
+          _currentQuality.isNotEmpty && _currentQuality != 'Offline'
+              ? _currentQuality
+              : defaultQuality;
+      _hasAppliedDefaultQuality = false;
+
       if (mounted) {
         setState(() {
           _useNativePlayer = true;
           _isLoading = false;
-          _currentQuality = 'Auto';
-          _resolutionLabel = '1080p FHD';
+          _currentQuality = targetQuality;
+          _resolutionLabel = _formatResolutionLabel(targetQuality);
         });
+      }
+
+      if (_player.state.tracks.video.isNotEmpty) {
+        _hasAppliedDefaultQuality = true;
+        if (targetQuality != 'Auto') {
+          unawaited(_selectQualityTrack(targetQuality));
+        }
       }
       unawaited(_loadSubtitles());
     } catch (e) {
@@ -1520,6 +1588,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _customLoadingStatus = ref
           .read(appStringsProvider)
           .playerServerSwitched(server.name);
+      _hasAppliedDefaultQuality = false;
     });
 
     try {
@@ -1544,38 +1613,122 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   // ── Quality Switching ──
 
+  Future<void> _selectQualityTrack(String quality) async {
+    final videoTracks = _player.state.tracks.video;
+    if (videoTracks.length <= 1) return;
+
+    VideoTrack targetTrack;
+    if (quality == 'Auto') {
+      targetTrack = VideoTrack.auto();
+    } else {
+      final targetH =
+          int.tryParse(quality.replaceAll(RegExp(r'[^0-9]'), '')) ?? 1080;
+      VideoTrack? matched = videoTracks
+          .where((t) => (t.h ?? 0) == targetH)
+          .firstOrNull;
+      if (matched == null) {
+        final sorted = List<VideoTrack>.from(videoTracks)
+          ..sort((a, b) => (a.h ?? 0).compareTo(b.h ?? 0));
+        matched =
+            sorted.where((t) => (t.h ?? 0) <= targetH).lastOrNull ??
+            sorted.first;
+      }
+      targetTrack = matched;
+    }
+
+    if (_player.state.track.video.id != targetTrack.id) {
+      final savedPos = _position;
+      final wasPlaying = _isPlaying;
+      debugPrint(
+        '[PlayerScreen] Applying quality track: ${targetTrack.id} ($quality)',
+      );
+      try {
+        await _player.setVideoTrack(targetTrack);
+        if (savedPos > const Duration(seconds: 1)) {
+          await Future.delayed(const Duration(milliseconds: 150));
+          await _player.seek(savedPos);
+          if (wasPlaying) {
+            await _player.play();
+          }
+        }
+      } catch (e) {
+        debugPrint('[PlayerScreen] Failed to apply quality track: $e');
+      }
+    }
+  }
+
   Future<void> _setQuality(String quality) async {
+    if (_currentQuality == quality) {
+      setState(() => _activePopup = _PlayerMiniPopup.none);
+      return;
+    }
+
+    final savedPos = _position;
+    final wasPlaying = _isPlaying;
+
     setState(() {
       _currentQuality = quality;
-      if (quality == 'Auto') {
-        _resolutionLabel = 'Auto (1080p)';
-      } else if (quality == '360p' || quality == '480p') {
-        _resolutionLabel = '$quality SD';
-      } else {
-        _resolutionLabel = '$quality HD';
-      }
+      _resolutionLabel = _formatResolutionLabel(quality);
       _activePopup = _PlayerMiniPopup.none;
     });
 
-    // In media_kit, video tracks on HLS master playlists can be selected
     final videoTracks = _player.state.tracks.video;
     if (videoTracks.length > 1) {
+      VideoTrack targetTrack;
       if (quality == 'Auto') {
-        await _player.setVideoTrack(VideoTrack.auto());
+        targetTrack = VideoTrack.auto();
       } else {
         final targetH =
             int.tryParse(quality.replaceAll(RegExp(r'[^0-9]'), '')) ?? 1080;
-        VideoTrack? matchedTrack = videoTracks
+        VideoTrack? matched = videoTracks
             .where((t) => (t.h ?? 0) == targetH)
             .firstOrNull;
-        if (matchedTrack == null) {
+        if (matched == null) {
           final sorted = List<VideoTrack>.from(videoTracks)
             ..sort((a, b) => (a.h ?? 0).compareTo(b.h ?? 0));
-          matchedTrack =
+          matched =
               sorted.where((t) => (t.h ?? 0) <= targetH).lastOrNull ??
               sorted.first;
         }
-        await _player.setVideoTrack(matchedTrack);
+        targetTrack = matched;
+      }
+
+      if (_player.state.track.video.id != targetTrack.id) {
+        _isSwitchingQuality = true;
+        _qualityRestorePos = savedPos;
+
+        try {
+          await _player.setVideoTrack(targetTrack);
+
+          if (savedPos > const Duration(seconds: 1)) {
+            // Give mpv demuxer a moment to switch variant playlist before seeking
+            await Future.delayed(const Duration(milliseconds: 150));
+            await _player.seek(savedPos);
+            if (wasPlaying) {
+              await _player.play();
+            }
+
+            // Safety double-check after 250ms to ensure position didn't stick to 0
+            await Future.delayed(const Duration(milliseconds: 250));
+            if (_player.state.position.inSeconds < 1 &&
+                savedPos.inSeconds > 2) {
+              await _player.seek(savedPos);
+              if (wasPlaying) {
+                await _player.play();
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('[PlayerScreen] Quality switch error: $e');
+        } finally {
+          // Release lock after small grace period
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _isSwitchingQuality = false;
+              _qualityRestorePos = null;
+            }
+          });
+        }
       }
     }
     _resetControlsTimer();
@@ -1670,8 +1823,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _resetControlsTimer() {
     _controlsTimer?.cancel();
-    if (_activePopup != _PlayerMiniPopup.none)
+    if (_activePopup != _PlayerMiniPopup.none) {
       return; // Keep controls active when popup is open
+    }
     _controlsTimer = Timer(const Duration(seconds: 4), () {
       if (mounted && _activePopup == _PlayerMiniPopup.none) {
         setState(() => _showControls = false);
@@ -1680,8 +1834,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   void _toggleControls() {
-    if (_isLoading)
+    if (_isLoading) {
       return; // Do not toggle controls while processing/searching server
+    }
     if (_activePopup != _PlayerMiniPopup.none) {
       setState(() => _activePopup = _PlayerMiniPopup.none);
       _resetControlsTimer();
@@ -1790,6 +1945,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _duration = Duration.zero;
     _hasRestoredPosition = false;
     _hasAutoPlayedNext = false;
+    _hasAppliedDefaultQuality = false;
     _initialPositionMs = null;
     _activePopup = _PlayerMiniPopup.none;
 
