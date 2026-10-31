@@ -8,7 +8,7 @@ Pembaruan Cineva versi 1.1.1 menghadirkan penambahan saluran TV Live terlengkap 
 
 ### 1. Penambahan Saluran TV Live Nasional & Internasional Terlengkap
 - **Katalog Saluran Nasional Indonesia Terlengkap**:
-  - Menambahkan saluran televisi swasta dan nasional utama: **Indosiar HD**, **SCTV HD**, **Trans TV**, **Trans7 HD**, **ANTV HD**, **Metro TV HD**, **Kompas TV HD**, **iNews HD**, **CNN Indonesia**, **CNBC Indonesia**, **BTV Indonesia**, **Jawa Pos TV**, **JTV Surabaya**, **UGTV Gunadarma**, berdampingan dengan **TVRI Nasional**, **TVRI World**, **DAAI TV**, **Garuda TV**, **Indonesiana TV**, **Al-Bahjah TV**, **Ahsan TV**, dan **Ashiil TV**.
+  - Menambahkan saluran televisi swasta dan nasional utama: **Indosiar HD** (siaran resmi verified aktif), **Moji HD** (siaran Proliga & Premier League dengan logo resmi), **SCTV HD**, **Trans TV**, **Trans7 HD**, **ANTV HD**, **Metro TV HD**, **Kompas TV HD**, **iNews HD**, **CNN Indonesia**, **CNBC Indonesia**, **BTV Indonesia**, **Jawa Pos TV**, **JTV Surabaya**, **UGTV Gunadarma**, berdampingan dengan **TVRI Nasional**, **TVRI World**, **DAAI TV**, **Garuda TV**, **Indonesiana TV**, **Al-Bahjah TV**, **Ahsan TV**, dan **Ashiil TV**.
 - **Katalog Berita & Hiburan Internasional Terverifikasi**:
   - Menghadirkan siaran berita global berkualitas tinggi: **CNN News 18**, **BBC News International**, **ABC News Live**, **CBS News 24/7**, **NBC News NOW**, **Al Jazeera English**, **DW News English**, **Bloomberg TV+**, **Euronews English**, **France 24 English**, **CNBC International**, serta siaran olahraga dan dokumenter seperti **BBC Earth & Studios**, **Red Bull TV**, **ACC Digital Network**, dan **NASA TV**.
 - **Logo Resmi Berlatar Transparan & Header Dinamis**:
