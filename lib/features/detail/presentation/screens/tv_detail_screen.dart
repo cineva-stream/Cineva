@@ -528,18 +528,22 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: episodes.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 12),
+                          separatorBuilder: (_, _) => Divider(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            height: 1,
+                            thickness: 0.8,
+                          ),
                           itemBuilder: (context, epIdx) {
                             final ep = episodes[epIdx];
                             final epNum = ep['episode_number'] as int? ?? (epIdx + 1);
                             final epName = ep['name'] as String? ?? 'Episode $epNum';
                             final epStill = ep['still_path'] as String?;
-                            final epOverview = ep['overview'] as String? ?? '';
+                            final epOverview = (ep['overview'] as String? ?? '').trim();
                             final epRuntime = ep['runtime'] as int?;
                             final epAirDate = ep['air_date'] as String? ?? '';
 
                             return InkWell(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(8),
                               onTap: () async {
                                 await context.push('/player', extra: {
                                   'title': name,
@@ -559,45 +563,62 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                 ]);
                                 SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
                               },
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceVariant.withValues(alpha: 0.7),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: AppColors.surfaceElevated),
-                                ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Thumbnail with Episode Badge
+                                    // Clean Episode Thumbnail with subtle badge
                                     ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(8),
                                       child: Stack(
                                         children: [
                                           CachedNetworkImage(
                                             imageUrl: ApiConstants.imageUrl(epStill, size: ApiConstants.backdropSmall),
-                                            width: 110,
-                                            height: 72,
+                                            width: 116,
+                                            height: 74,
                                             fit: BoxFit.cover,
                                             placeholder: (_, _) => Container(
-                                              width: 110, height: 72, color: AppColors.surface,
+                                              width: 116,
+                                              height: 74,
+                                              color: AppColors.surface,
                                             ),
                                             errorWidget: (_, _, _) => Container(
-                                              width: 110, height: 72, color: AppColors.surface,
-                                              child: const Icon(Icons.tv, color: AppColors.textMuted),
+                                              width: 116,
+                                              height: 74,
+                                              color: AppColors.surface,
+                                              child: const Icon(Icons.tv_rounded, color: AppColors.textMuted, size: 24),
+                                            ),
+                                          ),
+                                          Positioned.fill(
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
+                                                  colors: [
+                                                    Colors.transparent,
+                                                    Colors.black.withValues(alpha: 0.65),
+                                                  ],
+                                                ),
+                                              ),
                                             ),
                                           ),
                                           Positioned(
-                                            top: 4,
-                                            left: 4,
+                                            bottom: 4,
+                                            left: 6,
                                             child: Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                                               decoration: BoxDecoration(
-                                                color: Colors.black.withValues(alpha: 0.75),
+                                                color: Colors.black.withValues(alpha: 0.8),
                                                 borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(
+                                                  color: AppColors.primary.withValues(alpha: 0.5),
+                                                  width: 0.6,
+                                                ),
                                               ),
                                               child: Text(
-                                                'EPS $epNum',
+                                                'EP $epNum',
                                                 style: const TextStyle(
                                                   color: AppColors.primary,
                                                   fontSize: 10,
@@ -612,7 +633,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
 
                                     const SizedBox(width: 12),
 
-                                    // Episode Info
+                                    // Episode Details & Synopsis
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -627,7 +648,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
-                                          const SizedBox(height: 4),
+                                          const SizedBox(height: 3),
                                           Row(
                                             children: [
                                               if (epRuntime != null && epRuntime > 0)
@@ -645,10 +666,14 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                             ],
                                           ),
                                           if (epOverview.isNotEmpty) ...[
-                                            const SizedBox(height: 4),
+                                            const SizedBox(height: 5),
                                             Text(
                                               epOverview,
-                                              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                              style: TextStyle(
+                                                color: Colors.white.withValues(alpha: 0.65),
+                                                fontSize: 12,
+                                                height: 1.35,
+                                              ),
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -695,11 +720,15 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                           decoration: BoxDecoration(
                                             color: AppColors.primary.withValues(alpha: 0.15),
                                             shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: AppColors.primary.withValues(alpha: 0.4),
+                                              width: 0.8,
+                                            ),
                                           ),
                                           child: const Icon(
                                             Icons.play_arrow_rounded,
                                             color: AppColors.primary,
-                                            size: 20,
+                                            size: 18,
                                           ),
                                         ),
                                       ],

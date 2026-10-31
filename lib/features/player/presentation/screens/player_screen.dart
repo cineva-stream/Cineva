@@ -1482,13 +1482,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             final url = request.url.toLowerCase();
             if (url.startsWith('intent://') ||
                 url.startsWith('market://') ||
+                url.startsWith('vnd.youtube:') ||
                 url.contains('play.google.com') ||
                 url.contains('shopee') ||
                 url.contains('lazada') ||
+                url.contains('tokopedia') ||
                 url.contains('casino') ||
                 url.contains('betting') ||
+                url.contains('slot') ||
+                url.contains('judi') ||
                 url.contains('adclick') ||
-                url.contains('doubleclick')) {
+                url.contains('popads') ||
+                url.contains('adsterra') ||
+                url.contains('doubleclick') ||
+                url.contains('googleads') ||
+                url.contains('onclick') ||
+                url.contains('banner')) {
               return NavigationDecision.prevent;
             }
             return NavigationDecision.navigate;
@@ -1523,7 +1532,31 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       } else if (type == 'TIME_UPDATE') {
         final timeMs = data['timeMs'] as int?;
         if (timeMs != null && !_useNativePlayer && mounted) {
-          _positionNotifier.value = Duration(milliseconds: timeMs);
+          final pos = Duration(milliseconds: timeMs);
+          _position = pos;
+          _positionNotifier.value = pos;
+        }
+      } else if (type == 'DURATION_UPDATE') {
+        final durationMs = data['durationMs'] as int?;
+        if (durationMs != null && durationMs > 0 && !_useNativePlayer && mounted) {
+          setState(() {
+            _duration = Duration(milliseconds: durationMs);
+          });
+        }
+      } else if (type == 'PLAY_STATE') {
+        final playing = data['playing'] as bool?;
+        if (playing != null && !_useNativePlayer && mounted) {
+          setState(() {
+            _isPlaying = playing;
+            _isWebPlaying = playing;
+          });
+        }
+      } else if (type == 'BUFFERING_STATE') {
+        final buffering = data['buffering'] as bool?;
+        if (buffering != null && !_useNativePlayer && mounted) {
+          setState(() {
+            _isBuffering = buffering;
+          });
         }
       }
     } catch (e) {
@@ -3415,15 +3448,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               onTap: () => _togglePopup(_PlayerMiniPopup.quality),
             ),
 
-          // Mini Popup Button: Volume & Audio Boost (Native Player only) - Icon only without border
-          if (_useNativePlayer)
-            _buildTopBarIconButton(
-              icon: _volume == 0
-                  ? Icons.volume_off_rounded
-                  : Icons.volume_up_rounded,
-              isActive: _activePopup == _PlayerMiniPopup.volume,
-              onTap: () => _togglePopup(_PlayerMiniPopup.volume),
-            ),
+          // Mini Popup Button: Volume & Audio Boost - Icon only without border
+          _buildTopBarIconButton(
+            icon: _volume == 0
+                ? Icons.volume_off_rounded
+                : Icons.volume_up_rounded,
+            isActive: _activePopup == _PlayerMiniPopup.volume,
+            onTap: () => _togglePopup(_PlayerMiniPopup.volume),
+          ),
 
           // Mini Popup Button: Subtitle Selection (Includes Atur Sub) - Icon only without border
           _buildTopBarIconButton(
@@ -3486,7 +3518,32 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 ),
               )
             else if (_webViewController != null)
-              WebViewWidget(controller: _webViewController!)
+              Stack(
+                fit: StackFit.expand,
+                children: [
+                  WebViewWidget(controller: _webViewController!),
+                  // Anti-Ad Transparent Touch Shield: Intercepts taps & gestures to prevent triggering web ads!
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _toggleControls,
+                      onVerticalDragUpdate: (details) {
+                        final screenWidth = MediaQuery.of(context).size.width;
+                        if (details.globalPosition.dx > screenWidth / 2) {
+                          final delta = -details.primaryDelta! * 0.5;
+                          _setVolume(_volume + delta);
+                        } else {
+                          final delta = -details.primaryDelta! / 250.0;
+                          _setBrightness(_brightness + delta);
+                        }
+                      },
+                      child: Container(
+                        color: Colors.transparent,
+                      ),
+                    ),
+                  ),
+                ],
+              )
             else
               const SizedBox.shrink(),
 
@@ -3672,8 +3729,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 ),
               ),
 
-            // ── 5. Native Mode: The ONLY Control Overlay: Cineva Custom Cinema Controls ──
-            if (!_isLoading && _useNativePlayer)
+            // ── 5. Cineva Custom Cinema Controls (Unified for Both Native & Web Streams) ──
+            if (!_isLoading)
               AnimatedOpacity(
                 opacity: _showControls ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
@@ -3700,7 +3757,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           // ── Top Navigation & Quality Bar ──
                           _buildTopBar(s),
 
-                          // ── Center Controls (Native Player Only) ──
+                          // ── Center Controls (Play/Pause, Replay 10, Forward 10) ──
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -3751,7 +3808,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             ],
                           ),
 
-                          // ── Bottom Timeline Scrubber (Native Player Only) ──
+                          // ── Bottom Timeline Scrubber ──
                           Padding(
                             padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                             child: ValueListenableBuilder<Duration>(
@@ -3833,53 +3890,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 ),
               ),
 
-            // ── 5.1 Web Mode: Top Navigation & Server Switcher Bar ONLY (Zero Double Controls!) ──
-            if (!_isLoading && !_useNativePlayer) ...[
-              // Top touch area to reveal top bar if hidden
-              if (!_showControls)
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: 48,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () {
-                      setState(() => _showControls = true);
-                      _resetControlsTimer();
-                    },
-                  ),
-                ),
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: AnimatedOpacity(
-                  opacity: _showControls ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: IgnorePointer(
-                    ignoring: !_showControls,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.9),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                      child: SafeArea(bottom: false, child: _buildTopBar(s)),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-
-            // ── 5.5 Floating TV Series Next Episode Action (Native Player <= 60s remaining) ──
+            // ── 5.5 Floating TV Series Next Episode Action (<= 60s remaining) ──
             if (!_isLoading &&
-                _useNativePlayer &&
                 _nextEpisodeButtonVisible &&
                 (_currentSeason != null && _currentEpisode != null))
               Positioned(

@@ -180,12 +180,18 @@ class SmartStreamService {
     return (tmdbId: resolvedTmdb, imdbId: resolvedImdb);
   }
 
-  /// JavaScript payload injected into the webview to sniff direct HLS (.m3u8) / MP4 streams
-  /// and automatically communicate them back to Flutter via `CinevaStreamBridge`.
+  /// JavaScript payload injected into the webview to sniff direct HLS (.m3u8) / MP4 streams,
+  /// neutralize intrusive ad popups, and synchronize video playback state with Cineva's Custom UI.
   static const String streamSnifferJs = '''
 (function() {
   if (window.__cinevaSnifferInstalled) return;
   window.__cinevaSnifferInstalled = true;
+
+  // Neutralize popups and unwanted alert redirects
+  try {
+    window.open = function() { return null; };
+    window.alert = function() { return null; };
+  } catch(e) {}
 
   function notifyStream(url) {
     if (!url || typeof url !== 'string') return;
@@ -237,7 +243,7 @@ class SmartStreamService {
     }
   } catch(e) {}
 
-  // 4. Periodic scan for video elements
+  // 4. Periodic scan and full synchronization for video elements
   setInterval(function() {
     try {
       const videos = document.querySelectorAll('video');
@@ -249,14 +255,68 @@ class SmartStreamService {
         for (let j = 0; j < sources.length; j++) {
           if (sources[j].src) notifyStream(sources[j].src);
         }
-        // Subtitle time sync in web mode
-        if (!v.__cinevaTimeHooked) {
-          v.__cinevaTimeHooked = true;
+
+        // Full event synchronization with Cineva's Custom Cinema UI
+        if (!v.__cinevaEventsHooked) {
+          v.__cinevaEventsHooked = true;
+
+          // Auto-unmute if muted and attempt playback
+          v.muted = false;
+
+          function sendDuration() {
+            if (window.CinevaStreamBridge && !isNaN(v.duration) && v.duration > 0) {
+              window.CinevaStreamBridge.postMessage(JSON.stringify({
+                type: 'DURATION_UPDATE',
+                durationMs: Math.round(v.duration * 1000)
+              }));
+            }
+          }
+
+          sendDuration();
+          v.addEventListener('durationchange', sendDuration);
+          v.addEventListener('loadedmetadata', sendDuration);
+
           v.addEventListener('timeupdate', function() {
             if (window.CinevaStreamBridge && !isNaN(v.currentTime)) {
               window.CinevaStreamBridge.postMessage(JSON.stringify({
                 type: 'TIME_UPDATE',
                 timeMs: Math.round(v.currentTime * 1000)
+              }));
+            }
+          });
+
+          v.addEventListener('play', function() {
+            if (window.CinevaStreamBridge) {
+              window.CinevaStreamBridge.postMessage(JSON.stringify({
+                type: 'PLAY_STATE',
+                playing: true
+              }));
+            }
+          });
+
+          v.addEventListener('pause', function() {
+            if (window.CinevaStreamBridge) {
+              window.CinevaStreamBridge.postMessage(JSON.stringify({
+                type: 'PLAY_STATE',
+                playing: false
+              }));
+            }
+          });
+
+          v.addEventListener('waiting', function() {
+            if (window.CinevaStreamBridge) {
+              window.CinevaStreamBridge.postMessage(JSON.stringify({
+                type: 'BUFFERING_STATE',
+                buffering: true
+              }));
+            }
+          });
+
+          v.addEventListener('playing', function() {
+            if (window.CinevaStreamBridge) {
+              window.CinevaStreamBridge.postMessage(JSON.stringify({
+                type: 'BUFFERING_STATE',
+                buffering: false
               }));
             }
           });
@@ -267,11 +327,23 @@ class SmartStreamService {
 })();
 ''';
 
-  /// CSS injected into web streams to clean up ads, popups, and maximize cinema viewport.
+  /// CSS injected into web streams to clean up ads, popups, disable duplicate web controls,
+  /// and maximize cinema viewport.
   static const String cinemaCleanerCss = '''
 /* Hide common ad containers, popups, and watermarks */
 iframe[src*="ad"], iframe[id*="ad"], div[id*="ad"], div[class*="ad-"], div[class*="banner"],
-.modal-backdrop, #pop-ad, .adsterra-banner, .anti-adblock, .jw-watermark {
+.modal-backdrop, #pop-ad, .adsterra-banner, .anti-adblock, .jw-watermark,
+div[style*="z-index: 2147483647"], div[id*="overlay"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Hide built-in web player controls to prevent duplicate controls with Cineva's Custom UI */
+video::-webkit-media-controls { display: none !important; }
+video::-webkit-media-controls-enclosure { display: none !important; }
+.jw-controls, .jw-controlbar, .vjs-control-bar, .plyr__controls, .control-bar, .player-controls {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;

@@ -121,13 +121,22 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
 
     if (_player != null) {
       try {
+        final headers = <String, String>{
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        };
+        if (channel.streamUrl.contains('dens.tv')) {
+          headers['Referer'] = 'https://www.dens.tv/';
+          headers['Origin'] = 'https://www.dens.tv';
+        } else if (channel.streamUrl.contains('cnbcindonesia.com') ||
+            channel.streamUrl.contains('detik.com')) {
+          headers['Referer'] = 'https://video.detik.com/';
+        }
+
         await _player!.open(
           Media(
             channel.streamUrl,
-            httpHeaders: {
-              'User-Agent':
-                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            },
+            httpHeaders: headers,
           ),
         );
       } catch (e) {
