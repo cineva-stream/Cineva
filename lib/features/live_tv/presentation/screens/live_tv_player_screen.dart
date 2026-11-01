@@ -49,6 +49,8 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
   bool _hasError = false;
   String? _errorMessage;
   BoxFit _videoFit = BoxFit.contain;
+  bool _isLandscapeChannelDrawerOpen = false;
+  String _landscapeSelectedCategory = 'Semua';
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -217,6 +219,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
   void _exitFullscreen() {
     setState(() {
       _isFullscreen = false;
+      _isLandscapeChannelDrawerOpen = false;
     });
     ref.read(liveTvFullscreenProvider.notifier).state = false;
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -227,113 +230,26 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
     _startHideTimer();
   }
 
-  void _showQuickChannelDrawer() {
-    _hideControlsTimer?.cancel();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.background,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        side: BorderSide(color: Colors.white12, width: 0.8),
-      ),
-      builder: (context) {
-        final channels = LiveTvChannelsData.defaultChannels;
-        return Container(
-          height: 380,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    const Icon(Icons.live_tv_rounded, color: AppColors.primary, size: 18),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Pilih Saluran TV',
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Divider(color: Colors.white10, height: 1),
-              Expanded(
-                child: ListView.separated(
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: channels.length,
-                  separatorBuilder: (_, _) => const Divider(
-                    color: Colors.white10,
-                    height: 1,
-                    indent: 16,
-                    endIndent: 16,
-                  ),
-                  itemBuilder: (context, index) {
-                    final ch = channels[index];
-                    final isCurrent = ch.id == _currentChannel.id;
-                    return ListTile(
-                      dense: true,
-                      leading: SizedBox(
-                        width: 36,
-                        height: 36,
-                        child: ch.logoUrl != null && ch.logoUrl!.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: ch.logoUrl!,
-                                httpHeaders: const {
-                                  'User-Agent':
-                                      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                                },
-                                fit: BoxFit.contain,
-                                errorWidget: (_, _, _) => Icon(
-                                  Icons.tv_rounded,
-                                  color: isCurrent ? AppColors.primary : Colors.white70,
-                                  size: 18,
-                                ),
-                              )
-                            : Icon(
-                                Icons.tv_rounded,
-                                color: isCurrent ? AppColors.primary : Colors.white70,
-                                size: 18,
-                              ),
-                      ),
-                      title: Text(
-                        ch.name,
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-                          color: isCurrent ? AppColors.primary : Colors.white,
-                        ),
-                      ),
-                      subtitle: Text(
-                        ch.category,
-                        style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
-                      ),
-                      trailing: isCurrent
-                          ? const Icon(Icons.play_circle_fill_rounded,
-                              color: AppColors.primary, size: 18)
-                          : null,
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        _playChannel(ch);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    ).then((_) => _startHideTimer());
+  void _toggleLandscapeChannelDrawer() {
+    setState(() {
+      _isLandscapeChannelDrawerOpen = !_isLandscapeChannelDrawerOpen;
+    });
+    if (_isLandscapeChannelDrawerOpen) {
+      _hideControlsTimer?.cancel();
+    } else {
+      _startHideTimer();
+    }
   }
 
   void _navigateBack() {
     if (_isFullscreen) {
+      if (_isLandscapeChannelDrawerOpen) {
+        setState(() {
+          _isLandscapeChannelDrawerOpen = false;
+        });
+        _startHideTimer();
+        return;
+      }
       _exitFullscreen();
     }
     ref.read(liveTvIsPlayingProvider.notifier).state = false;
@@ -407,13 +323,20 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
           return;
         }
         if (_isFullscreen) {
+          if (_isLandscapeChannelDrawerOpen) {
+            setState(() {
+              _isLandscapeChannelDrawerOpen = false;
+            });
+            _startHideTimer();
+            return;
+          }
           _exitFullscreen();
         }
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: _isFullscreen
-            ? _buildFullscreenPlayer(s, isFav, favoritesNotifier)
+            ? _buildFullscreenPlayer(s, isFav, favoritesNotifier, favorites)
             : SafeArea(
                 bottom: false,
                 child: Column(
@@ -1157,273 +1080,339 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
   }
 
   /// Immersive Fullscreen Video Player
-  Widget _buildFullscreenPlayer(
-      AppStrings s, bool isFav, dynamic favoritesNotifier) {
-    return Container(
-      color: Colors.black,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Video / Placeholder
-          if (_controller != null && !_isTesting)
-            Video(
-              controller: _controller!,
-              fit: _videoFit,
-              controls: NoVideoControls,
-            )
-          else
-            _buildStreamCover(_currentChannel),
+  Widget _buildFullscreenPlayer(AppStrings s, bool isFav,
+      dynamic favoritesNotifier, Set<String> favorites) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalWidth = constraints.maxWidth;
+        final totalHeight = constraints.maxHeight;
+        final drawerWidth = (totalWidth * 0.38).clamp(280.0, 380.0);
+        final videoWidth = _isLandscapeChannelDrawerOpen
+            ? totalWidth - drawerWidth
+            : totalWidth;
 
-          // Tap detector
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _toggleControls,
-              child: const SizedBox.expand(),
-            ),
-          ),
-
-          // Buffering Indicator
-          if (_isLoading && !_hasError)
-            const Center(
-              child: SizedBox(
-                width: 44,
-                height: 44,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.8,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                ),
-              ),
-            ),
-
-          // Error Overlay in Fullscreen
-          if (_hasError)
-            Center(
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.black87,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white24),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline_rounded,
-                        color: AppColors.error, size: 40),
-                    const SizedBox(height: 8),
-                    Text(
-                      _errorMessage ?? s.liveTvConnectionError,
-                      style: GoogleFonts.inter(
-                          color: Colors.white, fontSize: 13),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      onPressed: _reloadStream,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.black,
-                      ),
-                      icon: const Icon(Icons.refresh_rounded, size: 16),
-                      label: Text(s.liveTvReload),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Controls Overlay
-          AnimatedOpacity(
-            opacity: _controlsVisible ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 220),
-            child: IgnorePointer(
-              ignoring: !_controlsVisible,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.8),
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.8),
-                    ],
-                  ),
-                ),
-                child: SafeArea(
+        return Container(
+          color: Colors.black,
+          width: totalWidth,
+          height: totalHeight,
+          child: Row(
+            children: [
+              // 1. Left: Video Player with smooth animated width
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOutCubic,
+                width: videoWidth,
+                height: totalHeight,
+                child: ClipRect(
                   child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      // Top Row: Exit Fullscreen, Channel Name, Favorite, Aspect Ratio
-                      Positioned(
-                        top: 10,
-                        left: 16,
-                        right: 16,
-                        child: Row(
-                          children: [
-                            Material(
-                              color: Colors.black45,
-                              borderRadius: BorderRadius.circular(8),
-                              child: InkWell(
-                                onTap: _exitFullscreen,
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  child: const Icon(
-                                    Icons.fullscreen_exit_rounded,
-                                    color: Colors.white,
-                                    size: 22,
-                                  ),
+                      // Video / Placeholder
+                      if (_controller != null && !_isTesting)
+                        Video(
+                          controller: _controller!,
+                          fit: _videoFit,
+                          controls: NoVideoControls,
+                        )
+                      else
+                        _buildStreamCover(_currentChannel),
+
+                      // Tap detector
+                      Positioned.fill(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _toggleControls,
+                          child: const SizedBox.expand(),
+                        ),
+                      ),
+
+                      // Buffering Indicator
+                      if (_isLoading && !_hasError)
+                        const Center(
+                          child: SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.8,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.primary),
+                            ),
+                          ),
+                        ),
+
+                      // Error Overlay in Fullscreen
+                      if (_hasError)
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.error_outline_rounded,
+                                    color: AppColors.error, size: 40),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _errorMessage ?? s.liveTvConnectionError,
+                                  style: GoogleFonts.inter(
+                                      color: Colors.white, fontSize: 13),
                                 ),
+                                const SizedBox(height: 12),
+                                ElevatedButton.icon(
+                                  onPressed: _reloadStream,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.black,
+                                  ),
+                                  icon: const Icon(Icons.refresh_rounded,
+                                      size: 16),
+                                  label: Text(s.liveTvReload),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      // Controls Overlay
+                      AnimatedOpacity(
+                        opacity: _controlsVisible ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 220),
+                        child: IgnorePointer(
+                          ignoring: !_controlsVisible,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.8),
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.8),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
+                            child: SafeArea(
+                              child: Stack(
                                 children: [
-                                  Text(
-                                    _currentChannel.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
+                                  // Top Row: Exit Fullscreen, Channel Name, Favorite, Aspect Ratio
+                                  Positioned(
+                                    top: 10,
+                                    left: 16,
+                                    right: 16,
+                                    child: Row(
+                                      children: [
+                                        Material(
+                                          color: Colors.black45,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          child: InkWell(
+                                            onTap: _exitFullscreen,
+                                            borderRadius:
+                                              BorderRadius.circular(8),
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.all(6),
+                                              child: const Icon(
+                                                Icons.fullscreen_exit_rounded,
+                                                color: Colors.white,
+                                                size: 22,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                _currentChannel.name,
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                                style: GoogleFonts.outfit(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              Text(
+                                                _currentChannel.category,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 11,
+                                                  color: Colors.white70,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        // Aspect Ratio
+                                        GestureDetector(
+                                          onTap: _toggleVideoFit,
+                                          child: Container(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black45,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                  color: Colors.white24,
+                                                  width: 0.8),
+                                            ),
+                                            child: Text(
+                                              _videoFit == BoxFit.contain
+                                                  ? '16:9'
+                                                  : (_videoFit == BoxFit.cover
+                                                      ? 'Cover'
+                                                      : 'Fill'),
+                                              style: GoogleFonts.inter(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+
+                                        // Reload Button
+                                        Material(
+                                          color: Colors.black45,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          child: InkWell(
+                                            onTap: _reloadStream,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.all(6),
+                                              child: const Icon(
+                                                Icons.refresh_rounded,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+
+                                        // Favorite Button
+                                        Material(
+                                          color: Colors.black45,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          child: InkWell(
+                                            onTap: () => favoritesNotifier
+                                                .toggleFavorite(
+                                                    _currentChannel.id),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.all(6),
+                                              child: Icon(
+                                                isFav
+                                                    ? Icons.favorite_rounded
+                                                    : Icons
+                                                        .favorite_border_rounded,
+                                                color: isFav
+                                                    ? Colors.redAccent
+                                                    : Colors.white,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  Text(
-                                    _currentChannel.category,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11,
-                                      color: Colors.white70,
+
+                                  // Center Play/Pause Button
+                                  Center(
+                                    child: GestureDetector(
+                                      onTap: _togglePlayPause,
+                                      child: Container(
+                                        width: 64,
+                                        height: 64,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.55),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                              color: Colors.white38,
+                                              width: 1.4),
+                                        ),
+                                        child: Icon(
+                                          _isPlaying
+                                              ? Icons.pause_rounded
+                                              : Icons.play_arrow_rounded,
+                                          color: Colors.white,
+                                          size: 40,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Bottom Right: Quick Channel Switcher Drawer Toggle Button
+                                  Positioned(
+                                    bottom: 16,
+                                    right: 16,
+                                    child: ElevatedButton.icon(
+                                      onPressed: _toggleLandscapeChannelDrawer,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            _isLandscapeChannelDrawerOpen
+                                                ? AppColors.primary
+                                                : Colors.black54,
+                                        foregroundColor:
+                                            _isLandscapeChannelDrawerOpen
+                                                ? Colors.black
+                                                : Colors.white,
+                                        side: BorderSide(
+                                          color:
+                                              _isLandscapeChannelDrawerOpen
+                                                  ? AppColors.primary
+                                                  : Colors.white24,
+                                          width: 0.8,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 8),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      icon: Icon(
+                                        _isLandscapeChannelDrawerOpen
+                                            ? Icons.chevron_right_rounded
+                                            : Icons.list_rounded,
+                                        size: 18,
+                                      ),
+                                      label: Text(
+                                        _isLandscapeChannelDrawerOpen
+                                            ? 'Tutup'
+                                            : 'Ganti Saluran',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-
-                            // Aspect Ratio
-                            GestureDetector(
-                              onTap: _toggleVideoFit,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.black45,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                      color: Colors.white24, width: 0.8),
-                                ),
-                                child: Text(
-                                  _videoFit == BoxFit.contain
-                                      ? '16:9'
-                                      : (_videoFit == BoxFit.cover
-                                          ? 'Cover'
-                                          : 'Fill'),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // Reload Button
-                            Material(
-                              color: Colors.black45,
-                              borderRadius: BorderRadius.circular(8),
-                              child: InkWell(
-                                onTap: _reloadStream,
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  child: const Icon(
-                                    Icons.refresh_rounded,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-
-                            // Favorite Button
-                            Material(
-                              color: Colors.black45,
-                              borderRadius: BorderRadius.circular(8),
-                              child: InkWell(
-                                onTap: () =>
-                                    favoritesNotifier.toggleFavorite(_currentChannel.id),
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  child: Icon(
-                                    isFav
-                                        ? Icons.favorite_rounded
-                                        : Icons.favorite_border_rounded,
-                                    color: isFav
-                                        ? Colors.redAccent
-                                        : Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Center Play/Pause Button
-                      Center(
-                        child: GestureDetector(
-                          onTap: _togglePlayPause,
-                          child: Container(
-                            width: 64,
-                            height: 64,
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.55),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: Colors.white38, width: 1.4),
-                            ),
-                            child: Icon(
-                              _isPlaying
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              color: Colors.white,
-                              size: 40,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Bottom Right: Quick Channel Switcher Drawer
-                      Positioned(
-                        bottom: 16,
-                        right: 16,
-                        child: ElevatedButton.icon(
-                          onPressed: _showQuickChannelDrawer,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black54,
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(
-                                color: Colors.white24, width: 0.8),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          icon: const Icon(Icons.list_rounded, size: 18),
-                          label: Text(
-                            'Ganti Saluran',
-                            style: GoogleFonts.outfit(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
                           ),
                         ),
                       ),
@@ -1431,9 +1420,312 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                   ),
                 ),
               ),
-            ),
+
+              // 2. Right: YouTube-style Landscape Channel Selection Drawer
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOutCubic,
+                width: _isLandscapeChannelDrawerOpen ? drawerWidth : 0.0,
+                height: totalHeight,
+                child: ClipRect(
+                  child: OverflowBox(
+                    minWidth: drawerWidth,
+                    maxWidth: drawerWidth,
+                    minHeight: totalHeight,
+                    maxHeight: totalHeight,
+                    alignment: Alignment.topRight,
+                    child: _buildLandscapeChannelDrawer(favorites),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        );
+      },
+    );
+  }
+
+  /// YouTube-style Landscape Channel Drawer
+  Widget _buildLandscapeChannelDrawer(Set<String> favorites) {
+    final allChannels = LiveTvChannelsData.defaultChannels;
+    final categories = [
+      'Semua',
+      ...LiveTvChannelsData.categories,
+      'Favorit',
+    ];
+
+    List<LiveTvChannel> displayedChannels = allChannels;
+    if (_landscapeSelectedCategory == 'Favorit') {
+      displayedChannels =
+          allChannels.where((c) => favorites.contains(c.id)).toList();
+    } else if (_landscapeSelectedCategory != 'Semua') {
+      displayedChannels = allChannels
+          .where((c) => c.category == _landscapeSelectedCategory)
+          .toList();
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        border: Border(
+          left: BorderSide(
+            color: Colors.white.withValues(alpha: 0.12),
+            width: 0.8,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        left: false,
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 8, 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.live_tv_rounded,
+                      color: AppColors.primary, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Pilih Saluran',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${displayedChannels.length}',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded,
+                        color: Colors.white70, size: 20),
+                    onPressed: _toggleLandscapeChannelDrawer,
+                    splashRadius: 18,
+                    tooltip: 'Tutup',
+                  ),
+                ],
+              ),
+            ),
+
+            // Horizontal Category Filter Chips
+            SizedBox(
+              height: 32,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: categories.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 6),
+                itemBuilder: (context, index) {
+                  final cat = categories[index];
+                  final isSelected = cat == _landscapeSelectedCategory;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _landscapeSelectedCategory = cat;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary
+                            : Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : Colors.white.withValues(alpha: 0.12),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          cat,
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isSelected ? Colors.black : Colors.white70,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Subtle smooth divider
+            Divider(
+              color: Colors.white.withValues(alpha: 0.08),
+              height: 1,
+              thickness: 0.8,
+            ),
+
+            // Channels List (without card, smooth thin borders)
+            Expanded(
+              child: displayedChannels.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          _landscapeSelectedCategory == 'Favorit'
+                              ? 'Belum ada saluran favorit'
+                              : 'Tidak ada saluran',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: displayedChannels.length,
+                      itemBuilder: (context, index) {
+                        final ch = displayedChannels[index];
+                        final isPlaying = ch.id == _currentChannel.id;
+
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: isPlaying
+                                ? AppColors.primary.withValues(alpha: 0.12)
+                                : Colors.transparent,
+                            border: Border(
+                              bottom: BorderSide(
+                                color: isPlaying
+                                    ? AppColors.primary.withValues(alpha: 0.4)
+                                    : Colors.white.withValues(alpha: 0.08),
+                                width: 0.8,
+                              ),
+                            ),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                _playChannel(ch);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                child: Row(
+                                  children: [
+                                    // Channel Logo (Clean, no background box)
+                                    SizedBox(
+                                      width: 32,
+                                      height: 32,
+                                      child: ch.logoUrl != null &&
+                                              ch.logoUrl!.isNotEmpty
+                                          ? CachedNetworkImage(
+                                              imageUrl: ch.logoUrl!,
+                                              httpHeaders: const {
+                                                'User-Agent':
+                                                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                                              },
+                                              fit: BoxFit.contain,
+                                              errorWidget: (_, _, _) => Icon(
+                                                Icons.tv_rounded,
+                                                color: isPlaying
+                                                    ? AppColors.primary
+                                                    : Colors.white70,
+                                                size: 18,
+                                              ),
+                                            )
+                                          : Icon(
+                                              Icons.tv_rounded,
+                                              color: isPlaying
+                                                  ? AppColors.primary
+                                                  : Colors.white70,
+                                              size: 18,
+                                            ),
+                                    ),
+                                    const SizedBox(width: 10),
+
+                                    // Channel Name & Category
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            ch.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 12,
+                                              fontWeight: isPlaying
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                              color: isPlaying
+                                                  ? AppColors.primary
+                                                  : Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            ch.category,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 10,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    // Playing Indicator Badge
+                                    if (isPlaying)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 5, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'DIPUTAR',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 7.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.black,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

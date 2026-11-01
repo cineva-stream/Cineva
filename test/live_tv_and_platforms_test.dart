@@ -76,6 +76,9 @@ void main() {
         expect(ch.name.isNotEmpty, isTrue);
         expect(ch.streamUrl.startsWith('http'), isTrue);
       }
+
+      final indosiar = channels.firstWhere((c) => c.id == 'id_indosiar');
+      expect(indosiar.streamUrl, 'https://dev.bkad.my.id/hls/playlist.m3u8');
     });
   });
 
@@ -461,6 +464,55 @@ void main() {
       // Should only contain 1 entry for The Rookie (the latest one, Episode 2)
       expect(inProgress.where((i) => i.id == 84958).length, 1);
       expect(inProgress.firstWhere((i) => i.id == 84958).episode, 2);
+    });
+  });
+
+  group('Live TV Player Screen Landscape Tests', () {
+    testWidgets('Renders landscape player and toggles YouTube-style channel drawer', (tester) async {
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final channel = LiveTvChannelsData.defaultChannels.first;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: LiveTvPlayerScreen(initialChannel: channel),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Enter fullscreen by tapping fullscreen button
+      final fullscreenBtn = find.byIcon(Icons.fullscreen_rounded);
+      expect(fullscreenBtn, findsOneWidget);
+      await tester.tap(fullscreenBtn);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // In fullscreen, "Ganti Saluran" button is present
+      expect(find.text('Ganti Saluran'), findsOneWidget);
+
+      // Tap "Ganti Saluran" to open landscape drawer
+      await tester.tap(find.text('Ganti Saluran'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // Drawer is open: shows "Pilih Saluran", category chips, and "Tutup" button
+      expect(find.text('Pilih Saluran'), findsOneWidget);
+      expect(find.text('Tutup'), findsOneWidget);
+      expect(find.text('Semua'), findsWidgets);
+
+      // Tap "Tutup" to close landscape drawer
+      await tester.tap(find.text('Tutup'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // Drawer is closed: "Ganti Saluran" returns
+      expect(find.text('Ganti Saluran'), findsOneWidget);
     });
   });
 }

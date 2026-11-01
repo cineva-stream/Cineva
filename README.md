@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <strong>Aplikasi Streaming & Unduhan Film dan Serial TV Modern Berbasis Flutter</strong>
+  <strong>Modern High-Performance Movie, TV Series, and Live TV Streaming Application Built with Flutter</strong>
 </p>
 
 <p align="center">
@@ -19,142 +19,155 @@
 
 ---
 
-## 🎬 Tentang Cineva
+## About Cineva
 
-Cineva adalah aplikasi streaming dan pengunduh Film serta Serial TV modern yang dirancang untuk menghadirkan pengalaman sinematik premium langsung di perangkat Android. Dibangun dengan estetika *Deep Obsidian* dan aksen *Cinema Amber*, Cineva memadukan katalog metadata global dari The Movie Database (TMDB), pemutar video berkinerja tinggi berbasis hardware decoding, serta sistem pengunduhan multi-koneksi berkecepatan tinggi.
+Cineva is a modern, high-performance streaming application designed to deliver a premier cinematic entertainment experience on Android devices. Crafted with a Deep Obsidian visual theme and Cinema Amber lighting accents, Cineva integrates global media metadata from The Movie Database (TMDB), a hardware-accelerated video decoding engine powered by media_kit (libmpv), comprehensive national and international Live TV channels, intelligent multi-language subtitle parsing, and an adaptive media player.
 
----
-
-## ✨ Fitur Utama
-
-- **Streaming Cepat & Adaptif**
-  Mendukung streaming video multi-server dengan buffering adaptif untuk koneksi internet berkecepatan rendah hingga tinggi.
-
-- **Pengunduh Multi-Worker Berkecepatan Tinggi**
-  Sistem unduhan paralel berbasis multi-chunk worker yang memaksimalkan bandwidth jaringan pengguna, dilengkapi fitur jeda (*pause*), lanjutkan (*resume*), dan pembatalan unduhan.
-
-- **Format Penamaan File Standar**
-  File hasil unduhan disimpan langsung ke penyimpanan perangkat dengan struktur penamaan yang rapi:
-  - Film: `{Nama Film} - {Tahun Rilis}.mp4`
-  - Serial TV: `{Nama Serial} - S{Season} E{Episode}.mp4`
-
-- **Pipeline Subtitle Cerdas & Terjemahan Otomatis**
-  Pencarian subtitle otomatis dengan fallback cerdas. Apabila subtitle Bahasa Indonesia tidak tersedia, sistem akan mengunduh versi bahasa Inggris ke cache lokal, menerjemahkannya secara otomatis dengan penyesuaian kata ganti natural (*Kau*/*Aku*) serta penyeimbangan panjang baris agar pas di layar.
-
-- **Preferensi Konten Personalisasi**
-  Filter cerdas di beranda dan pencarian untuk memprioritaskan kategori favorit pengguna, seperti Indonesia, Anime, Hollywood, Korea, Jepang, maupun Bollywood.
-
-- **Pemutar Media Sinematik Lengkap**
-  Dilengkapi gestur kecerahan dan volume, pengatur kecepatan putar (0.5x - 2.0x), pemilihan trek audio, pergantian subtitle, tombol Skip Intro dan Skip Credit, serta pengingat posisi tontonan terakhir.
-
-- **Penyimpanan Offline Lokal**
-  Manajemen riwayat tontonan, daftar favorit, dan katalog unduhan tersimpan secara instan dan aman di perangkat menggunakan basis data lokal Hive NoSQL.
+Whether exploring blockbuster movies, binge-watching serialized television programs, or streaming 24/7 live news and sports broadcasts, Cineva emphasizes fluid navigation, robust playback reliability, and user privacy through local-first data persistence.
 
 ---
 
-## 🏗 Arsitektur & Teknologi
+## Key Features
 
-Aplikasi ini dibangun menggunakan arsitektur modular berorientasi fitur (*Feature-First Clean Architecture*):
+- **High-Definition Adaptive Streaming**
+  Seamless multi-server streaming architecture that dynamically balances network conditions with buffering optimization, instant resolution switching, and persistent timestamp continuation.
 
-- **Framework**: Flutter SDK (Channel Stable)
+- **Curated Live TV Catalog**
+  Comprehensive live streaming suite comprising national Indonesian channels (Indosiar HD, Moji HD, SCTV HD, Trans TV, Trans7 HD, ANTV HD, Metro TV HD, Kompas TV HD, iNews HD, and others) as well as international news and documentary networks (CNN News 18, BBC News, ABC News Live, CBS News 24/7, NBC News NOW, Al Jazeera English, Bloomberg TV+, Euronews, and more).
+
+- **YouTube-Style Landscape Channel Drawer**
+  When watching Live TV in landscape fullscreen mode, tapping "Ganti Saluran" smoothly animates and resizes the video player to the left without covering the broadcast, opening an interactive channel drawer on the right with category filters, clean border styling, and channel badges.
+
+- **Advanced Cinematic Media Player**
+  Hardware-accelerated video rendering via libmpv supporting multiple aspect ratio modes (16:9, Cover, Fill), intuitive gesture controls for brightness and volume, audio track selection, variable playback speed (0.5x to 2.0x), and background audio playback.
+
+- **Unified Custom Player Controls and Anti-Ad Touch Shield**
+  Consistent Cineva cinema controls across all embedded streaming servers, augmented with a transparent touch gesture shield that captures interactions to eliminate unwanted third-party popups, redirects, and advertisement triggers.
+
+- **Intelligent Subtitle Management**
+  Automated subtitle discovery through OpenSubtitles API integration, local caching, UTF-8 BOM sanitization, and persistent user-defined styling preferences (stroke outline, vertical offset, font size, and color).
+
+- **Personalized Content Discovery and Watchlist**
+  Categorized discovery shelves, regional genre filters (Indonesian, Hollywood, Anime, Korean, Japanese, and Bollywood), real-time search with instant history suggestions, and an integrated watchlist.
+
+- **Local Offline Persistence**
+  Instant local persistence for watch progress, continue watching history, favorites, and user preferences using high-performance Hive NoSQL storage without mandatory account registration.
+
+---
+
+## Architecture and Technology Stack
+
+Cineva adheres to a Feature-First Clean Architecture pattern, ensuring clear separation of concerns, high maintainability, and testability:
+
+- **Framework**: Flutter SDK (Stable Channel)
+- **Programming Language**: Dart 3
 - **State Management**: Flutter Riverpod
-- **Routing**: GoRouter
-- **Video Engine**: media_kit (libmpv hardware-accelerated video decoding)
-- **Networking**: Dio dengan konfigurasi adapter HTTP connection pool
-- **Local Database**: Hive Flutter
-- **Tipografi & Ikon**: Google Fonts (Outfit, Inter, JetBrains Mono) & Iconsax Flutter
+- **Application Navigation**: GoRouter
+- **Video Engine**: media_kit and media_kit_video (libmpv hardware decoding)
+- **Network Client**: Dio with connection pooling, custom headers, and request interceptors
+- **Local Storage**: Hive Flutter (NoSQL Key-Value Database)
+- **Typography**: Google Fonts (Outfit, Inter)
 
 ---
 
-## 🚀 Panduan Memulai
+## Getting Started
 
-### Prasyarat
+### Prerequisites
 
-Sebelum memulai proses instalasi, pastikan sistem Anda telah memiliki:
+Ensure your development environment meets the following specifications:
 
-1. Flutter SDK versi 3.12.0 atau lebih baru.
-2. Dart SDK versi 3.0.0 atau lebih baru.
-3. Android SDK dengan target API 34.
-4. Android Studio atau Visual Studio Code dengan ekstensi Flutter terpasang.
+1. Flutter SDK version 3.12.0 or higher.
+2. Dart SDK version 3.0.0 or higher.
+3. Android SDK targeting API level 34 or higher.
+4. Java Development Kit (JDK) 17.
+5. Android Studio or Visual Studio Code with Flutter extensions installed.
 
-### Langkah Instalasi
+### Installation
 
-1. **Clone repositori ini:**
+1. **Clone the repository:**
    ```bash
-   git clone https://github.com/username/cineva.git
-   cd cineva
+   git clone https://github.com/cineva-stream/Cineva.git
+   cd Cineva
    ```
 
-2. **Siapkan konfigurasi environment:**
-   Salin file `.env.example` menjadi `.env`:
+2. **Configure environment variables:**
+   Copy the example environment file:
    ```bash
    cp .env.example .env
    ```
-   Buka file `.env` dan masukkan API Key TMDB serta OpenSubtitles Anda.
+   Open `.env` and supply your TMDB API credentials and optional OpenSubtitles API key:
+   ```env
+   TMDB_API_KEY=your_tmdb_api_key_here
+   TMDB_ACCESS_TOKEN=your_tmdb_read_access_token_here
+   OPENSUBTITLES_API_KEY=your_opensubtitles_api_key_here
+   ```
 
-3. **Unduh dependensi project:**
+3. **Install project dependencies:**
    ```bash
    flutter pub get
    ```
 
-4. **Jalankan aplikasi di emulator atau perangkat fisik:**
+4. **Launch the application:**
    ```bash
    flutter run
    ```
 
 ---
 
-## ⚙️ Konfigurasi Environment
+## Building Release APK
 
-Aplikasi Cineva memerlukan API Key dari pihak ketiga untuk mengambil data katalog film dan subtitle. Konfigurasi disimpan dalam file `.env`:
-
-```env
-# TMDB API Key & Read Access Token
-TMDB_API_KEY=your_tmdb_api_key_here
-TMDB_ACCESS_TOKEN=your_tmdb_read_access_token_here
-
-# OpenSubtitles.com API Key
-OPENSUBTITLES_API_KEY=your_opensubtitles_api_key_here
-```
-
-Daftarkan akun gratis untuk memperoleh kunci API melalui:
-- TMDB: [https://www.themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
-- OpenSubtitles: [https://www.opensubtitles.com/consumers](https://www.opensubtitles.com/consumers)
-
----
-
-## 📦 Cara Build APK
-
-Untuk mengompilasi APK rilis dengan optimasi performa tinggi, tree-shaking font, dan obfuskasi kode:
+To compile an optimized release APK with code obfuscation and debug symbol splitting:
 
 ```bash
 flutter build apk --release --obfuscate --split-debug-info=./debug-info
 ```
 
-File APK rilis akan dihasilkan di direktori:
+The resulting APK will be generated at:
 ```
 build/app/outputs/flutter-apk/app-release.apk
 ```
 
 ---
 
-## 🧪 Menjalankan Pengujian
+## Running Automated Tests
 
-Untuk memastikan seluruh modul, penamaan file, parser subtitle, dan model berjalan dengan benar:
+To run the complete suite of unit, widget, and integration tests:
 
 ```bash
 flutter test
 ```
 
+To run static analysis:
+
+```bash
+flutter analyze
+```
+
 ---
 
-## 📄 Lisensi
+## Can I Contribute?
 
-Proyek ini dilisensikan di bawah lisensi **GNU General Public License v3.0 (GPL-3.0)**. Hak Cipta © 2026 **Cineva Group**.  
-Silakan merujuk ke file [LICENSE](LICENSE) untuk ketentuan lisensi selengkapnya.
+Yes, absolutely. Contributions to Cineva are warmly welcomed and strongly encouraged.
+
+Whether you want to fix reported bugs, improve streaming reliability, optimize memory consumption, implement new player capabilities, refine user interface animations, add localization strings, or enhance documentation, your involvement is highly valued.
+
+To contribute:
+1. Fork the repository.
+2. Create a dedicated feature or bugfix branch (`git checkout -b feature/your-feature-name`).
+3. Commit your changes with clear, descriptive commit messages.
+4. Verify that `flutter analyze` passes with zero issues and `flutter test` completes successfully.
+5. Submit a Pull Request describing the context, changes made, and verification steps.
 
 ---
 
-## 👥 Pengembang
+## License
 
-Dikembangkan dan dipelihara oleh **Cineva Group**.
+This project is open-source software licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+
+Please read the [LICENSE](LICENSE) file located in the root directory of this repository for the full terms and conditions regarding copying, distribution, and modification.
+
+---
+
+## Maintainers
+
+Developed and maintained by the **Cineva Group**.

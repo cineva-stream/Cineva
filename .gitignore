@@ -57,3 +57,5 @@ key.properties
 # Agent & IDE Configurations
 .agents/
 .skills/
+# Widget Preview related
+.widget_preview/

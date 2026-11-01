@@ -36,7 +36,7 @@ class LiveTvChannelsData {
       id: 'id_indosiar',
       name: 'Indosiar HD',
       category: 'Indonesia',
-      streamUrl: 'http://013tv.com:8080/live/F33848/cbd9779b/162138.ts',
+      streamUrl: 'https://dev.bkad.my.id/hls/playlist.m3u8',
       logoUrl: 'https://thumbor.prod.vidiocdn.com/0plBZ7Gso7gNBJxid9ksA8HMGxc=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/205/54ab19.png',
       quality: '1080p',
       country: 'Indonesia',

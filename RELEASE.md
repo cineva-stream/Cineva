@@ -6,9 +6,13 @@ Pembaruan Cineva versi 1.1.1 menghadirkan penambahan saluran TV Live terlengkap 
 
 ## Ringkasan Perubahan
 
-### 1. Penambahan Saluran TV Live Nasional & Internasional Terlengkap
-- **Katalog Saluran Nasional Indonesia Terlengkap**:
-  - Menambahkan saluran televisi swasta dan nasional utama: **Indosiar HD** (siaran resmi verified aktif), **Moji HD** (siaran Proliga & Premier League dengan logo resmi), **SCTV HD**, **Trans TV**, **Trans7 HD**, **ANTV HD**, **Metro TV HD**, **Kompas TV HD**, **iNews HD**, **CNN Indonesia**, **CNBC Indonesia**, **BTV Indonesia**, **Jawa Pos TV**, **JTV Surabaya**, **UGTV Gunadarma**, berdampingan dengan **TVRI Nasional**, **TVRI World**, **DAAI TV**, **Garuda TV**, **Indonesiana TV**, **Al-Bahjah TV**, **Ahsan TV**, dan **Ashiil TV**.
+### 1. Penambahan Saluran TV Live Nasional & Internasional Terlengkap & Perbaikan Stabilitas Stream
+- **Katalog Saluran Nasional Indonesia Terlengkap & Stabil**:
+  - Menambahkan saluran televisi swasta dan nasional utama: **Indosiar HD** (diperbarui dengan stream HLS m3u8 live streaming stabil dan bebas gangguan freeze/stuck 2–5 detik), **Moji HD** (siaran Proliga & Premier League dengan logo resmi), **SCTV HD**, **Trans TV**, **Trans7 HD**, **ANTV HD**, **Metro TV HD**, **Kompas TV HD**, **iNews HD**, **CNN Indonesia**, **CNBC Indonesia**, **BTV Indonesia**, **Jawa Pos TV**, **JTV Surabaya**, **UGTV Gunadarma**, berdampingan dengan **TVRI Nasional**, **TVRI World**, **DAAI TV**, **Garuda TV**, **Indonesiana TV**, **Al-Bahjah TV**, **Ahsan TV**, dan **Ashiil TV**.
+- **YouTube-Style Landscape Channel Drawer & Dynamic Resizing**:
+  - Saat menonton TV Live dalam mode lanskap layar penuh (*fullscreen*), menekan tombol **"Ganti Saluran"** akan membuka laci pemilihan saluran di sisi kanan layaknya antarmuka YouTube.
+  - Pemutar video di sisi kiri secara otomatis dan mulus menyesuaikan lebar serta proporsinya (*smooth animated resizing*) sehingga siaran yang sedang ditonton tidak tertutup sedikit pun oleh panel saluran.
+  - Laci saluran di sisi kanan didesain bersih dan minimalis tanpa bentuk *card*, menggunakan garis pembatas tipis (*subtle border* 0.8px), logo saluran transparan, filter chip kategori horizontal ('Semua', 'Indonesia', 'Berita', ..., 'Favorit'), status saluran aktif ("DIPUTAR"), tombol penutup (X), serta integrasi tombol kembali (*hardware back / pop gesture*) yang otomatis menutup laci terlebih dahulu sebelum keluar dari fullscreen.
 - **Katalog Berita & Hiburan Internasional Terverifikasi**:
   - Menghadirkan siaran berita global berkualitas tinggi: **CNN News 18**, **BBC News International**, **ABC News Live**, **CBS News 24/7**, **NBC News NOW**, **Al Jazeera English**, **DW News English**, **Bloomberg TV+**, **Euronews English**, **France 24 English**, **CNBC International**, serta siaran olahraga dan dokumenter seperti **BBC Earth & Studios**, **Red Bull TV**, **ACC Digital Network**, dan **NASA TV**.
 - **Logo Resmi Berlatar Transparan & Header Dinamis**:
