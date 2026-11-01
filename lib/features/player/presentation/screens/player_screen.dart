@@ -1447,7 +1447,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       '[PlayerScreen] Loading web stream from ${server.name}: $streamUrl',
     );
 
-    final controller = WebViewController()
+    final controller = WebViewController();
+    controller
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
       ..addJavaScriptChannel(
@@ -1463,16 +1464,33 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               setState(() => _loadingStep = _PlayerLoadingStep.preparingBackup);
             }
           },
+          onProgress: (progress) async {
+            if (progress >= 25) {
+              try {
+                await controller.runJavaScript(
+                  "if (!document.getElementById('cineva-cleaner-style')) {"
+                  "  const style = document.createElement('style');"
+                  "  style.id = 'cineva-cleaner-style';"
+                  "  style.innerHTML = `${SmartStreamService.cinemaCleanerCss.replaceAll('`', r'\`')}`;"
+                  "  (document.head || document.documentElement).appendChild(style);"
+                  "}",
+                );
+              } catch (_) {}
+            }
+          },
           onPageFinished: (url) async {
             try {
               // 1. Inject cinema ad-cleaner CSS to hide external web ads & intrusive overlays
-              await _webViewController?.runJavaScript(
-                "const style = document.createElement('style');"
-                "style.innerHTML = `${SmartStreamService.cinemaCleanerCss.replaceAll('`', r'\`')}`;"
-                "document.head.appendChild(style);",
+              await controller.runJavaScript(
+                "if (!document.getElementById('cineva-cleaner-style')) {"
+                "  const style = document.createElement('style');"
+                "  style.id = 'cineva-cleaner-style';"
+                "  style.innerHTML = `${SmartStreamService.cinemaCleanerCss.replaceAll('`', r'\`')}`;"
+                "  (document.head || document.documentElement).appendChild(style);"
+                "}",
               );
               // 2. Inject stream sniffer JS to detect .m3u8 / .mp4 video stream URLs
-              await _webViewController?.runJavaScript(
+              await controller.runJavaScript(
                 SmartStreamService.streamSnifferJs,
               );
             } catch (_) {}
@@ -1510,10 +1528,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (mounted) {
       setState(() {
         _webViewController = controller;
-        _isLoading = false;
+        // Keep _isLoading = true until onPageFinished or stream playback begins,
+        // preventing double controls from colliding on initial webview load.
       });
       unawaited(_loadSubtitles());
     }
+
+    // Safety fallback: ensure loading overlay does not hang if onPageFinished is delayed
+    Future.delayed(const Duration(seconds: 6), () {
+      if (mounted && _isLoading && _webViewController == controller) {
+        setState(() => _isLoading = false);
+      }
+    });
   }
 
   void _handleBridgeMessage(String rawJson) {
@@ -1535,6 +1561,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           final pos = Duration(milliseconds: timeMs);
           _position = pos;
           _positionNotifier.value = pos;
+          if (_isLoading && timeMs > 500) {
+            setState(() => _isLoading = false);
+          }
         }
       } else if (type == 'DURATION_UPDATE') {
         final durationMs = data['durationMs'] as int?;
@@ -1549,6 +1578,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           setState(() {
             _isPlaying = playing;
             _isWebPlaying = playing;
+            if (playing && _isLoading) {
+              _isLoading = false;
+            }
           });
         }
       } else if (type == 'BUFFERING_STATE') {

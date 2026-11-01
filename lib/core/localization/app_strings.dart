@@ -674,6 +674,47 @@ class AppStrings {
   String get liveTvFullscreen => isIndonesian ? 'Layar Penuh' : 'Full Screen';
   String get liveTvExitFullscreen =>
       isIndonesian ? 'Keluar Layar Penuh' : 'Exit Full Screen';
+  String get liveTvSelectChannel =>
+      isIndonesian ? 'Pilih Saluran' : 'Select Channel';
+  String get liveTvSwitchChannel =>
+      isIndonesian ? 'Ganti Saluran' : 'Change Channel';
+  String get liveTvClose => isIndonesian ? 'Tutup' : 'Close';
+  String get liveTvBackToChannels =>
+      isIndonesian ? 'Kembali ke Saluran' : 'Back to Channels';
+  String get liveTvNoFavorites =>
+      isIndonesian ? 'Belum ada saluran favorit' : 'No favorite channels yet';
+  String get liveTvAddFavorite =>
+      isIndonesian ? 'Simpan ke Favorit' : 'Add to Favorites';
+  String get liveTvRemoveFavorite =>
+      isIndonesian ? 'Hapus dari Favorit' : 'Remove from Favorites';
+  String get liveTvChannelsCount =>
+      isIndonesian ? 'Saluran Siaran Langsung' : 'Live Broadcast Channels';
+
+  String liveTvCategoryLabel(String category) {
+    if (isIndonesian) return category;
+    switch (category) {
+      case 'Semua':
+        return 'All';
+      case 'Indonesia':
+        return 'Indonesia';
+      case 'Olahraga':
+        return 'Sports';
+      case 'Berita':
+        return 'News';
+      case 'Film & Hiburan':
+        return 'Movies & Entertainment';
+      case 'Anak & Animasi':
+        return 'Kids & Animation';
+      case 'Sains & Edukasi':
+        return 'Science & Education';
+      case 'Musik':
+        return 'Music';
+      case 'Favorit':
+        return 'Favorites';
+      default:
+        return category;
+    }
+  }
 
   // ── Streaming Platforms ──
   String get searchPlatforms =>

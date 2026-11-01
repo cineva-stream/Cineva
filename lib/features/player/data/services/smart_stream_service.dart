@@ -193,6 +193,42 @@ class SmartStreamService {
     window.alert = function() { return null; };
   } catch(e) {}
 
+  // Neutralize native HTML5 video controls
+  try {
+    Object.defineProperty(HTMLMediaElement.prototype, 'controls', {
+      get: function() { return false; },
+      set: function(_) {},
+      configurable: true
+    });
+  } catch(e) {}
+
+  function cleanVideoControls(v) {
+    try {
+      v.controls = false;
+      v.removeAttribute('controls');
+      v.setAttribute('playsinline', '');
+      v.setAttribute('webkit-playsinline', '');
+    } catch(e) {}
+  }
+
+  // Continuously observe DOM to strip controls from dynamically inserted video elements
+  try {
+    const observer = new MutationObserver(function(mutations) {
+      const vids = document.querySelectorAll('video');
+      for (let k = 0; k < vids.length; k++) {
+        cleanVideoControls(vids[k]);
+      }
+    });
+    if (document.documentElement || document.body) {
+      observer.observe(document.documentElement || document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['controls']
+      });
+    }
+  } catch(e) {}
+
   function notifyStream(url) {
     if (!url || typeof url !== 'string') return;
     const clean = url.trim();
@@ -249,6 +285,7 @@ class SmartStreamService {
       const videos = document.querySelectorAll('video');
       for (let i = 0; i < videos.length; i++) {
         const v = videos[i];
+        cleanVideoControls(v);
         if (v.src) notifyStream(v.src);
         if (v.currentSrc) notifyStream(v.currentSrc);
         const sources = v.querySelectorAll('source');
@@ -259,6 +296,7 @@ class SmartStreamService {
         // Full event synchronization with Cineva's Custom Cinema UI
         if (!v.__cinevaEventsHooked) {
           v.__cinevaEventsHooked = true;
+          cleanVideoControls(v);
 
           // Auto-unmute if muted and attempt playback
           v.muted = false;
@@ -341,9 +379,53 @@ div[style*="z-index: 2147483647"], div[id*="overlay"] {
 }
 
 /* Hide built-in web player controls to prevent duplicate controls with Cineva's Custom UI */
-video::-webkit-media-controls { display: none !important; }
-video::-webkit-media-controls-enclosure { display: none !important; }
-.jw-controls, .jw-controlbar, .vjs-control-bar, .plyr__controls, .control-bar, .player-controls {
+video::-webkit-media-controls,
+video::-webkit-media-controls-enclosure,
+video::-webkit-media-controls-panel,
+video::-webkit-media-controls-play-button,
+video::-webkit-media-controls-start-playback-button,
+video::-webkit-media-controls-current-time-display,
+video::-webkit-media-controls-time-remaining-display,
+video::-webkit-media-controls-timeline,
+video::-webkit-media-controls-volume-slider,
+.jw-controls,
+.jw-controlbar,
+.jw-display-icon-container,
+.jw-preview,
+.jw-title,
+.jw-logo,
+.jw-flag-controls-hidden,
+.vjs-control-bar,
+.vjs-big-play-button,
+.vjs-loading-spinner,
+.vjs-text-track-display,
+.vjs-poster,
+.vjs-modal-dialog,
+.vjs-hidden,
+.plyr__controls,
+.plyr__control--overlaid,
+.plyr__poster,
+.art-controls,
+.art-mask,
+.art-bottom,
+.art-state,
+.dplayer-controller,
+.dplayer-controller-mask,
+.dplayer-mask,
+.fluid_controls_container,
+.media-control,
+.media-control-layer,
+.player-poster,
+[class*="vjs-control"],
+[class*="player-controls"],
+[class*="control-bar"],
+[class*="play-button"],
+[class*="controls-container"],
+[class*="player__controls"],
+[class*="bottom-controls"],
+[class*="video-controls"],
+[id*="player-controls"],
+[id*="control-bar"] {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;

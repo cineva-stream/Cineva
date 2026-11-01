@@ -115,7 +115,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '${channels.length} ${s.isIndonesian ? "Saluran Siaran Langsung" : "Live Channels"}',
+                            '${channels.length} ${s.liveTvChannelsCount}',
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               color: AppColors.textMuted,
@@ -190,7 +190,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                   return FilterChip(
                     selected: isSelected,
                     label: Text(
-                      cat,
+                      s.liveTvCategoryLabel(cat),
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -306,7 +306,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                                           ),
                                           const SizedBox(height: 3),
                                           Text(
-                                            channel.category,
+                                            s.liveTvCategoryLabel(channel.category),
                                             style: GoogleFonts.inter(
                                               fontSize: 12,
                                               color: AppColors.textMuted,
@@ -329,8 +329,8 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                                         size: 20,
                                       ),
                                       tooltip: isFavorite
-                                          ? 'Hapus dari Favorit'
-                                          : 'Simpan ke Favorit',
+                                          ? s.liveTvRemoveFavorite
+                                          : s.liveTvAddFavorite,
                                     ),
 
                                     // Play icon pill

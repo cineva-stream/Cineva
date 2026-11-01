@@ -359,6 +359,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                           // Category Filter Chips
                           SliverToBoxAdapter(
                             child: _buildCategoryChips(
+                              s,
                               categories,
                               selectedCategory,
                             ),
@@ -393,6 +394,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                             )
                           else
                             _buildChannelList(
+                              s,
                               channels,
                               favorites,
                               bottomPadding,
@@ -533,7 +535,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                                 color: Colors.white,
                                 size: 28,
                               ),
-                              tooltip: 'Kembali ke Saluran',
+                              tooltip: s.liveTvBackToChannels,
                             ),
                             const SizedBox(width: 4),
                             Expanded(
@@ -825,7 +827,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  channel.category,
+                  s.liveTvCategoryLabel(channel.category),
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     color: AppColors.textMuted,
@@ -845,7 +847,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
               color: isFav ? Colors.redAccent : Colors.white60,
               size: 22,
             ),
-            tooltip: isFav ? 'Hapus dari Favorit' : 'Simpan ke Favorit',
+            tooltip: isFav ? s.liveTvRemoveFavorite : s.liveTvAddFavorite,
           ),
         ],
       ),
@@ -903,7 +905,11 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
   }
 
   /// Category Filter Chips Row
-  Widget _buildCategoryChips(List<String> categories, String selectedCategory) {
+  Widget _buildCategoryChips(
+    AppStrings s,
+    List<String> categories,
+    String selectedCategory,
+  ) {
     return SizedBox(
       height: 36,
       child: ListView.separated(
@@ -918,7 +924,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
           return FilterChip(
             selected: isSelected,
             label: Text(
-              cat,
+              s.liveTvCategoryLabel(cat),
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -949,6 +955,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
 
   /// Channels List
   Widget _buildChannelList(
+    AppStrings s,
     List<LiveTvChannel> channels,
     Set<String> favorites,
     double bottomPadding,
@@ -961,7 +968,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
           final isPlaying = ch.id == _currentChannel.id;
           final isFav = favorites.contains(ch.id);
 
-          return _buildChannelCard(ch, isPlaying, isFav);
+          return _buildChannelCard(s, ch, isPlaying, isFav);
         }, childCount: channels.length),
       ),
     );
@@ -969,6 +976,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
 
   /// Single Channel Card
   Widget _buildChannelCard(
+    AppStrings s,
     LiveTvChannel channel,
     bool isPlaying,
     bool isFavorite,
@@ -1056,7 +1064,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                'DIPUTAR',
+                                s.liveTvNowPlaying.toUpperCase(),
                                 style: GoogleFonts.inter(
                                   fontSize: 8,
                                   fontWeight: FontWeight.w800,
@@ -1068,7 +1076,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        channel.category,
+                        s.liveTvCategoryLabel(channel.category),
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           color: AppColors.textMuted,
@@ -1278,7 +1286,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                                                 ),
                                               ),
                                               Text(
-                                                _currentChannel.category,
+                                                s.liveTvCategoryLabel(_currentChannel.category),
                                                 style: GoogleFonts.inter(
                                                   fontSize: 11,
                                                   color: Colors.white70,
@@ -1416,8 +1424,8 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                                       ),
                                       label: Text(
                                         _isLandscapeChannelDrawerOpen
-                                            ? 'Tutup'
-                                            : 'Ganti Saluran',
+                                            ? s.liveTvClose
+                                            : s.liveTvSwitchChannel,
                                         style: GoogleFonts.outfit(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
@@ -1449,7 +1457,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                     minHeight: totalHeight,
                     maxHeight: totalHeight,
                     alignment: Alignment.topRight,
-                    child: _buildLandscapeChannelDrawer(favorites),
+                    child: _buildLandscapeChannelDrawer(s, favorites),
                   ),
                 ),
               ),
@@ -1461,7 +1469,10 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
   }
 
   /// YouTube-style Landscape Channel Drawer
-  Widget _buildLandscapeChannelDrawer(Set<String> favorites) {
+  Widget _buildLandscapeChannelDrawer(
+    AppStrings s,
+    Set<String> favorites,
+  ) {
     final allChannels = LiveTvChannelsData.defaultChannels;
     final categories = [...LiveTvChannelsData.categories, 'Favorit'];
 
@@ -1502,7 +1513,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Pilih Saluran',
+                    s.liveTvSelectChannel,
                     style: GoogleFonts.outfit(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -1537,7 +1548,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                     ),
                     onPressed: _toggleLandscapeChannelDrawer,
                     splashRadius: 18,
-                    tooltip: 'Tutup',
+                    tooltip: s.liveTvClose,
                   ),
                 ],
               ),
@@ -1580,7 +1591,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                       ),
                       child: Center(
                         child: Text(
-                          cat,
+                          s.liveTvCategoryLabel(cat),
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: isSelected
@@ -1612,8 +1623,8 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                         padding: const EdgeInsets.all(16.0),
                         child: Text(
                           _landscapeSelectedCategory == 'Favorit'
-                              ? 'Belum ada saluran favorit'
-                              : 'Tidak ada saluran',
+                              ? s.liveTvNoFavorites
+                              : s.liveTvNoChannels,
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             color: AppColors.textMuted,
@@ -1710,7 +1721,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            ch.category,
+                                            s.liveTvCategoryLabel(ch.category),
                                             style: GoogleFonts.inter(
                                               fontSize: 10,
                                               color: AppColors.textMuted,
@@ -1734,7 +1745,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                                           ),
                                         ),
                                         child: Text(
-                                          'DIPUTAR',
+                                          s.liveTvNowPlaying.toUpperCase(),
                                           style: GoogleFonts.inter(
                                             fontSize: 7.5,
                                             fontWeight: FontWeight.w800,
