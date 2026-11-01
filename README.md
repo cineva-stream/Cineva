@@ -14,7 +14,11 @@
   <img src="https://img.shields.io/badge/Flutter-3.12+-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
   <img src="https://img.shields.io/badge/Dart-3.0+-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" />
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Platform" />
+  <img src="https://img.shields.io/badge/Release-v1.1.0-FF6D00?style=for-the-badge" alt="Release v1.1.0" />
   <img src="https://img.shields.io/badge/License-GPL--3.0-FFA000?style=for-the-badge" alt="License GPL-3.0" />
+  <a href="https://github.com/cineva-stream/Cineva/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/badge/CI-Passing-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI Status" />
+  </a>
 </p>
 
 ---
@@ -24,6 +28,26 @@
 Cineva is a modern, high-performance streaming application designed to deliver a premier cinematic entertainment experience on Android devices. Crafted with a Deep Obsidian visual theme and Cinema Amber lighting accents, Cineva integrates global media metadata from The Movie Database (TMDB), a hardware-accelerated video decoding engine powered by media_kit (libmpv), comprehensive national and international Live TV channels, intelligent multi-language subtitle parsing, and an adaptive media player.
 
 Whether exploring blockbuster movies, binge-watching serialized television programs, or streaming 24/7 live news and sports broadcasts, Cineva emphasizes fluid navigation, robust playback reliability, and user privacy through local-first data persistence.
+
+---
+
+## Application Previews
+
+### Mobile Experience
+
+<p align="center">
+  <img src="docs/assets/screenshots/02_home_discovery.jpg" alt="Discovery and Browse" width="45%" />
+  &nbsp;&nbsp;
+  <img src="docs/assets/screenshots/03_media_details.jpg" alt="Media Details" width="45%" />
+</p>
+
+### Cinematic Playback and Live TV
+
+<p align="center">
+  <img src="docs/assets/screenshots/04_player_controls.jpg" alt="Custom Subtitle Player" width="48%" />
+  &nbsp;&nbsp;
+  <img src="docs/assets/screenshots/05_live_tv_landscape.jpg" alt="Live TV Landscape Drawer" width="48%" />
+</p>
 
 ---
 
@@ -145,18 +169,17 @@ flutter analyze
 
 ---
 
-## Can I Contribute?
+## Contributing
 
-Yes, absolutely. Contributions to Cineva are warmly welcomed and strongly encouraged.
+Contributions to Cineva are warmly welcomed and strongly encouraged.
 
 Whether you want to fix reported bugs, improve streaming reliability, optimize memory consumption, implement new player capabilities, refine user interface animations, add localization strings, or enhance documentation, your involvement is highly valued.
 
-To contribute:
-1. Fork the repository.
-2. Create a dedicated feature or bugfix branch (`git checkout -b feature/your-feature-name`).
-3. Commit your changes with clear, descriptive commit messages.
-4. Verify that `flutter analyze` passes with zero issues and `flutter test` completes successfully.
-5. Submit a Pull Request describing the context, changes made, and verification steps.
+Please read our [Contributing Guidelines](CONTRIBUTING.md) to learn how to set up your local development environment, run test suites, adhere to coding style conventions, and submit Pull Requests.
+
+All participants are expected to follow our [Code of Conduct](.github/CODE_OF_CONDUCT.md).
+
+For vulnerability disclosure and security advisories, please review our [Security Policy](SECURITY.md).
 
 ---
 

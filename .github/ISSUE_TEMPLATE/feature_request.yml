@@ -1,0 +1,44 @@
+name: Feature Request
+description: Suggest an idea or enhancement for Cineva
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a feature for Cineva. We welcome creative proposals to make Cineva the premier streaming experience.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement or Use Case
+      description: Is your feature request related to a current limitation or pain point?
+      placeholder: "I find it challenging when..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution / Enhancement
+      description: Describe what you would like to happen and how you envision it working.
+      placeholder: "A new capability that allows users to..."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds?
+      placeholder: "Describe any alternative ideas you've evaluated..."
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context or Mockups
+      description: Add any relevant mockups, reference apps, screenshots, or further context.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Verification Checklist
+      options:
+        - label: I have searched existing Issues and Discussions to ensure this feature hasn't already been proposed.
+          required: true
+

@@ -78,7 +78,7 @@ void main() {
       }
 
       final indosiar = channels.firstWhere((c) => c.id == 'id_indosiar');
-      expect(indosiar.streamUrl, 'https://dev.bkad.my.id/hls/playlist.m3u8');
+      expect(indosiar.streamUrl, 'https://op-flashcon-digdayahd-1.dens.tv/h/h04/index.m3u8');
     });
   });
 

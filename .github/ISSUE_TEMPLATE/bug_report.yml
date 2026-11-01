@@ -1,0 +1,74 @@
+name: Bug Report
+description: Create a report to help us improve Cineva
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue in Cineva. Please fill in the details below as accurately as possible to help us diagnose and resolve the problem.
+  - type: input
+    id: version
+    attributes:
+      label: Cineva Version
+      description: What version of Cineva are you running? (e.g., v1.1.0 build 11)
+      placeholder: "v1.1.0"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android Version
+      description: What device model and Android OS version are you using?
+      placeholder: "e.g., Samsung Galaxy S23, Android 14"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: "Explain what went wrong..."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this issue step-by-step?
+      value: |
+        1. Open Cineva
+        2. Navigate to '...'
+        3. Tap on '...'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: "What should have happened instead..."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs or Error Output
+      description: Please copy and paste any relevant logs from `flutter run` or `adb logcat`.
+      render: shell
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or Screen Recordings
+      description: Drag and drop screenshots or video recordings showing the bug in action.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Verification Checklist
+      options:
+        - label: I have verified this bug exists on the latest release of Cineva.
+          required: true
+        - label: I have searched existing GitHub Issues to ensure this is not a duplicate.
+          required: true
+

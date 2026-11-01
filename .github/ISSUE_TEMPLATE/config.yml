@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Community Discussions
+    url: https://github.com/cineva-stream/Cineva/discussions
+    about: Ask questions, share ideas, and engage with other Cineva users and developers.
+  - name: Security Vulnerability Reporting
+    url: https://github.com/cineva-stream/Cineva/security/policy
+    about: Privately report security vulnerabilities according to our SECURITY.md policy.
+
