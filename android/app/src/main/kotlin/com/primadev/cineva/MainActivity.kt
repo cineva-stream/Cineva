@@ -286,17 +286,9 @@ class MainActivity : FlutterActivity() {
             )
         } catch (e: Exception) {
             Log.w(TAG, "probeMedia exception for $path: ${e.message}")
-            if (file.exists() && file.length() > 50000) {
-                // If the file exists and is substantial, treat it as playable rather than deleting it
-                mapOf(
-                    "durationMs" to 0L,
-                    "hasVideo" to true,
-                    "hasAudio" to true,
-                    "fileSizeBytes" to file.length()
-                )
-            } else {
-                null
-            }
+            // An unreadable file must be reported as invalid (null). Faking hasVideo=true here let
+            // corrupt downloads pass validation and later play as a black screen with 00:00.
+            null
         } finally {
             try { extractor.release() } catch (_: Exception) {}
         }

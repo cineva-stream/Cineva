@@ -23,9 +23,9 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     this._repository, {
     DownloadSubtitlePipeline? subtitlePipeline,
     VideoDownloadService? videoService,
-  })  : _subtitlePipeline = subtitlePipeline ?? DownloadSubtitlePipeline(),
-        _videoService = videoService ?? VideoDownloadService(),
-        super([]) {
+  }) : _subtitlePipeline = subtitlePipeline ?? DownloadSubtitlePipeline(),
+       _videoService = videoService ?? VideoDownloadService(),
+       super([]) {
     _loadAll();
   }
 
@@ -75,7 +75,9 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     final videoFileName = mediaType == 'movie'
         ? DownloadFileNamer.formatMovieFileName(title, releaseYear)
         : DownloadFileNamer.formatTvFileName(title, season ?? 1, episode ?? 1);
-    final subtitleFileName = DownloadFileNamer.formatSubtitleFileName(videoFileName);
+    final subtitleFileName = DownloadFileNamer.formatSubtitleFileName(
+      videoFileName,
+    );
 
     final dir = await VideoDownloadService.getDownloadDirectory();
     final itemDir = Directory('${dir.path}/$id');
@@ -83,7 +85,6 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
 
     final videoPath = '${itemDir.path}/master.m3u8';
     final subtitlePath = '${itemDir.path}/$subtitleFileName';
-
 
     var item = DownloadItem(
       id: id,
@@ -120,14 +121,16 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     _cancelTokens[id] = cancelToken;
 
     // Asynchronously execute download task without blocking UI
-    unawaited(_executeDownloadTask(
-      item: item,
-      imdbId: imdbId,
-      streamUrl: streamUrl,
-      masterPlaylistUrl: masterPlaylistUrl,
-      cancelToken: cancelToken,
-      runtimeMinutes: runtimeMinutes,
-    ));
+    unawaited(
+      _executeDownloadTask(
+        item: item,
+        imdbId: imdbId,
+        streamUrl: streamUrl,
+        masterPlaylistUrl: masterPlaylistUrl,
+        cancelToken: cancelToken,
+        runtimeMinutes: runtimeMinutes,
+      ),
+    );
   }
 
   Future<void> _executeDownloadTask({
@@ -143,6 +146,30 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     try {
       var currentItem = item;
 
+      // Resume path: the caller has no stream URL (tokens expire), so resolve a fresh one
+      // for the originally chosen resolution. Already-downloaded valid segments are skipped.
+      var effectiveStreamUrl = streamUrl;
+      var effectiveMasterUrl = masterPlaylistUrl;
+      if (effectiveStreamUrl.isEmpty) {
+        final options = await _videoService.resolveResolutionOptions(
+          tmdbId: item.tmdbId,
+          imdbId: imdbId,
+          season: item.seasonNumber,
+          episode: item.episodeNumber,
+          runtimeMinutes: runtimeMinutes,
+        );
+        final match =
+            options.where((o) => o.label == item.resolution).firstOrNull ??
+            options.first;
+        effectiveStreamUrl = match.streamUrl;
+        effectiveMasterUrl = match.masterPlaylistUrl;
+        if (effectiveStreamUrl.isEmpty) {
+          throw Exception(
+            'Gagal memuat ulang sumber stream. Periksa koneksi lalu coba lagi.',
+          );
+        }
+      }
+
       // Start Subtitle pipeline concurrently in the background so video download begins immediately
       final subtitleFuture = Future<void>(() async {
         if (item.selectedSubtitleLang != 'none') {
@@ -155,7 +182,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
               season: item.seasonNumber,
               episode: item.episodeNumber,
               preferredLang: item.selectedSubtitleLang,
-              masterPlaylistUrl: masterPlaylistUrl,
+              masterPlaylistUrl: effectiveMasterUrl,
             );
             currentItem = currentItem.copyWith(
               subtitleStatus: subResult.status,
@@ -171,27 +198,28 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
 
       // Video download starts at full multi-connection speed instantly
       final videoFuture = _videoService.downloadStream(
-        streamUrl: streamUrl,
-        masterPlaylistUrl: masterPlaylistUrl,
+        streamUrl: effectiveStreamUrl,
+        masterPlaylistUrl: effectiveMasterUrl,
         targetFilePath: item.videoPath,
         estimatedSizeBytes: item.estimatedSizeBytes,
         cancelToken: cancelToken,
-        onProgress: ({
-          required int downloadedBytes,
-          required int totalBytes,
-          required double progress,
-          required String speed,
-        }) {
-          if (!mounted) return;
-          currentItem = currentItem.copyWith(
-            downloadedBytes: downloadedBytes,
-            totalBytes: totalBytes,
-            progress: progress,
-            speed: speed,
-          );
-          _repository.saveDownload(currentItem);
-          _updateItemInState(currentItem);
-        },
+        onProgress:
+            ({
+              required int downloadedBytes,
+              required int totalBytes,
+              required double progress,
+              required String speed,
+            }) {
+              if (!mounted) return;
+              currentItem = currentItem.copyWith(
+                downloadedBytes: downloadedBytes,
+                totalBytes: totalBytes,
+                progress: progress,
+                speed: speed,
+              );
+              _repository.saveDownload(currentItem);
+              _updateItemInState(currentItem);
+            },
       );
 
       // Wait for both video and subtitle streams to complete
@@ -201,18 +229,28 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       final parentDir = Directory(File(item.videoPath).parent.path);
       try {
         if (await parentDir.exists()) {
-          debugPrint('[DownloadNotifier] Building offline media package in: ${parentDir.path}');
+          debugPrint(
+            '[DownloadNotifier] Building offline media package in: ${parentDir.path}',
+          );
+          final expectedUs =
+              await OfflineMp4Builder.expectedDurationUsFromPlaylist(
+                File('${parentDir.path}/video.m3u8'),
+              );
           await OfflineMp4Builder.build(
             dir: parentDir,
+            expectedDurationUs: expectedUs,
             deleteSegmentsOnSuccess: true,
           );
         }
       } catch (e) {
         debugPrint('[DownloadNotifier] OfflineMp4Builder build note: $e');
       }
+      ;
 
       // Step 4: Resolve the best validated playable file and compute actual size
-      final playableFile = await OfflineMp4Builder.findPlayableOfflineFile(parentDir);
+      final playableFile = await OfflineMp4Builder.findPlayableOfflineFile(
+        parentDir,
+      );
 
       int actualTotalBytes = 0;
       try {
@@ -227,15 +265,21 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       final masterCineva = File('${parentDir.path}/master.cineva');
       final fallbackPath = (await masterM3u8.exists())
           ? masterM3u8.path
-          : ((await masterCineva.exists()) ? masterCineva.path : currentItem.videoPath);
+          : ((await masterCineva.exists())
+                ? masterCineva.path
+                : currentItem.videoPath);
 
       final actualVideoPath = playableFile?.path ?? fallbackPath;
 
       final completedItem = currentItem.copyWith(
         status: DownloadStatus.completed,
         videoPath: actualVideoPath,
-        downloadedBytes: actualTotalBytes > 0 ? actualTotalBytes : currentItem.downloadedBytes,
-        totalBytes: actualTotalBytes > 0 ? actualTotalBytes : currentItem.totalBytes,
+        downloadedBytes: actualTotalBytes > 0
+            ? actualTotalBytes
+            : currentItem.downloadedBytes,
+        totalBytes: actualTotalBytes > 0
+            ? actualTotalBytes
+            : currentItem.totalBytes,
         progress: 1.0,
         speed: 'Selesai',
         completedAt: DateTime.now(),
@@ -269,7 +313,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
   void _updateItemInState(DownloadItem item) {
     state = [
       for (final existing in state)
-        if (existing.id == item.id) item else existing
+        if (existing.id == item.id) item else existing,
     ];
   }
 
@@ -281,7 +325,10 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     }
     final item = _repository.getDownloadById(id);
     if (item != null) {
-      final paused = item.copyWith(status: DownloadStatus.paused, speed: 'Dijeda');
+      final paused = item.copyWith(
+        status: DownloadStatus.paused,
+        speed: 'Dijeda',
+      );
       _repository.saveDownload(paused);
       _updateItemInState(paused);
     }
@@ -303,12 +350,14 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     await _repository.saveDownload(updated);
     _updateItemInState(updated);
 
-    unawaited(_executeDownloadTask(
-      item: updated,
-      streamUrl: '', // Will be resolved dynamically
-      cancelToken: token,
-      runtimeMinutes: 100,
-    ));
+    unawaited(
+      _executeDownloadTask(
+        item: updated,
+        streamUrl: '', // Will be resolved dynamically
+        cancelToken: token,
+        runtimeMinutes: 100,
+      ),
+    );
   }
 
   /// Cancels and deletes an active or completed download.
@@ -329,9 +378,9 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
 // ── Providers ──
 final downloadManagerProvider =
     StateNotifierProvider<DownloadNotifier, List<DownloadItem>>((ref) {
-  final repo = ref.watch(downloadRepositoryProvider);
-  return DownloadNotifier(repo);
-});
+      final repo = ref.watch(downloadRepositoryProvider);
+      return DownloadNotifier(repo);
+    });
 
 final activeDownloadsCountProvider = Provider<int>((ref) {
   final items = ref.watch(downloadManagerProvider);

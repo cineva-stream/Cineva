@@ -114,7 +114,7 @@ class OfflineMp4Builder {
         );
       }
 
-      final validMp4 = ok && await isValidMp4(mp4);
+      final validMp4 = ok && await isValidMp4(mp4, expectedDurationUs: expectedDurationUs);
       if (validMp4) {
         if (deleteSegmentsOnSuccess) {
           for (final f in [...videoSegments, ...audioSegments]) {
@@ -146,16 +146,26 @@ class OfflineMp4Builder {
     }
   }
 
-  /// Returns true if [mp4] exists and has a validated video track (or substantial size).
-  static Future<bool> isValidMp4(File mp4) async {
+  /// Returns true if [mp4] exists, is readable by the native demuxer, has a video track and a
+  /// positive duration (and, when [expectedDurationUs] is known, at least ~90% of it).
+  ///
+  /// A file the native probe cannot open is treated as INVALID: previously such files were
+  /// accepted by size alone, which let corrupt downloads show up as "completed" but play as a
+  /// black screen with 00:00 duration.
+  static Future<bool> isValidMp4(File mp4, {int? expectedDurationUs}) async {
     try {
       if (!await mp4.exists()) return false;
       final len = await mp4.length();
       if (len <= 50000) return false;
       if (!Platform.isAndroid) return true;
       final probe = await NativeMediaMuxer.probe(mp4.path);
-      if (probe == null) return len > 100000;
-      return probe.hasVideo;
+      if (probe == null) return false;
+      if (!probe.hasVideo || probe.durationMs <= 0) return false;
+      if (expectedDurationUs != null && expectedDurationUs > 0) {
+        final actualUs = probe.durationMs * 1000;
+        if (actualUs < expectedDurationUs * 0.9) return false;
+      }
+      return true;
     } catch (_) {
       return false;
     }

@@ -16,12 +16,16 @@ class HlsUrlResolver {
       resolvedUri = Uri.parse(cleanChild);
     } else if (cleanChild.startsWith('/')) {
       if (parentUri.hasScheme && parentUri.hasAuthority) {
+        // Parse the child so an embedded query string ("/a.m3u8?t=1") is not percent-encoded
+        // into the path.
+        final childUri = Uri.parse(cleanChild);
         resolvedUri = Uri(
           scheme: parentUri.scheme,
           userInfo: parentUri.userInfo.isNotEmpty ? parentUri.userInfo : null,
           host: parentUri.host,
           port: parentUri.hasPort ? parentUri.port : null,
-          path: cleanChild,
+          path: childUri.path,
+          query: childUri.hasQuery ? childUri.query : null,
         );
       } else {
         resolvedUri = Uri.parse('https://vixsrc.to$cleanChild');
