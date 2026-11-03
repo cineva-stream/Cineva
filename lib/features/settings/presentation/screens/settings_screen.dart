@@ -41,7 +41,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _defaultQuality = 'Auto';
   String _subtitleFontSize = 'Sedang';
   String _subtitleBg = 'Transparan';
-  bool _wifiOnlySeeding = true;
   bool _hwAcceleration = true;
   double _cacheSizeMb = 38.4;
   String _appVersion = AppConstants.appVersion;
@@ -76,7 +75,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _defaultQuality = SettingsService.getDefaultQuality();
       _subtitleFontSize = SettingsService.getSubtitleFontSize();
       _subtitleBg = SettingsService.getSubtitleBackground();
-      _wifiOnlySeeding = SettingsService.getWifiOnlySeeding();
       _hwAcceleration = SettingsService.getHardwareAcceleration();
     });
   }
@@ -559,6 +557,93 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  void _showLegalDocsSheet(AppStrings s) {
+    final docs = [
+      {
+        'title': s.settingsPrivacyPolicyTitle,
+        'desc': s.settingsPrivacyPolicySubtitle,
+        'icon': Icons.privacy_tip_outlined,
+        'route': '/settings/privacy-policy',
+      },
+      {
+        'title': s.settingsTermsTitle,
+        'desc': s.settingsTermsSubtitle,
+        'icon': Icons.gavel_rounded,
+        'route': '/settings/terms',
+      },
+      {
+        'title': s.settingsDisclaimerMenuTitle,
+        'desc': s.settingsDisclaimerSubtitle,
+        'icon': Icons.warning_amber_rounded,
+        'route': '/settings/disclaimer',
+      },
+    ];
+
+    _showModalSheet(
+      header: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.shield_outlined, color: AppColors.primary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            s.isIndonesian ? 'Kebijakan & Lisensi Legal' : 'Legal & Policies',
+            style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+          ),
+        ],
+      ),
+      subtitle: s.isIndonesian
+          ? 'Dokumentasi kepatuhan hukum, privasi pengguna, dan batasan lisensi Cineva'
+          : 'Legal compliance documentation, user privacy, and Cineva licenses',
+      children: docs.map((doc) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.05),
+              width: 0.6,
+            ),
+          ),
+          child: ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(doc['icon'] as IconData, color: AppColors.primaryLight, size: 18),
+            ),
+            title: Text(
+              doc['title'] as String,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+            subtitle: Text(
+              doc['desc'] as String,
+              style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 11),
+            ),
+            trailing: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 13),
+            onTap: () {
+              Navigator.of(context, rootNavigator: true).pop();
+              context.push(doc['route'] as String);
+            },
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   void _clearCacheAction(AppStrings s) {
     showDialog(
       context: context,
@@ -879,17 +964,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _loadSettings();
                 },
               ),
-              _buildCardDivider(),
-              _SettingsToggleItem(
-                icon: Iconsax.wifi,
-                title: s.settingsWifiOnly,
-                subtitle: s.settingsWifiOnlyDesc,
-                value: _wifiOnlySeeding,
-                onChanged: (v) async {
-                  await SettingsService.setWifiOnlySeeding(v);
-                  _loadSettings();
-                },
-              ),
             ]),
 
             const SizedBox(height: 20),
@@ -958,25 +1032,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             const SizedBox(height: 20),
 
-            // ── SECTION 3: PENYIMPANAN & RIWAYAT ──
+            // ── SECTION 3: PENYIMPANAN & PEMELIHARAAN ──
             _buildSectionHeader(s.settingsStorageSection, Iconsax.folder),
             _buildSettingsCard([
-              _SettingsTileItem(
-                icon: Icons.download_rounded,
-                title: s.isIndonesian ? 'Daftar Unduhan (Download Manager)' : 'Downloads (Download Manager)',
-                subtitle: s.isIndonesian ? 'Kelola film & serial TV yang sedang diunduh atau selesai' : 'Manage ongoing and completed downloads',
-                trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
-                onTap: () => context.push('/downloads'),
-              ),
-              _buildCardDivider(),
-              _SettingsTileItem(
-                icon: Iconsax.play_cricle,
-                title: s.isIndonesian ? 'Buka Riwayat Tontonan' : 'Open Watch History',
-                subtitle: s.isIndonesian ? 'Lihat daftar film & serial TV yang pernah diputar' : 'View previously watched movies & TV series',
-                trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
-                onTap: () => context.push('/history'),
-              ),
-              _buildCardDivider(),
               _SettingsTileItem(
                 icon: Iconsax.trash,
                 title: s.settingsClearCache,
@@ -1013,35 +1071,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _buildSectionHeader(s.settingsAboutSection, Iconsax.info_circle),
             _buildSettingsCard([
               _SettingsTileItem(
-                icon: Icons.shield_outlined,
-                title: s.settingsPrivacyPolicyTitle,
-                subtitle: s.settingsPrivacyPolicySubtitle,
-                trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
-                onTap: () => context.push('/settings/privacy-policy'),
-              ),
-              _buildCardDivider(),
-              _SettingsTileItem(
-                icon: Icons.gavel_rounded,
-                title: s.settingsTermsTitle,
-                subtitle: s.settingsTermsSubtitle,
-                trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
-                onTap: () => context.push('/settings/terms'),
-              ),
-              _buildCardDivider(),
-              _SettingsTileItem(
-                icon: Icons.warning_amber_rounded,
-                title: s.settingsDisclaimerMenuTitle,
-                subtitle: s.settingsDisclaimerSubtitle,
-                trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
-                onTap: () => context.push('/settings/disclaimer'),
-              ),
-              _buildCardDivider(),
-              _SettingsTileItem(
                 icon: Icons.info_outline_rounded,
                 title: s.settingsInfoTitle,
                 subtitle: '$_appVersion ($_buildNumber) • ${s.settingsInfoSubtitle}',
                 trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
                 onTap: () => context.push('/settings/info'),
+              ),
+              _buildCardDivider(),
+              _SettingsTileItem(
+                icon: Icons.shield_outlined,
+                title: s.isIndonesian ? 'Kebijakan & Lisensi Legal' : 'Legal & Compliance',
+                subtitle: s.isIndonesian
+                    ? 'Kebijakan Privasi, Syarat Ketentuan, & Penafian'
+                    : 'Privacy Policy, Terms of Service, & Disclaimer',
+                trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
+                onTap: () => _showLegalDocsSheet(s),
               ),
             ]),
 

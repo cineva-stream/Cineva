@@ -2789,450 +2789,730 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     return Column(
       key: key,
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Sub-tabs: Sync vs Tampilan
-        Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _subtitleSettingsTab = 0),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _subtitleSettingsTab == 0
-                        ? AppColors.primary
-                        : AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(8),
+        // ── 1. Live Subtitle Preview Screen ──
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F1218),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12, width: 0.8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'PRATINJAU LANGSUNG (LIVE PREVIEW)',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                    ),
                   ),
-                  child: Center(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                     child: Text(
-                      s.playerTabSync,
-                      style: TextStyle(
-                        color: _subtitleSettingsTab == 0
-                            ? Colors.black
-                            : Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                      _subtitleSettingsTab == 0 ? 'SYNC PREVIEW' : 'STYLE PREVIEW',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _subtitleSettingsTab = 1),
-                borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 12),
+              Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _subtitleSettingsTab == 1
-                        ? AppColors.primary
-                        : AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.black.withValues(alpha: style.backgroundOpacity),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Center(
-                    child: Text(
-                      s.playerTabAppearance,
-                      style: TextStyle(
-                        color: _subtitleSettingsTab == 1
-                            ? Colors.black
-                            : Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (style.strokeWidth > 0)
+                        Text(
+                          'Contoh Teks Subtitle Cineva',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: (style.fontSize * 0.8).clamp(13.0, 20.0),
+                            fontWeight: FontWeight.bold,
+                            foreground: Paint()
+                              ..style = PaintingStyle.stroke
+                              ..strokeWidth = style.strokeWidth
+                              ..color = Colors.black,
+                          ),
+                        ),
+                      Text(
+                        'Contoh Teks Subtitle Cineva',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: style.textColor,
+                          fontSize: (style.fontSize * 0.8).clamp(13.0, 20.0),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
 
-        // Content of selected tab
+        // ── 2. Segmented Navigation Tabs ──
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white12, width: 0.8),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildSubTabButton(
+                  label: s.playerTabSync,
+                  icon: Icons.timer_outlined,
+                  isSelected: _subtitleSettingsTab == 0,
+                  onTap: () => setState(() => _subtitleSettingsTab = 0),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _buildSubTabButton(
+                  label: s.playerTabAppearance,
+                  icon: Icons.palette_outlined,
+                  isSelected: _subtitleSettingsTab == 1,
+                  onTap: () => setState(() => _subtitleSettingsTab = 1),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        // ── 3. Tab Contents ──
         if (_subtitleSettingsTab == 0) ...[
-          // Sync offset tab
-          Center(
+          // ── TAB 0: ATUR WAKTU (TIMING & SYNCHRONIZATION) ──
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
+              ),
+            ),
             child: Column(
               children: [
+                // Status badge & Offset display
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Offset Penyesuaian',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: style.syncOffsetMs == 0
+                            ? AppColors.success.withValues(alpha: 0.2)
+                            : (style.syncOffsetMs > 0
+                                ? AppColors.primary.withValues(alpha: 0.2)
+                                : Colors.blueAccent.withValues(alpha: 0.2)),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        style.syncOffsetMs == 0
+                            ? 'Tepat Waktu'
+                            : (style.syncOffsetMs > 0 ? 'Terlambat' : 'Lebih Awal'),
+                        style: TextStyle(
+                          color: style.syncOffsetMs == 0
+                              ? AppColors.success
+                              : (style.syncOffsetMs > 0
+                                  ? AppColors.primary
+                                  : Colors.blueAccent),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 Text(
                   style.syncOffsetMs == 0
-                      ? s.playerSyncOnTime
-                      : '${style.syncOffsetMs > 0 ? "+" : ""}${(style.syncOffsetMs / 1000.0).toStringAsFixed(2)}s',
-                  style: TextStyle(
-                    color: style.syncOffsetMs != 0
-                        ? AppColors.primary
-                        : Colors.white,
-                    fontSize: 18,
+                      ? '0.00 detik'
+                      : '${style.syncOffsetMs > 0 ? "+" : ""}${(style.syncOffsetMs / 1000.0).toStringAsFixed(2)} detik',
+                  style: GoogleFonts.outfit(
+                    color: style.syncOffsetMs != 0 ? AppColors.primary : Colors.white,
+                    fontSize: 26,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  style.syncOffsetMs == 0
-                      ? s.playerSyncDefault
-                      : style.syncOffsetMs > 0
-                      ? s.playerSyncDelayed
-                      : s.playerSyncAdvanced,
-                  style: const TextStyle(
+                const SizedBox(height: 14),
+
+                // Stepper Buttons Row
+                Row(
+                  children: [
+                    _buildTimingStepButton('-0.5s', () => notifier.adjustSyncOffset(-500)),
+                    const SizedBox(width: 6),
+                    _buildTimingStepButton('-0.1s', () => notifier.adjustSyncOffset(-100)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 3,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: notifier.resetSyncOffset,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: style.syncOffsetMs == 0
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : AppColors.primary.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: style.syncOffsetMs == 0
+                                    ? Colors.white12
+                                    : AppColors.primary,
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Reset (0s)',
+                                style: TextStyle(
+                                  color: style.syncOffsetMs == 0
+                                      ? Colors.white70
+                                      : AppColors.primary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildTimingStepButton('+0.1s', () => notifier.adjustSyncOffset(100)),
+                    const SizedBox(width: 6),
+                    _buildTimingStepButton('+0.5s', () => notifier.adjustSyncOffset(500)),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Continuous Slider for smooth timing
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: Colors.white12,
+                    thumbColor: AppColors.primary,
+                    overlayColor: AppColors.primary.withValues(alpha: 0.2),
+                  ),
+                  child: Slider(
+                    value: (style.syncOffsetMs / 1000.0).clamp(-5.0, 5.0),
+                    min: -5.0,
+                    max: 5.0,
+                    divisions: 100,
+                    onChanged: (val) {
+                      final ms = (val * 1000).round();
+                      notifier.adjustSyncOffset(ms - style.syncOffsetMs);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Petunjuk: Tekan [-] jika subtitle muncul terlambat dari ucapan aktor, atau [+] jika subtitle muncul mendahului suara.',
+                  style: TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 11,
+                    height: 1.4,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildSyncChip('-500ms', () => notifier.adjustSyncOffset(-500)),
-              const SizedBox(width: 6),
-              _buildSyncChip('-100ms', () => notifier.adjustSyncOffset(-100)),
-              const SizedBox(width: 6),
-              OutlinedButton(
-                onPressed: () => notifier.resetSyncOffset(),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  minimumSize: const Size(48, 30),
-                  side: const BorderSide(color: AppColors.surfaceElevated),
-                ),
-                child: Text(
-                  s.playerReset,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              _buildSyncChip('+100ms', () => notifier.adjustSyncOffset(100)),
-              const SizedBox(width: 6),
-              _buildSyncChip('+500ms', () => notifier.adjustSyncOffset(500)),
-            ],
-          ),
         ] else ...[
-          // Style & Background Tab (live sliders)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Background Opacity Controls (Transparan vs Background)
-              Text(
-                s.playerSubBackground,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+          // ── TAB 1: TAMPILAN (APPEARANCE & STYLING) ──
+
+          // 1. Ukuran Font
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Ukuran Font',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '${style.fontSize.toInt()} pt',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  _buildBgChip(
-                    s.playerBgTransparent,
-                    0.0,
-                    style.backgroundOpacity,
-                    notifier,
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _buildPresetPill('Kecil (16)', 16.0, style.fontSize, (v) => notifier.updateFontSize(v)),
+                    const SizedBox(width: 6),
+                    _buildPresetPill('Sedang (20)', 20.0, style.fontSize, (v) => notifier.updateFontSize(v)),
+                    const SizedBox(width: 6),
+                    _buildPresetPill('Besar (24)', 24.0, style.fontSize, (v) => notifier.updateFontSize(v)),
+                    const SizedBox(width: 6),
+                    _buildPresetPill('Ekstra (28)', 28.0, style.fontSize, (v) => notifier.updateFontSize(v)),
+                  ],
+                ),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: Colors.white12,
+                    thumbColor: AppColors.primary,
                   ),
-                  const SizedBox(width: 6),
-                  _buildBgChip(
-                    'Semi 40%',
-                    0.4,
-                    style.backgroundOpacity,
-                    notifier,
+                  child: Slider(
+                    value: style.fontSize.clamp(14.0, 30.0),
+                    min: 14.0,
+                    max: 30.0,
+                    divisions: 8,
+                    onChanged: (v) => notifier.updateFontSize(v),
                   ),
-                  const SizedBox(width: 6),
-                  _buildBgChip(
-                    '${s.playerBgDark} 75%',
-                    0.75,
-                    style.backgroundOpacity,
-                    notifier,
-                  ),
-                  const SizedBox(width: 6),
-                  _buildBgChip(
-                    '${s.playerBgSolid} 100%',
-                    1.0,
-                    style.backgroundOpacity,
-                    notifier,
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      s.playerBgOpacity,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                      ),
-                      child: Slider(
-                        value: style.backgroundOpacity,
-                        min: 0.0,
-                        max: 1.0,
-                        divisions: 20,
-                        activeColor: AppColors.primary,
-                        onChanged: (v) => notifier.updateBackgroundOpacity(v),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${(style.backgroundOpacity * 100).toInt()}%',
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
-                  ),
-                ],
-              ),
-              const Divider(color: Colors.white24, height: 12),
+                ),
+              ],
+            ),
+          ),
 
-              // Font Size Slider
-              Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      s.playerFontSize,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                      ),
-                      child: Slider(
-                        value: style.fontSize,
-                        min: 14.0,
-                        max: 30.0,
-                        divisions: 8,
-                        activeColor: AppColors.primary,
-                        onChanged: (v) => notifier.updateFontSize(v),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${style.fontSize.toInt()}pt',
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
-                  ),
-                ],
+          // 2. Warna Teks
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
               ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Warna Teks',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _buildColorCard('Putih', const Color(0xFFFFFFFF), style.textColor, notifier),
+                    const SizedBox(width: 8),
+                    _buildColorCard('Kuning', const Color(0xFFFFD700), style.textColor, notifier),
+                    const SizedBox(width: 8),
+                    _buildColorCard('Cyan', const Color(0xFF00E5FF), style.textColor, notifier),
+                    const SizedBox(width: 8),
+                    _buildColorCard('Hijau', const Color(0xFF00E676), style.textColor, notifier),
+                  ],
+                ),
+              ],
+            ),
+          ),
 
-              // Stroke Thickness Slider
-              Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      s.playerStrokeWidth,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                      ),
-                      child: Slider(
-                        value: style.strokeWidth,
-                        min: 0.0,
-                        max: 5.0,
-                        divisions: 10,
-                        activeColor: AppColors.primary,
-                        onChanged: (v) => notifier.updateStrokeWidth(v),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${style.strokeWidth.toStringAsFixed(1)}px',
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
-                  ),
-                ],
+          // 3. Latar Belakang (Background Opacity)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
               ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Latar Belakang Teks',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '${(style.backgroundOpacity * 100).toInt()}%',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _buildPresetPill('Transparan', 0.0, style.backgroundOpacity, (v) => notifier.updateBackgroundOpacity(v)),
+                    const SizedBox(width: 6),
+                    _buildPresetPill('Tipis (30%)', 0.3, style.backgroundOpacity, (v) => notifier.updateBackgroundOpacity(v)),
+                    const SizedBox(width: 6),
+                    _buildPresetPill('Sedang (65%)', 0.65, style.backgroundOpacity, (v) => notifier.updateBackgroundOpacity(v)),
+                    const SizedBox(width: 6),
+                    _buildPresetPill('Pekat (90%)', 0.9, style.backgroundOpacity, (v) => notifier.updateBackgroundOpacity(v)),
+                  ],
+                ),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: Colors.white12,
+                    thumbColor: AppColors.primary,
+                  ),
+                  child: Slider(
+                    value: style.backgroundOpacity.clamp(0.0, 1.0),
+                    min: 0.0,
+                    max: 1.0,
+                    divisions: 20,
+                    onChanged: (v) => notifier.updateBackgroundOpacity(v),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-              // Bottom Offset Slider
-              Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      s.playerSubPosition,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                      ),
-                      child: Slider(
-                        value: style.bottomOffset.clamp(10.0, 120.0),
-                        min: 10.0,
-                        max: 120.0,
-                        divisions: 22,
-                        activeColor: AppColors.primary,
-                        onChanged: (v) => notifier.updateBottomOffset(v),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${style.bottomOffset.toInt()}px',
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
-                  ),
-                ],
+          // 4. Garis Tepi (Stroke / Outline)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
               ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Garis Tepi Teks (Outline)',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '${style.strokeWidth.toStringAsFixed(1)} px',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: Colors.white12,
+                    thumbColor: AppColors.primary,
+                  ),
+                  child: Slider(
+                    value: style.strokeWidth.clamp(0.0, 5.0),
+                    min: 0.0,
+                    max: 5.0,
+                    divisions: 10,
+                    onChanged: (v) => notifier.updateStrokeWidth(v),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-              // Color selection chips
-              Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      s.playerSubColor,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
+          // 5. Posisi Vertikal Subtitle
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Jarak dari Bawah (Posisi)',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
+                    Text(
+                      '${style.bottomOffset.toInt()} px',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: Colors.white12,
+                    thumbColor: AppColors.primary,
                   ),
-                  _buildColorMiniDot(
-                    const Color(0xFFFFFFFF),
-                    style.textColor,
-                    notifier,
+                  child: Slider(
+                    value: style.bottomOffset.clamp(10.0, 100.0),
+                    min: 10.0,
+                    max: 100.0,
+                    divisions: 18,
+                    onChanged: (v) => notifier.updateBottomOffset(v),
                   ),
-                  const SizedBox(width: 8),
-                  _buildColorMiniDot(
-                    const Color(0xFFFFD700),
-                    style.textColor,
-                    notifier,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildColorMiniDot(
-                    const Color(0xFF00E5FF),
-                    style.textColor,
-                    notifier,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildColorMiniDot(
-                    const Color(0xFF00E676),
-                    style.textColor,
-                    notifier,
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ],
       ],
     );
   }
 
+  Widget _buildSubTabButton({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: isSelected ? Colors.black : Colors.white70,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.black : Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimingStepButton(String label, VoidCallback onTap) {
+    return Expanded(
+      flex: 2,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white12, width: 0.8),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPresetPill(
+    String label,
+    double targetVal,
+    double currentVal,
+    void Function(double) onSelected,
+  ) {
+    final isSelected = (currentVal - targetVal).abs() < 1.0;
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => onSelected(targetVal),
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.2)
+                  : Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: isSelected ? AppColors.primary : Colors.white12,
+                width: 0.8,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? AppColors.primary : Colors.white70,
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColorCard(
+    String name,
+    Color color,
+    Color currentColor,
+    dynamic notifier,
+  ) {
+    final isSelected = color.toARGB32() == currentColor.toARGB32();
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => notifier.updateTextColor(color),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.18)
+                  : Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isSelected ? AppColors.primary : Colors.white12,
+                width: 0.8,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white30, width: 1),
+                  ),
+                  child: isSelected
+                      ? Center(
+                          child: Icon(
+                            Icons.check,
+                            size: 12,
+                            color: color == const Color(0xFFFFFFFF)
+                                ? Colors.black
+                                : Colors.black,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  name,
+                  style: TextStyle(
+                    color: isSelected ? AppColors.primary : Colors.white70,
+                    fontSize: 10,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSubtitleSettingsMiniPopup(AppStrings s) {
     _isShowingSubtitleSettingsInPopup = true;
     return _buildSubtitleMiniPopup(s);
-  }
-
-  Widget _buildBgChip(
-    String label,
-    double val,
-    double current,
-    dynamic notifier,
-  ) {
-    final isSelected = (current - val).abs() < 0.05;
-    return InkWell(
-      onTap: () => notifier.updateBackgroundOpacity(val),
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.black : Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSyncChip(String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildColorMiniDot(Color color, Color current, dynamic notifier) {
-    final isSelected = color.toARGB32() == current.toARGB32();
-    return GestureDetector(
-      onTap: () => notifier.updateTextColor(color),
-      child: Container(
-        width: 22,
-        height: 22,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.white24,
-            width: isSelected ? 2.5 : 1.0,
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildServerMiniPopup(AppStrings s) {

@@ -30,6 +30,67 @@ class ProviderLoaderService {
   ProviderLoaderService({ScraperApiService? scraperApi})
       : _scraperApi = scraperApi ?? ScraperApiService();
 
+  /// Fallback static providers list to ensure full scraper coverage even if
+  /// the remote cluster index endpoint is sleeping or temporarily unreachable.
+  static const List<VideoProvider> fallbackScraperProviders = [
+    VideoProvider(
+      fullName: 'ShowBox (Adwa CDN)',
+      alias: 'ShowBox',
+      codeName: 'scraper:showbox',
+      type: VideoProviderType.scraperApi,
+      apiId: 'showbox',
+    ),
+    VideoProvider(
+      fullName: 'StreamFlix (Harar)',
+      alias: 'StreamFlix',
+      codeName: 'scraper:streamflix',
+      type: VideoProviderType.scraperApi,
+      apiId: 'streamflix',
+    ),
+    VideoProvider(
+      fullName: 'AsiaFlix (Anime & Asia)',
+      alias: 'AsiaFlix',
+      codeName: 'scraper:asiaflix',
+      type: VideoProviderType.scraperApi,
+      apiId: 'asiaflix',
+    ),
+    VideoProvider(
+      fullName: 'Cinejoy',
+      alias: 'Cinejoy',
+      codeName: 'scraper:cinejoy',
+      type: VideoProviderType.scraperApi,
+      apiId: 'cinejoy',
+    ),
+    VideoProvider(
+      fullName: 'Movy Stream',
+      alias: 'Movy',
+      codeName: 'scraper:movy',
+      type: VideoProviderType.scraperApi,
+      apiId: 'movy',
+    ),
+    VideoProvider(
+      fullName: 'Aether Cloud',
+      alias: 'Aether',
+      codeName: 'scraper:aether',
+      type: VideoProviderType.scraperApi,
+      apiId: 'aether',
+    ),
+    VideoProvider(
+      fullName: 'ZStream',
+      alias: 'ZStream',
+      codeName: 'scraper:zstream',
+      type: VideoProviderType.scraperApi,
+      apiId: 'zstream',
+    ),
+    VideoProvider(
+      fullName: 'YoTurkish',
+      alias: 'YoTurkish',
+      codeName: 'scraper:yoturkish',
+      type: VideoProviderType.scraperApi,
+      apiId: 'yoturkish',
+    ),
+  ];
+
   /// Retrieves the ordered list of streaming providers (Direct VixSrc + Scraper Cluster).
   Future<List<VideoProvider>> getAvailableProviders({bool forceRefresh = false}) async {
     if (_cachedProviders != null && !forceRefresh) {
@@ -41,21 +102,37 @@ class ProviderLoaderService {
     ];
 
     try {
-      final scraperProviders = await _scraperApi.getProviders();
-      // Prioritize high-performance known scrapers
-      final prioritizedIds = ['showbox', 'streamflix', 'cinejoy', 'movy', 'asiaflix', 'aether', 'zstream', 'yoturkish'];
+      final rawScrapers = await _scraperApi.getProviders();
+      final scraperProviders = List<VideoProvider>.from(rawScrapers);
 
-      scraperProviders.sort((a, b) {
-        final idxA = prioritizedIds.indexOf(a.apiId ?? '');
-        final idxB = prioritizedIds.indexOf(b.apiId ?? '');
-        final rankA = idxA >= 0 ? idxA : 999;
-        final rankB = idxB >= 0 ? idxB : 999;
-        return rankA.compareTo(rankB);
-      });
+      if (scraperProviders.isEmpty) {
+        list.addAll(fallbackScraperProviders);
+      } else {
+        // Prioritize high-performance known scrapers
+        final prioritizedIds = [
+          'showbox',
+          'streamflix',
+          'asiaflix',
+          'cinejoy',
+          'movy',
+          'aether',
+          'zstream',
+          'yoturkish',
+        ];
 
-      list.addAll(scraperProviders);
+        scraperProviders.sort((a, b) {
+          final idxA = prioritizedIds.indexOf(a.apiId ?? '');
+          final idxB = prioritizedIds.indexOf(b.apiId ?? '');
+          final rankA = idxA >= 0 ? idxA : 999;
+          final rankB = idxB >= 0 ? idxB : 999;
+          return rankA.compareTo(rankB);
+        });
+
+        list.addAll(scraperProviders);
+      }
     } catch (e) {
-      debugPrint('[ProviderLoaderService] Error fetching scraper providers: $e');
+      debugPrint('[ProviderLoaderService] Remote scraper discovery error ($e). Using resilient fallback providers.');
+      list.addAll(fallbackScraperProviders);
     }
 
     _cachedProviders = list;
