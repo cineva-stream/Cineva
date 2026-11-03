@@ -18,7 +18,8 @@ class SmartStreamServer {
     String? imdbId,
     int? season,
     int? episode,
-  }) buildUrl;
+  })
+  buildUrl;
 
   const SmartStreamServer({
     required this.id,
@@ -41,9 +42,9 @@ class SmartStreamServer {
       videoProvider: provider,
       buildUrl: isVix
           ? ({required tmdbId, imdbId, season, episode}) =>
-              season != null && episode != null
-                  ? 'https://vixsrc.to/api/tv/$tmdbId/$season/$episode'
-                  : 'https://vixsrc.to/api/movie/$tmdbId'
+                season != null && episode != null
+                ? 'https://vixsrc.to/api/tv/$tmdbId/$season/$episode'
+                : 'https://vixsrc.to/api/movie/$tmdbId'
           : ({required tmdbId, imdbId, season, episode}) => '',
     );
   }
@@ -63,8 +64,8 @@ class SmartStreamService {
       isDirectHls: false,
       buildUrl: ({required tmdbId, imdbId, season, episode}) =>
           season != null && episode != null
-              ? 'https://vidlink.pro/tv/$tmdbId/$season/$episode?autoplay=true&primaryColor=f59e0b'
-              : 'https://vidlink.pro/movie/$tmdbId?autoplay=true&primaryColor=f59e0b',
+          ? 'https://vidlink.pro/tv/$tmdbId/$season/$episode?autoplay=true&primaryColor=f59e0b'
+          : 'https://vidlink.pro/movie/$tmdbId?autoplay=true&primaryColor=f59e0b',
     ),
 
     // Web Server 2: MultiEmbed VIP
@@ -121,8 +122,8 @@ class SmartStreamService {
       isDirectHls: false,
       buildUrl: ({required tmdbId, imdbId, season, episode}) =>
           season != null && episode != null
-              ? 'https://www.2embed.cc/embedtv/$tmdbId&s=$season&e=$episode'
-              : 'https://www.2embed.cc/embed/$tmdbId',
+          ? 'https://www.2embed.cc/embedtv/$tmdbId&s=$season&e=$episode'
+          : 'https://www.2embed.cc/embed/$tmdbId',
     ),
 
     // Web Server 5: SmashyStream
@@ -134,8 +135,8 @@ class SmartStreamService {
       isDirectHls: false,
       buildUrl: ({required tmdbId, imdbId, season, episode}) =>
           season != null && episode != null
-              ? 'https://embed.smashystream.com/playere.php?tmdb=$tmdbId&season=$season&episode=$episode'
-              : 'https://embed.smashystream.com/playere.php?tmdb=$tmdbId',
+          ? 'https://embed.smashystream.com/playere.php?tmdb=$tmdbId&season=$season&episode=$episode'
+          : 'https://embed.smashystream.com/playere.php?tmdb=$tmdbId',
     ),
   ];
 
@@ -169,16 +170,23 @@ class SmartStreamService {
   ];
 
   /// Combines dynamic active direct providers with emergency fallback web servers.
-  static List<SmartStreamServer> buildCombinedServers(List<VideoProvider> activeProviders) {
+  static List<SmartStreamServer> buildCombinedServers(
+    List<VideoProvider> activeProviders,
+  ) {
     if (activeProviders.isEmpty) {
       return [...defaultDirectServers, ...fallbackWebServers];
     }
-    final directServers = activeProviders.map(SmartStreamServer.fromVideoProvider).toList();
+    final directServers = activeProviders
+        .map(SmartStreamServer.fromVideoProvider)
+        .toList();
     return [...directServers, ...fallbackWebServers];
   }
 
   /// Available streaming servers prioritized by performance, stability, and catalog coverage.
-  static List<SmartStreamServer> get servers => [...defaultDirectServers, ...fallbackWebServers];
+  static List<SmartStreamServer> get servers => [
+    ...defaultDirectServers,
+    ...fallbackWebServers,
+  ];
 
   /// Resolves both TMDB ID and IMDb ID so all servers have complete metadata.
   static Future<({int tmdbId, String? imdbId})> resolveIds({
@@ -189,17 +197,22 @@ class SmartStreamService {
     int resolvedTmdb = tmdbId ?? 0;
     String? resolvedImdb = imdbId;
 
-    final apiKey = dotenv.env['TMDB_API_KEY'] ?? 'a219d8d995720253534ff876696baf3b';
+    final apiKey =
+        dotenv.env['TMDB_API_KEY'] ?? 'a219d8d995720253534ff876696baf3b';
 
     // 1. If TMDB ID is missing but IMDb ID is present, find TMDB ID
     if (resolvedTmdb == 0 && resolvedImdb != null && resolvedImdb.isNotEmpty) {
       try {
-        final cleanId = resolvedImdb.startsWith('tt') ? resolvedImdb : 'tt$resolvedImdb';
+        final cleanId = resolvedImdb.startsWith('tt')
+            ? resolvedImdb
+            : 'tt$resolvedImdb';
         final url =
             'https://api.themoviedb.org/3/find/$cleanId?external_source=imdb_id&api_key=$apiKey';
         final res = await _httpGetJson(url);
         if (res != null) {
-          final list = isTv ? (res['tv_results'] as List?) : (res['movie_results'] as List?);
+          final list = isTv
+              ? (res['tv_results'] as List?)
+              : (res['movie_results'] as List?);
           if (list != null && list.isNotEmpty) {
             resolvedTmdb = list.first['id'] as int? ?? 0;
           }
@@ -213,7 +226,8 @@ class SmartStreamService {
     if ((resolvedImdb == null || resolvedImdb.isEmpty) && resolvedTmdb > 0) {
       try {
         final type = isTv ? 'tv' : 'movie';
-        final url = 'https://api.themoviedb.org/3/$type/$resolvedTmdb/external_ids?api_key=$apiKey';
+        final url =
+            'https://api.themoviedb.org/3/$type/$resolvedTmdb/external_ids?api_key=$apiKey';
         final res = await _httpGetJson(url);
         if (res != null) {
           final imdb = res['imdb_id'] as String?;
@@ -229,12 +243,70 @@ class SmartStreamService {
     return (tmdbId: resolvedTmdb, imdbId: resolvedImdb);
   }
 
+  /// List of domains and query params associated with ad networks, tracking, and preroll videos.
+  static const List<String> adDomainKeywords = [
+    'cdnh4ads',
+    'streamingnow',
+    'adsterra',
+    'popads',
+    'propellerads',
+    'monetag',
+    'doubleclick',
+    'googleads',
+    'histats',
+    'exoclick',
+    'vidoomy',
+    'adnxs',
+    'trafficjunky',
+    'tsyndicate',
+    'adclick',
+    'banner',
+    'yandex',
+    'clickadu',
+    'hilltopads',
+    'richpush',
+    'scorecardresearch',
+    'analytics',
+    'adservice',
+    'delivery',
+    'vast',
+    'vpaid',
+  ];
+
+  /// Tests whether a URL belongs to known ad networks or video ad servers.
+  static bool isAdUrl(String url) {
+    if (url.isEmpty) return true;
+    final lower = url.toLowerCase();
+    for (final keyword in adDomainKeywords) {
+      if (lower.contains(keyword)) return true;
+    }
+    return false;
+  }
+
   /// JavaScript payload injected into the webview to sniff direct HLS (.m3u8) / MP4 streams,
   /// neutralize intrusive ad popups, and synchronize video playback state with Cineva's Custom UI.
   static const String streamSnifferJs = '''
 (function() {
   if (window.__cinevaSnifferInstalled) return;
   window.__cinevaSnifferInstalled = true;
+
+  const BLOCKED_AD_KEYWORDS = [
+    'cdnh4ads', 'streamingnow', 'adsterra', 'popads', 'propellerads',
+    'monetag', 'doubleclick', 'googleads', 'histats', 'exoclick',
+    'vidoomy', 'adnxs', 'trafficjunky', 'tsyndicate', 'adclick',
+    'banner', 'yandex', 'clickadu', 'hilltopads', 'richpush',
+    'scorecardresearch', 'analytics', 'adservice', 'delivery',
+    'vast', 'vpaid'
+  ];
+
+  function isAd(url) {
+    if (!url || typeof url !== 'string') return true;
+    const lower = url.toLowerCase();
+    for (let i = 0; i < BLOCKED_AD_KEYWORDS.length; i++) {
+      if (lower.includes(BLOCKED_AD_KEYWORDS[i])) return true;
+    }
+    return false;
+  }
 
   // Neutralize popups and unwanted alert redirects
   try {
@@ -278,8 +350,12 @@ class SmartStreamService {
     }
   } catch(e) {}
 
-  function notifyStream(url) {
+  function notifyStream(url, duration) {
     if (!url || typeof url !== 'string') return;
+    if (isAd(url)) return;
+    // Commercial ads and prerolls are almost always under 3 minutes (180s)
+    if (typeof duration === 'number' && duration > 0 && duration < 180) return;
+
     const clean = url.trim();
     if (clean.includes('.m3u8') || clean.includes('.mp4') || clean.includes('/hls/') || clean.includes('master.m3u8') || clean.includes('playlist.m3u8')) {
       if (window.CinevaStreamBridge) {
@@ -297,7 +373,7 @@ class SmartStreamService {
     window.fetch = async function(...args) {
       try {
         const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url ? args[0].url : '');
-        notifyStream(url);
+        if (!isAd(url)) notifyStream(url);
       } catch(e) {}
       return originalFetch.apply(this, args);
     };
@@ -308,7 +384,7 @@ class SmartStreamService {
     const originalOpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function(method, url) {
       try {
-        notifyStream(url);
+        if (!isAd(url)) notifyStream(url);
       } catch(e) {}
       return originalOpen.apply(this, arguments);
     };
@@ -320,7 +396,7 @@ class SmartStreamService {
     if (originalSrc && originalSrc.set) {
       Object.defineProperty(HTMLMediaElement.prototype, 'src', {
         set: function(val) {
-          notifyStream(val);
+          if (!isAd(val)) notifyStream(val);
           return originalSrc.set.call(this, val);
         },
         get: originalSrc.get
@@ -335,11 +411,22 @@ class SmartStreamService {
       for (let i = 0; i < videos.length; i++) {
         const v = videos[i];
         cleanVideoControls(v);
-        if (v.src) notifyStream(v.src);
-        if (v.currentSrc) notifyStream(v.currentSrc);
-        const sources = v.querySelectorAll('source');
-        for (let j = 0; j < sources.length; j++) {
-          if (sources[j].src) notifyStream(sources[j].src);
+
+        // Check if element is a hidden ad or too small
+        const rect = v.getBoundingClientRect();
+        if (rect.width > 0 && rect.width < 120 && rect.height > 0 && rect.height < 120) {
+          continue; // Ignore tracking/thumbnail ad videos
+        }
+
+        const dur = v.duration;
+        const isShortAd = !isNaN(dur) && dur > 0 && dur < 180;
+        if (!isShortAd) {
+          if (v.src && !isAd(v.src)) notifyStream(v.src, dur);
+          if (v.currentSrc && !isAd(v.currentSrc)) notifyStream(v.currentSrc, dur);
+          const sources = v.querySelectorAll('source');
+          for (let j = 0; j < sources.length; j++) {
+            if (sources[j].src && !isAd(sources[j].src)) notifyStream(sources[j].src, dur);
+          }
         }
 
         // Full event synchronization with Cineva's Custom Cinema UI

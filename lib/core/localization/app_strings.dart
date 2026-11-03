@@ -274,7 +274,7 @@ class AppStrings {
       isIndonesian ? 'Pengaturan Subtitle' : 'Subtitle Settings';
   String get playerTabSync => isIndonesian ? 'Waktu (Sync)' : 'Timing (Sync)';
   String get playerTabAppearance =>
-      isIndonesian ? 'Tampilan & Background' : 'Appearance & Background';
+      isIndonesian ? 'Tampilan' : 'Appearance';
   String get playerSyncOnTime =>
       isIndonesian ? 'Tepat Waktu (0.00s)' : 'On Time (0.00s)';
   String get playerSyncDefault =>
@@ -322,6 +322,15 @@ class AppStrings {
   String get playerError =>
       isIndonesian ? 'Gagal memutar video' : 'Failed to play video';
   String get playerRetry => isIndonesian ? 'Coba Lagi' : 'Retry';
+  String get playerStreamNotFoundTitle => isIndonesian
+      ? 'Sumber Video Belum Tersedia'
+      : 'Stream Not Available';
+  String get playerStreamNotFoundMessage => isIndonesian
+      ? 'Film ini mungkin masih tayang di bioskop atau belum memiliki rilis digital di server streaming.'
+      : 'This title may still be in theaters or does not have a digital release available yet on streaming servers.';
+  String get playerStreamNotFoundChooseServer => isIndonesian
+      ? 'Pilih Server Lain'
+      : 'Choose Another Server';
   String get playerSubActive =>
       isIndonesian ? 'Subtitle aktif' : 'Subtitle active';
   String get playerSubAutoTranslated => isIndonesian

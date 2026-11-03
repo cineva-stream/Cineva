@@ -91,6 +91,15 @@ void main() {
       expect(videoWidthWithPanel, equals(890.0));
       expect(videoWidthWithPanel, greaterThan(0));
     });
+
+    test('SmartStreamService.isAdUrl correctly detects ad networks and preroll videos', () {
+      expect(SmartStreamService.isAdUrl('https://cdnh4ads.com/stream/ad.mp4'), isTrue);
+      expect(SmartStreamService.isAdUrl('https://streamingnow.mov/?play=ad123'), isTrue);
+      expect(SmartStreamService.isAdUrl('https://adsterra.com/banner.mp4'), isTrue);
+      expect(SmartStreamService.isAdUrl('https://googleads.g.doubleclick.net/ad.m3u8'), isTrue);
+      expect(SmartStreamService.isAdUrl('https://vixsrc.to/stream/master.m3u8'), isFalse);
+      expect(SmartStreamService.isAdUrl('https://cinejoy.site/hls/movie.m3u8'), isFalse);
+    });
   });
 }
 
