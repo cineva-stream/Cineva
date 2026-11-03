@@ -1,10 +1,6 @@
-import 'dart:convert';
 import 'package:cineva/core/network/interceptors/header_interceptor.dart';
-import 'package:cineva/core/network/interceptors/retry_interceptor.dart';
-import 'package:cineva/core/network/interceptors/single_flight_interceptor.dart';
 import 'package:cineva/features/player/data/models/provider_stream_models.dart';
 import 'package:cineva/features/player/data/services/provider_loader_service.dart';
-import 'package:cineva/features/player/data/services/scraper_api_service.dart';
 import 'package:cineva/features/player/data/services/smart_stream_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';

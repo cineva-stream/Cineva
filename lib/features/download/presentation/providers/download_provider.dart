@@ -207,9 +207,6 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
         targetFilePath: item.videoPath,
         estimatedSizeBytes: item.estimatedSizeBytes,
         cancelToken: cancelToken,
-        targetFilePath: item.videoPath,
-        estimatedSizeBytes: item.estimatedSizeBytes,
-        cancelToken: cancelToken,
         onProgress: ({
           required int downloadedBytes,
           required int totalBytes,

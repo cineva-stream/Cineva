@@ -383,7 +383,7 @@ class VideoDownloadService {
     await targetDir.create(recursive: true);
 
     final effectiveHeaders = <String, String>{
-      if (headers != null) ...headers,
+      ...?headers,
       if ((headers == null || headers.isEmpty) &&
           (streamUrl.contains('vixsrc') || masterPlaylistUrl.contains('vixsrc'))) ...{
         ...VixSrcStreamService.headers,
@@ -927,7 +927,7 @@ class VideoDownloadService {
           options: Options(
             responseType: ResponseType.bytes,
             headers: {
-              if (headers != null) ...headers,
+              ...?headers,
               if (url.contains('vixsrc')) ...{
                 ...VixSrcStreamService.headers,
                 'origin': 'https://vixsrc.to',

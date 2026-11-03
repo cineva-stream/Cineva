@@ -1384,20 +1384,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       }
 
       // 2. If not specifically picked or selected provider failed, run the failover loader
-      if (selection == null) {
-        selection = await loader.loadFirstSuccessful(
-          tmdbId: _currentTmdbId!,
-          season: _currentSeason,
-          episode: _currentEpisode,
-          onProgress: (provider, isSuccess, error) {
-            if (mounted && !isSuccess) {
-              setState(() {
-                _customLoadingStatus = 'Mencoba ${provider.displayName}...';
-              });
-            }
-          },
-        );
-      }
+      selection ??= await loader.loadFirstSuccessful(
+        tmdbId: _currentTmdbId!,
+        season: _currentSeason,
+        episode: _currentEpisode,
+        onProgress: (provider, isSuccess, error) {
+          if (mounted && !isSuccess) {
+            setState(() {
+              _customLoadingStatus = 'Mencoba ${provider.displayName}...';
+            });
+          }
+        },
+      );
 
       if (selection != null && selection.result.hasPlayableStreams) {
         final bestLink = selection.result.videoLinks!.first;
