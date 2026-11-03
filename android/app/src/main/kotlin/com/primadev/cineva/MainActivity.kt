@@ -164,17 +164,22 @@ class MainActivity : FlutterActivity() {
                         val version = call.argument<String>("version") ?: ""
                         val title = call.argument<String>("title") ?: ""
                         val body = call.argument<String>("body") ?: ""
-                        UpdateCheckWorker.showNotification(
+                        val shown = UpdateCheckWorker.showNotification(
                             context = applicationContext,
                             version = version,
                             title = title,
                             body = body
                         )
-                        result.success(true)
+                        result.success(shown)
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to show update notification: ${e.message}", e)
                         result.error("NOTIFICATION_ERROR", e.message, null)
                     }
+                }
+                "isUpdateNotified" -> {
+                    val version = call.argument<String>("version") ?: ""
+                    val isNotified = UpdateCheckWorker.isVersionNotified(applicationContext, version)
+                    result.success(isNotified)
                 }
                 "hasNotificationPermission" -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

@@ -17,7 +17,12 @@ class SettingsService {
   /// App interface language: 'id' (Bahasa Indonesia) or 'en' (English).
   /// Defaults to 'id'.
   static String getAppLanguage() {
-    return _box.get(keyAppLanguage, defaultValue: 'id') as String;
+    try {
+      if (!Hive.isBoxOpen(AppConstants.settingsBox)) return 'id';
+      return _box.get(keyAppLanguage, defaultValue: 'id') as String;
+    } catch (_) {
+      return 'id';
+    }
   }
 
   static Future<void> setAppLanguage(String lang) async {

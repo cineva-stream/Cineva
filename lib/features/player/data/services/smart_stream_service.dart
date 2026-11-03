@@ -145,26 +145,34 @@ class SmartStreamService {
     SmartStreamServer.fromVideoProvider(VideoProvider.directVixSrc),
     SmartStreamServer.fromVideoProvider(
       VideoProvider.scraper(
-        id: 'showbox',
-        name: 'ShowBox (Adwa CDN)',
-        alias: 'ShowBox HD',
-        content: 'Hollywood, Anime, TV Series (Super Cepat)',
+        id: 'movy',
+        name: 'Movy (Miami)',
+        alias: 'Zeila',
+        content: 'Hollywood, Indonesia, Asian Movies & Series (1080p FHD)',
       ),
     ),
     SmartStreamServer.fromVideoProvider(
       VideoProvider.scraper(
-        id: 'streamflix',
-        name: 'StreamFlix (Harar)',
-        alias: 'StreamFlix VIP',
-        content: 'Hollywood, Bollywood, TV Series',
+        id: 'vidup',
+        name: 'VidUp',
+        alias: 'Gura',
+        content: 'High-Speed Multi-CDN Mirror (1080p/720p/480p)',
+      ),
+    ),
+    SmartStreamServer.fromVideoProvider(
+      VideoProvider.scraper(
+        id: 'reelix',
+        name: 'Reelix',
+        alias: 'Entoto',
+        content: 'Global Movies & Drama Series (Adaptive HLS/DASH)',
       ),
     ),
     SmartStreamServer.fromVideoProvider(
       VideoProvider.scraper(
         id: 'cinejoy',
-        name: 'Cinejoy (Abyssinia)',
-        alias: 'Cinejoy FHD',
-        content: 'Hollywood & Anime',
+        name: 'Cinejoy',
+        alias: 'Abyssinia',
+        content: 'Hollywood & Anime (FHD)',
       ),
     ),
   ];

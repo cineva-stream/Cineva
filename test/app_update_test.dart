@@ -204,6 +204,63 @@ void main() {
       expect(find.text('Batal'), findsOneWidget);
     });
   });
+
+  group('Single Notification Dispatch Tests', () {
+    test('checkForUpdate does not call showUpdateNotification if already notified', () async {
+      final fakeService = _FakeNotificationAppUpdateService(alreadyNotified: true);
+      final notifier = AppUpdateNotifier(fakeService, autoInit: false);
+
+      await notifier.checkForUpdate();
+
+      expect(notifier.state.status, AppUpdateStatus.available);
+      expect(fakeService.showNotificationCallCount, 0);
+    });
+
+    test('checkForUpdate calls showUpdateNotification once if not yet notified', () async {
+      final fakeService = _FakeNotificationAppUpdateService(alreadyNotified: false);
+      final notifier = AppUpdateNotifier(fakeService, autoInit: false);
+
+      await notifier.checkForUpdate();
+
+      expect(notifier.state.status, AppUpdateStatus.available);
+      expect(fakeService.showNotificationCallCount, 1);
+    });
+  });
+}
+
+class _FakeNotificationAppUpdateService extends AppUpdateService {
+  final bool alreadyNotified;
+  int showNotificationCallCount = 0;
+
+  _FakeNotificationAppUpdateService({required this.alreadyNotified});
+
+  @override
+  Future<int> cleanupDownloadedApks() async => 0;
+
+  @override
+  Future<bool> scheduleBackgroundUpdateCheck() async => true;
+
+  @override
+  Future<AppUpdateInfo?> checkForUpdate() async {
+    return AppUpdateInfo(
+      latestVersion: '1.1.2',
+      releaseTitle: 'Cineva v1.1.2',
+      changelog: 'Changelog',
+      apkUrl: 'https://example.com/app.apk',
+      apkFileName: 'app.apk',
+      apkSizeBytes: 1000,
+      currentVersion: '1.1.1',
+    );
+  }
+
+  @override
+  Future<bool> isUpdateNotified(String version) async => alreadyNotified;
+
+  @override
+  Future<bool> showUpdateNotification(AppUpdateInfo info, {String? customBody}) async {
+    showNotificationCallCount++;
+    return true;
+  }
 }
 
 class _MockAppUpdateNotifier extends AppUpdateNotifier {
@@ -218,6 +275,9 @@ class _MockAppUpdateNotifier extends AppUpdateNotifier {
 class _FakeAppUpdateService extends AppUpdateService {
   @override
   Future<int> cleanupDownloadedApks() async => 0;
+
+  @override
+  Future<bool> scheduleBackgroundUpdateCheck() async => true;
 
   @override
   Future<AppUpdateInfo?> checkForUpdate() async => null;

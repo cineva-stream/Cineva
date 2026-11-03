@@ -650,7 +650,11 @@ class _TvHorizontalList extends StatelessWidget {
               originalLanguage: tv.originalLanguage,
               originCountry: tv.originCountry,
             );
-            return MovieCard(movie: adapted)
+            return MovieCard(
+              movie: adapted,
+              isTv: true,
+              onTap: () => context.push('/tv/${tv.id}'),
+            )
                 .animate()
                 .fadeIn(delay: (40 * index).ms, duration: 350.ms)
                 .slideX(begin: 0.1, end: 0, curve: Curves.easeOutCubic);

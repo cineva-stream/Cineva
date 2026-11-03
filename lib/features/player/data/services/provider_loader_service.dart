@@ -34,95 +34,120 @@ class ProviderLoaderService {
   /// the remote cluster index endpoint is sleeping or temporarily unreachable.
   static const List<VideoProvider> fallbackScraperProviders = [
     VideoProvider(
-      fullName: 'Movy Stream',
-      alias: 'Movy',
+      fullName: 'Movy (Miami)',
+      alias: 'Zeila',
       codeName: 'scraper:movy',
       type: VideoProviderType.scraperApi,
       apiId: 'movy',
+      content: 'Hollywood, Indonesia, Asian Movies & Series (1080p FHD)',
     ),
     VideoProvider(
-      fullName: 'Moviepire',
-      alias: 'Moviepire',
-      codeName: 'scraper:moviepire',
-      type: VideoProviderType.scraperApi,
-      apiId: 'moviepire',
-    ),
-    VideoProvider(
-      fullName: 'Vidup',
-      alias: 'Vidup',
+      fullName: 'VidUp',
+      alias: 'Gura',
       codeName: 'scraper:vidup',
       type: VideoProviderType.scraperApi,
       apiId: 'vidup',
+      content: 'High-Speed Multi-CDN Mirror (1080p/720p/480p)',
     ),
     VideoProvider(
       fullName: 'Reelix',
-      alias: 'Reelix',
+      alias: 'Entoto',
       codeName: 'scraper:reelix',
       type: VideoProviderType.scraperApi,
       apiId: 'reelix',
+      content: 'Global Movies & Drama Series (Adaptive HLS/DASH)',
     ),
     VideoProvider(
       fullName: 'Cinejoy',
-      alias: 'Cinejoy',
+      alias: 'Abyssinia',
       codeName: 'scraper:cinejoy',
       type: VideoProviderType.scraperApi,
       apiId: 'cinejoy',
+      content: 'Hollywood & Anime (FHD)',
     ),
     VideoProvider(
-      fullName: 'StreamFlix (Harar)',
-      alias: 'StreamFlix',
-      codeName: 'scraper:streamflix',
+      fullName: 'Atlantic',
+      alias: 'Gundet',
+      codeName: 'scraper:atlantic',
       type: VideoProviderType.scraperApi,
-      apiId: 'streamflix',
+      apiId: 'atlantic',
     ),
     VideoProvider(
-      fullName: 'ShowBox (Adwa CDN)',
-      alias: 'ShowBox',
-      codeName: 'scraper:showbox',
+      fullName: 'Vivarium',
+      alias: 'Kaffa',
+      codeName: 'scraper:viv',
       type: VideoProviderType.scraperApi,
-      apiId: 'showbox',
+      apiId: 'viv',
     ),
     VideoProvider(
-      fullName: 'AsiaFlix (Anime & Asia)',
-      alias: 'AsiaFlix',
+      fullName: 'AsiaFlix',
+      alias: 'Adulis',
       codeName: 'scraper:asiaflix',
       type: VideoProviderType.scraperApi,
       apiId: 'asiaflix',
     ),
     VideoProvider(
       fullName: 'AnimeKai',
-      alias: 'AnimeKai',
+      alias: 'Lalibela',
       codeName: 'scraper:animekai',
       type: VideoProviderType.scraperApi,
       apiId: 'animekai',
     ),
     VideoProvider(
+      fullName: 'AnimeYY',
+      alias: 'Magdala',
+      codeName: 'scraper:animeyy',
+      type: VideoProviderType.scraperApi,
+      apiId: 'animeyy',
+    ),
+    VideoProvider(
+      fullName: 'AnimePahe',
+      alias: 'Maychew',
+      codeName: 'scraper:animepahe',
+      type: VideoProviderType.scraperApi,
+      apiId: 'animepahe',
+    ),
+    VideoProvider(
+      fullName: 'AniKoto',
+      alias: 'Metemma',
+      codeName: 'scraper:anikoto',
+      type: VideoProviderType.scraperApi,
+      apiId: 'anikoto',
+    ),
+    VideoProvider(
       fullName: 'KissKH',
-      alias: 'KissKH',
+      alias: 'Chelenqo',
       codeName: 'scraper:kisskh',
       type: VideoProviderType.scraperApi,
       apiId: 'kisskh',
     ),
     VideoProvider(
-      fullName: 'Aether Cloud',
-      alias: 'Aether',
-      codeName: 'scraper:aether',
+      fullName: '4KHDHub',
+      alias: 'Gondar',
+      codeName: 'scraper:4khdhub',
       type: VideoProviderType.scraperApi,
-      apiId: 'aether',
-    ),
-    VideoProvider(
-      fullName: 'ZStream',
-      alias: 'ZStream',
-      codeName: 'scraper:zstream',
-      type: VideoProviderType.scraperApi,
-      apiId: 'zstream',
+      apiId: '4khdhub',
     ),
     VideoProvider(
       fullName: 'YoTurkish',
-      alias: 'YoTurkish',
+      alias: 'Sebastopol',
       codeName: 'scraper:yoturkish',
       type: VideoProviderType.scraperApi,
       apiId: 'yoturkish',
+    ),
+    VideoProvider(
+      fullName: 'AethoFlix',
+      alias: 'Karamara',
+      codeName: 'scraper:aethoflix',
+      type: VideoProviderType.scraperApi,
+      apiId: 'aethoflix',
+    ),
+    VideoProvider(
+      fullName: 'Aether',
+      alias: 'Yeha',
+      codeName: 'scraper:aether',
+      type: VideoProviderType.scraperApi,
+      apiId: 'aether',
     ),
   ];
 
@@ -146,24 +171,22 @@ class ProviderLoaderService {
         // Prioritize high-performance known scrapers
         final prioritizedIds = [
           'movy',
-          'moviepire',
           'vidup',
           'reelix',
           'cinejoy',
-          'streamflix',
-          'showbox',
+          'atlantic',
+          'viv',
           'asiaflix',
           'animekai',
-          'animeyy',
           'animepahe',
+          'anikoto',
+          'animeyy',
           'kisskh',
           '4khdhub',
-          'atlantic',
-          'aethoflix',
-          'viv',
-          'aether',
-          'zstream',
           'yoturkish',
+          'aethoflix',
+          'aether',
+          'moviepire',
         ];
 
         scraperProviders.sort((a, b) {
@@ -191,10 +214,16 @@ class ProviderLoaderService {
     int? season,
     int? episode,
     ProviderProgressCallback? onProgress,
+    void Function(VideoProvider provider)? onStartAttempt,
   }) async {
     final providers = await getAvailableProviders();
 
     for (final provider in providers) {
+      // Moviepire upstream scraper frequently returns unrelated content (e.g. random anime
+      // or short clips) when requested media is missing. Exclude from automatic failover.
+      if (provider.apiId == 'moviepire') continue;
+
+      onStartAttempt?.call(provider);
       debugPrint('[ProviderLoaderService] Trying provider: ${provider.displayName} (${provider.codeName})');
       ProviderLoadResult result;
 

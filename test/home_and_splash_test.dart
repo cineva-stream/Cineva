@@ -97,6 +97,30 @@ void main() {
       expect(find.text('Sci-Fi'), findsOneWidget);
     });
 
+    testWidgets('MovieCard with isTv: true navigates to TV details or triggers custom onTap', (tester) async {
+      bool tapped = false;
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: MovieCard(
+                movie: testMovie,
+                isTv: true,
+                onTap: () {
+                  tapped = true;
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(MovieCard));
+      await tester.pumpAndSettle();
+
+      expect(tapped, isTrue);
+    });
+
     testWidgets('Top10MovieCard displays rank badge and rank number', (tester) async {
       await tester.pumpWidget(
         const ProviderScope(

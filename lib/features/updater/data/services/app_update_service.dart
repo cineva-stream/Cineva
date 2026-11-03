@@ -231,6 +231,21 @@ class AppUpdateService {
     }
   }
 
+  /// Checks whether a system update notification has already been shown for [version].
+  Future<bool> isUpdateNotified(String version) async {
+    if (kIsWeb || !Platform.isAndroid) return false;
+    try {
+      final bool? notified = await _channel.invokeMethod<bool>(
+        'isUpdateNotified',
+        {'version': version},
+      );
+      return notified ?? false;
+    } catch (e) {
+      debugPrint('[AppUpdateService] isUpdateNotified error: $e');
+      return false;
+    }
+  }
+
   /// Checks if system notification permission is granted on Android.
   Future<bool> hasNotificationPermission() async {
     if (kIsWeb || !Platform.isAndroid) return false;

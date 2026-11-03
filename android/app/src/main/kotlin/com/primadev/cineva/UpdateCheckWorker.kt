@@ -145,14 +145,32 @@ class UpdateCheckWorker(
         }
 
         /**
+         * Checks whether a notification for the given [version] has already been dispatched.
+         */
+        fun isVersionNotified(context: Context, version: String): Boolean {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return prefs.getString(KEY_LAST_NOTIFIED, null) == version
+        }
+
+        /**
          * Creates the notification channel and displays a dynamic update notification.
+         * Enforces single-dispatch rule: if a notification for [version] has already been
+         * posted, duplicate notifications are prevented unless [force] is true.
          */
         fun showNotification(
             context: Context,
             version: String,
             title: String,
-            body: String
-        ) {
+            body: String,
+            force: Boolean = false
+        ): Boolean {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val lastNotified = prefs.getString(KEY_LAST_NOTIFIED, null)
+            if (!force && lastNotified == version) {
+                Log.i(TAG, "Notification for v$version already shown previously. Skipping duplicate notification.")
+                return false
+            }
+
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -243,13 +261,20 @@ class UpdateCheckWorker(
 
             val notification = notificationBuilder.build()
 
-            try {
+            return try {
                 NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+                prefs.edit()
+                    .putString(KEY_LAST_NOTIFIED, version)
+                    .putLong(KEY_LAST_NOTIFIED_TIME, System.currentTimeMillis())
+                    .apply()
                 Log.i(TAG, "Update notification successfully posted for v$version")
+                true
             } catch (e: SecurityException) {
                 Log.w(TAG, "Notification permission missing: ${e.message}")
+                false
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to post notification: ${e.message}", e)
+                false
             }
         }
 
@@ -317,21 +342,16 @@ class UpdateCheckWorker(
                 return@withContext Result.success()
             }
 
-            // Cooldown check:
-            // Alert user immediately when new release is detected.
-            // If already notified for this exact version, only re-notify after 4 hours
-            // if the user has still not updated the app.
+            // Single notification enforcement:
+            // Alert user once per newly detected version.
+            // If already notified for this exact version, do not send again.
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val lastNotified = prefs.getString(KEY_LAST_NOTIFIED, null)
-            val lastNotifiedTime = prefs.getLong(KEY_LAST_NOTIFIED_TIME, 0L)
-            val currentTime = System.currentTimeMillis()
-            val fourHoursMs = TimeUnit.HOURS.toMillis(4)
 
-            val shouldNotify = (lastNotified != cleanRemoteVersion) ||
-                    (currentTime - lastNotifiedTime > fourHoursMs)
+            val shouldNotify = (lastNotified != cleanRemoteVersion)
 
             if (!shouldNotify) {
-                Log.i(TAG, "Notification for v$cleanRemoteVersion is within cooldown interval.")
+                Log.i(TAG, "Notification for v$cleanRemoteVersion was already shown previously. Skipping.")
                 return@withContext Result.success()
             }
 
@@ -345,11 +365,6 @@ class UpdateCheckWorker(
                 body = ""
             )
 
-            // Mark this version as notified and record timestamp
-            prefs.edit()
-                .putString(KEY_LAST_NOTIFIED, cleanRemoteVersion)
-                .putLong(KEY_LAST_NOTIFIED_TIME, currentTime)
-                .apply()
             Log.i(TAG, "Background update check completed: notification shown for v$cleanRemoteVersion")
 
             Result.success()

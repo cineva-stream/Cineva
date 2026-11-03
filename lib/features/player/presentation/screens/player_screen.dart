@@ -1363,6 +1363,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       debugPrint('[PlayerScreen] Unable to resolve TMDB ID');
       if (mounted) {
         setState(() {
+          _customLoadingStatus = null;
           _isLoading = false;
           _streamNotFound = true;
         });
@@ -1411,17 +1412,50 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         tmdbId: _currentTmdbId!,
         season: _currentSeason,
         episode: _currentEpisode,
-        onProgress: (provider, isSuccess, error) {
-          if (mounted && !isSuccess) {
+        onStartAttempt: (provider) {
+          if (mounted) {
             setState(() {
               _customLoadingStatus = 'Mencoba ${provider.displayName}...';
+            });
+          }
+        },
+        onProgress: (provider, isSuccess, error) {
+          if (mounted && isSuccess) {
+            setState(() {
+              _customLoadingStatus = null;
             });
           }
         },
       );
 
       if (selection != null && selection.result.hasPlayableStreams) {
-        final bestLink = selection.result.videoLinks!.first;
+        if (mounted) {
+          setState(() {
+            _customLoadingStatus = null;
+          });
+        }
+        final links = selection.result.videoLinks!;
+        final defaultQuality = SettingsService.getDefaultQuality();
+        final targetQuality =
+            _currentQuality.isNotEmpty && _currentQuality != 'Offline'
+            ? _currentQuality
+            : defaultQuality;
+
+        // Select preferred quality link if available (1080p, 720p, etc.)
+        RegularVideoLinks bestLink = links.first;
+        if (targetQuality != 'Auto' && links.length > 1) {
+          final targetH =
+              int.tryParse(targetQuality.replaceAll(RegExp(r'[^0-9]'), '')) ??
+              1080;
+          final match = links.where((l) {
+            final q = (l.quality ?? '').toLowerCase();
+            return q.contains('${targetH}p') || q.contains('$targetH');
+          }).firstOrNull;
+          if (match != null && match.url != null && match.url!.isNotEmpty) {
+            bestLink = match;
+          }
+        }
+
         final streamUrl = bestLink.url!;
         final streamHeaders =
             bestLink.headers ??
@@ -1462,11 +1496,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         await _player.setSubtitleTrack(SubtitleTrack.no());
         await _player.setVolume(_volume);
 
-        final defaultQuality = SettingsService.getDefaultQuality();
-        final targetQuality =
-            _currentQuality.isNotEmpty && _currentQuality != 'Offline'
-            ? _currentQuality
-            : defaultQuality;
         _hasAppliedDefaultQuality = false;
 
         if (mounted) {
@@ -1497,6 +1526,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       );
       if (mounted) {
         setState(() {
+          _customLoadingStatus = null;
           _isLoading = false;
           _streamNotFound = true;
         });
@@ -5114,8 +5144,35 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         spacing: 12,
                         runSpacing: 10,
                         children: [
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              final webServer = _availableServers.firstWhere(
+                                (srv) => !srv.isDirectHls,
+                                orElse: () =>
+                                    SmartStreamService.fallbackWebServers.first,
+                              );
+                              setState(() {
+                                _streamNotFound = false;
+                              });
+                              _switchServer(webServer);
+                            },
+                            icon: const Icon(Icons.public_rounded, size: 16),
+                            label: const Text('Coba Server Web (VidLink)'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 10,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                          ),
                           OutlinedButton.icon(
-                            onPressed: () => _openSidePanel(_SidePanelPage.server),
+                            onPressed: () =>
+                                _openSidePanel(_SidePanelPage.server),
                             icon: const Icon(Icons.dns_rounded, size: 16),
                             label: Text(s.playerStreamNotFoundChooseServer),
                             style: OutlinedButton.styleFrom(
@@ -5132,7 +5189,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                               ),
                             ),
                           ),
-                          ElevatedButton.icon(
+                          OutlinedButton.icon(
                             onPressed: () {
                               setState(() {
                                 _streamNotFound = false;
@@ -5141,11 +5198,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             },
                             icon: const Icon(Icons.refresh_rounded, size: 16),
                             label: Text(s.playerRetry),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.black,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.25),
+                              ),
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
+                                horizontal: 16,
                                 vertical: 10,
                               ),
                               shape: RoundedRectangleBorder(
