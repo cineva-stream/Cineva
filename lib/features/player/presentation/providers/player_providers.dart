@@ -6,6 +6,8 @@ import '../../data/services/torrent_stream_service.dart';
 import '../../data/services/subtitle_service.dart';
 import '../../data/services/subtitle_translator_service.dart';
 import '../../data/services/network_quality_service.dart';
+import '../../data/services/provider_loader_service.dart';
+import '../../data/services/smart_stream_service.dart';
 import '../../data/models/subtitle_cue.dart';
 import '../../data/models/subtitle_style_settings.dart';
 import '../../../settings/data/settings_service.dart';
@@ -41,6 +43,18 @@ final subtitleTranslatorServiceProvider = Provider<SubtitleTranslatorService>((r
 /// Singleton network quality & auto source selector service provider.
 final networkQualityServiceProvider = Provider<NetworkQualityService>((ref) {
   return NetworkQualityService();
+});
+
+/// Singleton provider loader service provider.
+final providerLoaderServiceProvider = Provider<ProviderLoaderService>((ref) {
+  return ProviderLoaderService();
+});
+
+/// Fetches available streaming servers (Direct HLS providers + Fallback Web servers).
+final streamServersProvider = FutureProvider<List<SmartStreamServer>>((ref) async {
+  final loader = ref.watch(providerLoaderServiceProvider);
+  final providers = await loader.getAvailableProviders();
+  return SmartStreamService.buildCombinedServers(providers);
 });
 
 /// Fetches available torrent sources for a given IMDb ID.

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import '../models/provider_stream_models.dart';
 
 /// Represents a streaming server configuration in Cineva's Smart Playback Engine.
 class SmartStreamServer {
@@ -11,6 +12,7 @@ class SmartStreamServer {
   final String tag;
   final String description;
   final bool isDirectHls;
+  final VideoProvider? videoProvider;
   final String Function({
     required int tmdbId,
     String? imdbId,
@@ -24,34 +26,40 @@ class SmartStreamServer {
     required this.tag,
     required this.description,
     this.isDirectHls = false,
+    this.videoProvider,
     required this.buildUrl,
   });
+
+  factory SmartStreamServer.fromVideoProvider(VideoProvider provider) {
+    final isVix = provider.type == VideoProviderType.directVixSrc;
+    return SmartStreamServer(
+      id: provider.codeName,
+      name: provider.displayName,
+      tag: isVix ? 'Direct FHD' : 'Direct CDN',
+      description: provider.contentDescription,
+      isDirectHls: true,
+      videoProvider: provider,
+      buildUrl: isVix
+          ? ({required tmdbId, imdbId, season, episode}) =>
+              season != null && episode != null
+                  ? 'https://vixsrc.to/api/tv/$tmdbId/$season/$episode'
+                  : 'https://vixsrc.to/api/movie/$tmdbId'
+          : ({required tmdbId, imdbId, season, episode}) => '',
+    );
+  }
 }
 
 /// Smart Stream Engine that manages multi-server resolution, direct HLS extraction,
 /// intelligent stream sniffing, and failover across multiple high-performance CDNs.
 class SmartStreamService {
-  /// Available streaming servers prioritized by performance, stability, and catalog coverage.
-  static final List<SmartStreamServer> servers = [
-    // Server 1: Cineva Direct HLS (Native media_kit player)
-    SmartStreamServer(
-      id: 'cineva_direct',
-      name: 'Cineva Direct (FHD)',
-      tag: 'Native 1080p',
-      description: 'Ekstraksi stream HLS langsung dengan kontrol penuh Cineva',
-      isDirectHls: true,
-      buildUrl: ({required tmdbId, imdbId, season, episode}) =>
-          season != null && episode != null
-              ? 'https://vixsrc.to/api/tv/$tmdbId/$season/$episode'
-              : 'https://vixsrc.to/api/movie/$tmdbId',
-    ),
-
-    // Server 2: VidLink Ultra (Next.js player, ultra fast, great for Anime & TV Series)
+  /// Emergency fallback WebView servers (used only when all direct HLS providers are offline/unavailable).
+  static final List<SmartStreamServer> fallbackWebServers = [
+    // Web Server 1: VidLink Ultra
     SmartStreamServer(
       id: 'vidlink',
-      name: 'VidLink HD',
-      tag: 'Fast • Anime/Series',
-      description: 'Server cepat untuk serial TV, anime populer & film rilisan baru',
+      name: 'VidLink HD (Web)',
+      tag: 'Cadangan Web',
+      description: 'Server web cadangan untuk serial TV & film rilis baru',
       isDirectHls: false,
       buildUrl: ({required tmdbId, imdbId, season, episode}) =>
           season != null && episode != null
@@ -59,12 +67,12 @@ class SmartStreamService {
               : 'https://vidlink.pro/movie/$tmdbId?autoplay=true&primaryColor=f59e0b',
     ),
 
-    // Server 3: MultiEmbed VIP (Massive global catalog, anime, and movies)
+    // Web Server 2: MultiEmbed VIP
     SmartStreamServer(
       id: 'multiembed',
-      name: 'MultiEmbed VIP',
-      tag: 'Global Catalog',
-      description: 'Katalog super lengkap: Anime, K-Drama, dan film luar negeri',
+      name: 'MultiEmbed VIP (Web)',
+      tag: 'Cadangan Web',
+      description: 'Katalog web alternatif: Anime, K-Drama, dan film',
       isDirectHls: false,
       buildUrl: ({required tmdbId, imdbId, season, episode}) {
         if (season != null && episode != null) {
@@ -81,12 +89,12 @@ class SmartStreamService {
       },
     ),
 
-    // Server 4: VidSrc Ultra
+    // Web Server 3: VidSrc Ultra
     SmartStreamServer(
       id: 'vidsrc_xyz',
-      name: 'VidSrc Ultra',
-      tag: 'Cluster Mirror',
-      description: 'Mirror cadangan berkecepatan tinggi',
+      name: 'VidSrc Ultra (Web)',
+      tag: 'Cadangan Web',
+      description: 'Mirror web cadangan berkecepatan tinggi',
       isDirectHls: false,
       buildUrl: ({required tmdbId, imdbId, season, episode}) {
         final cleanImdb = imdbId != null && imdbId.isNotEmpty
@@ -104,12 +112,12 @@ class SmartStreamService {
       },
     ),
 
-    // Server 5: 2Embed VIP
+    // Web Server 4: 2Embed VIP
     SmartStreamServer(
       id: 'two_embed',
-      name: '2Embed Prime',
-      tag: 'VIP Server',
-      description: 'Server alternatif global untuk anime dan serial',
+      name: '2Embed Prime (Web)',
+      tag: 'Cadangan Web',
+      description: 'Server alternatif global cadangan',
       isDirectHls: false,
       buildUrl: ({required tmdbId, imdbId, season, episode}) =>
           season != null && episode != null
@@ -117,12 +125,12 @@ class SmartStreamService {
               : 'https://www.2embed.cc/embed/$tmdbId',
     ),
 
-    // Server 6: SmashyStream
+    // Web Server 5: SmashyStream
     SmartStreamServer(
       id: 'smashystream',
-      name: 'SmashyStream',
-      tag: 'Multi-Source',
-      description: 'Server agregator cadangan dengan multi-source player',
+      name: 'SmashyStream (Web)',
+      tag: 'Cadangan Web',
+      description: 'Server agregator cadangan multi-source',
       isDirectHls: false,
       buildUrl: ({required tmdbId, imdbId, season, episode}) =>
           season != null && episode != null
@@ -130,6 +138,47 @@ class SmartStreamService {
               : 'https://embed.smashystream.com/playere.php?tmdb=$tmdbId',
     ),
   ];
+
+  /// Static default direct streaming providers
+  static final List<SmartStreamServer> defaultDirectServers = [
+    SmartStreamServer.fromVideoProvider(VideoProvider.directVixSrc),
+    SmartStreamServer.fromVideoProvider(
+      VideoProvider.scraper(
+        id: 'showbox',
+        name: 'ShowBox (Adwa CDN)',
+        alias: 'ShowBox HD',
+        content: 'Hollywood, Anime, TV Series (Super Cepat)',
+      ),
+    ),
+    SmartStreamServer.fromVideoProvider(
+      VideoProvider.scraper(
+        id: 'streamflix',
+        name: 'StreamFlix (Harar)',
+        alias: 'StreamFlix VIP',
+        content: 'Hollywood, Bollywood, TV Series',
+      ),
+    ),
+    SmartStreamServer.fromVideoProvider(
+      VideoProvider.scraper(
+        id: 'cinejoy',
+        name: 'Cinejoy (Abyssinia)',
+        alias: 'Cinejoy FHD',
+        content: 'Hollywood & Anime',
+      ),
+    ),
+  ];
+
+  /// Combines dynamic active direct providers with emergency fallback web servers.
+  static List<SmartStreamServer> buildCombinedServers(List<VideoProvider> activeProviders) {
+    if (activeProviders.isEmpty) {
+      return [...defaultDirectServers, ...fallbackWebServers];
+    }
+    final directServers = activeProviders.map(SmartStreamServer.fromVideoProvider).toList();
+    return [...directServers, ...fallbackWebServers];
+  }
+
+  /// Available streaming servers prioritized by performance, stability, and catalog coverage.
+  static List<SmartStreamServer> get servers => [...defaultDirectServers, ...fallbackWebServers];
 
   /// Resolves both TMDB ID and IMDb ID so all servers have complete metadata.
   static Future<({int tmdbId, String? imdbId})> resolveIds({

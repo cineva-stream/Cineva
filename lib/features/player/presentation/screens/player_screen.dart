@@ -18,6 +18,8 @@ import '../../data/services/subtitle_service.dart';
 import '../../data/services/subtitle_translator_service.dart';
 import '../../data/services/vixsrc_stream_service.dart';
 import '../../data/services/smart_stream_service.dart';
+import '../../data/services/provider_loader_service.dart';
+import '../../data/models/provider_stream_models.dart';
 import '../../../settings/data/settings_service.dart';
 import '../../../settings/data/subtitle_languages.dart';
 import '../../../history/data/models/watch_history_item.dart';
@@ -108,6 +110,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   // ── Smart Stream Multi-Server & Direct Engine ──
   SmartStreamServer _currentServer = SmartStreamService.servers[0];
+  List<SmartStreamServer> _availableServers = SmartStreamService.servers;
   int? _currentTmdbId;
   String? _currentImdbId;
   bool _isWebPlaying = false;
@@ -1340,79 +1343,138 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       debugPrint('[PlayerScreen] resolveIds exception: $e');
     }
 
+    if (_currentTmdbId == null || _currentTmdbId == 0) {
+      debugPrint('[PlayerScreen] Unable to resolve TMDB ID');
+      await _loadWebServer(_currentServer);
+      return;
+    }
+
+    // Refresh dynamic list of servers
+    final loader = ref.read(providerLoaderServiceProvider);
+    try {
+      final providers = await loader.getAvailableProviders();
+      if (mounted) {
+        setState(() {
+          _availableServers = SmartStreamService.buildCombinedServers(providers);
+        });
+      }
+    } catch (_) {}
+
     if (_currentServer.isDirectHls) {
-      try {
-        // 1. Direct HLS Master Playlist extraction from VixSrc (native media_kit player)
-        final vixResult = await VixSrcStreamService.resolveStream(
-          tmdbId: _currentTmdbId,
-          imdbId: _currentImdbId,
-          season: _currentSeason,
-          episode: _currentEpisode,
-        );
+      ProviderSelection? selection;
 
-        if (vixResult != null && vixResult.playlistUrl.isNotEmpty) {
-          debugPrint(
-            '[PlayerScreen] Playing native Master HLS M3U8: ${vixResult.playlistUrl}',
+      // 1. If user specifically picked a single direct provider from server menu
+      if (_currentServer.videoProvider != null) {
+        try {
+          final res = await loader.loadFromProvider(
+            provider: _currentServer.videoProvider!,
+            tmdbId: _currentTmdbId!,
+            season: _currentSeason,
+            episode: _currentEpisode,
           );
-          _useNativePlayer = true;
-          _streamSubtitles = vixResult.subtitles;
-
-          if (mounted) {
-            setState(() {
-              _loadingStep = _PlayerLoadingStep.preparingBuffer;
-            });
+          if (res.hasPlayableStreams) {
+            selection = ProviderSelection(
+              provider: _currentServer.videoProvider!,
+              result: res,
+            );
           }
-
-          // Apply fast initial buffer + 3-minute background cache before stream open
-          await _setupMpvFastBufferOptions();
-
-          // Opening the Master Playlist ensures full audio rendition is bound with video
-          await _player.open(
-            Media(
-              vixResult.playlistUrl,
-              httpHeaders: VixSrcStreamService.headers,
-            ),
-          );
-          // CRITICAL: Disable mpv's internal subtitles so they do not bypass Cineva's settings!
-          await _player.setSubtitleTrack(SubtitleTrack.no());
-          await _player.setVolume(_volume);
-
-          final defaultQuality = SettingsService.getDefaultQuality();
-          final targetQuality =
-              _currentQuality.isNotEmpty && _currentQuality != 'Offline'
-                  ? _currentQuality
-                  : defaultQuality;
-          _hasAppliedDefaultQuality = false;
-
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              _currentQuality = targetQuality;
-              _resolutionLabel = _formatResolutionLabel(targetQuality);
-            });
-          }
-
-          if (_player.state.tracks.video.isNotEmpty) {
-            _hasAppliedDefaultQuality = true;
-            if (targetQuality != 'Auto') {
-              unawaited(_selectQualityTrack(targetQuality));
-            }
-          }
-
-          // Subtitles loaded asynchronously in background so video playback begins immediately!
-          unawaited(_loadSubtitles());
-          return;
+        } catch (e) {
+          debugPrint('[PlayerScreen] Error loading from selected provider: $e');
         }
-      } catch (e) {
-        debugPrint('[PlayerScreen] VixSrc resolution exception: $e');
       }
 
-      // If Direct HLS fails or returns 404 (e.g. Kimetsu No Yaiba, Naruto, or certain films),
-      // intelligently auto-failover to Server 2: VidLink HD!
+      // 2. If not specifically picked or selected provider failed, run the failover loader
+      if (selection == null) {
+        selection = await loader.loadFirstSuccessful(
+          tmdbId: _currentTmdbId!,
+          season: _currentSeason,
+          episode: _currentEpisode,
+          onProgress: (provider, isSuccess, error) {
+            if (mounted && !isSuccess) {
+              setState(() {
+                _customLoadingStatus = 'Mencoba ${provider.displayName}...';
+              });
+            }
+          },
+        );
+      }
+
+      if (selection != null && selection.result.hasPlayableStreams) {
+        final bestLink = selection.result.videoLinks!.first;
+        final streamUrl = bestLink.url!;
+        final streamHeaders = bestLink.headers ??
+            (selection.provider.type == VideoProviderType.directVixSrc
+                ? VixSrcStreamService.headers
+                : null);
+
+        debugPrint(
+          '[PlayerScreen] Playing native Master stream from ${selection.provider.displayName}: $streamUrl',
+        );
+        _useNativePlayer = true;
+        _currentServer = SmartStreamServer.fromVideoProvider(selection.provider);
+
+        // Map provider subtitles into Cineva subtitle overlay
+        if (selection.result.subtitleLinks != null &&
+            selection.result.subtitleLinks!.isNotEmpty) {
+          _streamSubtitles = selection.result.subtitleLinks!
+              .map((sub) => sub.toSubtitleInfo())
+              .toList();
+        } else {
+          _streamSubtitles = [];
+        }
+
+        if (mounted) {
+          setState(() {
+            _loadingStep = _PlayerLoadingStep.preparingBuffer;
+          });
+        }
+
+        // Apply fast initial buffer + 3-minute background cache before stream open
+        await _setupMpvFastBufferOptions();
+
+        // Opening the stream with headers ensures full CDN & audio rendition is bound
+        await _player.open(
+          Media(
+            streamUrl,
+            httpHeaders: streamHeaders,
+          ),
+        );
+        // CRITICAL: Disable mpv's internal subtitles so they do not bypass Cineva's settings!
+        await _player.setSubtitleTrack(SubtitleTrack.no());
+        await _player.setVolume(_volume);
+
+        final defaultQuality = SettingsService.getDefaultQuality();
+        final targetQuality =
+            _currentQuality.isNotEmpty && _currentQuality != 'Offline'
+                ? _currentQuality
+                : defaultQuality;
+        _hasAppliedDefaultQuality = false;
+
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _currentQuality = targetQuality;
+            _resolutionLabel = _formatResolutionLabel(targetQuality);
+          });
+        }
+
+        if (_player.state.tracks.video.isNotEmpty) {
+          _hasAppliedDefaultQuality = true;
+          if (targetQuality != 'Auto') {
+            unawaited(_selectQualityTrack(targetQuality));
+          }
+        }
+
+        // Subtitles loaded asynchronously in background so video playback begins immediately!
+        unawaited(_loadSubtitles());
+        return;
+      }
+
+      // If all Direct HLS providers fail, intelligently auto-failover to emergency web server!
       debugPrint(
-        '[PlayerScreen] Direct HLS not available for this title. Auto-failover to VidLink HD...',
+        '[PlayerScreen] All direct HLS streams unavailable. Auto-failover to emergency Web Server...',
       );
-      _currentServer = SmartStreamService.servers[1]; // VidLink HD
+      _currentServer = SmartStreamService.fallbackWebServers.first;
       if (mounted) {
         setState(() {
           _customLoadingStatus = s.playerAutoSwitched(_currentServer.name);
@@ -3139,7 +3201,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ),
             ),
           ),
-          ...SmartStreamService.servers.map((srv) {
+          ..._availableServers.map((srv) {
             final isSelected = _currentServer.id == srv.id;
             return InkWell(
               onTap: () => _switchServer(srv),
