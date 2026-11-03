@@ -61,6 +61,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     required String resolution,
     required String streamUrl,
     String masterPlaylistUrl = '',
+    Map<String, String>? headers,
     required int estimatedSizeBytes,
     String preferredSubtitleLang = 'id',
     int runtimeMinutes = 100,
@@ -125,6 +126,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       imdbId: imdbId,
       streamUrl: streamUrl,
       masterPlaylistUrl: masterPlaylistUrl,
+      headers: headers,
       cancelToken: cancelToken,
       runtimeMinutes: runtimeMinutes,
     ));
@@ -135,6 +137,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     String? imdbId,
     required String streamUrl,
     String masterPlaylistUrl = '',
+    Map<String, String>? headers,
     required CancelToken cancelToken,
     required int runtimeMinutes,
   }) async {
@@ -142,6 +145,33 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
 
     try {
       var currentItem = item;
+      var targetStreamUrl = streamUrl;
+      var targetMasterUrl = masterPlaylistUrl;
+      var targetHeaders = headers;
+
+      // Dynamically resolve download streams on resume if streamUrl was blank
+      if (targetStreamUrl.isEmpty) {
+        try {
+          final options = await _videoService.resolveResolutionOptions(
+            tmdbId: item.tmdbId,
+            imdbId: imdbId,
+            season: item.seasonNumber,
+            episode: item.episodeNumber,
+            runtimeMinutes: runtimeMinutes,
+          );
+          if (options.isNotEmpty) {
+            final matched = options.firstWhere(
+              (o) => o.label == item.resolution,
+              orElse: () => options.first,
+            );
+            targetStreamUrl = matched.streamUrl;
+            targetMasterUrl = matched.masterPlaylistUrl;
+            targetHeaders = matched.headers;
+          }
+        } catch (e) {
+          debugPrint('[DownloadNotifier] Dynamic stream re-resolution failed: $e');
+        }
+      }
 
       // Start Subtitle pipeline concurrently in the background so video download begins immediately
       final subtitleFuture = Future<void>(() async {
@@ -155,7 +185,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
               season: item.seasonNumber,
               episode: item.episodeNumber,
               preferredLang: item.selectedSubtitleLang,
-              masterPlaylistUrl: masterPlaylistUrl,
+              masterPlaylistUrl: targetMasterUrl,
             );
             currentItem = currentItem.copyWith(
               subtitleStatus: subResult.status,
@@ -171,8 +201,12 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
 
       // Video download starts at full multi-connection speed instantly
       final videoFuture = _videoService.downloadStream(
-        streamUrl: streamUrl,
-        masterPlaylistUrl: masterPlaylistUrl,
+        streamUrl: targetStreamUrl,
+        masterPlaylistUrl: targetMasterUrl,
+        headers: targetHeaders,
+        targetFilePath: item.videoPath,
+        estimatedSizeBytes: item.estimatedSizeBytes,
+        cancelToken: cancelToken,
         targetFilePath: item.videoPath,
         estimatedSizeBytes: item.estimatedSizeBytes,
         cancelToken: cancelToken,
