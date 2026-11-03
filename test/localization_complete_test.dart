@@ -127,12 +127,17 @@ void main() {
       expect(sEn.playerSubtitleTrack, 'Select Subtitle');
       expect(sEn.playerSubSettingsTitle, 'Subtitle Settings');
       expect(sEn.playerTabSync, 'Timing (Sync)');
-      expect(sEn.playerTabAppearance, 'Appearance & Background');
+      expect(sEn.playerTabAppearance, 'Appearance');
       expect(sEn.playerNextEpisodePill(5), 'Next: Episode 5');
+      expect(sEn.playerStreamNotFoundTitle, 'Stream Not Available');
+      expect(sEn.playerStreamNotFoundChooseServer, 'Choose Another Server');
 
       expect(sId.playerQualityTitle, 'Kualitas Video');
       expect(sId.playerSubtitleTrack, 'Pilih Subtitle');
+      expect(sId.playerTabAppearance, 'Tampilan');
       expect(sId.playerNextEpisodePill(5), 'Episode 5 Berikutnya');
+      expect(sId.playerStreamNotFoundTitle, 'Sumber Video Belum Tersedia');
+      expect(sId.playerStreamNotFoundChooseServer, 'Pilih Server Lain');
 
       // Download modal localization
       expect(sEn.downloadModalConnecting, 'Connecting stream & calculating sizes...');

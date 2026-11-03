@@ -1,8 +1,10 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import '../../../../core/network/dio_client.dart';
+import '../models/provider_stream_models.dart';
 import 'subtitle_service.dart';
 import '../../../download/data/services/hls_url_resolver.dart';
 
@@ -33,7 +35,74 @@ class VixSrcStreamService {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
   };
 
-  /// Resolves the stream for either Movie or TV Episode.
+  /// Loads VixSrc as a normalized [ProviderLoadResult] for the ProviderLoader failover engine.
+  static Future<ProviderLoadResult> loadProviderResult({
+    required int tmdbId,
+    int? season,
+    int? episode,
+  }) async {
+    try {
+      final res = await resolveStream(
+        tmdbId: tmdbId,
+        season: season,
+        episode: episode,
+      );
+
+      if (res == null || res.playlistUrl.isEmpty) {
+        return const ProviderLoadResult(
+          errorMessage: 'VixSrc returned no stream links',
+          providerName: 'VixSrc Direct',
+        );
+      }
+
+      final videoLinks = <RegularVideoLinks>[
+        RegularVideoLinks(
+          url: res.playlistUrl,
+          quality: 'Auto',
+          server: 'VixSrc Direct (FHD)',
+          isM3U8: true,
+          headers: headers,
+        ),
+      ];
+
+      // Add individual rendition quality links if resolved
+      res.qualityUrls.forEach((quality, qualityUrl) {
+        if (quality != 'Auto' && qualityUrl != res.playlistUrl) {
+          videoLinks.add(
+            RegularVideoLinks(
+              url: qualityUrl,
+              quality: quality,
+              server: 'VixSrc Direct ($quality)',
+              isM3U8: true,
+              headers: headers,
+            ),
+          );
+        }
+      });
+
+      final subtitleLinks = res.subtitles.map((s) {
+        return RegularSubtitleLinks(
+          url: s.downloadUrl ?? s.id,
+          language: s.language,
+          headers: headers,
+        );
+      }).toList();
+
+      return ProviderLoadResult(
+        success: true,
+        videoLinks: videoLinks,
+        subtitleLinks: subtitleLinks,
+        providerName: 'VixSrc Direct',
+      );
+    } catch (e) {
+      return ProviderLoadResult(
+        errorMessage: 'VixSrc extraction error: $e',
+        providerName: 'VixSrc Direct',
+      );
+    }
+  }
+
+  /// Resolves the stream for either Movie or TV Episode with resilient token retries.
   static Future<VixSrcStreamResult?> resolveStream({
     int? tmdbId,
     String? imdbId,
@@ -60,22 +129,33 @@ class VixSrcStreamService {
           : '$baseUrl/api/movie/$resolvedTmdbId';
 
       debugPrint('[VixSrcStreamService] Requesting: $apiUrl');
-      final apiResponse = await _httpGet(apiUrl);
-      if (apiResponse == null) return null;
 
-      final data = jsonDecode(apiResponse);
-      final src = data['src'] as String?;
-      if (src == null || src.isEmpty) {
-        debugPrint('[VixSrcStreamService] No src field in response');
+      // Attempt embedSrc and embedHtml retrieval with retry (up to 2 attempts)
+      String? embedHtml;
+      for (var attempt = 0; attempt < 2; attempt++) {
+        final apiResponse = await _httpGet(apiUrl);
+        if (apiResponse == null) continue;
+
+        try {
+          final data = jsonDecode(apiResponse);
+          final src = data['src']?.toString();
+          if (src == null || src.isEmpty) continue;
+
+          final embedUrl = src.startsWith('http') ? src : _resolveUrl(src, baseUrl);
+          final html = await _httpGet(embedUrl);
+          if (html != null && html.isNotEmpty) {
+            embedHtml = html;
+            break;
+          }
+        } catch (_) {}
+      }
+
+      if (embedHtml == null || embedHtml.isEmpty) {
+        debugPrint('[VixSrcStreamService] Could not retrieve embed HTML');
         return null;
       }
 
-      // 3. Fetch embed HTML page
-      final embedUrl = src.startsWith('http') ? src : '$baseUrl$src';
-      final embedHtml = await _httpGet(embedUrl);
-      if (embedHtml == null || embedHtml.isEmpty) return null;
-
-      // 4. Extract playlist and token from embed HTML
+      // 3. Extract playlist and token from embed HTML
       final urlMatch = RegExp(
             r"""window\.masterPlaylist\s*=\s*\{[\s\S]*?url:\s*['"]([^'"]+)['"]""",
           ).firstMatch(embedHtml) ??
@@ -96,7 +176,7 @@ class VixSrcStreamService {
       }
 
       final rawUrl = urlMatch.group(1)!.replaceAll(r'\/', '/');
-      final uri = Uri.parse(rawUrl.startsWith('http') ? rawUrl : '$baseUrl$rawUrl');
+      final uri = Uri.parse(_resolveUrl(rawUrl, baseUrl));
 
       final masterPlaylistUrl = uri.replace(
         queryParameters: {
@@ -110,7 +190,7 @@ class VixSrcStreamService {
 
       debugPrint('[VixSrcStreamService] Master Playlist: $masterPlaylistUrl');
 
-      // 5. Parse quality renditions & stream subtitle tracks from master playlist
+      // 4. Parse quality renditions & stream subtitle tracks from master playlist
       final qualityMap = <String, String>{
         'Auto': masterPlaylistUrl,
       };
@@ -171,7 +251,7 @@ class VixSrcStreamService {
                 }
 
                 streamSubtitles.add(SubtitleInfo(
-                  id: subUri, // direct sub playlist URI
+                  id: subUri,
                   language: normLang,
                   languageName: '$name (Stream)',
                   fileName: name,
@@ -208,7 +288,6 @@ class VixSrcStreamService {
       if (res.contains('WEBVTT') || res.contains('-->')) {
         return res;
       }
-      // If it's an M3U8 pointing to the .vtt chunk:
       final lines = res.split('\n');
       for (final line in lines) {
         final trimmed = line.trim();
@@ -252,31 +331,33 @@ class VixSrcStreamService {
     return null;
   }
 
+  static String _resolveUrl(String url, String base) {
+    if (url.startsWith('//')) return 'https:$url';
+    final parsed = Uri.parse(url);
+    if (parsed.hasScheme) return url;
+    final normalized = base.endsWith('/') ? base : '$base/';
+    return Uri.parse(normalized).resolve(url).toString();
+  }
+
   static Future<String?> _httpGet(
     String url, {
     Map<String, String>? customHeaders,
   }) async {
-    HttpClient? client;
     try {
-      client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 10);
-      final req = await client.getUrl(Uri.parse(url));
-
-      final h = customHeaders ?? headers;
-      h.forEach((k, v) {
-        req.headers.set(k, v);
-      });
-
-      final res = await req.close();
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        return await res.transform(utf8.decoder).join();
+      final response = await DioClient.streamClient.get<String>(
+        url,
+        options: Options(
+          headers: customHeaders ?? headers,
+          responseType: ResponseType.plain,
+        ),
+      );
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        return response.data;
       }
       return null;
     } catch (e) {
       debugPrint('[VixSrcStreamService] httpGet error on $url: $e');
       return null;
-    } finally {
-      client?.close();
     }
   }
 }

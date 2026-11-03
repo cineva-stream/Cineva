@@ -223,6 +223,7 @@ final GoRouter appRouter = GoRouter(
             initialPositionMs: extra['initialPositionMs'] as int?,
             localVideoPath: extra['localVideoPath'] as String?,
             localSubtitlePath: extra['localSubtitlePath'] as String?,
+            overview: extra['overview'] as String?,
           ),
           transitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

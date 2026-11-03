@@ -32,9 +32,6 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
-        }
     }
 
     signingConfigs {
@@ -75,7 +72,7 @@ android {
     }
 }
 
-// Automatically generate Cineva_v{version}.apk after release assemble
+// Automatically generate Cineva_v{version}-{abi}.apk and Cineva_v{version}.apk after release assemble
 afterEvaluate {
     tasks.findByName("assembleRelease")?.doLast {
         var version = flutter.versionName ?: android.defaultConfig.versionName
@@ -88,31 +85,56 @@ afterEvaluate {
                 }
             }
         }
-        val finalVersion = version ?: "1.0.1"
-        val customName = "Cineva_v${finalVersion}.apk"
+        val finalVersion = version ?: "1.1.2"
         val flutterApkDir = File(rootDir.parentFile, "build/app/outputs/flutter-apk")
         val gradleApkDir = File(layout.buildDirectory.get().asFile, "outputs/apk/release")
 
         flutterApkDir.mkdirs()
 
-        // Clean up previous Cineva_v*.apk so only the active version is present
+        // Mapping of source Gradle APK names to customized Cineva release filenames
+        val apkMapping = mapOf(
+            "app-arm64-v8a-release.apk" to listOf("Cineva_v${finalVersion}-arm64-v8a.apk"),
+            "app-armeabi-v7a-release.apk" to listOf("Cineva_v${finalVersion}-armeabi-v7a.apk"),
+            "app-x86_64-release.apk" to listOf("Cineva_v${finalVersion}-x86_64.apk"),
+            "app-release.apk" to listOf("Cineva_v${finalVersion}.apk")
+        )
+
+        val activeCustomNames = apkMapping.values.flatten().toSet()
+
+        // Clean up previous older version Cineva_v*.apk files so directory stays tidy
         flutterApkDir.listFiles()?.filter { it.name.startsWith("Cineva_v") && it.name.endsWith(".apk") }?.forEach { oldFile ->
-            if (oldFile.name != customName) {
+            if (!activeCustomNames.contains(oldFile.name)) {
                 oldFile.delete()
             }
         }
 
-        val gradleApk = File(gradleApkDir, "app-release.apk")
-        if (gradleApk.exists()) {
-            val destInFlutter = File(flutterApkDir, customName)
-            val destInGradle = File(gradleApkDir, customName)
-            gradleApk.copyTo(destInFlutter, overwrite = true)
-            gradleApk.copyTo(destInGradle, overwrite = true)
-            println("\n=======================================================")
-            println(" [Cineva Release] Output APK Successfully Generated:")
-            println(" -> ${destInFlutter.absolutePath}")
-            println("=======================================================\n")
+        println("\n=======================================================")
+        println(" [Cineva Release] Output APK Artifacts Generated:")
+
+        var generatedCount = 0
+        apkMapping.forEach { (sourceName, targetNames) ->
+            val sourceApk = listOf(
+                File(gradleApkDir, sourceName),
+                File(flutterApkDir, sourceName)
+            ).firstOrNull { it.exists() }
+
+            if (sourceApk != null) {
+                targetNames.forEach { targetName ->
+                    val destInFlutter = File(flutterApkDir, targetName)
+                    val destInGradle = File(gradleApkDir, targetName)
+                    sourceApk.copyTo(destInFlutter, overwrite = true)
+                    sourceApk.copyTo(destInGradle, overwrite = true)
+                    println(" -> ${destInFlutter.name} (${destInFlutter.length() / (1024 * 1024)} MB)")
+                    generatedCount++
+                }
+            }
         }
+
+        if (generatedCount == 0) {
+            println(" (No release APKs found to rename in ${gradleApkDir.name})")
+        }
+        println(" Target Output: ${flutterApkDir.absolutePath}")
+        println("=======================================================\n")
     }
 }
 

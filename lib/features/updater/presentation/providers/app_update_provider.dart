@@ -73,9 +73,11 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
   final AppUpdateService _service;
   CancelToken? _cancelToken;
 
-  AppUpdateNotifier(this._service) : super(const AppUpdateState()) {
+  AppUpdateNotifier(this._service, {bool autoInit = true}) : super(const AppUpdateState()) {
     // Automatically trigger cache cleanup of old APKs and check for updates on startup
-    _init();
+    if (autoInit) {
+      _init();
+    }
   }
 
   Future<void> _init() async {
@@ -102,12 +104,15 @@ class AppUpdateNotifier extends StateNotifier<AppUpdateState> {
         updateInfo: info,
         isDismissed: false,
       );
-      // Automatically post system notification with dynamic version and changelog
-      final isId = SettingsService.getAppLanguage() == 'id';
-      final body = isId
-          ? 'Update Tersedia, Segera update sekarang untuk menikmati layanan streaming dengan lebih baik.'
-          : 'New version available, Update now to improve your streaming.';
-      await _service.showUpdateNotification(info, customBody: body);
+      // Automatically post system notification ONLY if not already dispatched for this version
+      final isNotified = await _service.isUpdateNotified(info.latestVersion);
+      if (!isNotified) {
+        final isId = SettingsService.getAppLanguage() == 'id';
+        final body = isId
+            ? 'Update Tersedia, Segera update sekarang untuk menikmati layanan streaming dengan lebih baik.'
+            : 'New version available, Update now to improve your streaming.';
+        await _service.showUpdateNotification(info, customBody: body);
+      }
     } else {
       state = state.copyWith(
         status: AppUpdateStatus.idle,

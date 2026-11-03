@@ -306,6 +306,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                             'mediaType': 'tv',
                             'posterPath': posterPath,
                             'backdropPath': backdropPath,
+                            'overview': overview,
                             'magnetLink': '',
                           });
                           SystemChrome.setPreferredOrientations([
@@ -555,6 +556,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                   'mediaType': 'tv',
                                   'posterPath': posterPath,
                                   'backdropPath': (ep['still_path'] as String?) ?? backdropPath,
+                                  'overview': epOverview.isNotEmpty ? epOverview : overview,
                                   'magnetLink': '',
                                 });
                                 SystemChrome.setPreferredOrientations([

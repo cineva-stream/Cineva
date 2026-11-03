@@ -11,13 +11,18 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../data/models/subtitle_cue.dart';
 import '../../data/services/subtitle_service.dart';
 import '../../data/services/subtitle_translator_service.dart';
 import '../../data/services/vixsrc_stream_service.dart';
 import '../../data/services/smart_stream_service.dart';
+import '../../data/services/provider_loader_service.dart';
+import '../../data/models/provider_stream_models.dart';
 import '../../../settings/data/settings_service.dart';
 import '../../../settings/data/subtitle_languages.dart';
 import '../../../history/data/models/watch_history_item.dart';
@@ -52,6 +57,17 @@ enum _PlayerMiniPopup {
   server,
 }
 
+enum _SidePanelPage {
+  main,
+  quality,
+  audio,
+  subtitleTrack,
+  subtitleSettings,
+  server,
+  speed,
+  info,
+}
+
 /// Full-featured Cinema Player Screen with edge-to-edge notch rendering,
 /// audio amplification (up to 150%), customizable subtitle background,
 /// and transparent mini popups.
@@ -69,6 +85,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
   final int? initialPositionMs;
   final String? localVideoPath;
   final String? localSubtitlePath;
+  final String? overview;
 
   const PlayerScreen({
     super.key,
@@ -85,6 +102,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
     this.initialPositionMs,
     this.localVideoPath,
     this.localSubtitlePath,
+    this.overview,
   });
 
   @override
@@ -108,6 +126,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   // ── Smart Stream Multi-Server & Direct Engine ──
   SmartStreamServer _currentServer = SmartStreamService.servers[0];
+  List<SmartStreamServer> _availableServers = SmartStreamService.servers;
   int? _currentTmdbId;
   String? _currentImdbId;
   bool _isWebPlaying = false;
@@ -137,6 +156,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _hasAppliedDefaultQuality = false;
   bool _isSwitchingQuality = false;
   Duration? _qualityRestorePos;
+  bool _streamNotFound = false;
 
   String _getLoadingStatusText(AppStrings s) {
     if (_customLoadingStatus != null) return _customLoadingStatus!;
@@ -196,6 +216,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   int _subtitleSettingsTab = 0; // 0: Waktu (Sync), 1: Tampilan
   bool _isShowingSubtitleSettingsInPopup = false;
 
+  // ── Right Side Panel State (YouTube-style Collapsible Drawer) ──
+  bool _isSidePanelOpen = false;
+  _SidePanelPage _sidePanelPage = _SidePanelPage.main;
+  double _playbackSpeed = 1.0;
+
   // ── Subtitles State ──
   List<SubtitleInfo> _availableSubtitles = [];
   List<SubtitleInfo> _streamSubtitles = [];
@@ -219,10 +244,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   late String? _currentLocalVideoPath = widget.localVideoPath;
   late String? _currentLocalSubtitlePath = widget.localSubtitlePath;
   late int? _initialPositionMs = widget.initialPositionMs;
+  late String? _currentOverview = widget.overview;
+  late String? _currentBackdropPath = widget.backdropPath;
+  late String? _currentPosterPath = widget.posterPath;
 
   @override
   void initState() {
     super.initState();
+    _fetchOverviewIfNeeded();
     // Immersive landscape cinema mode covering status bar and notch area
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -582,6 +611,67 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     super.dispose();
   }
 
+  Future<void> _fetchOverviewIfNeeded() async {
+    if (_currentOverview != null && _currentOverview!.trim().isNotEmpty) return;
+    final tmdbId = widget.tmdbId ?? _currentTmdbId;
+    if (tmdbId == null || tmdbId == 0) return;
+
+    try {
+      final lang = ref.read(appLanguageProvider);
+      final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
+      final dio = DioClient.createTmdbClient();
+
+      final isTv = _currentSeason != null || _currentEpisode != null;
+      if (isTv && _currentSeason != null && _currentEpisode != null) {
+        final res = await dio.get(
+          '/tv/$tmdbId/season/$_currentSeason/episode/$_currentEpisode',
+          queryParameters: {'language': tmdbLang},
+        );
+        if (res.statusCode == 200 && res.data is Map) {
+          final data = res.data as Map<String, dynamic>;
+          final epOverview = (data['overview'] as String? ?? '').trim();
+          final epName = data['name'] as String?;
+          final epStill = data['still_path'] as String?;
+          if (mounted) {
+            setState(() {
+              if (epOverview.isNotEmpty) _currentOverview = epOverview;
+              if (epName != null && epName.isNotEmpty) {
+                _currentEpisodeTitle =
+                    'S$_currentSeason:E$_currentEpisode $epName';
+              }
+              if (epStill != null && epStill.isNotEmpty) {
+                _currentBackdropPath = epStill;
+              }
+            });
+          }
+        }
+      } else {
+        final endpoint = isTv ? '/tv/$tmdbId' : '/movie/$tmdbId';
+        final res = await dio.get(
+          endpoint,
+          queryParameters: {'language': tmdbLang},
+        );
+        if (res.statusCode == 200 && res.data is Map) {
+          final data = res.data as Map<String, dynamic>;
+          final ov = (data['overview'] as String? ?? '').trim();
+          final backdrop = data['backdrop_path'] as String?;
+          final poster = data['poster_path'] as String?;
+          if (mounted) {
+            setState(() {
+              if (ov.isNotEmpty) _currentOverview = ov;
+              if (backdrop != null && backdrop.isNotEmpty) {
+                _currentBackdropPath = backdrop;
+              }
+              if (poster != null && poster.isNotEmpty) {
+                _currentPosterPath = poster;
+              }
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   int? _getSavedPositionMs() {
     if (widget.tmdbId == null) return null;
     final mediaType =
@@ -790,8 +880,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           _hasAppliedDefaultQuality = true;
           final targetQuality =
               _currentQuality.isNotEmpty && _currentQuality != 'Offline'
-                  ? _currentQuality
-                  : SettingsService.getDefaultQuality();
+              ? _currentQuality
+              : SettingsService.getDefaultQuality();
           if (targetQuality != 'Auto') {
             _selectQualityTrack(targetQuality);
           } else if (_player.state.track.video == VideoTrack.no()) {
@@ -1312,9 +1402,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   /// Online video streaming handler with Smart Stream multi-server engine.
   Future<void> _initOnlineStreaming() async {
-    final s = ref.read(appStringsProvider);
     setState(() {
       _isLoading = true;
+      _streamNotFound = false;
       _loadingStep = _PlayerLoadingStep.connecting;
       _customLoadingStatus = null;
     });
@@ -1340,87 +1430,182 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       debugPrint('[PlayerScreen] resolveIds exception: $e');
     }
 
-    if (_currentServer.isDirectHls) {
-      try {
-        // 1. Direct HLS Master Playlist extraction from VixSrc (native media_kit player)
-        final vixResult = await VixSrcStreamService.resolveStream(
-          tmdbId: _currentTmdbId,
-          imdbId: _currentImdbId,
-          season: _currentSeason,
-          episode: _currentEpisode,
-        );
-
-        if (vixResult != null && vixResult.playlistUrl.isNotEmpty) {
-          debugPrint(
-            '[PlayerScreen] Playing native Master HLS M3U8: ${vixResult.playlistUrl}',
-          );
-          _useNativePlayer = true;
-          _streamSubtitles = vixResult.subtitles;
-
-          if (mounted) {
-            setState(() {
-              _loadingStep = _PlayerLoadingStep.preparingBuffer;
-            });
-          }
-
-          // Apply fast initial buffer + 3-minute background cache before stream open
-          await _setupMpvFastBufferOptions();
-
-          // Opening the Master Playlist ensures full audio rendition is bound with video
-          await _player.open(
-            Media(
-              vixResult.playlistUrl,
-              httpHeaders: VixSrcStreamService.headers,
-            ),
-          );
-          // CRITICAL: Disable mpv's internal subtitles so they do not bypass Cineva's settings!
-          await _player.setSubtitleTrack(SubtitleTrack.no());
-          await _player.setVolume(_volume);
-
-          final defaultQuality = SettingsService.getDefaultQuality();
-          final targetQuality =
-              _currentQuality.isNotEmpty && _currentQuality != 'Offline'
-                  ? _currentQuality
-                  : defaultQuality;
-          _hasAppliedDefaultQuality = false;
-
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              _currentQuality = targetQuality;
-              _resolutionLabel = _formatResolutionLabel(targetQuality);
-            });
-          }
-
-          if (_player.state.tracks.video.isNotEmpty) {
-            _hasAppliedDefaultQuality = true;
-            if (targetQuality != 'Auto') {
-              unawaited(_selectQualityTrack(targetQuality));
-            }
-          }
-
-          // Subtitles loaded asynchronously in background so video playback begins immediately!
-          unawaited(_loadSubtitles());
-          return;
-        }
-      } catch (e) {
-        debugPrint('[PlayerScreen] VixSrc resolution exception: $e');
-      }
-
-      // If Direct HLS fails or returns 404 (e.g. Kimetsu No Yaiba, Naruto, or certain films),
-      // intelligently auto-failover to Server 2: VidLink HD!
-      debugPrint(
-        '[PlayerScreen] Direct HLS not available for this title. Auto-failover to VidLink HD...',
-      );
-      _currentServer = SmartStreamService.servers[1]; // VidLink HD
+    if (_currentTmdbId == null || _currentTmdbId == 0) {
+      debugPrint('[PlayerScreen] Unable to resolve TMDB ID');
       if (mounted) {
         setState(() {
-          _customLoadingStatus = s.playerAutoSwitched(_currentServer.name);
+          _customLoadingStatus = null;
+          _isLoading = false;
+          _streamNotFound = true;
         });
       }
+      return;
     }
 
-    // Load web streaming server with ad cleaner and stream sniffer
+    // Refresh dynamic list of servers
+    final loader = ref.read(providerLoaderServiceProvider);
+    try {
+      final providers = await loader.getAvailableProviders();
+      if (mounted) {
+        setState(() {
+          _availableServers = SmartStreamService.buildCombinedServers(
+            providers,
+          );
+        });
+      }
+    } catch (_) {}
+
+    if (_currentServer.isDirectHls) {
+      ProviderSelection? selection;
+
+      // 1. If user specifically picked a single direct provider from server menu
+      if (_currentServer.videoProvider != null) {
+        try {
+          final res = await loader.loadFromProvider(
+            provider: _currentServer.videoProvider!,
+            tmdbId: _currentTmdbId!,
+            season: _currentSeason,
+            episode: _currentEpisode,
+          );
+          if (res.hasPlayableStreams) {
+            selection = ProviderSelection(
+              provider: _currentServer.videoProvider!,
+              result: res,
+            );
+          }
+        } catch (e) {
+          debugPrint('[PlayerScreen] Error loading from selected provider: $e');
+        }
+      }
+
+      // 2. If not specifically picked or selected provider failed, run the failover loader
+      selection ??= await loader.loadFirstSuccessful(
+        tmdbId: _currentTmdbId!,
+        season: _currentSeason,
+        episode: _currentEpisode,
+        onStartAttempt: (provider) {
+          if (mounted) {
+            setState(() {
+              _customLoadingStatus = 'Mencoba ${provider.displayName}...';
+            });
+          }
+        },
+        onProgress: (provider, isSuccess, error) {
+          if (mounted && isSuccess) {
+            setState(() {
+              _customLoadingStatus = null;
+            });
+          }
+        },
+      );
+
+      if (selection != null && selection.result.hasPlayableStreams) {
+        if (mounted) {
+          setState(() {
+            _customLoadingStatus = null;
+          });
+        }
+        final links = selection.result.videoLinks!;
+        final defaultQuality = SettingsService.getDefaultQuality();
+        final targetQuality =
+            _currentQuality.isNotEmpty && _currentQuality != 'Offline'
+            ? _currentQuality
+            : defaultQuality;
+
+        // Select preferred quality link if available (1080p, 720p, etc.)
+        RegularVideoLinks bestLink = links.first;
+        if (targetQuality != 'Auto' && links.length > 1) {
+          final targetH =
+              int.tryParse(targetQuality.replaceAll(RegExp(r'[^0-9]'), '')) ??
+              1080;
+          final match = links.where((l) {
+            final q = (l.quality ?? '').toLowerCase();
+            return q.contains('${targetH}p') || q.contains('$targetH');
+          }).firstOrNull;
+          if (match != null && match.url != null && match.url!.isNotEmpty) {
+            bestLink = match;
+          }
+        }
+
+        final streamUrl = bestLink.url!;
+        final streamHeaders =
+            bestLink.headers ??
+            (selection.provider.type == VideoProviderType.directVixSrc
+                ? VixSrcStreamService.headers
+                : null);
+
+        debugPrint(
+          '[PlayerScreen] Playing native Master stream from ${selection.provider.displayName}: $streamUrl',
+        );
+        _useNativePlayer = true;
+        _currentServer = SmartStreamServer.fromVideoProvider(
+          selection.provider,
+        );
+
+        // Map provider subtitles into Cineva subtitle overlay
+        if (selection.result.subtitleLinks != null &&
+            selection.result.subtitleLinks!.isNotEmpty) {
+          _streamSubtitles = selection.result.subtitleLinks!
+              .map((sub) => sub.toSubtitleInfo())
+              .toList();
+        } else {
+          _streamSubtitles = [];
+        }
+
+        if (mounted) {
+          setState(() {
+            _loadingStep = _PlayerLoadingStep.preparingBuffer;
+          });
+        }
+
+        // Apply fast initial buffer + 3-minute background cache before stream open
+        await _setupMpvFastBufferOptions();
+
+        // Opening the stream with headers ensures full CDN & audio rendition is bound
+        await _player.open(Media(streamUrl, httpHeaders: streamHeaders));
+        // CRITICAL: Disable mpv's internal subtitles so they do not bypass Cineva's settings!
+        await _player.setSubtitleTrack(SubtitleTrack.no());
+        await _player.setVolume(_volume);
+
+        _hasAppliedDefaultQuality = false;
+
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _currentQuality = targetQuality;
+            _resolutionLabel = _formatResolutionLabel(targetQuality);
+          });
+        }
+
+        if (_player.state.tracks.video.isNotEmpty) {
+          _hasAppliedDefaultQuality = true;
+          if (targetQuality != 'Auto') {
+            unawaited(_selectQualityTrack(targetQuality));
+          }
+        }
+
+        // Subtitles loaded asynchronously in background so video playback begins immediately!
+        unawaited(_loadSubtitles());
+        return;
+      }
+
+      // If all Direct HLS providers fail, do NOT auto-failover to web server!
+      // Unreleased, theatrical, or unavailable movies do not exist on external web servers either,
+      // and auto-switching causes ad clips or unrelated fallback movies to be played instead.
+      debugPrint(
+        '[PlayerScreen] All direct HLS streams unavailable for tmdbId=$_currentTmdbId. Showing Stream Not Available state.',
+      );
+      if (mounted) {
+        setState(() {
+          _customLoadingStatus = null;
+          _isLoading = false;
+          _streamNotFound = true;
+        });
+      }
+      return;
+    }
+
+    // Load web streaming server (when user explicitly selected a web fallback server)
     await _loadWebServer(_currentServer);
   }
 
@@ -1551,8 +1736,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         if (directUrl != null &&
             directUrl.isNotEmpty &&
             !directUrl.startsWith('blob:') &&
-            !directUrl.contains('doubleclick') &&
-            !directUrl.contains('googleads')) {
+            !SmartStreamService.isAdUrl(directUrl)) {
           _upgradeToNativePlayer(directUrl);
         }
       } else if (type == 'TIME_UPDATE') {
@@ -1567,7 +1751,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         }
       } else if (type == 'DURATION_UPDATE') {
         final durationMs = data['durationMs'] as int?;
-        if (durationMs != null && durationMs > 0 && !_useNativePlayer && mounted) {
+        if (durationMs != null &&
+            durationMs > 0 &&
+            !_useNativePlayer &&
+            mounted) {
           setState(() {
             _duration = Duration(milliseconds: durationMs);
           });
@@ -1598,6 +1785,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _upgradeToNativePlayer(String directStreamUrl) async {
     if (_useNativePlayer) return;
+    if (SmartStreamService.isAdUrl(directStreamUrl)) {
+      debugPrint('[PlayerScreen] Ignored ad stream URL: $directStreamUrl');
+      return;
+    }
     debugPrint(
       '[PlayerScreen] Sniffed direct stream URL! Upgrading to native player: $directStreamUrl',
     );
@@ -1614,8 +1805,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final defaultQuality = SettingsService.getDefaultQuality();
       final targetQuality =
           _currentQuality.isNotEmpty && _currentQuality != 'Offline'
-              ? _currentQuality
-              : defaultQuality;
+          ? _currentQuality
+          : defaultQuality;
       _hasAppliedDefaultQuality = false;
 
       if (mounted) {
@@ -1641,7 +1832,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _switchServer(SmartStreamServer server) async {
     if (_currentServer.id == server.id && !_isLoading) {
-      setState(() => _activePopup = _PlayerMiniPopup.none);
+      setState(() {
+        _activePopup = _PlayerMiniPopup.none;
+      });
       return;
     }
 
@@ -1649,6 +1842,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _currentServer = server;
       _activePopup = _PlayerMiniPopup.none;
       _isLoading = true;
+      _streamNotFound = false;
       _loadingStep = _PlayerLoadingStep.connecting;
       _customLoadingStatus = ref
           .read(appStringsProvider)
@@ -1888,19 +2082,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _resetControlsTimer() {
     _controlsTimer?.cancel();
-    if (_activePopup != _PlayerMiniPopup.none) {
-      return; // Keep controls active when popup is open
-    }
+    // Auto-hide timer only dismisses player screen controls (top bar, scrubber, buttons)
+    // and mini popups. The right side panel NEVER auto-closes (only closed manually by user).
     _controlsTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted && _activePopup == _PlayerMiniPopup.none) {
-        setState(() => _showControls = false);
+      if (mounted) {
+        setState(() {
+          _showControls = false;
+          _activePopup = _PlayerMiniPopup.none;
+        });
       }
     });
   }
 
   void _toggleControls() {
-    if (_isLoading) {
-      return; // Do not toggle controls while processing/searching server
+    if (_isLoading || _streamNotFound) {
+      return; // Do not toggle controls while processing/searching server or when stream not found
     }
     if (_activePopup != _PlayerMiniPopup.none) {
       setState(() => _activePopup = _PlayerMiniPopup.none);
@@ -1915,20 +2111,51 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
-  void _togglePopup(_PlayerMiniPopup popup) {
+  void _openSidePanel([_SidePanelPage page = _SidePanelPage.main]) {
+    _resetControlsTimer();
     setState(() {
-      if (_activePopup == popup) {
-        _activePopup = _PlayerMiniPopup.none;
-        _isShowingSubtitleSettingsInPopup = false;
-        _resetControlsTimer();
-      } else {
-        _activePopup = popup;
-        if (popup == _PlayerMiniPopup.subtitle) {
-          _isShowingSubtitleSettingsInPopup = false;
-        }
-        _controlsTimer?.cancel();
-      }
+      _sidePanelPage = page;
+      _isSidePanelOpen = true;
+      _showControls = true;
+      _activePopup = _PlayerMiniPopup.none;
     });
+  }
+
+  void _closeSidePanel() {
+    _resetControlsTimer();
+    setState(() {
+      _isSidePanelOpen = false;
+    });
+  }
+
+  void _toggleSidePanel([_SidePanelPage page = _SidePanelPage.main]) {
+    if (_isSidePanelOpen) {
+      _closeSidePanel();
+    } else {
+      _openSidePanel(page);
+    }
+  }
+
+  void _navigateToSidePanelPage(_SidePanelPage page) {
+    _resetControlsTimer();
+    setState(() {
+      _sidePanelPage = page;
+    });
+  }
+
+  void _setPlaybackSpeed(double speed) {
+    setState(() => _playbackSpeed = speed);
+    if (_useNativePlayer) {
+      try {
+        _player.setRate(speed);
+      } catch (e) {
+        debugPrint('[PlayerScreen] Failed to set playback rate: $e');
+      }
+    } else {
+      _webViewController?.runJavaScript(
+        'var v = document.querySelector("video"); if (v) { v.playbackRate = $speed; }',
+      );
+    }
   }
 
   void _toggleFitMode() {
@@ -1963,11 +2190,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // Advance episode state immediately
     _currentEpisode = nextEp;
     _currentEpisodeTitle = 'Episode $nextEp';
+    _currentOverview = null;
+    _fetchOverviewIfNeeded();
 
     if (mounted) {
       setState(() {
         _nextEpisodeButtonVisible = false;
         _showControls = false;
+        _isSidePanelOpen = false;
+        _activePopup = _PlayerMiniPopup.none;
         _isLoading = true;
         _loadingStep = _PlayerLoadingStep.preparingEpisode;
         _customLoadingStatus = null;
@@ -2390,6 +2621,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
+  Widget _buildSubtitleSettingsMiniPopup(AppStrings s) {
+    return _buildSubtitleMiniPopup(s);
+  }
+
   Widget _buildSubtitleTracksContent(AppStrings s, {Key? key}) {
     final targetLangCode = _getTargetTranslateLang();
     final targetLangObj = SubtitleLanguageCatalog.findByCode(targetLangCode);
@@ -2674,446 +2909,830 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     return Column(
       key: key,
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Sub-tabs: Sync vs Tampilan
-        Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _subtitleSettingsTab = 0),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _subtitleSettingsTab == 0
-                        ? AppColors.primary
-                        : AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(8),
+        // ── 1. Live Subtitle Preview Screen ──
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F1218),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12, width: 0.8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    s.isIndonesian
+                        ? 'PRATINJAU LANGSUNG'
+                        : 'LIVE PREVIEW',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                    ),
                   ),
-                  child: Center(
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                     child: Text(
-                      s.playerTabSync,
-                      style: TextStyle(
-                        color: _subtitleSettingsTab == 0
-                            ? Colors.black
-                            : Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                      _subtitleSettingsTab == 0
+                          ? (s.isIndonesian ? 'PRATINJAU WAKTU' : 'SYNC PREVIEW')
+                          : (s.isIndonesian ? 'PRATINJAU TAMPILAN' : 'STYLE PREVIEW'),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _subtitleSettingsTab = 1),
-                borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 12),
+              Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _subtitleSettingsTab == 1
-                        ? AppColors.primary
-                        : AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
                   ),
-                  child: Center(
-                    child: Text(
-                      s.playerTabAppearance,
-                      style: TextStyle(
-                        color: _subtitleSettingsTab == 1
-                            ? Colors.black
-                            : Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(
+                      alpha: style.backgroundOpacity,
                     ),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (style.strokeWidth > 0)
+                        Text(
+                          s.isIndonesian
+                              ? 'Contoh Teks Subtitle Cineva'
+                              : 'Cineva Subtitle Sample Text',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: (style.fontSize * 0.8).clamp(13.0, 20.0),
+                            fontWeight: FontWeight.bold,
+                            foreground: Paint()
+                              ..style = PaintingStyle.stroke
+                              ..strokeWidth = style.strokeWidth
+                              ..color = Colors.black,
+                          ),
+                        ),
+                      Text(
+                        s.isIndonesian
+                            ? 'Contoh Teks Subtitle Cineva'
+                            : 'Cineva Subtitle Sample Text',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: style.textColor,
+                          fontSize: (style.fontSize * 0.8).clamp(13.0, 20.0),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
 
-        // Content of selected tab
+        // ── 2. Segmented Navigation Tabs ──
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white12, width: 0.8),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildSubTabButton(
+                  label: s.playerTabSync,
+                  icon: Icons.timer_outlined,
+                  isSelected: _subtitleSettingsTab == 0,
+                  onTap: () => setState(() => _subtitleSettingsTab = 0),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _buildSubTabButton(
+                  label: s.playerTabAppearance,
+                  icon: Icons.palette_outlined,
+                  isSelected: _subtitleSettingsTab == 1,
+                  onTap: () => setState(() => _subtitleSettingsTab = 1),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        // ── 3. Tab Contents ──
         if (_subtitleSettingsTab == 0) ...[
-          // Sync offset tab
-          Center(
+          // ── TAB 0: ATUR WAKTU (TIMING & SYNCHRONIZATION) ──
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
+              ),
+            ),
             child: Column(
               children: [
+                // Status badge & Offset display
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      s.isIndonesian
+                          ? 'Offset Penyesuaian'
+                          : 'Timing Offset',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: style.syncOffsetMs == 0
+                            ? AppColors.success.withValues(alpha: 0.2)
+                            : (style.syncOffsetMs > 0
+                                  ? AppColors.primary.withValues(alpha: 0.2)
+                                  : Colors.blueAccent.withValues(alpha: 0.2)),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        style.syncOffsetMs == 0
+                            ? (s.isIndonesian ? 'Tepat Waktu' : 'On Time')
+                            : (style.syncOffsetMs > 0
+                                  ? (s.isIndonesian ? 'Terlambat' : 'Delayed')
+                                  : (s.isIndonesian ? 'Lebih Awal' : 'Advanced')),
+                        style: TextStyle(
+                          color: style.syncOffsetMs == 0
+                              ? AppColors.success
+                              : (style.syncOffsetMs > 0
+                                    ? AppColors.primary
+                                    : Colors.blueAccent),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 Text(
                   style.syncOffsetMs == 0
-                      ? s.playerSyncOnTime
-                      : '${style.syncOffsetMs > 0 ? "+" : ""}${(style.syncOffsetMs / 1000.0).toStringAsFixed(2)}s',
-                  style: TextStyle(
+                      ? (s.isIndonesian ? '0.00 detik' : '0.00 seconds')
+                      : '${style.syncOffsetMs > 0 ? "+" : ""}${(style.syncOffsetMs / 1000.0).toStringAsFixed(2)} ${s.isIndonesian ? "detik" : "seconds"}',
+                  style: GoogleFonts.outfit(
                     color: style.syncOffsetMs != 0
                         ? AppColors.primary
                         : Colors.white,
-                    fontSize: 18,
+                    fontSize: 26,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 14),
+
+                // Stepper Buttons Row
+                Row(
+                  children: [
+                    _buildTimingStepButton(
+                      '-0.5s',
+                      () => notifier.adjustSyncOffset(-500),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildTimingStepButton(
+                      '-0.1s',
+                      () => notifier.adjustSyncOffset(-100),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 3,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: notifier.resetSyncOffset,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: style.syncOffsetMs == 0
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : AppColors.primary.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: style.syncOffsetMs == 0
+                                    ? Colors.white12
+                                    : AppColors.primary,
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Reset (0s)',
+                                style: TextStyle(
+                                  color: style.syncOffsetMs == 0
+                                      ? Colors.white70
+                                      : AppColors.primary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildTimingStepButton(
+                      '+0.1s',
+                      () => notifier.adjustSyncOffset(100),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildTimingStepButton(
+                      '+0.5s',
+                      () => notifier.adjustSyncOffset(500),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Continuous Slider for smooth timing
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 6,
+                    ),
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: Colors.white12,
+                    thumbColor: AppColors.primary,
+                    overlayColor: AppColors.primary.withValues(alpha: 0.2),
+                  ),
+                  child: Slider(
+                    value: (style.syncOffsetMs / 1000.0).clamp(-5.0, 5.0),
+                    min: -5.0,
+                    max: 5.0,
+                    divisions: 100,
+                    onChanged: (val) {
+                      final ms = (val * 1000).round();
+                      notifier.adjustSyncOffset(ms - style.syncOffsetMs);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 4),
                 Text(
-                  style.syncOffsetMs == 0
-                      ? s.playerSyncDefault
-                      : style.syncOffsetMs > 0
-                      ? s.playerSyncDelayed
-                      : s.playerSyncAdvanced,
+                  s.isIndonesian
+                      ? 'Petunjuk: Tekan [-] jika subtitle muncul terlambat dari ucapan aktor, atau [+] jika subtitle muncul mendahului suara.'
+                      : 'Tip: Tap [-] if subtitle appears after dialogue, or [+] if subtitle appears before the voice.',
                   style: const TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 11,
+                    height: 1.4,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildSyncChip('-500ms', () => notifier.adjustSyncOffset(-500)),
-              const SizedBox(width: 6),
-              _buildSyncChip('-100ms', () => notifier.adjustSyncOffset(-100)),
-              const SizedBox(width: 6),
-              OutlinedButton(
-                onPressed: () => notifier.resetSyncOffset(),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  minimumSize: const Size(48, 30),
-                  side: const BorderSide(color: AppColors.surfaceElevated),
-                ),
-                child: Text(
-                  s.playerReset,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              _buildSyncChip('+100ms', () => notifier.adjustSyncOffset(100)),
-              const SizedBox(width: 6),
-              _buildSyncChip('+500ms', () => notifier.adjustSyncOffset(500)),
-            ],
-          ),
         ] else ...[
-          // Style & Background Tab (live sliders)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Background Opacity Controls (Transparan vs Background)
-              Text(
-                s.playerSubBackground,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+          // ── TAB 1: TAMPILAN (APPEARANCE & STYLING) ──
+
+          // 1. Ukuran Font
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      s.isIndonesian ? 'Ukuran Font' : 'Font Size',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '${style.fontSize.toInt()} pt',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  _buildBgChip(
-                    s.playerBgTransparent,
-                    0.0,
-                    style.backgroundOpacity,
-                    notifier,
-                  ),
-                  const SizedBox(width: 6),
-                  _buildBgChip(
-                    'Semi 40%',
-                    0.4,
-                    style.backgroundOpacity,
-                    notifier,
-                  ),
-                  const SizedBox(width: 6),
-                  _buildBgChip(
-                    '${s.playerBgDark} 75%',
-                    0.75,
-                    style.backgroundOpacity,
-                    notifier,
-                  ),
-                  const SizedBox(width: 6),
-                  _buildBgChip(
-                    '${s.playerBgSolid} 100%',
-                    1.0,
-                    style.backgroundOpacity,
-                    notifier,
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      s.playerBgOpacity,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                      ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _buildPresetPill(
+                      s.isIndonesian ? 'Kecil (16)' : 'Small (16)',
+                      16.0,
+                      style.fontSize,
+                      (v) => notifier.updateFontSize(v),
                     ),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                      ),
-                      child: Slider(
-                        value: style.backgroundOpacity,
-                        min: 0.0,
-                        max: 1.0,
-                        divisions: 20,
-                        activeColor: AppColors.primary,
-                        onChanged: (v) => notifier.updateBackgroundOpacity(v),
-                      ),
+                    const SizedBox(width: 6),
+                    _buildPresetPill(
+                      s.isIndonesian ? 'Sedang (20)' : 'Medium (20)',
+                      20.0,
+                      style.fontSize,
+                      (v) => notifier.updateFontSize(v),
                     ),
+                    const SizedBox(width: 6),
+                    _buildPresetPill(
+                      s.isIndonesian ? 'Besar (24)' : 'Large (24)',
+                      24.0,
+                      style.fontSize,
+                      (v) => notifier.updateFontSize(v),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildPresetPill(
+                      s.isIndonesian ? 'Ekstra (28)' : 'Extra (28)',
+                      28.0,
+                      style.fontSize,
+                      (v) => notifier.updateFontSize(v),
+                    ),
+                  ],
+                ),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 6,
+                    ),
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: Colors.white12,
+                    thumbColor: AppColors.primary,
                   ),
-                  Text(
-                    '${(style.backgroundOpacity * 100).toInt()}%',
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  child: Slider(
+                    value: style.fontSize.clamp(14.0, 30.0),
+                    min: 14.0,
+                    max: 30.0,
+                    divisions: 8,
+                    onChanged: (v) => notifier.updateFontSize(v),
                   ),
-                ],
-              ),
-              const Divider(color: Colors.white24, height: 12),
+                ),
+              ],
+            ),
+          ),
 
-              // Font Size Slider
-              Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      s.playerFontSize,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                      ),
-                      child: Slider(
-                        value: style.fontSize,
-                        min: 14.0,
-                        max: 30.0,
-                        divisions: 8,
-                        activeColor: AppColors.primary,
-                        onChanged: (v) => notifier.updateFontSize(v),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${style.fontSize.toInt()}pt',
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
-                  ),
-                ],
+          // 2. Warna Teks
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
               ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  s.isIndonesian ? 'Warna Teks' : 'Text Color',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _buildColorCard(
+                      s.isIndonesian ? 'Putih' : 'White',
+                      const Color(0xFFFFFFFF),
+                      style.textColor,
+                      notifier,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildColorCard(
+                      s.isIndonesian ? 'Kuning' : 'Yellow',
+                      const Color(0xFFFFD700),
+                      style.textColor,
+                      notifier,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildColorCard(
+                      'Cyan',
+                      const Color(0xFF00E5FF),
+                      style.textColor,
+                      notifier,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildColorCard(
+                      s.isIndonesian ? 'Hijau' : 'Green',
+                      const Color(0xFF00E676),
+                      style.textColor,
+                      notifier,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
 
-              // Stroke Thickness Slider
-              Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      s.playerStrokeWidth,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                      ),
-                      child: Slider(
-                        value: style.strokeWidth,
-                        min: 0.0,
-                        max: 5.0,
-                        divisions: 10,
-                        activeColor: AppColors.primary,
-                        onChanged: (v) => notifier.updateStrokeWidth(v),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${style.strokeWidth.toStringAsFixed(1)}px',
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
-                  ),
-                ],
+          // 3. Latar Belakang (Background Opacity)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
               ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      s.isIndonesian ? 'Latar Belakang Teks' : 'Text Background',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '${(style.backgroundOpacity * 100).toInt()}%',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _buildPresetPill(
+                      s.isIndonesian ? 'Transparan' : 'Transparent',
+                      0.0,
+                      style.backgroundOpacity,
+                      (v) => notifier.updateBackgroundOpacity(v),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildPresetPill(
+                      s.isIndonesian ? 'Tipis (30%)' : 'Thin (30%)',
+                      0.3,
+                      style.backgroundOpacity,
+                      (v) => notifier.updateBackgroundOpacity(v),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildPresetPill(
+                      s.isIndonesian ? 'Sedang (65%)' : 'Medium (65%)',
+                      0.65,
+                      style.backgroundOpacity,
+                      (v) => notifier.updateBackgroundOpacity(v),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildPresetPill(
+                      s.isIndonesian ? 'Pekat (90%)' : 'Solid (90%)',
+                      0.9,
+                      style.backgroundOpacity,
+                      (v) => notifier.updateBackgroundOpacity(v),
+                    ),
+                  ],
+                ),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 6,
+                    ),
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: Colors.white12,
+                    thumbColor: AppColors.primary,
+                  ),
+                  child: Slider(
+                    value: style.backgroundOpacity.clamp(0.0, 1.0),
+                    min: 0.0,
+                    max: 1.0,
+                    divisions: 20,
+                    onChanged: (v) => notifier.updateBackgroundOpacity(v),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-              // Bottom Offset Slider
-              Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      s.playerSubPosition,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 2,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 5,
-                        ),
-                      ),
-                      child: Slider(
-                        value: style.bottomOffset.clamp(10.0, 120.0),
-                        min: 10.0,
-                        max: 120.0,
-                        divisions: 22,
-                        activeColor: AppColors.primary,
-                        onChanged: (v) => notifier.updateBottomOffset(v),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${style.bottomOffset.toInt()}px',
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
-                  ),
-                ],
+          // 4. Garis Tepi (Stroke / Outline)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
               ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      s.isIndonesian ? 'Garis Tepi Teks (Outline)' : 'Text Outline (Stroke)',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '${style.strokeWidth.toStringAsFixed(1)} px',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 6,
+                    ),
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: Colors.white12,
+                    thumbColor: AppColors.primary,
+                  ),
+                  child: Slider(
+                    value: style.strokeWidth.clamp(0.0, 5.0),
+                    min: 0.0,
+                    max: 5.0,
+                    divisions: 10,
+                    onChanged: (v) => notifier.updateStrokeWidth(v),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-              // Color selection chips
-              Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      s.playerSubColor,
+          // 5. Posisi Vertikal Subtitle
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      s.isIndonesian ? 'Jarak dari Bawah (Posisi)' : 'Bottom Offset (Position)',
                       style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
+                    Text(
+                      '${style.bottomOffset.toInt()} px',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 6,
+                    ),
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: Colors.white12,
+                    thumbColor: AppColors.primary,
                   ),
-                  _buildColorMiniDot(
-                    const Color(0xFFFFFFFF),
-                    style.textColor,
-                    notifier,
+                  child: Slider(
+                    value: style.bottomOffset.clamp(10.0, 100.0),
+                    min: 10.0,
+                    max: 100.0,
+                    divisions: 18,
+                    onChanged: (v) => notifier.updateBottomOffset(v),
                   ),
-                  const SizedBox(width: 8),
-                  _buildColorMiniDot(
-                    const Color(0xFFFFD700),
-                    style.textColor,
-                    notifier,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildColorMiniDot(
-                    const Color(0xFF00E5FF),
-                    style.textColor,
-                    notifier,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildColorMiniDot(
-                    const Color(0xFF00E676),
-                    style.textColor,
-                    notifier,
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ],
       ],
     );
   }
 
-  Widget _buildSubtitleSettingsMiniPopup(AppStrings s) {
-    _isShowingSubtitleSettingsInPopup = true;
-    return _buildSubtitleMiniPopup(s);
+  Widget _buildSubTabButton({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: isSelected ? Colors.black : Colors.white70,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.black : Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  Widget _buildBgChip(
+  Widget _buildTimingStepButton(String label, VoidCallback onTap) {
+    return Expanded(
+      flex: 2,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white12, width: 0.8),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPresetPill(
     String label,
-    double val,
-    double current,
+    double targetVal,
+    double currentVal,
+    void Function(double) onSelected,
+  ) {
+    final isSelected = (currentVal - targetVal).abs() < 1.0;
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => onSelected(targetVal),
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.2)
+                  : Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: isSelected ? AppColors.primary : Colors.white12,
+                width: 0.8,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? AppColors.primary : Colors.white70,
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColorCard(
+    String name,
+    Color color,
+    Color currentColor,
     dynamic notifier,
   ) {
-    final isSelected = (current - val).abs() < 0.05;
-    return InkWell(
-      onTap: () => notifier.updateBackgroundOpacity(val),
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.black : Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSyncChip(String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildColorMiniDot(Color color, Color current, dynamic notifier) {
-    final isSelected = color.toARGB32() == current.toARGB32();
-    return GestureDetector(
-      onTap: () => notifier.updateTextColor(color),
-      child: Container(
-        width: 22,
-        height: 22,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.white24,
-            width: isSelected ? 2.5 : 1.0,
+    final isSelected = color.toARGB32() == currentColor.toARGB32();
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => notifier.updateTextColor(color),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.18)
+                  : Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isSelected ? AppColors.primary : Colors.white12,
+                width: 0.8,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white30, width: 1),
+                  ),
+                  child: isSelected
+                      ? Center(
+                          child: Icon(
+                            Icons.check,
+                            size: 12,
+                            color: color == const Color(0xFFFFFFFF)
+                                ? Colors.black
+                                : Colors.black,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  name,
+                  style: TextStyle(
+                    color: isSelected ? AppColors.primary : Colors.white70,
+                    fontSize: 10,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -3139,7 +3758,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ),
             ),
           ),
-          ...SmartStreamService.servers.map((srv) {
+          ..._availableServers.map((srv) {
             final isSelected = _currentServer.id == srv.id;
             return InkWell(
               onTap: () => _switchServer(srv),
@@ -3341,6 +3960,1589 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
+  // ── YouTube-Style Right Side Panel Implementation ──
+
+  Widget _buildSidePanel(AppStrings s, double drawerWidth, double totalHeight) {
+    String title;
+    IconData icon;
+    switch (_sidePanelPage) {
+      case _SidePanelPage.main:
+        title = s.isIndonesian ? 'Pengaturan' : 'Settings';
+        icon = Iconsax.setting_2;
+        break;
+      case _SidePanelPage.quality:
+        title = s.playerQualityTitle;
+        icon = Icons.high_quality_rounded;
+        break;
+      case _SidePanelPage.audio:
+        title = 'Audio & Volume';
+        icon = Icons.volume_up_rounded;
+        break;
+      case _SidePanelPage.subtitleTrack:
+        title = s.playerSubtitleTrack;
+        icon = Iconsax.subtitle;
+        break;
+      case _SidePanelPage.subtitleSettings:
+        title = s.playerSubSettingsTitle;
+        icon = Iconsax.setting_2;
+        break;
+      case _SidePanelPage.server:
+        title = s.playerServerTitle;
+        icon = Icons.dns_rounded;
+        break;
+      case _SidePanelPage.speed:
+        title = s.playerSpeed;
+        icon = Icons.speed_rounded;
+        break;
+      case _SidePanelPage.info:
+        title = s.playerInfoTitle;
+        icon = Iconsax.info_circle;
+        break;
+    }
+
+    final isSubPage = _sidePanelPage != _SidePanelPage.main &&
+        _sidePanelPage != _SidePanelPage.info;
+
+    return Container(
+      width: drawerWidth,
+      height: totalHeight,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant.withValues(alpha: 0.96),
+        border: const Border(
+          left: BorderSide(color: Colors.white12, width: 0.8),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.6),
+            blurRadius: 16,
+            offset: const Offset(-4, 0),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        left: false,
+        child: Column(
+          children: [
+            // ── Panel Header ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 10, 10),
+              child: Row(
+                children: [
+                  if (isSubPage) ...[
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () =>
+                            _navigateToSidePanelPage(_SidePanelPage.main),
+                        borderRadius: BorderRadius.circular(8),
+                        child: const Padding(
+                          padding: EdgeInsets.all(6),
+                          child: Icon(
+                            Icons.arrow_back_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(icon, color: AppColors.primary, size: 16),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _closeSidePanel,
+                      borderRadius: BorderRadius.circular(8),
+                      child: const Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: Colors.white70,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(color: Colors.white12, height: 1),
+
+            // ── Slide Transition Body ──
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) {
+                  final isMain = child.key == const ValueKey('panel_main');
+                  final beginOffset = isMain
+                      ? const Offset(-0.25, 0.0)
+                      : const Offset(0.25, 0.0);
+                  return SlideTransition(
+                    position:
+                        Tween<Offset>(
+                          begin: beginOffset,
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        ),
+                    child: FadeTransition(opacity: animation, child: child),
+                  );
+                },
+                child: _buildSidePanelCurrentView(s),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidePanelCurrentView(AppStrings s) {
+    switch (_sidePanelPage) {
+      case _SidePanelPage.main:
+        return _buildSidePanelMainMenu(s, key: const ValueKey('panel_main'));
+      case _SidePanelPage.quality:
+        return _buildSidePanelQuality(s, key: const ValueKey('panel_quality'));
+      case _SidePanelPage.audio:
+        return _buildSidePanelAudio(s, key: const ValueKey('panel_audio'));
+      case _SidePanelPage.subtitleTrack:
+        return _buildSidePanelSubtitleTrack(
+          s,
+          key: const ValueKey('panel_sub_track'),
+        );
+      case _SidePanelPage.subtitleSettings:
+        return _buildSidePanelSubtitleSettings(
+          s,
+          key: const ValueKey('panel_sub_settings'),
+        );
+      case _SidePanelPage.server:
+        return _buildSidePanelServer(s, key: const ValueKey('panel_server'));
+      case _SidePanelPage.speed:
+        return _buildSidePanelSpeed(s, key: const ValueKey('panel_speed'));
+      case _SidePanelPage.info:
+        return _buildSidePanelInfo(s, key: const ValueKey('panel_info'));
+    }
+  }
+
+  Widget _buildSidePanelInfo(AppStrings s, {Key? key}) {
+    final isTv = _currentSeason != null || _currentEpisode != null;
+    final imagePath = _currentBackdropPath ?? _currentPosterPath;
+    final hasImage = imagePath != null && imagePath.isNotEmpty;
+    final imageUrl = hasImage
+        ? (imagePath.startsWith('http')
+            ? imagePath
+            : ApiConstants.imageUrl(
+                imagePath,
+                size: ApiConstants.backdropMedium,
+              ))
+        : null;
+
+    final hasSynopsis =
+        _currentOverview != null && _currentOverview!.trim().isNotEmpty;
+
+    return ListView(
+      key: key,
+      padding: EdgeInsets.zero,
+      children: [
+        // ── Top Media Banner with Black Gradient Overlay ──
+        SizedBox(
+          width: double.infinity,
+          height: 155,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Background Image or Solid Obsidian Fallback
+              if (imageUrl != null)
+                CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: AppColors.background,
+                    child: const Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: AppColors.background,
+                    child: const Center(
+                      child: Icon(
+                        Iconsax.video,
+                        color: AppColors.textMuted,
+                        size: 38,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  color: AppColors.background,
+                  child: const Center(
+                    child: Icon(
+                      Iconsax.video,
+                      color: AppColors.textMuted,
+                      size: 38,
+                    ),
+                  ),
+                ),
+
+              // Smooth Pure Black Gradient Overlay blending with background
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.8),
+                        Colors.black.withValues(alpha: 0.15),
+                        AppColors.surfaceVariant.withValues(alpha: 0.98),
+                      ],
+                      stops: const [0.0, 0.45, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Media Type Chip
+              Positioned(
+                top: 10,
+                left: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      width: 0.6,
+                    ),
+                  ),
+                  child: Text(
+                    isTv ? 'TV Series' : 'Movie',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Details Body: Title, Episode, and Synopsis ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Main Media Title
+              Text(
+                widget.title,
+                style: GoogleFonts.outfit(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  height: 1.25,
+                ),
+              ),
+
+              // Specific Episode Title if available
+              if (_currentEpisodeTitle != null &&
+                  _currentEpisodeTitle!.isNotEmpty) ...[
+                const SizedBox(height: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      width: 0.6,
+                    ),
+                  ),
+                  child: Text(
+                    _currentEpisodeTitle!,
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 14),
+              const Divider(color: Colors.white12, height: 1),
+              const SizedBox(height: 14),
+
+              // Section Header: "Sinopsis" / "Synopsis"
+              Row(
+                children: [
+                  const Icon(
+                    Iconsax.document_text,
+                    size: 14,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    s.playerSynopsisTitle,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Synopsis Content or Placeholder
+              if (hasSynopsis)
+                Text(
+                  _currentOverview!,
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    height: 1.55,
+                    color: Colors.white.withValues(alpha: 0.88),
+                  ),
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 18,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white10, width: 0.8),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Iconsax.info_circle,
+                        size: 24,
+                        color: AppColors.textMuted.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        s.playerNoSynopsis,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                          height: 1.45,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSidePanelMainMenu(AppStrings s, {Key? key}) {
+    return ListView(
+      key: key,
+      padding: EdgeInsets.zero,
+      children: [
+        // 1. Kualitas Video
+        _buildSidePanelMenuItem(
+          icon: Icons.high_quality_rounded,
+          title: s.playerQualityTitle,
+          subtitle: _resolutionLabel,
+          onTap: () => _navigateToSidePanelPage(_SidePanelPage.quality),
+        ),
+
+        // 2. Audio & Volume
+        _buildSidePanelMenuItem(
+          icon: _volume == 0
+              ? Icons.volume_off_rounded
+              : (_volume > 100.0
+                    ? Icons.volume_up_rounded
+                    : Icons.volume_down_rounded),
+          title: 'Audio & Volume',
+          subtitle: _volume == 0
+              ? (s.isIndonesian ? 'Bisu (Muted)' : 'Muted')
+              : '${_volume.toInt()}%${_volume > 100.0 ? (s.isIndonesian ? ' • Boost Aktif' : ' • Boost Active') : ''}',
+          onTap: () => _navigateToSidePanelPage(_SidePanelPage.audio),
+        ),
+
+        // 3. Subtitle Track
+        _buildSidePanelMenuItem(
+          icon: Iconsax.subtitle,
+          title: s.playerSubtitleTrack,
+          subtitle: _selectedSubtitle != null
+              ? '${_selectedSubtitle!.language.toUpperCase()} • ${_selectedSubtitle!.fileName.isNotEmpty ? _selectedSubtitle!.fileName : _selectedSubtitle!.languageName}'
+              : s.playerDisableSubtitle,
+          onTap: () => _navigateToSidePanelPage(_SidePanelPage.subtitleTrack),
+        ),
+
+        // 4. Subtitle Settings
+        _buildSidePanelMenuItem(
+          icon: Iconsax.setting_2,
+          title: s.playerSubSettingsTitle,
+          subtitle: '${s.playerTabSync} & ${s.playerTabAppearance}',
+          onTap: () =>
+              _navigateToSidePanelPage(_SidePanelPage.subtitleSettings),
+        ),
+
+        // 5. Server Streaming (Online only)
+        if (_currentLocalVideoPath == null && widget.localVideoPath == null)
+          _buildSidePanelMenuItem(
+            icon: Icons.dns_rounded,
+            title: s.playerServerTitle,
+            subtitle: _currentServer.name,
+            onTap: () => _navigateToSidePanelPage(_SidePanelPage.server),
+          ),
+
+        // 6. Playback Speed
+        _buildSidePanelMenuItem(
+          icon: Icons.speed_rounded,
+          title: s.playerSpeed,
+          subtitle: _playbackSpeed == 1.0
+              ? 'Normal (1.0x)'
+              : '${_playbackSpeed}x',
+          onTap: () => _navigateToSidePanelPage(_SidePanelPage.speed),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSidePanelMenuItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    Widget? trailing,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: AppColors.primary.withValues(alpha: 0.12),
+        highlightColor: Colors.white.withValues(alpha: 0.04),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white12, width: 0.8),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 17),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              trailing ??
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white38,
+                    size: 20,
+                  ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidePanelQuality(AppStrings s, {Key? key}) {
+    final videoTracks = _player.state.tracks.video;
+    final List<String> qualities;
+    if (videoTracks.length > 1) {
+      final Set<String> heights = {};
+      for (final track in videoTracks) {
+        if (track.h != null && track.h! > 0) {
+          heights.add('${track.h}p');
+        }
+      }
+      final sortedHeights = heights.toList()
+        ..sort((a, b) {
+          final intA = int.tryParse(a.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+          final intB = int.tryParse(b.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+          return intB.compareTo(intA);
+        });
+      qualities = ['Auto', ...sortedHeights];
+    } else {
+      qualities = const ['Auto', '1080p', '720p', '480p', '360p'];
+    }
+
+    return ListView(
+      key: key,
+      padding: EdgeInsets.zero,
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white12, width: 0.8),
+            ),
+          ),
+          child: Text(
+            '${s.playerQualityTitle}: $_resolutionLabel',
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        ...qualities.map((q) {
+          final isSelected = _currentQuality == q;
+          String label = q == 'Auto' ? s.playerQualityAutoAdaptive : '$q HD';
+          if (q == '1080p') label = '1080p FHD (${s.playerQualityClear})';
+          if (q == '720p') label = '720p HD (${s.playerQualityStandard})';
+          if (q == '480p') label = '480p SD (${s.playerQualityDataSaver})';
+          if (q == '360p') label = '360p ${s.playerQualityLow} (< 500 Kbps)';
+
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _setQuality(q),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 13,
+                ),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.white12, width: 0.8),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      size: 18,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: isSelected ? AppColors.primary : Colors.white,
+                          fontSize: 13,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    if (isSelected)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          s.isIndonesian ? 'AKTIF' : 'ACTIVE',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildSidePanelAudio(AppStrings s, {Key? key}) {
+    final audioTracks = _player.state.tracks.audio;
+
+    return ListView(
+      key: key,
+      padding: EdgeInsets.zero,
+      children: [
+        // Volume Level & Status
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white12, width: 0.8),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        _volume == 0
+                            ? Icons.volume_off_rounded
+                            : (_volume > 100.0
+                                  ? Icons.volume_up_rounded
+                                  : Icons.volume_down_rounded),
+                        color: _volume > 100.0
+                            ? AppColors.primary
+                            : Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _volume > 100.0
+                            ? 'Volume: ${_volume.toInt()}% (Boost)'
+                            : 'Volume: ${_volume.toInt()}%',
+                        style: TextStyle(
+                          color: _volume > 100.0
+                              ? AppColors.primary
+                              : Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_volume > 100.0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '+${(_volume - 100).toInt()}% BOOST',
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 4,
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 7,
+                  ),
+                  activeTrackColor: _volume > 100.0
+                      ? AppColors.primary
+                      : Colors.white,
+                  inactiveTrackColor: Colors.white12,
+                  thumbColor: _volume > 100.0
+                      ? AppColors.primary
+                      : Colors.white,
+                  overlayColor: AppColors.primary.withValues(alpha: 0.2),
+                ),
+                child: Slider(
+                  value: _volume,
+                  min: 0.0,
+                  max: 150.0,
+                  divisions: 30,
+                  onChanged: _setVolume,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildSidePanelVolumeChip('Mute', 0.0),
+                  const SizedBox(width: 6),
+                  _buildSidePanelVolumeChip('50%', 50.0),
+                  const SizedBox(width: 6),
+                  _buildSidePanelVolumeChip('100%', 100.0),
+                  const SizedBox(width: 6),
+                  _buildSidePanelVolumeChip('125%', 125.0),
+                  const SizedBox(width: 6),
+                  _buildSidePanelVolumeChip('150%', 150.0),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Audio Tracks (if available)
+        if (audioTracks.length > 1) ...[
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
+              ),
+            ),
+            child: Text(
+              s.playerAudioTrack,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          ...audioTracks.map((track) {
+            final isSelected = _player.state.track.audio == track;
+            final trackTitle =
+                track.title ?? track.language ?? (s.isIndonesian ? 'Trek ${track.id}' : 'Track ${track.id}');
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () async {
+                  await _player.setAudioTrack(track);
+                  setState(() {});
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.white12, width: 0.8),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isSelected
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                        size: 18,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          trackTitle,
+                          style: TextStyle(
+                            color: isSelected
+                                ? AppColors.primary
+                                : Colors.white,
+                            fontSize: 13,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (isSelected)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            s.isIndonesian ? 'AKTIF' : 'ACTIVE',
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSidePanelVolumeChip(String label, double targetVal) {
+    final isSelected = (_volume - targetVal).abs() < 2.0;
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _setVolume(targetVal),
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.2)
+                  : Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: isSelected ? AppColors.primary : Colors.white12,
+                width: 0.8,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? AppColors.primary : Colors.white70,
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidePanelSubtitleTrack(AppStrings s, {Key? key}) {
+    final targetLangCode = _getTargetTranslateLang();
+    final targetLangObj = SubtitleLanguageCatalog.findByCode(targetLangCode);
+
+    return ListView(
+      key: key,
+      padding: EdgeInsets.zero,
+      children: [
+        // 1. Matikan Subtitle
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () async {
+              ref.read(activeSubtitleCuesProvider.notifier).state = [];
+              await _player.setSubtitleTrack(SubtitleTrack.no());
+              setState(() {
+                _selectedSubtitle = null;
+                _isSubtitleTranslated = false;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.white12, width: 0.8),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _selectedSubtitle == null
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    size: 18,
+                    color: _selectedSubtitle == null
+                        ? AppColors.primary
+                        : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 14),
+                  Text(
+                    s.playerDisableSubtitle,
+                    style: TextStyle(
+                      color: _selectedSubtitle == null
+                          ? AppColors.primary
+                          : Colors.white,
+                      fontSize: 13,
+                      fontWeight: _selectedSubtitle == null
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // 2. Action: Atur Subtitle (Slide ke Subtitle Settings)
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () =>
+                _navigateToSidePanelPage(_SidePanelPage.subtitleSettings),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.white12, width: 0.8),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Iconsax.setting_2,
+                    size: 17,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      s.playerSubSettings,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // 3. 1-Tap Auto-Translate Action
+        if (_selectedSubtitle != null &&
+            _selectedSubtitle!.language.toLowerCase() !=
+                targetLangCode.toLowerCase()) ...[
+          if (_isAutoTranslating) ...[
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  LinearProgressIndicator(
+                    value: _translationProgress > 0
+                        ? _translationProgress
+                        : null,
+                    color: AppColors.primary,
+                    backgroundColor: AppColors.surfaceElevated,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    s.playerTranslatingTo(targetLangObj.name),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  _applyAndAutoTranslateSubtitle(
+                    _selectedSubtitle!,
+                    targetLang: targetLangCode,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.white12, width: 0.8),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Iconsax.magic_star,
+                        color: AppColors.primary,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _isSubtitleTranslated
+                              ? s.playerTranslateActive(
+                                  targetLangCode.toUpperCase(),
+                                )
+                              : s.playerTranslateTo(targetLangObj.name),
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+
+        // 4. Subtitle Tracks Header
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white12, width: 0.8),
+            ),
+          ),
+          child: Text(
+            s.isIndonesian ? 'Daftar Subtitle Tersedia' : 'Available Subtitles',
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+
+        // Subtitle tracks
+        if (_availableSubtitles.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text(
+                s.playerNoSubtitleFound,
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          )
+        else
+          ..._availableSubtitles.map((sub) {
+            final isSelected = _selectedSubtitle?.id == sub.id;
+            final isPreferred =
+                sub.language.toLowerCase() == targetLangCode.toLowerCase();
+
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () async {
+                  final success = await _applySubtitle(sub);
+                  if (!success && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          s.playerFailedDownloadSub(sub.languageName),
+                        ),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.white12, width: 0.8),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isSelected
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                        size: 16,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isPreferred
+                              ? AppColors.success.withValues(alpha: 0.25)
+                              : AppColors.surfaceElevated,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          sub.language.toUpperCase(),
+                          style: TextStyle(
+                            color: isPreferred
+                                ? AppColors.success
+                                : Colors.white70,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          sub.fileName.isNotEmpty
+                              ? sub.fileName
+                              : sub.languageName,
+                          style: TextStyle(
+                            color: isSelected
+                                ? AppColors.primary
+                                : Colors.white,
+                            fontSize: 12,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  Widget _buildSidePanelSubtitleSettings(AppStrings s, {Key? key}) {
+    return SingleChildScrollView(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: _buildSubtitleSettingsContent(s),
+    );
+  }
+
+  Widget _buildSidePanelServer(AppStrings s, {Key? key}) {
+    return ListView(
+      key: key,
+      padding: EdgeInsets.zero,
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white12, width: 0.8),
+            ),
+          ),
+          child: Text(
+            s.playerServerDesc,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+            ),
+          ),
+        ),
+        ..._availableServers.map((srv) {
+          final isSelected = _currentServer.id == srv.id;
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _switchServer(srv),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 13,
+                ),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.white12, width: 0.8),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      size: 18,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            srv.name,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : Colors.white,
+                              fontSize: 13,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            srv.description,
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (isSelected)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          s.isIndonesian ? 'AKTIF' : 'ACTIVE',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildSidePanelSpeed(AppStrings s, {Key? key}) {
+    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+
+    return ListView(
+      key: key,
+      padding: EdgeInsets.zero,
+      children: speeds.map((sp) {
+        final isSelected = (_playbackSpeed - sp).abs() < 0.05;
+        final label = sp == 1.0 ? '1.0x (Normal)' : '${sp}x';
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _setPlaybackSpeed(sp),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.white12, width: 0.8),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isSelected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    size: 18,
+                    color: isSelected ? AppColors.primary : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: isSelected ? AppColors.primary : Colors.white,
+                        fontSize: 13,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (isSelected)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        s.isIndonesian ? 'AKTIF' : 'ACTIVE',
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildStreamNotFoundOverlay(AppStrings s) {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.96),
+      child: SafeArea(
+        child: Stack(
+          children: [
+            // Top back button so user can exit immediately
+            Positioned(
+              top: 8,
+              left: 16,
+              child: IconButton(
+                onPressed: _handleExit,
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+            // Center content
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 460),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.videocam_off_rounded,
+                          color: AppColors.primary,
+                          size: 38,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        widget.title,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        s.playerStreamNotFoundTitle,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        s.playerStreamNotFoundMessage,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.72),
+                          fontSize: 12.5,
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 12,
+                        runSpacing: 10,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              final webServer = _availableServers.firstWhere(
+                                (srv) => !srv.isDirectHls,
+                                orElse: () =>
+                                    SmartStreamService.fallbackWebServers.first,
+                              );
+                              setState(() {
+                                _streamNotFound = false;
+                              });
+                              _switchServer(webServer);
+                            },
+                            icon: const Icon(Icons.public_rounded, size: 16),
+                            label: const Text('Coba Server Web (VidLink)'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 10,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () =>
+                                _openSidePanel(_SidePanelPage.server),
+                            icon: const Icon(Icons.dns_rounded, size: 16),
+                            label: Text(s.playerStreamNotFoundChooseServer),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.25),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _streamNotFound = false;
+                              });
+                              _initOnlineStreaming();
+                            },
+                            icon: const Icon(Icons.refresh_rounded, size: 16),
+                            label: Text(s.playerRetry),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.25),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTopBarIconButton({
     required IconData icon,
     required bool isActive,
@@ -3464,39 +5666,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ),
 
-          // Mini Popup Button: Server Switcher (Smart Stream Engine) - Icon only without border
-          if (_currentLocalVideoPath == null && widget.localVideoPath == null)
-            _buildTopBarIconButton(
-              icon: Icons.dns_rounded,
-              isActive: _activePopup == _PlayerMiniPopup.server,
-              onTap: () => _togglePopup(_PlayerMiniPopup.server),
-            ),
-
-          // Mini Popup Button: Resolution & Quality (Native Player only) - Icon only without border
-          if (_useNativePlayer)
-            _buildTopBarIconButton(
-              icon: Icons.high_quality_rounded,
-              isActive: _activePopup == _PlayerMiniPopup.quality,
-              onTap: () => _togglePopup(_PlayerMiniPopup.quality),
-            ),
-
-          // Mini Popup Button: Volume & Audio Boost - Icon only without border
+          // Side Panel Info Hub Toggle
           _buildTopBarIconButton(
-            icon: _volume == 0
-                ? Icons.volume_off_rounded
-                : Icons.volume_up_rounded,
-            isActive: _activePopup == _PlayerMiniPopup.volume,
-            onTap: () => _togglePopup(_PlayerMiniPopup.volume),
+            icon: Iconsax.info_circle,
+            isActive: _isSidePanelOpen && _sidePanelPage == _SidePanelPage.info,
+            onTap: () => _toggleSidePanel(_SidePanelPage.info),
           ),
+          const SizedBox(width: 8),
 
-          // Mini Popup Button: Subtitle Selection (Includes Atur Sub) - Icon only without border
+          // Side Panel Settings & Features Hub Toggle
           _buildTopBarIconButton(
-            icon: Iconsax.subtitle,
-            isActive: _activePopup == _PlayerMiniPopup.subtitle,
-            inactiveColor: _selectedSubtitle != null
-                ? AppColors.primary
-                : Colors.white,
-            onTap: () => _togglePopup(_PlayerMiniPopup.subtitle),
+            icon: Iconsax.setting_2,
+            isActive: _isSidePanelOpen && _sidePanelPage != _SidePanelPage.info,
+            onTap: () => _toggleSidePanel(_SidePanelPage.main),
           ),
         ],
       ),
@@ -3513,465 +5695,584 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+        if (_isSidePanelOpen) {
+          if (_sidePanelPage != _SidePanelPage.main) {
+            _navigateToSidePanelPage(_SidePanelPage.main);
+          } else {
+            _closeSidePanel();
+          }
+          return;
+        }
         await _handleExit();
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            // ── 1. Video Layer: Passes all the way through camera cutout / notch ──
-            if (_useNativePlayer)
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _toggleControls,
-                // Vertical swipe gesture on right half of screen to adjust volume, left half to adjust brightness
-                onVerticalDragUpdate: (details) {
-                  final screenWidth = MediaQuery.of(context).size.width;
-                  if (details.globalPosition.dx > screenWidth / 2) {
-                    // Drag up increases volume, drag down decreases volume
-                    final delta = -details.primaryDelta! * 0.5;
-                    _setVolume(_volume + delta);
-                  } else {
-                    // Drag up increases brightness, drag down decreases brightness
-                    final delta = -details.primaryDelta! / 250.0;
-                    _setBrightness(_brightness + delta);
-                  }
-                },
-                child: Video(
-                  controller: _videoController,
-                  controls:
-                      NoVideoControls, // Guarantees NO built-in media_kit controls!
-                  subtitleViewConfiguration: const SubtitleViewConfiguration(
-                    visible:
-                        false, // Ensures media_kit never renders its own internal subtitle
-                  ),
-                  fit: _fitMode,
-                ),
-              )
-            else if (_webViewController != null)
-              Stack(
-                fit: StackFit.expand,
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final totalWidth = constraints.maxWidth;
+            final totalHeight = constraints.maxHeight;
+            final drawerWidth = (totalWidth * 0.36).clamp(310.0, 390.0);
+            final videoWidth = _isSidePanelOpen
+                ? totalWidth - drawerWidth
+                : totalWidth;
+            final effectiveFit = _isSidePanelOpen ? BoxFit.contain : _fitMode;
+
+            return SizedBox(
+              width: totalWidth,
+              height: totalHeight,
+              child: Row(
                 children: [
-                  WebViewWidget(controller: _webViewController!),
-                  // Anti-Ad Transparent Touch Shield: Intercepts taps & gestures to prevent triggering web ads!
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _toggleControls,
-                      onVerticalDragUpdate: (details) {
-                        final screenWidth = MediaQuery.of(context).size.width;
-                        if (details.globalPosition.dx > screenWidth / 2) {
-                          final delta = -details.primaryDelta! * 0.5;
-                          _setVolume(_volume + delta);
-                        } else {
-                          final delta = -details.primaryDelta! / 250.0;
-                          _setBrightness(_brightness + delta);
-                        }
-                      },
-                      child: Container(
-                        color: Colors.transparent,
+                  // ── 1. Video Player & Controls (Left Container with Animated Width) ──
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeInOutCubic,
+                    width: videoWidth,
+                    height: totalHeight,
+                    child: ClipRect(
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // ── 1. Video Layer: Passes all the way through camera cutout / notch ──
+                          if (_useNativePlayer)
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: _toggleControls,
+                              // Vertical swipe gesture on right half of video to adjust volume, left half to adjust brightness
+                              onVerticalDragUpdate: (details) {
+                                if (details.localPosition.dx > videoWidth / 2) {
+                                  // Drag up increases volume, drag down decreases volume
+                                  final delta = -details.primaryDelta! * 0.5;
+                                  _setVolume(_volume + delta);
+                                } else {
+                                  // Drag up increases brightness, drag down decreases brightness
+                                  final delta = -details.primaryDelta! / 250.0;
+                                  _setBrightness(_brightness + delta);
+                                }
+                              },
+                              child: Video(
+                                controller: _videoController,
+                                controls:
+                                    NoVideoControls, // Guarantees NO built-in media_kit controls!
+                                subtitleViewConfiguration:
+                                    const SubtitleViewConfiguration(
+                                      visible:
+                                          false, // Ensures media_kit never renders its own internal subtitle
+                                    ),
+                                fit: effectiveFit,
+                              ),
+                            )
+                          else if (_webViewController != null)
+                            Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                WebViewWidget(controller: _webViewController!),
+                                // Anti-Ad Transparent Touch Shield: Intercepts taps & gestures to prevent triggering web ads!
+                                Positioned.fill(
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: _toggleControls,
+                                    onVerticalDragUpdate: (details) {
+                                      if (details.localPosition.dx >
+                                          videoWidth / 2) {
+                                        final delta =
+                                            -details.primaryDelta! * 0.5;
+                                        _setVolume(_volume + delta);
+                                      } else {
+                                        final delta =
+                                            -details.primaryDelta! / 250.0;
+                                        _setBrightness(_brightness + delta);
+                                      }
+                                    },
+                                    child: Container(color: Colors.transparent),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            const SizedBox.shrink(),
+
+                          // ── 2. Synchronized Custom Subtitles Layer (Direct child of Stack!) ──
+                          CustomSubtitleOverlay(
+                            cues: activeCues,
+                            positionListenable: _positionNotifier,
+                            settings: subtitleStyle,
+                          ),
+
+                          // ── 3. Quick Volume Indicator HUD Pill ──
+                          if (_showVolumeIndicator)
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.75),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white24),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _volume == 0
+                                          ? Icons.volume_off_rounded
+                                          : _volume > 100.0
+                                          ? Icons.volume_up_rounded
+                                          : Icons.volume_down_rounded,
+                                      color: _volume > 100.0
+                                          ? AppColors.primary
+                                          : Colors.white,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      _volume > 100.0
+                                          ? 'Volume: ${_volume.toInt()}% (Boost)'
+                                          : 'Volume: ${_volume.toInt()}%',
+                                      style: TextStyle(
+                                        color: _volume > 100.0
+                                            ? AppColors.primary
+                                            : Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                          // ── 3.1 Quick Brightness Indicator HUD Pill ──
+                          if (_showBrightnessIndicator)
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.75),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white24),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _brightness > 0.6
+                                          ? Icons.brightness_high_rounded
+                                          : (_brightness > 0.3
+                                                ? Icons
+                                                      .brightness_medium_rounded
+                                                : Icons.brightness_low_rounded),
+                                      color: AppColors.primary,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      '${s.playerBrightness}: ${(_brightness * 100).round()}%',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                          // ── 4. Loading & Buffering Overlay ──
+                          if (_isLoading)
+                            Container(
+                              color: Colors.black.withValues(alpha: 0.94),
+                              child: SafeArea(
+                                child: Stack(
+                                  children: [
+                                    // Top back button so user can always cancel/exit during loading
+                                    Positioned(
+                                      top: 8,
+                                      left: 16,
+                                      child: IconButton(
+                                        onPressed: _handleExit,
+                                        icon: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.arrow_back,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    // Center Loading Indicator: pure orange spinner, no background box
+                                    Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const SizedBox(
+                                            width: 50,
+                                            height: 50,
+                                            child: CircularProgressIndicator(
+                                              color: AppColors.primary,
+                                              strokeWidth: 3.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 20),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 40,
+                                            ),
+                                            child: Text(
+                                              widget.title,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            _getLoadingStatusText(s),
+                                            style: const TextStyle(
+                                              color: AppColors.textSecondary,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                          // Unified center buffering indicator when controls are hidden: pure orange spinner, no background box
+                          if (_useNativePlayer &&
+                              !_showControls &&
+                              _isBuffering &&
+                              !_isLoading)
+                            const IgnorePointer(
+                              child: Center(
+                                child: SizedBox(
+                                  width: 52,
+                                  height: 52,
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.primary,
+                                    strokeWidth: 3.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // ── 4b. Stream Not Available (404) Overlay ──
+                          if (!_isLoading && _streamNotFound)
+                            _buildStreamNotFoundOverlay(s),
+
+                          // ── 5. Cineva Custom Cinema Controls (Unified for Both Native & Web Streams) ──
+                          if (!_isLoading && !_streamNotFound)
+                            AnimatedOpacity(
+                              opacity: _showControls ? 1.0 : 0.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: IgnorePointer(
+                                ignoring: !_showControls,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.black.withValues(alpha: 0.85),
+                                        Colors.transparent,
+                                        Colors.transparent,
+                                        Colors.black.withValues(alpha: 0.85),
+                                      ],
+                                      stops: const [0.0, 0.25, 0.7, 1.0],
+                                    ),
+                                  ),
+                                  child: SafeArea(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        // ── Top Navigation & Quality Bar ──
+                                        _buildTopBar(s),
+
+                                        // ── Center Controls (Play/Pause, Replay 10, Forward 10) ──
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            IconButton(
+                                              onPressed: () =>
+                                                  _seekRelative(-10),
+                                              icon: const Icon(
+                                                Icons.replay_10_rounded,
+                                                color: Colors.white,
+                                                size: 44,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 36),
+                                            GestureDetector(
+                                              onTap: _isBuffering
+                                                  ? null
+                                                  : _togglePlayPause,
+                                              behavior: HitTestBehavior.opaque,
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 8,
+                                                    ),
+                                                child: _isBuffering
+                                                    ? const SizedBox(
+                                                        width: 54,
+                                                        height: 54,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                              color: AppColors
+                                                                  .primary,
+                                                              strokeWidth: 3.5,
+                                                            ),
+                                                      )
+                                                    : Icon(
+                                                        _isPlaying
+                                                            ? Icons
+                                                                  .pause_rounded
+                                                            : Icons
+                                                                  .play_arrow_rounded,
+                                                        color:
+                                                            AppColors.primary,
+                                                        size: 58,
+                                                      ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 36),
+                                            IconButton(
+                                              onPressed: () =>
+                                                  _seekRelative(10),
+                                              icon: const Icon(
+                                                Icons.forward_10_rounded,
+                                                color: Colors.white,
+                                                size: 44,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+
+                                        // ── Bottom Timeline Scrubber ──
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            24,
+                                            0,
+                                            24,
+                                            12,
+                                          ),
+                                          child: ValueListenableBuilder<Duration>(
+                                            valueListenable: _positionNotifier,
+                                            builder: (ctx, pos, _) {
+                                              return Row(
+                                                children: [
+                                                  Text(
+                                                    _formatDuration(pos),
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  Expanded(
+                                                    child: SliderTheme(
+                                                      data:
+                                                          SliderTheme.of(
+                                                            context,
+                                                          ).copyWith(
+                                                            trackHeight: 3.5,
+                                                            thumbShape:
+                                                                const RoundSliderThumbShape(
+                                                                  enabledThumbRadius:
+                                                                      6,
+                                                                ),
+                                                            overlayShape:
+                                                                const RoundSliderOverlayShape(
+                                                                  overlayRadius:
+                                                                      14,
+                                                                ),
+                                                            activeTrackColor:
+                                                                AppColors
+                                                                    .primary,
+                                                            inactiveTrackColor:
+                                                                Colors.white24,
+                                                            thumbColor:
+                                                                AppColors
+                                                                    .primary,
+                                                          ),
+                                                      child: Slider(
+                                                        value:
+                                                            _duration
+                                                                    .inSeconds >
+                                                                0
+                                                            ? pos.inSeconds
+                                                                  .toDouble()
+                                                                  .clamp(
+                                                                    0.0,
+                                                                    _duration
+                                                                        .inSeconds
+                                                                        .toDouble(),
+                                                                  )
+                                                            : 0.0,
+                                                        min: 0.0,
+                                                        max:
+                                                            _duration
+                                                                    .inSeconds >
+                                                                0
+                                                            ? _duration
+                                                                  .inSeconds
+                                                                  .toDouble()
+                                                            : 1.0,
+                                                        onChanged: (v) =>
+                                                            _seekTo(v),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    _formatDuration(_duration),
+                                                    style: const TextStyle(
+                                                      color: AppColors
+                                                          .textSecondary,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 14),
+                                                  // Fit mode toggle (cover / contain / fill)
+                                                  IconButton(
+                                                    onPressed: _toggleFitMode,
+                                                    tooltip:
+                                                        'Aspect Ratio & Notch Mode',
+                                                    icon: Icon(
+                                                      _fitMode == BoxFit.cover
+                                                          ? Icons
+                                                                .fullscreen_rounded
+                                                          : Icons
+                                                                .aspect_ratio_rounded,
+                                                      color:
+                                                          _fitMode ==
+                                                              BoxFit.cover
+                                                          ? AppColors.primary
+                                                          : Colors.white70,
+                                                      size: 22,
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // ── 5.5 Floating TV Series Next Episode Action (<= 60s remaining) ──
+                          if (!_isLoading &&
+                              _nextEpisodeButtonVisible &&
+                              (_currentSeason != null &&
+                                  _currentEpisode != null))
+                            Positioned(
+                              bottom: _showControls ? 78 : 28,
+                              right: 28,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                child: _buildSkipPillButton(
+                                  key: ValueKey(
+                                    'tv_next_episode_$_currentEpisode',
+                                  ),
+                                  icon: Icons.skip_next_rounded,
+                                  label: s.playerNextEpisodePill(
+                                    (_currentEpisode ?? 1) + 1,
+                                  ),
+                                  onTap: _playNextEpisode,
+                                ),
+                              ),
+                            ),
+
+                          // ── 6. Compact Semi-Transparent Mini Popups Layer ──
+                          if (!_isLoading &&
+                              _activePopup != _PlayerMiniPopup.none) ...[
+                            // Outside tap dismisser (transparent, non-blocking)
+                            Positioned.fill(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.translucent,
+                                onTap: () {
+                                  setState(() {
+                                    _activePopup = _PlayerMiniPopup.none;
+                                    _isShowingSubtitleSettingsInPopup = false;
+                                  });
+                                  _resetControlsTimer();
+                                },
+                              ),
+                            ),
+
+                            // The active Mini Popup Card
+                            Positioned(
+                              top: 54,
+                              right: 16,
+                              child: switch (_activePopup) {
+                                _PlayerMiniPopup.quality =>
+                                  _buildQualityMiniPopup(s),
+                                _PlayerMiniPopup.volume =>
+                                  _buildVolumeMiniPopup(s),
+                                _PlayerMiniPopup.subtitle =>
+                                  _buildSubtitleMiniPopup(s),
+                                _PlayerMiniPopup.subtitleSettings =>
+                                  _buildSubtitleSettingsMiniPopup(s),
+                                _PlayerMiniPopup.server =>
+                                  _buildServerMiniPopup(s),
+                                _PlayerMiniPopup.none =>
+                                  const SizedBox.shrink(),
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // ── 2. YouTube-style Right Side Panel ──
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeInOutCubic,
+                    width: _isSidePanelOpen ? drawerWidth : 0.0,
+                    height: totalHeight,
+                    child: ClipRect(
+                      child: OverflowBox(
+                        minWidth: drawerWidth,
+                        maxWidth: drawerWidth,
+                        minHeight: totalHeight,
+                        maxHeight: totalHeight,
+                        alignment: Alignment.topRight,
+                        child: _buildSidePanel(s, drawerWidth, totalHeight),
                       ),
                     ),
                   ),
                 ],
-              )
-            else
-              const SizedBox.shrink(),
-
-            // ── 2. Synchronized Custom Subtitles Layer (Direct child of Stack!) ──
-            CustomSubtitleOverlay(
-              cues: activeCues,
-              positionListenable: _positionNotifier,
-              settings: subtitleStyle,
-            ),
-
-            // ── 3. Quick Volume Indicator HUD Pill ──
-            if (_showVolumeIndicator)
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _volume == 0
-                            ? Icons.volume_off_rounded
-                            : _volume > 100.0
-                            ? Icons.volume_up_rounded
-                            : Icons.volume_down_rounded,
-                        color: _volume > 100.0
-                            ? AppColors.primary
-                            : Colors.white,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        _volume > 100.0
-                            ? 'Volume: ${_volume.toInt()}% (Boost)'
-                            : 'Volume: ${_volume.toInt()}%',
-                        style: TextStyle(
-                          color: _volume > 100.0
-                              ? AppColors.primary
-                              : Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
-
-            // ── 3.1 Quick Brightness Indicator HUD Pill ──
-            if (_showBrightnessIndicator)
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _brightness > 0.6
-                            ? Icons.brightness_high_rounded
-                            : (_brightness > 0.3
-                                  ? Icons.brightness_medium_rounded
-                                  : Icons.brightness_low_rounded),
-                        color: AppColors.primary,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        '${s.playerBrightness}: ${(_brightness * 100).round()}%',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-            // ── 4. Loading & Buffering Overlay ──
-            if (_isLoading)
-              Container(
-                color: Colors.black.withValues(alpha: 0.94),
-                child: SafeArea(
-                  child: Stack(
-                    children: [
-                      // Top back button so user can always cancel/exit during loading
-                      Positioned(
-                        top: 8,
-                        left: 16,
-                        child: IconButton(
-                          onPressed: _handleExit,
-                          icon: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.arrow_back,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Center Loading Indicator: pure orange spinner, no background box
-                      Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(
-                              width: 50,
-                              height: 50,
-                              child: CircularProgressIndicator(
-                                color: AppColors.primary,
-                                strokeWidth: 3.5,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 40,
-                              ),
-                              child: Text(
-                                widget.title,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _getLoadingStatusText(s),
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-            // Unified center buffering indicator when controls are hidden: pure orange spinner, no background box
-            if (_useNativePlayer &&
-                !_showControls &&
-                _isBuffering &&
-                !_isLoading)
-              const IgnorePointer(
-                child: Center(
-                  child: SizedBox(
-                    width: 52,
-                    height: 52,
-                    child: CircularProgressIndicator(
-                      color: AppColors.primary,
-                      strokeWidth: 3.5,
-                    ),
-                  ),
-                ),
-              ),
-
-            // ── 5. Cineva Custom Cinema Controls (Unified for Both Native & Web Streams) ──
-            if (!_isLoading)
-              AnimatedOpacity(
-                opacity: _showControls ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 200),
-                child: IgnorePointer(
-                  ignoring: !_showControls,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.85),
-                          Colors.transparent,
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.85),
-                        ],
-                        stops: const [0.0, 0.25, 0.7, 1.0],
-                      ),
-                    ),
-                    child: SafeArea(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // ── Top Navigation & Quality Bar ──
-                          _buildTopBar(s),
-
-                          // ── Center Controls (Play/Pause, Replay 10, Forward 10) ──
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton(
-                                onPressed: () => _seekRelative(-10),
-                                icon: const Icon(
-                                  Icons.replay_10_rounded,
-                                  color: Colors.white,
-                                  size: 44,
-                                ),
-                              ),
-                              const SizedBox(width: 36),
-                              GestureDetector(
-                                onTap: _isBuffering ? null : _togglePlayPause,
-                                behavior: HitTestBehavior.opaque,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  child: _isBuffering
-                                      ? const SizedBox(
-                                          width: 54,
-                                          height: 54,
-                                          child: CircularProgressIndicator(
-                                            color: AppColors.primary,
-                                            strokeWidth: 3.5,
-                                          ),
-                                        )
-                                      : Icon(
-                                          _isPlaying
-                                              ? Icons.pause_rounded
-                                              : Icons.play_arrow_rounded,
-                                          color: AppColors.primary,
-                                          size: 58,
-                                        ),
-                                ),
-                              ),
-                              const SizedBox(width: 36),
-                              IconButton(
-                                onPressed: () => _seekRelative(10),
-                                icon: const Icon(
-                                  Icons.forward_10_rounded,
-                                  color: Colors.white,
-                                  size: 44,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          // ── Bottom Timeline Scrubber ──
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                            child: ValueListenableBuilder<Duration>(
-                              valueListenable: _positionNotifier,
-                              builder: (ctx, pos, _) {
-                                return Row(
-                                  children: [
-                                    Text(
-                                      _formatDuration(pos),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: SliderTheme(
-                                        data: SliderTheme.of(context).copyWith(
-                                          trackHeight: 3.5,
-                                          thumbShape:
-                                              const RoundSliderThumbShape(
-                                                enabledThumbRadius: 6,
-                                              ),
-                                          overlayShape:
-                                              const RoundSliderOverlayShape(
-                                                overlayRadius: 14,
-                                              ),
-                                          activeTrackColor: AppColors.primary,
-                                          inactiveTrackColor: Colors.white24,
-                                          thumbColor: AppColors.primary,
-                                        ),
-                                        child: Slider(
-                                          value: _duration.inSeconds > 0
-                                              ? pos.inSeconds.toDouble().clamp(
-                                                  0.0,
-                                                  _duration.inSeconds
-                                                      .toDouble(),
-                                                )
-                                              : 0.0,
-                                          min: 0.0,
-                                          max: _duration.inSeconds > 0
-                                              ? _duration.inSeconds.toDouble()
-                                              : 1.0,
-                                          onChanged: (v) => _seekTo(v),
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      _formatDuration(_duration),
-                                      style: const TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 14),
-                                    // Fit mode toggle (cover / contain / fill)
-                                    IconButton(
-                                      onPressed: _toggleFitMode,
-                                      tooltip: 'Aspect Ratio & Notch Mode',
-                                      icon: Icon(
-                                        _fitMode == BoxFit.cover
-                                            ? Icons.fullscreen_rounded
-                                            : Icons.aspect_ratio_rounded,
-                                        color: _fitMode == BoxFit.cover
-                                            ? AppColors.primary
-                                            : Colors.white70,
-                                        size: 22,
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-            // ── 5.5 Floating TV Series Next Episode Action (<= 60s remaining) ──
-            if (!_isLoading &&
-                _nextEpisodeButtonVisible &&
-                (_currentSeason != null && _currentEpisode != null))
-              Positioned(
-                bottom: _showControls ? 78 : 28,
-                right: 28,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: _buildSkipPillButton(
-                    key: ValueKey('tv_next_episode_$_currentEpisode'),
-                    icon: Icons.skip_next_rounded,
-                    label: s.playerNextEpisodePill((_currentEpisode ?? 1) + 1),
-                    onTap: _playNextEpisode,
-                  ),
-                ),
-              ),
-
-            // ── 6. Compact Semi-Transparent Mini Popups Layer ──
-            if (!_isLoading && _activePopup != _PlayerMiniPopup.none) ...[
-              // Outside tap dismisser (transparent, non-blocking)
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: () {
-                    setState(() {
-                      _activePopup = _PlayerMiniPopup.none;
-                      _isShowingSubtitleSettingsInPopup = false;
-                    });
-                    _resetControlsTimer();
-                  },
-                ),
-              ),
-
-              // The active Mini Popup Card
-              Positioned(
-                top: 54,
-                right: 16,
-                child: switch (_activePopup) {
-                  _PlayerMiniPopup.quality => _buildQualityMiniPopup(s),
-                  _PlayerMiniPopup.volume => _buildVolumeMiniPopup(s),
-                  _PlayerMiniPopup.subtitle => _buildSubtitleMiniPopup(s),
-                  _PlayerMiniPopup.subtitleSettings =>
-                    _buildSubtitleSettingsMiniPopup(s),
-                  _PlayerMiniPopup.server => _buildServerMiniPopup(s),
-                  _PlayerMiniPopup.none => const SizedBox.shrink(),
-                },
-              ),
-            ],
-          ],
+            );
+          },
         ),
       ),
     );

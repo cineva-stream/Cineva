@@ -7,6 +7,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../providers/app_update_provider.dart';
 import 'install_permission_dialog.dart';
+import 'update_detail_modal.dart';
 
 /// In-App Update Banner rendered cleanly on the Home screen directly above the Hero Section.
 /// Features a pure smooth black background identical to the main app theme,
@@ -127,6 +128,34 @@ class InAppUpdateBanner extends ConsumerWidget {
                 ),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
+              ),
+
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: () => UpdateDetailModal.show(context, info: info),
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        s.updateSeeMore,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 10,
+                        color: AppColors.primary,
+                      ),
+                    ],
+                  ),
+                ),
               ),
 
               const SizedBox(height: 14),
@@ -266,13 +295,40 @@ class InAppUpdateBanner extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      info.formattedSize,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          info.formattedSize,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (info.isArchitectureSpecific) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceVariant,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                width: 0.6,
+                              ),
+                            ),
+                            child: Text(
+                              info.targetAbi,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     ElevatedButton.icon(
                       onPressed: notifier.startDownload,

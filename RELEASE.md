@@ -1,47 +1,79 @@
-# Cineva v1.1.1 - Release Notes 🎬
+# Cineva v1.1.2 - Release Notes 🎬
 
-Pembaruan Cineva versi 1.1.1 menghadirkan penambahan saluran TV Live terlengkap baik saluran nasional Indonesia (Indosiar, SCTV, Trans TV, Trans7, ANTV, Metro TV, Kompas TV, iNews, CNN Indonesia, CNBC Indonesia, dll.) maupun internasional (CNN News 18, BBC News, ABC News Live, CBS News 24/7, NBC News NOW, Al Jazeera English, Euronews, France 24, Bloomberg TV+, dll.) dengan logo resmi berlatar transparan, implementasi Custom UI Player terpadu dengan pelindung iklan (*Anti-Ad Touch Shield*) untuk server streaming non-direct (VidLink, MultiEmbed, VidSrc, dll.), serta redesain daftar episode serial TV tanpa card tebal menggunakan garis batas tipis elegan dan sinopsis berpemotongan teks profesional (*ellipsis*).
+Pembaruan Cineva versi 1.1.2 menghadirkan lompatan besar dalam efisiensi distribusi aplikasi melalui **Distribusi Multi-Arsitektur APK (Split-per-ABI)** yang menghemat ukuran unduhan hingga lebih dari 60%, sistem **Deteksi Cerdas Arsitektur CPU Perangkat** saat melakukan pembaruan di dalam aplikasi (*In-App Update*), penambahan **Panel Informasi Media & Episode pada Kontrol Pemutar (*Player Info Side Panel*)**, **Modal Detail Pembaruan Aplikasi (*Changelog Popup*)** dengan fitur adaptasi penerjemahan dwibahasa otomatis (*Bilingual Auto-Translation*), serta kompatibilitas penuh dengan versi rilis sebelumnya.
 
 ---
 
 ## Ringkasan Perubahan
 
-### 1. Penambahan Saluran TV Live Nasional & Internasional Terlengkap & Perbaikan Stabilitas Stream
-- **Katalog Saluran Nasional Indonesia Terlengkap & Stabil**:
-  - Menambahkan saluran televisi swasta dan nasional utama: **Indosiar HD** (diperbarui dengan stream HLS m3u8 live streaming stabil dan bebas gangguan freeze/stuck 2–5 detik), **Moji HD** (siaran Proliga & Premier League dengan logo resmi), **SCTV HD**, **Trans TV**, **Trans7 HD**, **ANTV HD**, **Metro TV HD**, **Kompas TV HD**, **iNews HD**, **CNN Indonesia**, **CNBC Indonesia**, **BTV Indonesia**, **Jawa Pos TV**, **JTV Surabaya**, **UGTV Gunadarma**, berdampingan dengan **TVRI Nasional**, **TVRI World**, **DAAI TV**, **Garuda TV**, **Indonesiana TV**, **Al-Bahjah TV**, **Ahsan TV**, dan **Ashiil TV**.
-- **YouTube-Style Landscape Channel Drawer & Dynamic Resizing**:
-  - Saat menonton TV Live dalam mode lanskap layar penuh (*fullscreen*), menekan tombol **"Ganti Saluran"** akan membuka laci pemilihan saluran di sisi kanan layaknya antarmuka YouTube.
-  - Pemutar video di sisi kiri secara otomatis dan mulus menyesuaikan lebar serta proporsinya (*smooth animated resizing*) sehingga siaran yang sedang ditonton tidak tertutup sedikit pun oleh panel saluran.
-  - Laci saluran di sisi kanan didesain bersih dan minimalis tanpa bentuk *card*, menggunakan garis pembatas tipis (*subtle border* 0.8px), logo saluran transparan, filter chip kategori horizontal ('Semua', 'Indonesia', 'Berita', ..., 'Favorit'), status saluran aktif ("DIPUTAR"), tombol penutup (X), serta integrasi tombol kembali (*hardware back / pop gesture*) yang otomatis menutup laci terlebih dahulu sebelum keluar dari fullscreen.
-- **Katalog Berita & Hiburan Internasional Terverifikasi**:
-  - Menghadirkan siaran berita global berkualitas tinggi: **CNN News 18**, **BBC News International**, **ABC News Live**, **CBS News 24/7**, **NBC News NOW**, **Al Jazeera English**, **DW News English**, **Bloomberg TV+**, **Euronews English**, **France 24 English**, **CNBC International**, serta siaran olahraga dan dokumenter seperti **BBC Earth & Studios**, **Red Bull TV**, **ACC Digital Network**, dan **NASA TV**.
-- **Logo Resmi Berlatar Transparan & Header Dinamis**:
-  - Setiap saluran dilengkapi logo resmi beresolusi tinggi yang terverifikasi aktif (HTTP 200 OK) dan menyatu natural dengan latar belakang gelap Cineva.
-  - Pemutar TV Live secara otomatis menyematkan header HTTP khusus (`Referer` dan `Origin` seperti DensTV dan Detik) guna memastikan kelancaran pemutaran tanpa hambatan pemblokiran CDN atau proteksi tautan.
+### 1. Distribusi Multi-Arsitektur APK (Split ABI) & Deteksi CPU Otomatis
+- **Pengurangan Ukuran File Unduhan Drastis (~15–18 MB vs ~99 MB Universal)**:
+  - Mengubah skema *build* aplikasi untuk mendukung pembuatan 4 varian APK terpisah:
+    - `Cineva_v1.1.2-arm64-v8a.apk` (Khusus arsitektur 64-bit perangkat Android modern, ~16 MB).
+    - `Cineva_v1.1.2-armeabi-v7a.apk` (Khusus arsitektur 32-bit perangkat Android lawas, ~15 MB).
+    - `Cineva_v1.1.2-x86_64.apk` (Khusus emulator PC seperti LDPlayer/Bluestacks dan Chromebook, ~18 MB).
+    - `Cineva_v1.1.2.apk` (Varian Universal standar tanpa imbuhan nama, kompatibel dengan seluruh perangkat Android).
+  - Varian universal sengaja tetap menggunakan nama `Cineva_v{versi}.apk` demi menjaga kompatibilitas mundur (*backward compatibility*) agar perangkat pengguna versi lama tetap dapat mendeteksi pembaruan dan memperbarui aplikasi secara mulus.
+- **Deteksi Cerdas Arsitektur CPU Native Android (`AppUpdateService`)**:
+  - Menghubungkan platform channel native (`MethodChannel('com.primadev.cineva/device_info')`) ke `android.os.Build.SUPPORTED_ABIS`.
+  - Ketika notifikasi atau banner pembaruan muncul di dalam aplikasi, sistem secara cerdas mencocokkan aset rilis GitHub yang sesuai dengan arsitektur CPU perangkat pengguna (misal: ponsel `arm64-v8a` akan otomatis mengunduh `Cineva_v1.1.2-arm64-v8a.apk`).
+  - Menyediakan fallback otomatis ke varian universal jika varian arsitektur spesifik tidak ditemukan di rilis GitHub.
+- **Otomatisasi Penamaan & Distribusi Gradle Hook (`android/app/build.gradle.kts`)**:
+  - Menambahkan *task hook* otomatis setelah `assembleRelease` yang memetakan output build Flutter (`app-arm64-v8a-release.apk`, dll.) menjadi nama rilis final yang rapi dan siap didistribusikan ke GitHub Releases.
 
-### 2. Custom UI Player Screen & Anti-Ad Shield untuk Server Non-Direct
-- **Kontrol Penuh Cineva Custom UI di Semua Server**:
-  - Ketika pengguna beralih ke server selain *Cineva Direct* (seperti VidLink HD, MultiEmbed VIP, VidSrc Ultra, 2Embed Prime, atau SmashyStream), layar pemutar kini tetap menampilkan antarmuka kustom Cineva (*Cineva Custom Cinema Controls*) secara penuh.
-  - Mendukung kontrol Play/Pause, lompat mundur/maju 10 detik (*Replay 10s* & *Forward 10s*), linimasa scrubber slider durasi tontonan, tombol navigasi episode berikutnya, serta HUD kecerahan layar dan volume booster.
-- **Perlindungan Terhadap Iklan (*Anti-Ad Transparent Touch Shield*)**:
-  - Menempatkan lapisan pelindung gestur transparan di atas webview untuk menangkap ketukan dan geseran jari pengguna, sehingga pengguna dapat memunculkan kontrol dan mengatur volume/kecerahan tanpa pernah menyentuh langsung halaman web penyedia.
-  - Mencegah terpicunya iklan popup liar, popunder, jendela baru, serta tautan pengalihan ke situs belanja maupun perjudian/kasino online.
-- **Sinkronisasi Playback Realtime (`CinevaStreamBridge`)**:
-  - Skrip injeksi stream menyinkronkan event video web (`timeupdate`, `durationchange`, `play`, `pause`, `waiting`, `playing`) secara instan ke notifikasi status pemutar Cineva untuk pengalaman menonton yang konsisten dengan pemutar native.
+### 2. Panel Informasi Film & Episode pada Pemutar Video (Player Info Side Panel)
+- **Ikon Info Interaktif pada Bar Kontrol Pemutar**:
+  - Menambahkan ikon informasi (`Iconsax.info_circle`) di bilah atas pemutar video (*player controls*), tepat di samping kiri ikon pengaturan (*settings*).
+  - Menekan ikon ini membuka panel samping kanan bergaya YouTube (*YouTube-Style Info Side Panel*) tanpa menghentikan pemutaran video yang sedang berlangsung.
+- **Header Poster & Cuplikan Visual dengan Gradien Obsidian**:
+  - Bagian atas panel samping menampilkan *banner* thumbnail/backdrop film atau episode yang sedang diputar.
+  - Dilapisi gradien hitam pekat (*pure black gradient overlay*) di bagian atas dan bawah gambar agar menyatu sempurna ke dalam latar belakang *Deep Obsidian* (`AppColors.background`).
+  - Dilengkapi badge kategori ('MOVIE' atau 'TV SHOW') dan indikator nomor musim & episode untuk serial televisi.
+- **Judul Lengkap & Sinopsis Adaptif**:
+  - Menampilkan judul film atau judul episode lengkap dengan format tipografi yang jelas dan nyaman dibaca.
+  - Menampilkan ringkasan cerita (*synopsis / overview*) lengkap dengan pengambilan data otomatis dari endpoint TMDB (`/movie/{id}` atau `/tv/{id}/season/{s}/episode/{e}`) apabila data sinopsis belum tersedia di memori.
+  - Jika sebuah film atau episode tidak memiliki sinopsis di server, panel menampilkan kartu fallback dwibahasa yang rapi:
+    - *"Tidak Ada Sinopsis Untuk Film Ini atau Episode Ini"* (Bahasa Indonesia).
+    - *"No Synopsis Available for this Movie or Episode"* (English).
 
-### 3. Redesain Daftar Episode TV Series Bergaya Garis Batas Tipis & Sinopsis Rapi
-- **Tampilan Bersih Tanpa Card**:
-  - Menghilangkan kontainer kotak *card* tebal berlatar abu-abu pada daftar episode di halaman detail Serial TV (`TvDetailScreen`).
-  - Menggantinya dengan pembatas garis tipis minimalis (*subtle divider border* 0.8px) yang elegan, selaras dengan estetika penjelajahan saluran TV Live dan Watchlist.
-- **Cuplikan Sinopsis Setiap Episode**:
-  - Menampilkan ringkasan cerita (*overview*) pada setiap episode secara rapi di bawah judul dan durasi.
-  - Dilengkapi pembatasan teks maksimal 2 baris dan pemotongan otomatis dengan tanda titik-titik (*ellipsis* `"..."`) di bagian akhir kalimat sehingga teks tidak meluber dan tampil profesional.
-- **Tombol Aksi Intuitif**:
-  - Menyediakan tombol unduhan (*Download Episode Modal*) dan tombol ikon putar melingkar bernuansa *primary orange* yang responsif.
+### 3. Modal Detail Pembaruan Aplikasi & Auto-Translasi Catatan Rilis
+- **Tombol "Lihat Detail" / "See More" pada Banner Beranda**:
+  - Pada kartu pembaruan aplikasi (`InAppUpdateBanner`) di halaman Beranda, kini tersedia tombol interaktif **"Lihat Detail"** (ID) atau **"See More"** (EN).
+- **Modal Changelog Popup Interaktif (`UpdateDetailModal`)**:
+  - Menampilkan modal popup elegan berlatar kaca gelap (*frosted glass effect*) yang menyajikan nomor versi, judul rilis, tanggal publikasi, dan seluruh isi catatan rilis (*release notes / body*) yang diambil langsung dari GitHub API.
+- **Penerjemahan Bahasa Otomatis (*Bilingual Auto-Adaptation*)**:
+  - Sistem mendeteksi bahasa teks rilis dari GitHub dan secara cerdas menyesuaikannya dengan bahasa aplikasi yang sedang aktif:
+    - Jika aplikasi menggunakan Bahasa Inggris sedangkan teks rilis berbahasa Indonesia, sistem secara otomatis menerjemahkan catatan rilis ke Bahasa Inggris.
+    - Jika aplikasi menggunakan Bahasa Indonesia sedangkan teks rilis berbahasa Inggris, sistem menerjemahkannya ke Bahasa Indonesia.
+    - Jika rilis menyediakan blok bagian bahasa ganda, sistem langsung mengekstrak bagian yang sesuai.
+- **Tombol Toggle Terjemahan & Unduh Langsung**:
+  - Dilengkapi tombol *toggle pill* interaktif: `[ 🌐 Diterjemahkan | Teks Asli ]` atau `[ 🌐 Translated | Original ]` sehingga pengguna dapat bebas melihat teks terjemahan maupun teks asli dari pengembang.
+  - Menyediakan tombol aksi langsung **"Unduh & Pasang Sekarang"** di dalam modal dengan indikator progres unduhan terintegrasi.
+
+### 4. Peningkatan Integrasi Rute Navigasi & Fallback TMDB
+- **Parameter `overview` pada Rute Pemutar (`/player`)**:
+  - Memperbarui `GoRouter` untuk menyertakan parameter `overview` dari halaman `MovieDetailScreen` dan `TvDetailScreen`.
+  - Memastikan sinopsis langsung tersedia seketika pemutar dibuka tanpa jeda tunggu koneksi jaringan.
+- **Pembaruan Otomatis Sinopsis Saat Berpindah Episode**:
+  - Ketika pengguna menekan tombol "Episode Berikutnya" (*Next Episode*), panel informasi secara otomatis memperbarui nomor episode, judul episode, dan sinopsis episode baru yang sedang diputar.
+
+### 5. Sinkronisasi Web Companion (Cineva-Web)
+- **Selektor Arsitektur CPU Modern & Minimalis**:
+  - Tombol unduh pada *Hero*, *Install*, dan *CTA* section di portal web Cineva kini terintegrasi dengan pemilih arsitektur CPU bergaya *split button* kapsul tunggal yang elegan.
+  - Menampilkan rekomendasi arsitektur perangkat pengunjung secara otomatis (`arm64-v8a`, `x86_64`, `armeabi-v7a`, `universal`).
+  - Menghilangkan *glitch overlap* teks perks dan merapikan tipografi menggunakan font *Plus Jakarta Sans*.
 
 ---
 
 ## Riwayat Versi Sebelumnya
+
+### Cineva v1.1.1
+- **Sinkronisasi Cluster Scraper Flixquest (`scraper.flix.quest`)**: Akses ke 17+ upstream scrapers terverifikasi dan multi-instance failover.
+- **Prioritas Provider Film Bioskop Indonesia & Asia**: Penempatan provider `movy` dan `moviepire` di urutan teratas untuk film bioskop Indonesia dan anime.
+- **Native 404 Stream Unavailable Overlay**: Pencegahan pemutaran video iklan atau salah judul dengan overlay bertema *Cinema Amber & Deep Obsidian*.
+- **Pembersihan Kontrol Ganda & Side Panel Border Tipis**: Redesain menu server, episode, kualitas, dan subtitle dengan *subtle border* 0.8px tanpa card tebal.
+- **Katalog TV Live Terlengkap**: Saluran nasional (Indosiar HD, Moji HD, SCTV HD, Trans TV, Trans7 HD, dll.) dan internasional dengan *YouTube-Style Channel Drawer*.
+- **Cineva Custom UI & Anti-Ad Shield**: Kontrol kustom Cineva lengkap di semua server streaming dengan perlindungan gestur sentuh anti-iklan.
 
 ### Cineva v1.1.0
 - **Navigasi Kembali TV Live & Animasi Slide-Up**: Pemulihan instan bottom navigation bar tanpa perlu menekan tombol back dua kali.
@@ -62,6 +94,11 @@ Pembaruan Cineva versi 1.1.1 menghadirkan penambahan saluran TV Live terlengkap 
 
 ## Informasi Versi
 
-- Versi Aplikasi: 1.1.1
-- Build: 12
-- Target Sistem Operasi: Android 5.0 (API 21) ke atas
+- **Versi Aplikasi**: 1.1.2
+- **Build**: 13
+- **Target Sistem Operasi**: Android 5.0 (API 21) ke atas
+- **Daftar Varian File APK**:
+  - `Cineva_v1.1.2-arm64-v8a.apk` (HP Android Modern 64-bit, ~16 MB)
+  - `Cineva_v1.1.2-armeabi-v7a.apk` (HP Android Lawas 32-bit, ~15 MB)
+  - `Cineva_v1.1.2-x86_64.apk` (Emulator PC & Chromebook, ~18 MB)
+  - `Cineva_v1.1.2.apk` (Universal / Semua CPU, Kompatibel Penuh, ~38 MB)

@@ -7,6 +7,7 @@ import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../player/data/services/provider_loader_service.dart';
 import '../../../player/data/services/smart_stream_service.dart';
 import '../../../player/data/services/vixsrc_stream_service.dart';
 import 'hls_url_resolver.dart';
@@ -22,6 +23,7 @@ class ResolutionOption {
   final String formattedSize; // '~1.8 GB'
   final String streamUrl;
   final String masterPlaylistUrl;
+  final Map<String, String>? headers;
 
   const ResolutionOption({
     required this.label,
@@ -31,6 +33,7 @@ class ResolutionOption {
     required this.formattedSize,
     required this.streamUrl,
     this.masterPlaylistUrl = '',
+    this.headers,
   });
 }
 
@@ -54,17 +57,23 @@ class _HlsSegmentTask {
 /// Supports seamless decryption of AES-128 HLS streams with dual video & audio tracks.
 class VideoDownloadService {
   final Dio _dio;
+  final ProviderLoaderService _providerLoader;
 
-  VideoDownloadService({Dio? dio})
-      : _dio = dio ??
+  VideoDownloadService({
+    Dio? dio,
+    ProviderLoaderService? providerLoader,
+  })  : _dio = dio ??
             Dio(BaseOptions(
               connectTimeout: const Duration(seconds: 15),
               receiveTimeout: const Duration(seconds: 25),
               headers: {
-                ...VixSrcStreamService.headers,
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+                'accept': '*/*',
                 'accept-encoding': 'gzip, deflate, br',
               },
-            )) {
+            )),
+        _providerLoader = providerLoader ?? ProviderLoaderService() {
     try {
       final adapter = _dio.httpClientAdapter;
       if (adapter is IOHttpClientAdapter) {
@@ -242,6 +251,7 @@ class VideoDownloadService {
       } catch (_) {}
     }
 
+    // 1. Try Direct VixSrc stream first
     final vixResult = await VixSrcStreamService.resolveStream(
       tmdbId: resolvedTmdb,
       imdbId: resolvedImdb,
@@ -249,8 +259,51 @@ class VideoDownloadService {
       episode: episode,
     );
 
-    final masterUrl = vixResult?.playlistUrl ?? '';
+    String masterUrl = vixResult?.playlistUrl ?? '';
     final qualityUrls = Map<String, String>.from(vixResult?.qualityUrls ?? {});
+    Map<String, String>? streamHeaders = vixResult != null ? VixSrcStreamService.headers : null;
+
+    // 2. Multi-provider fallback if VixSrc has no playable playlist
+    if (masterUrl.isEmpty && resolvedTmdb != null && resolvedTmdb > 0) {
+      try {
+        debugPrint('[VideoDownloadService] VixSrc empty, falling back to multi-provider cluster...');
+        final selection = await _providerLoader.loadFirstSuccessful(
+          tmdbId: resolvedTmdb,
+          season: season,
+          episode: episode,
+        );
+        if (selection != null && selection.result.hasPlayableStreams) {
+          final links = selection.result.videoLinks!;
+          final first = links.first;
+          masterUrl = first.url ?? '';
+          streamHeaders = first.headers;
+
+          for (final link in links) {
+            final url = link.url;
+            if (url == null || url.isEmpty) continue;
+            final q = (link.quality ?? '').toLowerCase();
+            if (q.contains('1080')) {
+              qualityUrls['1080p'] = url;
+            } else if (q.contains('720')) {
+              qualityUrls['720p'] = url;
+            } else if (q.contains('480')) {
+              qualityUrls['480p'] = url;
+            } else if (q.contains('360')) {
+              qualityUrls['360p'] = url;
+            }
+          }
+          debugPrint(
+            '[VideoDownloadService] Resolved download from provider: ${selection.provider.displayName} (${links.length} sources)',
+          );
+        }
+      } catch (e) {
+        debugPrint('[VideoDownloadService] Multi-provider fallback error: $e');
+      }
+    }
+
+    if (masterUrl.isEmpty && qualityUrls.isEmpty) {
+      return [];
+    }
 
     int calcSize(int bitrateBps) => ((bitrateBps / 8) * durationSeconds).round();
 
@@ -275,6 +328,7 @@ class VideoDownloadService {
         formattedSize: formatBytes(size1080),
         streamUrl: qualityUrls['1080p'] ?? masterUrl,
         masterPlaylistUrl: masterUrl,
+        headers: streamHeaders,
       ),
       ResolutionOption(
         label: '720p',
@@ -284,6 +338,7 @@ class VideoDownloadService {
         formattedSize: formatBytes(size720),
         streamUrl: qualityUrls['720p'] ?? masterUrl,
         masterPlaylistUrl: masterUrl,
+        headers: streamHeaders,
       ),
       ResolutionOption(
         label: '480p',
@@ -293,6 +348,7 @@ class VideoDownloadService {
         formattedSize: formatBytes(size480),
         streamUrl: qualityUrls['480p'] ?? masterUrl,
         masterPlaylistUrl: masterUrl,
+        headers: streamHeaders,
       ),
       ResolutionOption(
         label: '360p',
@@ -302,6 +358,7 @@ class VideoDownloadService {
         formattedSize: formatBytes(size360),
         streamUrl: qualityUrls['360p'] ?? masterUrl,
         masterPlaylistUrl: masterUrl,
+        headers: streamHeaders,
       ),
     ];
   }
@@ -310,6 +367,7 @@ class VideoDownloadService {
   Future<void> downloadStream({
     required String streamUrl,
     String masterPlaylistUrl = '',
+    Map<String, String>? headers,
     required String targetFilePath,
     required int estimatedSizeBytes,
     CancelToken? cancelToken,
@@ -323,6 +381,16 @@ class VideoDownloadService {
     final targetFile = File(targetFilePath);
     final targetDir = targetFile.parent;
     await targetDir.create(recursive: true);
+
+    final effectiveHeaders = <String, String>{
+      ...?headers,
+      if ((headers == null || headers.isEmpty) &&
+          (streamUrl.contains('vixsrc') || masterPlaylistUrl.contains('vixsrc'))) ...{
+        ...VixSrcStreamService.headers,
+        'origin': 'https://vixsrc.to',
+        'referer': 'https://vixsrc.to/',
+      },
+    };
 
     // Ensure .nomedia file in download folder so media is strictly private to Cineva and never scanned by gallery
     try {
@@ -340,6 +408,7 @@ class VideoDownloadService {
       await _dio.download(
         streamUrl,
         targetFilePath,
+        options: effectiveHeaders.isNotEmpty ? Options(headers: effectiveHeaders) : null,
         cancelToken: cancelToken,
         onReceiveProgress: (received, total) {
           final now = DateTime.now().millisecondsSinceEpoch;
@@ -382,7 +451,10 @@ class VideoDownloadService {
     try {
       final masterRes = await _dio.get<String>(
         masterUrlToInspect,
-        options: Options(responseType: ResponseType.plain),
+        options: Options(
+          responseType: ResponseType.plain,
+          headers: effectiveHeaders.isNotEmpty ? effectiveHeaders : null,
+        ),
         cancelToken: cancelToken,
       );
       final masterContent = masterRes.data ?? '';
@@ -420,7 +492,10 @@ class VideoDownloadService {
     // Fetch and parse Video Playlist
     final videoRes = await _dio.get<String>(
       targetVideoPlaylistUrl,
-      options: Options(responseType: ResponseType.plain),
+      options: Options(
+        responseType: ResponseType.plain,
+        headers: effectiveHeaders.isNotEmpty ? effectiveHeaders : null,
+      ),
       cancelToken: cancelToken,
     );
     String videoContent = videoRes.data ?? '';
@@ -436,7 +511,10 @@ class VideoDownloadService {
 
       final childRes = await _dio.get<String>(
         targetVideoPlaylistUrl,
-        options: Options(responseType: ResponseType.plain),
+        options: Options(
+          responseType: ResponseType.plain,
+          headers: effectiveHeaders.isNotEmpty ? effectiveHeaders : null,
+        ),
         cancelToken: cancelToken,
       );
       videoContent = childRes.data ?? '';
@@ -490,7 +568,10 @@ class VideoDownloadService {
       try {
         final audioRes = await _dio.get<String>(
           targetAudioPlaylistUrl,
-          options: Options(responseType: ResponseType.plain),
+          options: Options(
+            responseType: ResponseType.plain,
+            headers: effectiveHeaders.isNotEmpty ? effectiveHeaders : null,
+          ),
           cancelToken: cancelToken,
         );
         String audioContent = audioRes.data ?? '';
@@ -505,7 +586,10 @@ class VideoDownloadService {
 
           final aChildRes = await _dio.get<String>(
             targetAudioPlaylistUrl,
-            options: Options(responseType: ResponseType.plain),
+            options: Options(
+              responseType: ResponseType.plain,
+              headers: effectiveHeaders.isNotEmpty ? effectiveHeaders : null,
+            ),
             cancelToken: cancelToken,
           );
           audioContent = aChildRes.data ?? '';
@@ -548,7 +632,7 @@ class VideoDownloadService {
     // Download and validate AES-128 Keys if encrypted
     Uint8List? videoKeyBytes;
     if (videoKeyUrl != null) {
-      videoKeyBytes = await _downloadKeyBytes(videoKeyUrl, cancelToken);
+      videoKeyBytes = await _downloadKeyBytes(videoKeyUrl, cancelToken, effectiveHeaders);
     }
 
     Uint8List? audioKeyBytes;
@@ -556,7 +640,7 @@ class VideoDownloadService {
       if (audioKeyUrl == videoKeyUrl && videoKeyBytes != null) {
         audioKeyBytes = videoKeyBytes;
       } else {
-        audioKeyBytes = await _downloadKeyBytes(audioKeyUrl, cancelToken);
+        audioKeyBytes = await _downloadKeyBytes(audioKeyUrl, cancelToken, effectiveHeaders);
       }
     }
 
@@ -654,7 +738,10 @@ class VideoDownloadService {
           try {
             final response = await _dio.get<List<int>>(
               task.url,
-              options: Options(responseType: ResponseType.bytes),
+              options: Options(
+                responseType: ResponseType.bytes,
+                headers: effectiveHeaders.isNotEmpty ? effectiveHeaders : null,
+              ),
               cancelToken: cancelToken,
             );
             bytes = response.data;
@@ -820,7 +907,11 @@ class VideoDownloadService {
   }
 
   /// Downloads AES-128 16-byte decryption key with automatic fallback to primary origin
-  Future<Uint8List> _downloadKeyBytes(String primaryUrl, CancelToken? cancelToken) async {
+  Future<Uint8List> _downloadKeyBytes(
+    String primaryUrl,
+    CancelToken? cancelToken, [
+    Map<String, String>? headers,
+  ]) async {
     final candidateUrls = <String>[
       primaryUrl,
       if (primaryUrl.contains('/storage/enc.key') && !primaryUrl.startsWith('https://vixsrc.to'))
@@ -836,9 +927,12 @@ class VideoDownloadService {
           options: Options(
             responseType: ResponseType.bytes,
             headers: {
-              ...VixSrcStreamService.headers,
-              'origin': 'https://vixsrc.to',
-              'referer': 'https://vixsrc.to/',
+              ...?headers,
+              if (url.contains('vixsrc')) ...{
+                ...VixSrcStreamService.headers,
+                'origin': 'https://vixsrc.to',
+                'referer': 'https://vixsrc.to/',
+              },
             },
           ),
           cancelToken: cancelToken,

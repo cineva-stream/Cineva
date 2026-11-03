@@ -20,6 +20,8 @@ class MovieCard extends StatelessWidget {
   final double width;
   final double height;
   final bool showBadge;
+  final bool isTv;
+  final VoidCallback? onTap;
 
   const MovieCard({
     super.key,
@@ -27,16 +29,28 @@ class MovieCard extends StatelessWidget {
     this.width = 135,
     this.height = 205,
     this.showBadge = true,
+    this.isTv = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final primaryGenre = TmdbGenres.getPrimaryGenre(movie.genreIds);
+    final primaryGenre = TmdbGenres.getPrimaryGenre(
+      movie.genreIds,
+      fallback: isTv ? (movie.originCountry.contains('JP') ? 'Anime' : 'Serial TV') : 'Film',
+    );
     final isHighRating = movie.voteAverage >= 7.5;
 
     return RepaintBoundary(
       child: GestureDetector(
-        onTap: () => context.push('/movie/${movie.id}'),
+        onTap: onTap ??
+            () {
+              if (isTv) {
+                context.push('/tv/${movie.id}');
+              } else {
+                context.push('/movie/${movie.id}');
+              }
+            },
         child: Container(
           width: width,
           height: height,
@@ -68,19 +82,27 @@ class MovieCard extends StatelessWidget {
                   memCacheWidth: 270,
                   memCacheHeight: 410,
                   fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  color: AppColors.surfaceVariant,
-                  child: const Center(
-                    child: Icon(Icons.movie_outlined, color: AppColors.textMuted, size: 30),
+                  placeholder: (context, url) => Container(
+                    color: AppColors.surfaceVariant,
+                    child: Center(
+                      child: Icon(
+                        isTv ? Icons.tv_rounded : Icons.movie_outlined,
+                        color: AppColors.textMuted,
+                        size: 30,
+                      ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: AppColors.surfaceVariant,
+                    child: Center(
+                      child: Icon(
+                        isTv ? Icons.tv_off_outlined : Icons.broken_image_outlined,
+                        color: AppColors.textMuted,
+                        size: 30,
+                      ),
+                    ),
                   ),
                 ),
-                errorWidget: (context, url, error) => Container(
-                  color: AppColors.surfaceVariant,
-                  child: const Center(
-                    child: Icon(Icons.broken_image_outlined, color: AppColors.textMuted, size: 30),
-                  ),
-                ),
-              ),
 
               // ── Bottom Multi-Stop Dark Vignette ──
               Positioned.fill(

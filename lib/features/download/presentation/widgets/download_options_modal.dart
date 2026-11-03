@@ -383,6 +383,33 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                       ],
                     ),
                   )
+                else if (_resolutions.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.cloud_off_rounded, color: AppColors.textMuted, size: 36),
+                        const SizedBox(height: 10),
+                        Text(
+                          s.isIndonesian
+                              ? 'Tautan unduhan belum tersedia untuk judul ini'
+                              : 'Download stream not available for this title',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 else
                   Column(
                     children: _resolutions.map((res) {
@@ -485,7 +512,9 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _isLoadingResolutions ? null : _nextPage,
+              onPressed: (_isLoadingResolutions || _resolutions.isEmpty || selectedOption.streamUrl.isEmpty)
+                  ? null
+                  : _nextPage,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.black,
@@ -673,6 +702,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                       resolution: _selectedResolution,
                       streamUrl: selectedOption.streamUrl,
                       masterPlaylistUrl: selectedOption.masterPlaylistUrl,
+                      headers: selectedOption.headers,
                       estimatedSizeBytes: selectedOption.estimatedSizeBytes,
                       preferredSubtitleLang: _selectedSubtitleLang,
                       runtimeMinutes: widget.runtimeMinutes,

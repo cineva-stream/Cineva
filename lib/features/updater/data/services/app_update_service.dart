@@ -65,6 +65,66 @@ class AppUpdateService {
     }
   }
 
+  /// Retrieves the list of CPU ABIs supported by the current device.
+  static Future<List<String>> getSupportedAbis() async {
+    try {
+      final res = await _channel.invokeMethod<List<dynamic>>('getSupportedAbis');
+      if (res != null && res.isNotEmpty) {
+        return res.map((e) => e.toString().toLowerCase().trim()).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Selects the best matching APK asset based on device CPU architecture.
+  /// Prioritizes specific ABIs (arm64-v8a, armeabi-v7a, x86_64) to minimize download size,
+  /// falling back to universal or default Cineva_v{ver}.apk for maximum compatibility.
+  static Map<String, dynamic> selectBestApkAsset({
+    required List<Map<String, dynamic>> assets,
+    required List<String> supportedAbis,
+    required String version,
+  }) {
+    final apkAssets = assets.where((a) {
+      final name = a['name']?.toString().toLowerCase() ?? '';
+      return name.endsWith('.apk');
+    }).toList();
+
+    if (apkAssets.isEmpty) return {};
+
+    // 1. Try matching against device's supported ABIs in priority order
+    for (final abi in supportedAbis) {
+      final cleanAbi = abi.toLowerCase();
+      for (final a in apkAssets) {
+        final name = a['name']?.toString().toLowerCase() ?? '';
+        if (name.contains(cleanAbi)) {
+          return {
+            ...a,
+            'targetAbi': cleanAbi,
+          };
+        }
+      }
+    }
+
+    // 2. Fallback: Universal build (standard Cineva_v{ver}.apk without ABI suffix)
+    for (final a in apkAssets) {
+      final name = a['name']?.toString().toLowerCase() ?? '';
+      if (!name.contains('arm64') &&
+          !name.contains('armeabi') &&
+          !name.contains('armv7') &&
+          !name.contains('x86_64')) {
+        return {
+          ...a,
+          'targetAbi': 'universal',
+        };
+      }
+    }
+
+    return {
+      ...apkAssets.first,
+      'targetAbi': 'universal',
+    };
+  }
+
   /// Checks the official GitHub repository for a newer release.
   Future<AppUpdateInfo?> checkForUpdate() async {
     try {
@@ -94,12 +154,15 @@ class AppUpdateService {
           ? DateTime.tryParse(publishedAtStr)
           : null;
 
-      // Locate the APK asset in release
+      // Locate the APK asset in release matching device CPU architecture
       final assets =
           (data['assets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      final apkAsset = assets.firstWhere(
-        (a) => a['name']?.toString().toLowerCase().endsWith('.apk') ?? false,
-        orElse: () => <String, dynamic>{},
+      final supportedAbis = await getSupportedAbis();
+
+      final apkAsset = selectBestApkAsset(
+        assets: assets,
+        supportedAbis: supportedAbis,
+        version: cleanRemoteVersion,
       );
 
       final apkUrl = apkAsset['browser_download_url']?.toString();
@@ -110,6 +173,7 @@ class AppUpdateService {
       final apkFileName =
           apkAsset['name']?.toString() ?? 'Cineva_v$cleanRemoteVersion.apk';
       final apkSizeBytes = (apkAsset['size'] as num?)?.toInt() ?? 0;
+      final targetAbi = apkAsset['targetAbi']?.toString() ?? 'universal';
 
       return AppUpdateInfo(
         latestVersion: cleanRemoteVersion,
@@ -120,6 +184,7 @@ class AppUpdateService {
         apkSizeBytes: apkSizeBytes,
         publishedAt: publishedAt,
         currentVersion: currentVersion,
+        targetAbi: targetAbi,
       );
     } catch (e) {
       debugPrint('[AppUpdateService] Check update error: $e');
@@ -227,6 +292,21 @@ class AppUpdateService {
       return success ?? false;
     } catch (e) {
       debugPrint('[AppUpdateService] showUpdateNotification error: $e');
+      return false;
+    }
+  }
+
+  /// Checks whether a system update notification has already been shown for [version].
+  Future<bool> isUpdateNotified(String version) async {
+    if (kIsWeb || !Platform.isAndroid) return false;
+    try {
+      final bool? notified = await _channel.invokeMethod<bool>(
+        'isUpdateNotified',
+        {'version': version},
+      );
+      return notified ?? false;
+    } catch (e) {
+      debugPrint('[AppUpdateService] isUpdateNotified error: $e');
       return false;
     }
   }

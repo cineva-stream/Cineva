@@ -136,6 +136,27 @@ void main() {
 
       expect(option.masterPlaylistUrl, 'https://vixsrc.to/playlist/123?master=1');
       expect(option.streamUrl, contains('rendition=1080p'));
+      expect(option.headers, isNull);
+    });
+
+    test('ResolutionOption stores custom CDN headers correctly for multi-provider streams', () {
+      const option = ResolutionOption(
+        label: '720p',
+        title: '720p HD',
+        description: 'Crisp',
+        estimatedSizeBytes: 800000,
+        formattedSize: '800 MB',
+        streamUrl: 'https://akamai.cdn.provider.com/stream.m3u8',
+        masterPlaylistUrl: 'https://akamai.cdn.provider.com/master.m3u8',
+        headers: {
+          'Referer': 'https://provider.com/',
+          'User-Agent': 'CustomAgent',
+        },
+      );
+
+      expect(option.headers, isNotNull);
+      expect(option.headers!['Referer'], 'https://provider.com/');
+      expect(option.headers!['User-Agent'], 'CustomAgent');
     });
   });
 

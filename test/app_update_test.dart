@@ -44,6 +44,75 @@ void main() {
     });
   });
 
+  group('AppUpdateService Architecture APK Selection Tests', () {
+    final mockReleaseAssets = [
+      {
+        'name': 'Cineva_v1.1.2-arm64-v8a.apk',
+        'browser_download_url': 'https://github.com/cineva/Cineva_v1.1.2-arm64-v8a.apk',
+        'size': 16777216,
+      },
+      {
+        'name': 'Cineva_v1.1.2-armeabi-v7a.apk',
+        'browser_download_url': 'https://github.com/cineva/Cineva_v1.1.2-armeabi-v7a.apk',
+        'size': 15728640,
+      },
+      {
+        'name': 'Cineva_v1.1.2-x86_64.apk',
+        'browser_download_url': 'https://github.com/cineva/Cineva_v1.1.2-x86_64.apk',
+        'size': 18874368,
+      },
+      {
+        'name': 'Cineva_v1.1.2.apk',
+        'browser_download_url': 'https://github.com/cineva/Cineva_v1.1.2.apk',
+        'size': 39845888,
+      },
+    ];
+
+    test('Picks arm64-v8a APK when device supports arm64-v8a', () {
+      final asset = AppUpdateService.selectBestApkAsset(
+        assets: mockReleaseAssets,
+        supportedAbis: ['arm64-v8a', 'armeabi-v7a'],
+        version: '1.1.2',
+      );
+
+      expect(asset['name'], 'Cineva_v1.1.2-arm64-v8a.apk');
+      expect(asset['targetAbi'], 'arm64-v8a');
+    });
+
+    test('Picks armeabi-v7a APK when device only supports 32-bit armeabi-v7a', () {
+      final asset = AppUpdateService.selectBestApkAsset(
+        assets: mockReleaseAssets,
+        supportedAbis: ['armeabi-v7a', 'armeabi'],
+        version: '1.1.2',
+      );
+
+      expect(asset['name'], 'Cineva_v1.1.2-armeabi-v7a.apk');
+      expect(asset['targetAbi'], 'armeabi-v7a');
+    });
+
+    test('Picks x86_64 APK when running on x86_64 PC emulator', () {
+      final asset = AppUpdateService.selectBestApkAsset(
+        assets: mockReleaseAssets,
+        supportedAbis: ['x86_64'],
+        version: '1.1.2',
+      );
+
+      expect(asset['name'], 'Cineva_v1.1.2-x86_64.apk');
+      expect(asset['targetAbi'], 'x86_64');
+    });
+
+    test('Falls back to Cineva_v{ver}.apk when ABI is unknown or empty', () {
+      final asset = AppUpdateService.selectBestApkAsset(
+        assets: mockReleaseAssets,
+        supportedAbis: ['mips'],
+        version: '1.1.2',
+      );
+
+      expect(asset['name'], 'Cineva_v1.1.2.apk');
+      expect(asset['targetAbi'], 'universal');
+    });
+  });
+
   group('AppStrings In-App Updater Localization Tests', () {
     test('All updater strings are defined in ID and EN', () {
       final id = AppStrings(AppLanguage.id);
@@ -54,6 +123,8 @@ void main() {
       expect(id.updateFailed, 'Gagal mengunduh berkas pembaruan.');
       expect(id.updatePermissionTitle, 'Izin Pemasangan Diperlukan');
       expect(id.updateNotificationBody, 'Update Tersedia, Segera update sekarang untuk menikmati layanan streaming dengan lebih baik.');
+      expect(id.updateSeeMore, 'Lihat Detail');
+      expect(id.playerNoSynopsis, 'Tidak Ada Sinopsis Untuk Film Ini atau Episode Ini');
 
       final en = AppStrings(AppLanguage.en);
       expect(en.updateAvailableTitle, 'Update Available');
@@ -63,6 +134,8 @@ void main() {
       expect(en.updateDownloading, 'Downloading Update...');
       expect(en.updateFailed, 'Failed to download update file.');
       expect(en.updatePermissionTitle, 'Install Permission Required');
+      expect(en.updateSeeMore, 'See More');
+      expect(en.playerNoSynopsis, 'No Synopsis Available for this Movie or Episode');
     });
   });
 
@@ -164,6 +237,33 @@ void main() {
       expect(find.text('Batal'), findsOneWidget);
     });
 
+    testWidgets('Renders "Lihat Detail" and opens UpdateDetailModal on tap', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appUpdateProvider.overrideWith((ref) => _MockAppUpdateNotifier(
+                  AppUpdateState(
+                    status: AppUpdateStatus.available,
+                    updateInfo: mockInfo,
+                  ),
+                )),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: InAppUpdateBanner()),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lihat Detail'), findsOneWidget);
+      await tester.tap(find.text('Lihat Detail'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Detail Pembaruan'), findsOneWidget);
+      expect(find.text('v1.0.4'), findsWidgets);
+    });
+
     testWidgets('Renders Install Action when status is readyToInstall', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -204,6 +304,63 @@ void main() {
       expect(find.text('Batal'), findsOneWidget);
     });
   });
+
+  group('Single Notification Dispatch Tests', () {
+    test('checkForUpdate does not call showUpdateNotification if already notified', () async {
+      final fakeService = _FakeNotificationAppUpdateService(alreadyNotified: true);
+      final notifier = AppUpdateNotifier(fakeService, autoInit: false);
+
+      await notifier.checkForUpdate();
+
+      expect(notifier.state.status, AppUpdateStatus.available);
+      expect(fakeService.showNotificationCallCount, 0);
+    });
+
+    test('checkForUpdate calls showUpdateNotification once if not yet notified', () async {
+      final fakeService = _FakeNotificationAppUpdateService(alreadyNotified: false);
+      final notifier = AppUpdateNotifier(fakeService, autoInit: false);
+
+      await notifier.checkForUpdate();
+
+      expect(notifier.state.status, AppUpdateStatus.available);
+      expect(fakeService.showNotificationCallCount, 1);
+    });
+  });
+}
+
+class _FakeNotificationAppUpdateService extends AppUpdateService {
+  final bool alreadyNotified;
+  int showNotificationCallCount = 0;
+
+  _FakeNotificationAppUpdateService({required this.alreadyNotified});
+
+  @override
+  Future<int> cleanupDownloadedApks() async => 0;
+
+  @override
+  Future<bool> scheduleBackgroundUpdateCheck() async => true;
+
+  @override
+  Future<AppUpdateInfo?> checkForUpdate() async {
+    return AppUpdateInfo(
+      latestVersion: '1.1.2',
+      releaseTitle: 'Cineva v1.1.2',
+      changelog: 'Changelog',
+      apkUrl: 'https://example.com/app.apk',
+      apkFileName: 'app.apk',
+      apkSizeBytes: 1000,
+      currentVersion: '1.1.1',
+    );
+  }
+
+  @override
+  Future<bool> isUpdateNotified(String version) async => alreadyNotified;
+
+  @override
+  Future<bool> showUpdateNotification(AppUpdateInfo info, {String? customBody}) async {
+    showNotificationCallCount++;
+    return true;
+  }
 }
 
 class _MockAppUpdateNotifier extends AppUpdateNotifier {
@@ -218,6 +375,9 @@ class _MockAppUpdateNotifier extends AppUpdateNotifier {
 class _FakeAppUpdateService extends AppUpdateService {
   @override
   Future<int> cleanupDownloadedApks() async => 0;
+
+  @override
+  Future<bool> scheduleBackgroundUpdateCheck() async => true;
 
   @override
   Future<AppUpdateInfo?> checkForUpdate() async => null;
