@@ -24,6 +24,9 @@ class AppUpdateInfo {
   /// The currently running version of the app on device (e.g. "1.0.3").
   final String currentVersion;
 
+  /// Target CPU architecture of this APK asset (e.g. "arm64-v8a", "armeabi-v7a", "x86_64", or "universal").
+  final String targetAbi;
+
   const AppUpdateInfo({
     required this.latestVersion,
     required this.releaseTitle,
@@ -33,11 +36,17 @@ class AppUpdateInfo {
     required this.apkSizeBytes,
     this.publishedAt,
     required this.currentVersion,
+    this.targetAbi = 'universal',
   });
 
-  /// Formatted string representing file size (e.g. "90.5 MB").
+  /// True if this update asset is optimized specifically for the device's CPU architecture.
+  bool get isArchitectureSpecific => targetAbi.isNotEmpty && targetAbi != 'universal';
+
+  /// Formatted string representing file size (e.g. "16.5 MB").
   String get formattedSize {
-    if (apkSizeBytes <= 0) return '~90 MB';
+    if (apkSizeBytes <= 0) {
+      return isArchitectureSpecific ? '~16 MB' : '~38 MB';
+    }
     final mb = apkSizeBytes / (1024 * 1024);
     return '${mb.toStringAsFixed(1)} MB';
   }

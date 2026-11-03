@@ -289,6 +289,7 @@ class _DetailContent extends ConsumerWidget {
                             'mediaType': 'movie',
                             'posterPath': data['poster_path'] as String?,
                             'backdropPath': data['backdrop_path'] as String?,
+                            'overview': overview,
                             'magnetLink': '', // Will be resolved in player screen
                           });
                           SystemChrome.setPreferredOrientations([

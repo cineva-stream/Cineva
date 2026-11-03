@@ -11,8 +11,11 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../data/models/subtitle_cue.dart';
 import '../../data/services/subtitle_service.dart';
 import '../../data/services/subtitle_translator_service.dart';
@@ -62,6 +65,7 @@ enum _SidePanelPage {
   subtitleSettings,
   server,
   speed,
+  info,
 }
 
 /// Full-featured Cinema Player Screen with edge-to-edge notch rendering,
@@ -81,6 +85,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
   final int? initialPositionMs;
   final String? localVideoPath;
   final String? localSubtitlePath;
+  final String? overview;
 
   const PlayerScreen({
     super.key,
@@ -97,6 +102,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
     this.initialPositionMs,
     this.localVideoPath,
     this.localSubtitlePath,
+    this.overview,
   });
 
   @override
@@ -238,10 +244,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   late String? _currentLocalVideoPath = widget.localVideoPath;
   late String? _currentLocalSubtitlePath = widget.localSubtitlePath;
   late int? _initialPositionMs = widget.initialPositionMs;
+  late String? _currentOverview = widget.overview;
+  late String? _currentBackdropPath = widget.backdropPath;
+  late String? _currentPosterPath = widget.posterPath;
 
   @override
   void initState() {
     super.initState();
+    _fetchOverviewIfNeeded();
     // Immersive landscape cinema mode covering status bar and notch area
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -599,6 +609,67 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     ]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
+  }
+
+  Future<void> _fetchOverviewIfNeeded() async {
+    if (_currentOverview != null && _currentOverview!.trim().isNotEmpty) return;
+    final tmdbId = widget.tmdbId ?? _currentTmdbId;
+    if (tmdbId == null || tmdbId == 0) return;
+
+    try {
+      final lang = ref.read(appLanguageProvider);
+      final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
+      final dio = DioClient.createTmdbClient();
+
+      final isTv = _currentSeason != null || _currentEpisode != null;
+      if (isTv && _currentSeason != null && _currentEpisode != null) {
+        final res = await dio.get(
+          '/tv/$tmdbId/season/$_currentSeason/episode/$_currentEpisode',
+          queryParameters: {'language': tmdbLang},
+        );
+        if (res.statusCode == 200 && res.data is Map) {
+          final data = res.data as Map<String, dynamic>;
+          final epOverview = (data['overview'] as String? ?? '').trim();
+          final epName = data['name'] as String?;
+          final epStill = data['still_path'] as String?;
+          if (mounted) {
+            setState(() {
+              if (epOverview.isNotEmpty) _currentOverview = epOverview;
+              if (epName != null && epName.isNotEmpty) {
+                _currentEpisodeTitle =
+                    'S$_currentSeason:E$_currentEpisode $epName';
+              }
+              if (epStill != null && epStill.isNotEmpty) {
+                _currentBackdropPath = epStill;
+              }
+            });
+          }
+        }
+      } else {
+        final endpoint = isTv ? '/tv/$tmdbId' : '/movie/$tmdbId';
+        final res = await dio.get(
+          endpoint,
+          queryParameters: {'language': tmdbLang},
+        );
+        if (res.statusCode == 200 && res.data is Map) {
+          final data = res.data as Map<String, dynamic>;
+          final ov = (data['overview'] as String? ?? '').trim();
+          final backdrop = data['backdrop_path'] as String?;
+          final poster = data['poster_path'] as String?;
+          if (mounted) {
+            setState(() {
+              if (ov.isNotEmpty) _currentOverview = ov;
+              if (backdrop != null && backdrop.isNotEmpty) {
+                _currentBackdropPath = backdrop;
+              }
+              if (poster != null && poster.isNotEmpty) {
+                _currentPosterPath = poster;
+              }
+            });
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   int? _getSavedPositionMs() {
@@ -2119,6 +2190,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // Advance episode state immediately
     _currentEpisode = nextEp;
     _currentEpisodeTitle = 'Episode $nextEp';
+    _currentOverview = null;
+    _fetchOverviewIfNeeded();
 
     if (mounted) {
       setState(() {
@@ -3921,9 +3994,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         title = s.playerSpeed;
         icon = Icons.speed_rounded;
         break;
+      case _SidePanelPage.info:
+        title = s.playerInfoTitle;
+        icon = Iconsax.info_circle;
+        break;
     }
 
-    final isSubPage = _sidePanelPage != _SidePanelPage.main;
+    final isSubPage = _sidePanelPage != _SidePanelPage.main &&
+        _sidePanelPage != _SidePanelPage.info;
 
     return Container(
       width: drawerWidth,
@@ -4067,7 +4145,247 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         return _buildSidePanelServer(s, key: const ValueKey('panel_server'));
       case _SidePanelPage.speed:
         return _buildSidePanelSpeed(s, key: const ValueKey('panel_speed'));
+      case _SidePanelPage.info:
+        return _buildSidePanelInfo(s, key: const ValueKey('panel_info'));
     }
+  }
+
+  Widget _buildSidePanelInfo(AppStrings s, {Key? key}) {
+    final isTv = _currentSeason != null || _currentEpisode != null;
+    final imagePath = _currentBackdropPath ?? _currentPosterPath;
+    final hasImage = imagePath != null && imagePath.isNotEmpty;
+    final imageUrl = hasImage
+        ? (imagePath.startsWith('http')
+            ? imagePath
+            : ApiConstants.imageUrl(
+                imagePath,
+                size: ApiConstants.backdropMedium,
+              ))
+        : null;
+
+    final hasSynopsis =
+        _currentOverview != null && _currentOverview!.trim().isNotEmpty;
+
+    return ListView(
+      key: key,
+      padding: EdgeInsets.zero,
+      children: [
+        // ── Top Media Banner with Black Gradient Overlay ──
+        SizedBox(
+          width: double.infinity,
+          height: 155,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Background Image or Solid Obsidian Fallback
+              if (imageUrl != null)
+                CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: AppColors.background,
+                    child: const Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: AppColors.background,
+                    child: const Center(
+                      child: Icon(
+                        Iconsax.video,
+                        color: AppColors.textMuted,
+                        size: 38,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  color: AppColors.background,
+                  child: const Center(
+                    child: Icon(
+                      Iconsax.video,
+                      color: AppColors.textMuted,
+                      size: 38,
+                    ),
+                  ),
+                ),
+
+              // Smooth Pure Black Gradient Overlay blending with background
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.8),
+                        Colors.black.withValues(alpha: 0.15),
+                        AppColors.surfaceVariant.withValues(alpha: 0.98),
+                      ],
+                      stops: const [0.0, 0.45, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Media Type Chip
+              Positioned(
+                top: 10,
+                left: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      width: 0.6,
+                    ),
+                  ),
+                  child: Text(
+                    isTv ? 'TV Series' : 'Movie',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Details Body: Title, Episode, and Synopsis ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Main Media Title
+              Text(
+                widget.title,
+                style: GoogleFonts.outfit(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  height: 1.25,
+                ),
+              ),
+
+              // Specific Episode Title if available
+              if (_currentEpisodeTitle != null &&
+                  _currentEpisodeTitle!.isNotEmpty) ...[
+                const SizedBox(height: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      width: 0.6,
+                    ),
+                  ),
+                  child: Text(
+                    _currentEpisodeTitle!,
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 14),
+              const Divider(color: Colors.white12, height: 1),
+              const SizedBox(height: 14),
+
+              // Section Header: "Sinopsis" / "Synopsis"
+              Row(
+                children: [
+                  const Icon(
+                    Iconsax.document_text,
+                    size: 14,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    s.playerSynopsisTitle,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Synopsis Content or Placeholder
+              if (hasSynopsis)
+                Text(
+                  _currentOverview!,
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    height: 1.55,
+                    color: Colors.white.withValues(alpha: 0.88),
+                  ),
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 18,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white10, width: 0.8),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Iconsax.info_circle,
+                        size: 24,
+                        color: AppColors.textMuted.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        s.playerNoSynopsis,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                          height: 1.45,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildSidePanelMainMenu(AppStrings s, {Key? key}) {
@@ -5348,10 +5666,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ),
 
+          // Side Panel Info Hub Toggle
+          _buildTopBarIconButton(
+            icon: Iconsax.info_circle,
+            isActive: _isSidePanelOpen && _sidePanelPage == _SidePanelPage.info,
+            onTap: () => _toggleSidePanel(_SidePanelPage.info),
+          ),
+          const SizedBox(width: 8),
+
           // Side Panel Settings & Features Hub Toggle
           _buildTopBarIconButton(
             icon: Iconsax.setting_2,
-            isActive: _isSidePanelOpen,
+            isActive: _isSidePanelOpen && _sidePanelPage != _SidePanelPage.info,
             onTap: () => _toggleSidePanel(_SidePanelPage.main),
           ),
         ],

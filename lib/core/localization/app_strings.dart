@@ -229,6 +229,14 @@ class AppStrings {
   String playerPreparingEpisode(int ep) =>
       isIndonesian ? 'Menyiapkan Episode $ep...' : 'Preparing Episode $ep...';
 
+  String get playerInfoTitle =>
+      isIndonesian ? 'Informasi' : 'Information';
+  String get playerSynopsisTitle =>
+      isIndonesian ? 'Sinopsis' : 'Synopsis';
+  String get playerNoSynopsis => isIndonesian
+      ? 'Tidak Ada Sinopsis Untuk Film Ini atau Episode Ini'
+      : 'No Synopsis Available for this Movie or Episode';
+
   String get playerQualityTitle =>
       isIndonesian ? 'Kualitas Video' : 'Video Quality';
   String get playerQualityAutoAdaptive =>
@@ -658,6 +666,19 @@ class AppStrings {
   String get updateNotificationBody => isIndonesian
       ? 'Update Tersedia, Segera update sekarang untuk menikmati layanan streaming dengan lebih baik.'
       : 'New version available, Update now to improve your streaming.';
+  String get updateSeeMore => isIndonesian ? 'Lihat Detail' : 'See More';
+  String get updateChangelogTitle =>
+      isIndonesian ? 'Detail Pembaruan' : 'Update Details';
+  String get updateCloseModal => isIndonesian ? 'Tutup' : 'Close';
+  String get updateTranslatingChangelog => isIndonesian
+      ? 'Menerjemahkan catatan rilis...'
+      : 'Translating release notes...';
+  String get updateOriginalText => isIndonesian ? 'Teks Asli' : 'Original Text';
+  String get updateTranslatedText =>
+      isIndonesian ? 'Diterjemahkan' : 'Translated';
+  String get updateNoChangelog => isIndonesian
+      ? 'Tidak ada catatan rilis untuk versi ini.'
+      : 'No release notes available for this version.';
 
   // ── TV Live ──
   String get navLiveTv => 'TV Live';

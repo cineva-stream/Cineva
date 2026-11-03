@@ -197,6 +197,15 @@ class MainActivity : FlutterActivity() {
                     }
                     result.success(true)
                 }
+                "getSupportedAbis" -> {
+                    val abis = if (Build.SUPPORTED_ABIS.isNotEmpty()) {
+                        Build.SUPPORTED_ABIS.toList()
+                    } else {
+                        @Suppress("DEPRECATION")
+                        listOfNotNull(Build.CPU_ABI, Build.CPU_ABI2)
+                    }
+                    result.success(abis)
+                }
                 else -> result.notImplemented()
             }
         }
