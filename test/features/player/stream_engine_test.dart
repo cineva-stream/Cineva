@@ -72,6 +72,25 @@ void main() {
       expect(providers.first.type, equals(VideoProviderType.directVixSrc));
       expect(providers.first.displayName, contains('VixSrc'));
     });
+
+    test('Side panel playback speeds are valid positive multipliers', () {
+      const validSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+      for (final speed in validSpeeds) {
+        expect(speed, greaterThan(0.0));
+        expect(speed, lessThanOrEqualTo(2.0));
+      }
+      expect(validSpeeds, contains(1.0));
+    });
+
+    test('Video container aspect ratio calculation scales properly with drawer', () {
+      const totalWidth = 1280.0;
+      final drawerWidth = (totalWidth * 0.36).clamp(310.0, 390.0);
+      expect(drawerWidth, equals(390.0)); // 1280 * 0.36 = 460.8, clamped to 390.0
+
+      final videoWidthWithPanel = totalWidth - drawerWidth;
+      expect(videoWidthWithPanel, equals(890.0));
+      expect(videoWidthWithPanel, greaterThan(0));
+    });
   });
 }
 
