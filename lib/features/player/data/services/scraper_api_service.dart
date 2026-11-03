@@ -8,9 +8,13 @@ import '../../../../core/network/dio_client.dart';
 import '../models/provider_stream_models.dart';
 
 /// Service client for the FlixQuest Multi-Provider Scraper Cluster.
-/// Proxies and extracts direct HLS (.m3u8) streams from over 8+ upstream CDNs.
+/// Proxies and extracts direct HLS (.m3u8) streams from over 17+ upstream CDNs.
 class ScraperApiService {
-  static const String defaultScraperUrl = 'https://flixquest-scraper.onrender.com';
+  static const String defaultScraperUrl = 'https://scraper.flix.quest';
+  static const List<String> defaultScraperInstances = [
+    'https://scraper.flix.quest',
+    'https://flixquest-scraper.onrender.com',
+  ];
 
   final String _baseUrl;
   final Dio _dio;
@@ -29,14 +33,40 @@ class ScraperApiService {
     return trimmed.isEmpty ? defaultScraperUrl : trimmed;
   }
 
+  /// Sends a GET request with automatic fallback between cluster instances.
+  Future<Response<String>> _getWithFallback(
+    String path, [
+    Map<String, String>? queryParams,
+    Duration? timeout,
+  ]) async {
+    final instances = <String>[
+      _baseUrl,
+      for (final s in defaultScraperInstances)
+        if (_normalizeBaseUrl(s) != _baseUrl) _normalizeBaseUrl(s),
+    ];
+
+    DioException? lastError;
+    for (final base in instances) {
+      try {
+        final root = base.endsWith('/api/v2') ? base : '$base/api/v2';
+        final uri = Uri.parse('$root$path').replace(queryParameters: queryParams);
+        return await _dio.get<String>(
+          uri.toString(),
+          options: Options(receiveTimeout: timeout ?? const Duration(seconds: 15)),
+        );
+      } on DioException catch (e) {
+        lastError = e;
+        debugPrint('[ScraperApiService] Instance $base failed for $path ($e), trying fallback instance...');
+      } catch (_) {}
+    }
+    if (lastError != null) throw lastError;
+    throw Exception('All scraper instances failed for $path');
+  }
+
   /// Fetches all active, enabled upstream scraper providers.
   Future<List<VideoProvider>> getProviders() async {
     try {
-      final uri = _endpoint('/providers');
-      final response = await _dio.get<String>(
-        uri.toString(),
-        options: Options(receiveTimeout: const Duration(seconds: 6)),
-      );
+      final response = await _getWithFallback('/providers', null, const Duration(seconds: 6));
 
       final body = _decodeJson(response.data);
       if (body['success'] != true) {
