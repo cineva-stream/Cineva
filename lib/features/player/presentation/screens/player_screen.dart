@@ -57,6 +57,7 @@ enum _PlayerMiniPopup {
 enum _SidePanelPage {
   main,
   quality,
+  audio,
   subtitleTrack,
   subtitleSettings,
   server,
@@ -1720,7 +1721,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (_currentServer.id == server.id && !_isLoading) {
       setState(() {
         _activePopup = _PlayerMiniPopup.none;
-        _isSidePanelOpen = false;
       });
       return;
     }
@@ -1728,7 +1728,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     setState(() {
       _currentServer = server;
       _activePopup = _PlayerMiniPopup.none;
-      _isSidePanelOpen = false;
       _isLoading = true;
       _loadingStep = _PlayerLoadingStep.connecting;
       _customLoadingStatus = ref
@@ -1969,12 +1968,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _resetControlsTimer() {
     _controlsTimer?.cancel();
-    // Auto-hide timer is always active (4s), dismissing controls, side panel, and popups together
+    // Auto-hide timer only dismisses player screen controls (top bar, scrubber, buttons)
+    // and mini popups. The right side panel NEVER auto-closes (only closed manually by user).
     _controlsTimer = Timer(const Duration(seconds: 4), () {
       if (mounted) {
         setState(() {
           _showControls = false;
-          _isSidePanelOpen = false;
           _activePopup = _PlayerMiniPopup.none;
         });
       }
@@ -1984,14 +1983,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void _toggleControls() {
     if (_isLoading) {
       return; // Do not toggle controls while processing/searching server
-    }
-    if (_isSidePanelOpen) {
-      setState(() {
-        _isSidePanelOpen = false;
-        _activePopup = _PlayerMiniPopup.none;
-      });
-      _resetControlsTimer();
-      return;
     }
     if (_activePopup != _PlayerMiniPopup.none) {
       setState(() => _activePopup = _PlayerMiniPopup.none);
@@ -2004,22 +1995,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     } else {
       _controlsTimer?.cancel();
     }
-  }
-
-  void _togglePopup(_PlayerMiniPopup popup) {
-    setState(() {
-      _isSidePanelOpen = false; // Close side panel when mini popup is opened
-      if (_activePopup == popup) {
-        _activePopup = _PlayerMiniPopup.none;
-        _isShowingSubtitleSettingsInPopup = false;
-      } else {
-        _activePopup = popup;
-        if (popup == _PlayerMiniPopup.subtitle) {
-          _isShowingSubtitleSettingsInPopup = false;
-        }
-      }
-    });
-    _resetControlsTimer();
   }
 
   void _openSidePanel([_SidePanelPage page = _SidePanelPage.main]) {
@@ -2040,7 +2015,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   void _toggleSidePanel([_SidePanelPage page = _SidePanelPage.main]) {
-    if (_isSidePanelOpen && _sidePanelPage == page) {
+    if (_isSidePanelOpen) {
       _closeSidePanel();
     } else {
       _openSidePanel(page);
@@ -3495,6 +3470,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         title = s.playerQualityTitle;
         icon = Icons.high_quality_rounded;
         break;
+      case _SidePanelPage.audio:
+        title = 'Audio & Volume';
+        icon = Icons.volume_up_rounded;
+        break;
       case _SidePanelPage.subtitleTrack:
         title = s.playerSubtitleTrack;
         icon = Iconsax.subtitle;
@@ -3515,126 +3494,120 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     final isSubPage = _sidePanelPage != _SidePanelPage.main;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: _resetControlsTimer,
-      onPanDown: (_) => _resetControlsTimer(),
-      child: Container(
-        width: drawerWidth,
-        height: totalHeight,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceVariant.withValues(alpha: 0.96),
-          border: const Border(
-            left: BorderSide(color: Colors.white12, width: 0.8),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.6),
-              blurRadius: 16,
-              offset: const Offset(-4, 0),
-            ),
-          ],
+    return Container(
+      width: drawerWidth,
+      height: totalHeight,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant.withValues(alpha: 0.96),
+        border: const Border(
+          left: BorderSide(color: Colors.white12, width: 0.8),
         ),
-        child: SafeArea(
-          left: false,
-          child: Column(
-            children: [
-              // ── Panel Header ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 10, 8),
-                child: Row(
-                  children: [
-                    if (isSubPage) ...[
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () =>
-                              _navigateToSidePanelPage(_SidePanelPage.main),
-                          borderRadius: BorderRadius.circular(8),
-                          child: const Padding(
-                            padding: EdgeInsets.all(6),
-                            child: Icon(
-                              Icons.arrow_back_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                    ] else ...[
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(icon, color: AppColors.primary, size: 16),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.6),
+            blurRadius: 16,
+            offset: const Offset(-4, 0),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        left: false,
+        child: Column(
+          children: [
+            // ── Panel Header ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 10, 10),
+              child: Row(
+                children: [
+                  if (isSubPage) ...[
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: _closeSidePanel,
+                        onTap: () =>
+                            _navigateToSidePanelPage(_SidePanelPage.main),
                         borderRadius: BorderRadius.circular(8),
                         child: const Padding(
                           padding: EdgeInsets.all(6),
                           child: Icon(
-                            Icons.close_rounded,
-                            color: Colors.white70,
+                            Icons.arrow_back_rounded,
+                            color: Colors.white,
                             size: 20,
                           ),
                         ),
                       ),
                     ),
+                    const SizedBox(width: 6),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(icon, color: AppColors.primary, size: 16),
+                    ),
+                    const SizedBox(width: 10),
                   ],
-                ),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _closeSidePanel,
+                      borderRadius: BorderRadius.circular(8),
+                      child: const Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: Colors.white70,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const Divider(color: Colors.white12, height: 1),
+            ),
+            const Divider(color: Colors.white12, height: 1),
 
-              // ── Slide Transition Body ──
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 260),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) {
-                    final isMain = child.key == const ValueKey('panel_main');
-                    final beginOffset = isMain
-                        ? const Offset(-0.25, 0.0)
-                        : const Offset(0.25, 0.0);
-                    return SlideTransition(
-                      position:
-                          Tween<Offset>(
-                            begin: beginOffset,
-                            end: Offset.zero,
-                          ).animate(
-                            CurvedAnimation(
-                              parent: animation,
-                              curve: Curves.easeOutCubic,
-                            ),
-                          ),
-                      child: FadeTransition(opacity: animation, child: child),
-                    );
-                  },
-                  child: _buildSidePanelCurrentView(s),
-                ),
+            // ── Slide Transition Body ──
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) {
+                  final isMain = child.key == const ValueKey('panel_main');
+                  final beginOffset = isMain
+                      ? const Offset(-0.25, 0.0)
+                      : const Offset(0.25, 0.0);
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: beginOffset,
+                      end: Offset.zero,
+                    ).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOutCubic,
+                      ),
+                    ),
+                    child: FadeTransition(opacity: animation, child: child),
+                  );
+                },
+                child: _buildSidePanelCurrentView(s),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -3646,6 +3619,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         return _buildSidePanelMainMenu(s, key: const ValueKey('panel_main'));
       case _SidePanelPage.quality:
         return _buildSidePanelQuality(s, key: const ValueKey('panel_quality'));
+      case _SidePanelPage.audio:
+        return _buildSidePanelAudio(s, key: const ValueKey('panel_audio'));
       case _SidePanelPage.subtitleTrack:
         return _buildSidePanelSubtitleTrack(
           s,
@@ -3666,7 +3641,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Widget _buildSidePanelMainMenu(AppStrings s, {Key? key}) {
     return ListView(
       key: key,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.zero,
       children: [
         // 1. Kualitas Video
         _buildSidePanelMenuItem(
@@ -3676,7 +3651,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           onTap: () => _navigateToSidePanelPage(_SidePanelPage.quality),
         ),
 
-        // 2. Subtitle Track
+        // 2. Audio & Volume
+        _buildSidePanelMenuItem(
+          icon: _volume == 0
+              ? Icons.volume_off_rounded
+              : (_volume > 100.0
+                  ? Icons.volume_up_rounded
+                  : Icons.volume_down_rounded),
+          title: 'Audio & Volume',
+          subtitle: _volume == 0
+              ? 'Muted (Bisu)'
+              : '${_volume.toInt()}%${_volume > 100.0 ? ' • Boost Aktif' : ''}',
+          onTap: () => _navigateToSidePanelPage(_SidePanelPage.audio),
+        ),
+
+        // 3. Subtitle Track
         _buildSidePanelMenuItem(
           icon: Iconsax.subtitle,
           title: s.playerSubtitleTrack,
@@ -3686,7 +3675,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           onTap: () => _navigateToSidePanelPage(_SidePanelPage.subtitleTrack),
         ),
 
-        // 3. Subtitle Settings
+        // 4. Subtitle Settings
         _buildSidePanelMenuItem(
           icon: Iconsax.setting_2,
           title: s.playerSubSettingsTitle,
@@ -3695,7 +3684,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               _navigateToSidePanelPage(_SidePanelPage.subtitleSettings),
         ),
 
-        // 4. Server Streaming (Online only)
+        // 5. Server Streaming (Online only)
         if (_currentLocalVideoPath == null && widget.localVideoPath == null)
           _buildSidePanelMenuItem(
             icon: Icons.dns_rounded,
@@ -3704,7 +3693,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             onTap: () => _navigateToSidePanelPage(_SidePanelPage.server),
           ),
 
-        // 5. Playback Speed
+        // 6. Playback Speed
         _buildSidePanelMenuItem(
           icon: Icons.speed_rounded,
           title: s.playerSpeed,
@@ -3712,37 +3701,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ? 'Normal (1.0x)'
               : '${_playbackSpeed}x',
           onTap: () => _navigateToSidePanelPage(_SidePanelPage.speed),
-        ),
-
-        // 6. Aspect Ratio / Fit mode
-        _buildSidePanelMenuItem(
-          icon: Icons.aspect_ratio_rounded,
-          title: 'Aspek Rasio',
-          subtitle: _fitMode == BoxFit.cover
-              ? 'Cover (Layar Penuh Notch)'
-              : (_fitMode == BoxFit.contain
-                    ? 'Original (16:9)'
-                    : 'Fill (Stretch)'),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              _fitMode == BoxFit.cover
-                  ? 'Cover'
-                  : (_fitMode == BoxFit.contain ? '16:9' : 'Fill'),
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          onTap: () {
-            _toggleFitMode();
-          },
         ),
       ],
     );
@@ -3755,61 +3713,63 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     required VoidCallback onTap,
     Widget? trailing,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: AppColors.primary, size: 16),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                trailing ??
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Colors.white38,
-                      size: 20,
-                    ),
-              ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: AppColors.primary.withValues(alpha: 0.12),
+        highlightColor: Colors.white.withValues(alpha: 0.04),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white12, width: 0.8),
             ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 17),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              trailing ??
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white38,
+                    size: 20,
+                  ),
+            ],
           ),
         ),
       ),
@@ -3839,15 +3799,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     return ListView(
       key: key,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.zero,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10, left: 4),
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white12, width: 0.8),
+            ),
+          ),
           child: Text(
             '${s.playerQualityTitle}: $_resolutionLabel',
             style: const TextStyle(
               color: AppColors.primary,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -3860,20 +3825,210 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           if (q == '480p') label = '480p SD (${s.playerQualityDataSaver})';
           if (q == '360p') label = '360p ${s.playerQualityLow} (< 500 Kbps)';
 
-          return Container(
-            margin: const EdgeInsets.only(bottom: 5),
-            child: Material(
-              color: isSelected
-                  ? AppColors.primary.withValues(alpha: 0.18)
-                  : Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(10),
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _setQuality(q),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 13,
+                ),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.white12, width: 0.8),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      size: 18,
+                      color: isSelected ? AppColors.primary : AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: isSelected ? AppColors.primary : Colors.white,
+                          fontSize: 13,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    if (isSelected)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'AKTIF',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildSidePanelAudio(AppStrings s, {Key? key}) {
+    final audioTracks = _player.state.tracks.audio;
+
+    return ListView(
+      key: key,
+      padding: EdgeInsets.zero,
+      children: [
+        // Volume Level & Status
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white12, width: 0.8),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        _volume == 0
+                            ? Icons.volume_off_rounded
+                            : (_volume > 100.0
+                                ? Icons.volume_up_rounded
+                                : Icons.volume_down_rounded),
+                        color: _volume > 100.0 ? AppColors.primary : Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _volume > 100.0
+                            ? 'Volume: ${_volume.toInt()}% (Boost)'
+                            : 'Volume: ${_volume.toInt()}%',
+                        style: TextStyle(
+                          color: _volume > 100.0 ? AppColors.primary : Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_volume > 100.0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '+${(_volume - 100).toInt()}% BOOST',
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 4,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                  activeTrackColor:
+                      _volume > 100.0 ? AppColors.primary : Colors.white,
+                  inactiveTrackColor: Colors.white12,
+                  thumbColor:
+                      _volume > 100.0 ? AppColors.primary : Colors.white,
+                  overlayColor: AppColors.primary.withValues(alpha: 0.2),
+                ),
+                child: Slider(
+                  value: _volume,
+                  min: 0.0,
+                  max: 150.0,
+                  divisions: 30,
+                  onChanged: _setVolume,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildSidePanelVolumeChip('Mute', 0.0),
+                  const SizedBox(width: 6),
+                  _buildSidePanelVolumeChip('50%', 50.0),
+                  const SizedBox(width: 6),
+                  _buildSidePanelVolumeChip('100%', 100.0),
+                  const SizedBox(width: 6),
+                  _buildSidePanelVolumeChip('125%', 125.0),
+                  const SizedBox(width: 6),
+                  _buildSidePanelVolumeChip('150%', 150.0),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Audio Tracks (if available)
+        if (audioTracks.length > 1) ...[
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white12, width: 0.8),
+              ),
+            ),
+            child: const Text(
+              'Trek Audio',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          ...audioTracks.map((track) {
+            final isSelected = _player.state.track.audio == track;
+            final trackTitle =
+                track.title ?? track.language ?? 'Trek ${track.id}';
+            return Material(
+              color: Colors.transparent,
               child: InkWell(
-                onTap: () => _setQuality(q),
-                borderRadius: BorderRadius.circular(10),
-                child: Padding(
+                onTap: () async {
+                  await _player.setAudioTrack(track);
+                  setState(() {});
+                },
+                child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.white12, width: 0.8),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -3889,12 +4044,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          label,
+                          trackTitle,
                           style: TextStyle(
-                            color: isSelected
-                                ? AppColors.primary
-                                : Colors.white,
-                            fontSize: 12,
+                            color: isSelected ? AppColors.primary : Colors.white,
+                            fontSize: 13,
                             fontWeight: isSelected
                                 ? FontWeight.w700
                                 : FontWeight.w500,
@@ -3924,10 +4077,46 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   ),
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ],
       ],
+    );
+  }
+
+  Widget _buildSidePanelVolumeChip(String label, double targetVal) {
+    final isSelected = (_volume - targetVal).abs() < 2.0;
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _setVolume(targetVal),
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.2)
+                  : Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: isSelected ? AppColors.primary : Colors.white12,
+                width: 0.8,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? AppColors.primary : Colors.white70,
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -3937,14 +4126,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     return ListView(
       key: key,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.zero,
       children: [
         // 1. Matikan Subtitle
         Material(
-          color: _selectedSubtitle == null
-              ? AppColors.primary.withValues(alpha: 0.18)
-              : Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.transparent,
           child: InkWell(
             onTap: () async {
               ref.read(activeSubtitleCuesProvider.notifier).state = [];
@@ -3954,9 +4140,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 _isSubtitleTranslated = false;
               });
             },
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 13,
+              ),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.white12, width: 0.8),
+                ),
+              ),
               child: Row(
                 children: [
                   Icon(
@@ -3968,13 +4161,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         ? AppColors.primary
                         : AppColors.textMuted,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
                   Text(
                     s.playerDisableSubtitle,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: _selectedSubtitle == null
+                          ? AppColors.primary
+                          : Colors.white,
                       fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: _selectedSubtitle == null
+                          ? FontWeight.w700
+                          : FontWeight.w500,
                     ),
                   ),
                 ],
@@ -3983,32 +4180,36 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           ),
         ),
 
-        const SizedBox(height: 6),
-
         // 2. Action: Atur Subtitle (Slide ke Subtitle Settings)
         Material(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.transparent,
           child: InkWell(
             onTap: () =>
                 _navigateToSidePanelPage(_SidePanelPage.subtitleSettings),
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 13,
+              ),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.white12, width: 0.8),
+                ),
+              ),
               child: Row(
                 children: [
                   const Icon(
                     Iconsax.setting_2,
-                    size: 16,
+                    size: 17,
                     color: AppColors.primary,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Text(
                       s.playerSubSettings,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -4024,29 +4225,34 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           ),
         ),
 
-        const Divider(color: Colors.white12, height: 18),
-
         // 3. 1-Tap Auto-Translate Action
         if (_selectedSubtitle != null &&
             _selectedSubtitle!.language.toLowerCase() !=
                 targetLangCode.toLowerCase()) ...[
           if (_isAutoTranslating) ...[
-            LinearProgressIndicator(
-              value: _translationProgress > 0 ? _translationProgress : null,
-              color: AppColors.primary,
-              backgroundColor: AppColors.surfaceElevated,
-            ),
-            const SizedBox(height: 6),
-            Center(
-              child: Text(
-                s.playerTranslatingTo(targetLangObj.name),
-                style: const TextStyle(color: AppColors.primary, fontSize: 11),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  LinearProgressIndicator(
+                    value: _translationProgress > 0 ? _translationProgress : null,
+                    color: AppColors.primary,
+                    backgroundColor: AppColors.surfaceElevated,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    s.playerTranslatingTo(targetLangObj.name),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ),
             ),
           ] else ...[
             Material(
-              color: AppColors.primary.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
+              color: Colors.transparent,
               child: InkWell(
                 onTap: () {
                   _applyAndAutoTranslateSubtitle(
@@ -4054,31 +4260,36 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     targetLang: targetLangCode,
                   );
                 },
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
+                child: Container(
                   padding: const EdgeInsets.symmetric(
-                    vertical: 9,
-                    horizontal: 10,
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.white12, width: 0.8),
+                    ),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(
                         Iconsax.magic_star,
                         color: AppColors.primary,
-                        size: 15,
+                        size: 16,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _isSubtitleTranslated
-                            ? s.playerTranslateActive(
-                                targetLangCode.toUpperCase(),
-                              )
-                            : s.playerTranslateTo(targetLangObj.name),
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _isSubtitleTranslated
+                              ? s.playerTranslateActive(
+                                  targetLangCode.toUpperCase(),
+                                )
+                              : s.playerTranslateTo(targetLangObj.name),
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -4087,13 +4298,31 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ),
             ),
           ],
-          const Divider(color: Colors.white12, height: 18),
         ],
 
-        // 4. Subtitle Tracks List
+        // 4. Subtitle Tracks Header
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white12, width: 0.8),
+            ),
+          ),
+          child: const Text(
+            'Daftar Subtitle Tersedia',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+
+        // Subtitle tracks
         if (_availableSubtitles.isEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
+            padding: const EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: Text(
                 s.playerNoSubtitleFound,
@@ -4110,88 +4339,86 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             final isPreferred =
                 sub.language.toLowerCase() == targetLangCode.toLowerCase();
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 4),
-              child: Material(
-                color: isSelected
-                    ? AppColors.primary.withValues(alpha: 0.18)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-                child: InkWell(
-                  onTap: () async {
-                    final success = await _applySubtitle(sub);
-                    if (!success && mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            s.playerFailedDownloadSub(sub.languageName),
-                          ),
-                          backgroundColor: AppColors.error,
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () async {
+                  final success = await _applySubtitle(sub);
+                  if (!success && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          s.playerFailedDownloadSub(sub.languageName),
                         ),
-                      );
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.white12, width: 0.8),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          isSelected
-                              ? Icons.check_circle_rounded
-                              : Icons.radio_button_unchecked_rounded,
-                          size: 16,
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textMuted,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isSelected
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                        size: 16,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
                         ),
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
+                        decoration: BoxDecoration(
+                          color: isPreferred
+                              ? AppColors.success.withValues(alpha: 0.25)
+                              : AppColors.surfaceElevated,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          sub.language.toUpperCase(),
+                          style: TextStyle(
                             color: isPreferred
-                                ? AppColors.success.withValues(alpha: 0.25)
-                                : AppColors.surfaceElevated,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            sub.language.toUpperCase(),
-                            style: TextStyle(
-                              color: isPreferred
-                                  ? AppColors.success
-                                  : Colors.white70,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
+                                ? AppColors.success
+                                : Colors.white70,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            sub.fileName.isNotEmpty
-                                ? sub.fileName
-                                : sub.languageName,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : Colors.white,
-                              fontSize: 12,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.normal,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          sub.fileName.isNotEmpty
+                              ? sub.fileName
+                              : sub.languageName,
+                          style: TextStyle(
+                            color: isSelected
+                                ? AppColors.primary
+                                : Colors.white,
+                            fontSize: 12,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -4212,10 +4439,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Widget _buildSidePanelServer(AppStrings s, {Key? key}) {
     return ListView(
       key: key,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.zero,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8, left: 4),
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white12, width: 0.8),
+            ),
+          ),
           child: Text(
             s.playerServerDesc,
             style: const TextStyle(
@@ -4226,114 +4458,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         ),
         ..._availableServers.map((srv) {
           final isSelected = _currentServer.id == srv.id;
-          return Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            child: Material(
-              color: isSelected
-                  ? AppColors.primary.withValues(alpha: 0.18)
-                  : Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(10),
-              child: InkWell(
-                onTap: () => _switchServer(srv),
-                borderRadius: BorderRadius.circular(10),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        isSelected
-                            ? Icons.check_circle_rounded
-                            : Icons.radio_button_unchecked_rounded,
-                        size: 18,
-                        color: isSelected
-                            ? AppColors.primary
-                            : AppColors.textMuted,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              srv.name,
-                              style: TextStyle(
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : Colors.white,
-                                fontSize: 13,
-                                fontWeight: isSelected
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              srv.description,
-                              style: const TextStyle(
-                                color: AppColors.textMuted,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (isSelected)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.25),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'AKTIF',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildSidePanelSpeed(AppStrings s, {Key? key}) {
-    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
-
-    return ListView(
-      key: key,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      children: speeds.map((sp) {
-        final isSelected = (_playbackSpeed - sp).abs() < 0.05;
-        final label = sp == 1.0 ? '1.0x (Normal)' : '${sp}x';
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 5),
-          child: Material(
-            color: isSelected
-                ? AppColors.primary.withValues(alpha: 0.18)
-                : Colors.white.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(10),
+          return Material(
+            color: Colors.transparent,
             child: InkWell(
-              onTap: () => _setPlaybackSpeed(sp),
-              borderRadius: BorderRadius.circular(10),
-              child: Padding(
+              onTap: () => _switchServer(srv),
+              child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
+                  horizontal: 16,
+                  vertical: 13,
+                ),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.white12, width: 0.8),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -4346,17 +4483,32 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           ? AppColors.primary
                           : AppColors.textMuted,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          color: isSelected ? AppColors.primary : Colors.white,
-                          fontSize: 13,
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            srv.name,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : Colors.white,
+                              fontSize: 13,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            srv.description,
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     if (isSelected)
@@ -4380,6 +4532,80 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       ),
                   ],
                 ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildSidePanelSpeed(AppStrings s, {Key? key}) {
+    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+
+    return ListView(
+      key: key,
+      padding: EdgeInsets.zero,
+      children: speeds.map((sp) {
+        final isSelected = (_playbackSpeed - sp).abs() < 0.05;
+        final label = sp == 1.0 ? '1.0x (Normal)' : '${sp}x';
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _setPlaybackSpeed(sp),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 13,
+              ),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.white12, width: 0.8),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isSelected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    size: 18,
+                    color: isSelected ? AppColors.primary : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: isSelected ? AppColors.primary : Colors.white,
+                        fontSize: 13,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (isSelected)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'AKTIF',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -4511,50 +4737,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ),
 
-          // Side Panel: Server Switcher (Smart Stream Engine)
-          if (_currentLocalVideoPath == null && widget.localVideoPath == null)
-            _buildTopBarIconButton(
-              icon: Icons.dns_rounded,
-              isActive:
-                  _isSidePanelOpen && _sidePanelPage == _SidePanelPage.server,
-              onTap: () => _toggleSidePanel(_SidePanelPage.server),
-            ),
-
-          // Side Panel: Resolution & Quality (Native Player only)
-          if (_useNativePlayer)
-            _buildTopBarIconButton(
-              icon: Icons.high_quality_rounded,
-              isActive:
-                  _isSidePanelOpen && _sidePanelPage == _SidePanelPage.quality,
-              onTap: () => _toggleSidePanel(_SidePanelPage.quality),
-            ),
-
-          // Mini Popup Button: Volume & Audio Boost
-          _buildTopBarIconButton(
-            icon: _volume == 0
-                ? Icons.volume_off_rounded
-                : Icons.volume_up_rounded,
-            isActive: _activePopup == _PlayerMiniPopup.volume,
-            onTap: () => _togglePopup(_PlayerMiniPopup.volume),
-          ),
-
-          // Side Panel: Subtitle Selection (Includes Atur Subtitle)
-          _buildTopBarIconButton(
-            icon: Iconsax.subtitle,
-            isActive:
-                _isSidePanelOpen &&
-                (_sidePanelPage == _SidePanelPage.subtitleTrack ||
-                    _sidePanelPage == _SidePanelPage.subtitleSettings),
-            inactiveColor: _selectedSubtitle != null
-                ? AppColors.primary
-                : Colors.white,
-            onTap: () => _toggleSidePanel(_SidePanelPage.subtitleTrack),
-          ),
-
-          // Side Panel: Settings Hub (All controls & Speed)
+          // Side Panel Settings & Features Hub Toggle
           _buildTopBarIconButton(
             icon: Iconsax.setting_2,
-            isActive: _isSidePanelOpen && _sidePanelPage == _SidePanelPage.main,
+            isActive: _isSidePanelOpen,
             onTap: () => _toggleSidePanel(_SidePanelPage.main),
           ),
         ],
