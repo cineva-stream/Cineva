@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cineva/core/localization/app_language.dart';
-import 'package:cineva/core/localization/app_language_provider.dart';
 import 'package:cineva/core/localization/app_strings.dart';
 import 'package:google_fonts/google_fonts.dart';
 

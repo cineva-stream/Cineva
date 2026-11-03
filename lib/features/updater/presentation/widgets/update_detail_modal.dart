@@ -2,11 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
-import '../../../../core/localization/app_strings.dart';
 import '../../domain/entities/app_update_info.dart';
 import '../providers/app_update_provider.dart';
 import 'install_permission_dialog.dart';
