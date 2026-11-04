@@ -472,7 +472,11 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                 ),
 
                 // ── TV Universe / Watch Order Hub ──
-                TvUniverseBanner(tvId: tvId),
+                TvUniverseBanner(
+                  tvId: tvId,
+                  posterPath: posterPath,
+                  backdropPath: backdropPath,
+                ),
 
                 // ── Interactive Episode Selector Section ──
                 const SizedBox(height: 28),

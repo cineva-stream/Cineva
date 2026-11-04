@@ -486,7 +486,11 @@ class _DetailContent extends ConsumerWidget {
 
                 // ── Franchise / Collection Hub ──
                 if (belongsToCollection != null)
-                  FranchiseCollectionBanner(collection: belongsToCollection),
+                  FranchiseCollectionBanner(
+                    collection: belongsToCollection,
+                    callerPosterPath: data['poster_path'] as String?,
+                    callerBackdropPath: data['backdrop_path'] as String?,
+                  ),
 
                 // ── Cast ──
                 if (castList.isNotEmpty) ...[

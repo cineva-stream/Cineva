@@ -437,9 +437,14 @@ final GoRouter appRouter = GoRouter(
       name: 'collectionDetail',
       pageBuilder: (context, state) {
         final id = int.parse(state.pathParameters['id']!);
+        final extra = state.extra as Map<String, dynamic>?;
         return CustomTransitionPage(
           key: state.pageKey,
-          child: CollectionDetailScreen(collectionId: id),
+          child: CollectionDetailScreen(
+            collectionId: id,
+            fallbackPoster: extra?['fallbackPoster'] as String?,
+            fallbackBackdrop: extra?['fallbackBackdrop'] as String?,
+          ),
           transitionDuration: const Duration(milliseconds: 320),
           reverseTransitionDuration: const Duration(milliseconds: 250),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -460,9 +465,14 @@ final GoRouter appRouter = GoRouter(
       name: 'tvUniverse',
       pageBuilder: (context, state) {
         final universeId = state.pathParameters['id']!;
+        final extra = state.extra as Map<String, dynamic>?;
         return CustomTransitionPage(
           key: state.pageKey,
-          child: TvUniverseScreen(universeId: universeId),
+          child: TvUniverseScreen(
+            universeId: universeId,
+            fallbackPoster: extra?['fallbackPoster'] as String?,
+            fallbackBackdrop: extra?['fallbackBackdrop'] as String?,
+          ),
           transitionDuration: const Duration(milliseconds: 320),
           reverseTransitionDuration: const Duration(milliseconds: 250),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

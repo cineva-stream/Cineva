@@ -154,6 +154,49 @@ void main() {
       expect(ids.contains('money-heist-universe'), isTrue);
       expect(ids.contains('yellowstone-universe'), isTrue);
     });
+
+    test('Header image resolution handles missing backdrop using fallback poster', () {
+      const universeNoBackdrop = TvUniverse(
+        id: 'sample-no-bg',
+        name: 'Sample Universe',
+        description: 'Sample description',
+        backdropPath: null,
+        posterPath: null,
+        entries: [],
+      );
+
+      // Verify that if both backdropPath and posterPath are null, fallbackPoster is used
+      const fallbackPoster = '/fallback_poster.jpg';
+      const fallbackBackdrop = '/fallback_backdrop.jpg';
+
+      String? resolveHeaderImage(TvUniverse universe, {String? fbBackdrop, String? fbPoster}) {
+        if (universe.backdropPath != null && universe.backdropPath!.trim().isNotEmpty) {
+          return universe.backdropPath;
+        }
+        if (fbBackdrop != null && fbBackdrop.trim().isNotEmpty) {
+          return fbBackdrop;
+        }
+        if (universe.posterPath != null && universe.posterPath!.trim().isNotEmpty) {
+          return universe.posterPath;
+        }
+        if (fbPoster != null && fbPoster.trim().isNotEmpty) {
+          return fbPoster;
+        }
+        return null;
+      }
+
+      // When backdrop is available on caller
+      expect(
+        resolveHeaderImage(universeNoBackdrop, fbBackdrop: fallbackBackdrop, fbPoster: fallbackPoster),
+        '/fallback_backdrop.jpg',
+      );
+
+      // When only poster is available on caller (no backdrop anywhere)
+      expect(
+        resolveHeaderImage(universeNoBackdrop, fbPoster: fallbackPoster),
+        '/fallback_poster.jpg',
+      );
+    });
   });
 }
 

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,8 +16,15 @@ import '../providers/collection_providers.dart';
 
 class CollectionDetailScreen extends ConsumerWidget {
   final int collectionId;
+  final String? fallbackPoster;
+  final String? fallbackBackdrop;
 
-  const CollectionDetailScreen({super.key, required this.collectionId});
+  const CollectionDetailScreen({
+    super.key,
+    required this.collectionId,
+    this.fallbackPoster,
+    this.fallbackBackdrop,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -56,11 +64,110 @@ class CollectionDetailScreen extends ConsumerWidget {
     );
   }
 
+  String? _resolveHeaderImage(MovieCollectionModel collection) {
+    if (collection.backdropPath != null && collection.backdropPath!.trim().isNotEmpty) {
+      return collection.backdropPath;
+    }
+    if (fallbackBackdrop != null && fallbackBackdrop!.trim().isNotEmpty) {
+      return fallbackBackdrop;
+    }
+    for (final part in collection.parts) {
+      if (part.backdropPath != null && part.backdropPath!.trim().isNotEmpty) {
+        return part.backdropPath;
+      }
+    }
+    if (collection.posterPath != null && collection.posterPath!.trim().isNotEmpty) {
+      return collection.posterPath;
+    }
+    if (fallbackPoster != null && fallbackPoster!.trim().isNotEmpty) {
+      return fallbackPoster;
+    }
+    for (final part in collection.parts) {
+      if (part.posterPath != null && part.posterPath!.trim().isNotEmpty) {
+        return part.posterPath;
+      }
+    }
+    return null;
+  }
+
+  Widget _buildHeaderImage(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) {
+      return Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF1E1610),
+              Color(0xFF121218),
+              Color(0xFF000000),
+            ],
+          ),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.movie_filter_rounded,
+            size: 64,
+            color: AppColors.primary.withValues(alpha: 0.15),
+          ),
+        ),
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Layer 1: Ambient background image with blur (ensures full coverage even if vertical poster)
+        CachedNetworkImage(
+          imageUrl: ApiConstants.imageUrl(
+            imagePath,
+            size: ApiConstants.backdropMedium,
+          ),
+          fit: BoxFit.cover,
+        ),
+        Positioned.fill(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.25),
+            ),
+          ),
+        ),
+        // Layer 2: Main sharp image
+        CachedNetworkImage(
+          imageUrl: ApiConstants.imageUrl(
+            imagePath,
+            size: ApiConstants.backdropLarge,
+          ),
+          fit: BoxFit.cover,
+        ),
+        // Layer 3: Cinema OLED gradient overlay
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.35),
+                Colors.transparent,
+                AppColors.background.withValues(alpha: 0.7),
+                AppColors.background,
+              ],
+              stops: const [0.0, 0.35, 0.75, 1.0],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildContent(
     BuildContext context,
     MovieCollectionModel collection,
     AppStrings s,
   ) {
+    final headerImage = _resolveHeaderImage(collection);
+
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
@@ -85,33 +192,7 @@ class CollectionDetailScreen extends ConsumerWidget {
             ),
           ),
           flexibleSpace: FlexibleSpaceBar(
-            background: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (collection.backdropPath != null)
-                  CachedNetworkImage(
-                    imageUrl: ApiConstants.imageUrl(
-                      collection.backdropPath,
-                      size: ApiConstants.backdropLarge,
-                    ),
-                    fit: BoxFit.cover,
-                  ),
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        AppColors.background.withValues(alpha: 0.6),
-                        AppColors.background,
-                      ],
-                      stops: const [0.0, 0.6, 1.0],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            background: _buildHeaderImage(headerImage),
           ),
         ),
 

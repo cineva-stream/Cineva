@@ -11,8 +11,15 @@ import '../../data/tv_universe_registry.dart';
 
 class TvUniverseBanner extends ConsumerWidget {
   final int tvId;
+  final String? posterPath;
+  final String? backdropPath;
 
-  const TvUniverseBanner({super.key, required this.tvId});
+  const TvUniverseBanner({
+    super.key,
+    required this.tvId,
+    this.posterPath,
+    this.backdropPath,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,7 +34,13 @@ class TvUniverseBanner extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: GestureDetector(
-        onTap: () => context.push('/tv-universe/${universe.id}'),
+        onTap: () => context.push(
+          '/tv-universe/${universe.id}',
+          extra: {
+            'fallbackPoster': posterPath ?? universe.posterPath,
+            'fallbackBackdrop': backdropPath ?? universe.backdropPath,
+          },
+        ),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),

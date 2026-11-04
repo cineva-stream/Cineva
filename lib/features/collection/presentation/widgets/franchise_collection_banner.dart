@@ -11,23 +11,36 @@ import '../../../../core/localization/app_language_provider.dart';
 
 class FranchiseCollectionBanner extends ConsumerWidget {
   final Map<String, dynamic> collection;
+  final String? callerPosterPath;
+  final String? callerBackdropPath;
 
-  const FranchiseCollectionBanner({super.key, required this.collection});
+  const FranchiseCollectionBanner({
+    super.key,
+    required this.collection,
+    this.callerPosterPath,
+    this.callerBackdropPath,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
     final id = collection['id'] as int? ?? 0;
     final name = collection['name'] as String? ?? 'Franchise';
-    final posterPath = collection['poster_path'] as String?;
-    final backdropPath = collection['backdrop_path'] as String?;
+    final posterPath = collection['poster_path'] as String? ?? callerPosterPath;
+    final backdropPath = collection['backdrop_path'] as String? ?? callerBackdropPath;
 
     if (id == 0) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 14),
       child: GestureDetector(
-        onTap: () => context.push('/collection/$id'),
+        onTap: () => context.push(
+          '/collection/$id',
+          extra: {
+            'fallbackPoster': callerPosterPath ?? posterPath,
+            'fallbackBackdrop': callerBackdropPath ?? backdropPath,
+          },
+        ),
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
