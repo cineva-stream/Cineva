@@ -22,6 +22,9 @@ import '../../features/live_tv/presentation/screens/live_tv_player_screen.dart';
 import '../../features/live_tv/domain/entities/live_tv_channel.dart';
 import '../../features/search/domain/entities/streaming_platform.dart';
 import '../../features/search/presentation/screens/platform_catalog_screen.dart';
+import '../../features/calendar/presentation/screens/airing_calendar_screen.dart';
+import '../../features/person/presentation/screens/person_detail_screen.dart';
+import '../../features/collection/presentation/screens/collection_detail_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 import '../../shared/widgets/shell_pop_scope.dart';
 
@@ -370,6 +373,73 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: PlatformCatalogScreen(platform: platform),
           transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 250),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.06, 0),
+                end: Offset.zero,
+              ).animate(curved),
+              child: FadeTransition(opacity: curved, child: child),
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: '/calendar',
+      name: 'airingCalendar',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const AiringCalendarScreen(),
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 250),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.06, 0),
+              end: Offset.zero,
+            ).animate(curved),
+            child: FadeTransition(opacity: curved, child: child),
+          );
+        },
+      ),
+    ),
+    GoRoute(
+      path: '/person/:id',
+      name: 'personDetail',
+      pageBuilder: (context, state) {
+        final id = int.parse(state.pathParameters['id']!);
+        final initialName = state.extra as String?;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: PersonDetailScreen(personId: id, initialName: initialName),
+          transitionDuration: const Duration(milliseconds: 320),
+          reverseTransitionDuration: const Duration(milliseconds: 250),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.06, 0),
+                end: Offset.zero,
+              ).animate(curved),
+              child: FadeTransition(opacity: curved, child: child),
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: '/collection/:id',
+      name: 'collectionDetail',
+      pageBuilder: (context, state) {
+        final id = int.parse(state.pathParameters['id']!);
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: CollectionDetailScreen(collectionId: id),
+          transitionDuration: const Duration(milliseconds: 320),
           reverseTransitionDuration: const Duration(milliseconds: 250),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);

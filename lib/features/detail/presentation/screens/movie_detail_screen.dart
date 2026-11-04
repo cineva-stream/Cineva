@@ -13,6 +13,9 @@ import '../../../watchlist/data/watchlist_repository.dart';
 import '../../../download/presentation/widgets/download_options_modal.dart';
 import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../widgets/in_app_trailer_modal.dart';
+import '../../data/models/trailer_video_model.dart';
+import '../../../collection/presentation/widgets/franchise_collection_banner.dart';
 
 // ── Detail Providers ──
 
@@ -22,7 +25,7 @@ final movieDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((re
   final dio = DioClient.createTmdbClient();
   final response = await dio.get('/movie/$movieId', queryParameters: {
     'language': tmdbLang,
-    'append_to_response': 'credits,external_ids,similar',
+    'append_to_response': 'credits,external_ids,similar,videos',
   });
   final data = Map<String, dynamic>.from(response.data as Map);
   final overview = (data['overview'] as String? ?? '').trim();
@@ -38,6 +41,18 @@ final movieDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((re
       }
     } catch (_) {}
   }
+
+  // Ensure videos are available (fallback to en-US if primary language has none)
+  final rawVideos = (data['videos']?['results'] as List<dynamic>?) ?? [];
+  if (rawVideos.isEmpty && tmdbLang != 'en-US') {
+    try {
+      final vResponse = await dio.get('/movie/$movieId/videos', queryParameters: {
+        'language': 'en-US',
+      });
+      data['videos'] = vResponse.data;
+    } catch (_) {}
+  }
+
   return data;
 });
 
@@ -103,6 +118,8 @@ class _DetailContent extends ConsumerWidget {
     final genres = (data['genres'] as List<dynamic>?)?.map((g) => g['name'] as String).toList() ?? [];
     final tagline = data['tagline'] as String? ?? '';
     final imdbId = data['external_ids']?['imdb_id'] as String?;
+    final trailer = TrailerVideoModel.findBestTrailer(data['videos']);
+    final belongsToCollection = data['belongs_to_collection'] as Map<String, dynamic>?;
 
     // Cast
     final castList = (data['credits']?['cast'] as List<dynamic>?)?.take(10).toList() ?? [];
@@ -275,7 +292,7 @@ class _DetailContent extends ConsumerWidget {
 
                 const SizedBox(height: 20),
 
-                // ── Action Row: Watch Now & Watchlist ──
+                // ── Action Row: Watch Now, Trailer & Watchlist ──
                 Row(
                   children: [
                     Expanded(
@@ -306,7 +323,57 @@ class _DetailContent extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    if (trailer != null) ...[
+                      const SizedBox(width: 10),
+                      Tooltip(
+                        message: s.trailerTitle,
+                        child: InkWell(
+                          onTap: () {
+                            InAppTrailerModal.show(
+                              context,
+                              trailer: trailer,
+                              title: title,
+                              onWatchNow: () async {
+                                await context.push('/player', extra: {
+                                  'title': title,
+                                  'imdbId': imdbId,
+                                  'tmdbId': data['id'] as int?,
+                                  'mediaType': 'movie',
+                                  'posterPath': data['poster_path'] as String?,
+                                  'backdropPath': data['backdrop_path'] as String?,
+                                  'overview': overview,
+                                  'magnetLink': '',
+                                });
+                                SystemChrome.setPreferredOrientations([
+                                  DeviceOrientation.portraitUp,
+                                  DeviceOrientation.portraitDown,
+                                ]);
+                                SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+                              },
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.redAccent.withValues(alpha: 0.6),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.smart_display_rounded,
+                              color: Colors.redAccent,
+                              size: 26,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 10),
                     // Watchlist Button (Outlined when not added, Filled icon when added)
                     Consumer(
                       builder: (context, ref, _) {
@@ -417,6 +484,10 @@ class _DetailContent extends ConsumerWidget {
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6),
                 ),
 
+                // ── Franchise / Collection Hub ──
+                if (belongsToCollection != null)
+                  FranchiseCollectionBanner(collection: belongsToCollection),
+
                 // ── Cast ──
                 if (castList.isNotEmpty) ...[
                   const SizedBox(height: 24),
@@ -431,38 +502,46 @@ class _DetailContent extends ConsumerWidget {
                       itemBuilder: (context, index) {
                         final cast = castList[index];
                         final profilePath = cast['profile_path'] as String?;
-                        return SizedBox(
-                          width: 80,
-                          child: Column(
-                            children: [
-                              CircleAvatar(
-                                radius: 35,
-                                backgroundColor: AppColors.surfaceVariant,
-                                backgroundImage: profilePath != null
-                                    ? CachedNetworkImageProvider(
-                                        ApiConstants.imageUrl(profilePath, size: ApiConstants.posterSmall),
-                                      )
-                                    : null,
-                                child: profilePath == null
-                                    ? const Icon(Icons.person, color: AppColors.textMuted)
-                                    : null,
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                cast['name'] ?? '',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(fontSize: 11, color: AppColors.textPrimary),
-                              ),
-                              Text(
-                                cast['character'] ?? '',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
-                              ),
-                            ],
+                        final castId = cast['id'] as int?;
+                        return GestureDetector(
+                          onTap: () {
+                            if (castId != null) {
+                              context.push('/person/$castId', extra: cast['name'] as String?);
+                            }
+                          },
+                          child: SizedBox(
+                            width: 80,
+                            child: Column(
+                              children: [
+                                CircleAvatar(
+                                  radius: 35,
+                                  backgroundColor: AppColors.surfaceVariant,
+                                  backgroundImage: profilePath != null
+                                      ? CachedNetworkImageProvider(
+                                          ApiConstants.imageUrl(profilePath, size: ApiConstants.posterSmall),
+                                        )
+                                      : null,
+                                  child: profilePath == null
+                                      ? const Icon(Icons.person, color: AppColors.textMuted)
+                                      : null,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  cast['name'] ?? '',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontSize: 11, color: AppColors.textPrimary),
+                                ),
+                                Text(
+                                  cast['character'] ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },

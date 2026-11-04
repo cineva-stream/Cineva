@@ -24,6 +24,7 @@ import '../../../../core/localization/app_language_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../profile/presentation/widgets/avatar_display.dart';
 import '../../../updater/presentation/widgets/in_app_update_banner.dart';
+import '../widgets/airing_calendar_banner.dart';
 
 /// Active category filter on the Home Screen.
 enum HomeCategoryFilter {
@@ -381,6 +382,14 @@ class HomeScreen extends ConsumerWidget {
                   activeFilter == HomeCategoryFilter.tv))
             const SliverToBoxAdapter(
               child: ContinueWatchingSection(),
+            ),
+
+          // ── AIRING CALENDAR BANNER (Interactive Episode Release Schedule) ──
+          if (activeGenre.id == 'all' &&
+              (activeFilter == HomeCategoryFilter.all ||
+                  activeFilter == HomeCategoryFilter.tv))
+            const SliverToBoxAdapter(
+              child: AiringCalendarBanner(),
             ),
 
           if (activeFilter == HomeCategoryFilter.all ||
