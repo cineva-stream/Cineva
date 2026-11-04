@@ -25,6 +25,7 @@ import '../../features/search/presentation/screens/platform_catalog_screen.dart'
 import '../../features/calendar/presentation/screens/airing_calendar_screen.dart';
 import '../../features/person/presentation/screens/person_detail_screen.dart';
 import '../../features/collection/presentation/screens/collection_detail_screen.dart';
+import '../../features/tv_universe/presentation/screens/tv_universe_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 import '../../shared/widgets/shell_pop_scope.dart';
 
@@ -439,6 +440,29 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: CollectionDetailScreen(collectionId: id),
+          transitionDuration: const Duration(milliseconds: 320),
+          reverseTransitionDuration: const Duration(milliseconds: 250),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.06, 0),
+                end: Offset.zero,
+              ).animate(curved),
+              child: FadeTransition(opacity: curved, child: child),
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: '/tv-universe/:id',
+      name: 'tvUniverse',
+      pageBuilder: (context, state) {
+        final universeId = state.pathParameters['id']!;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: TvUniverseScreen(universeId: universeId),
           transitionDuration: const Duration(milliseconds: 320),
           reverseTransitionDuration: const Duration(milliseconds: 250),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

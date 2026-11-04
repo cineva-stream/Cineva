@@ -15,6 +15,7 @@ import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../widgets/in_app_trailer_modal.dart';
 import '../../data/models/trailer_video_model.dart';
+import '../../../tv_universe/presentation/widgets/tv_universe_banner.dart';
 
 // ── TV Detail Provider ──
 
@@ -469,6 +470,9 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                   overview.isNotEmpty ? overview : s.detailNoSynopsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6),
                 ),
+
+                // ── TV Universe / Watch Order Hub ──
+                TvUniverseBanner(tvId: tvId),
 
                 // ── Interactive Episode Selector Section ──
                 const SizedBox(height: 28),

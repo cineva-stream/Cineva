@@ -1,39 +1,52 @@
 # Cineva v1.1.3 - Release Notes 🎬
 
-Pembaruan Cineva versi 1.1.3 menghadirkan paket pembaruan besar **Eksplorasi & Penemuan Konten (*Content Discovery Suite*)** yang membawa pengalaman menjelajah film dan serial TV setara platform streaming kelas dunia. Menghadirkan **Jadwal Rilis & Kalender Episode (*Airing Calendar*)**, **Pemutar Trailer Resmi di Dalam Aplikasi (*In-App Official Trailer*)**, **Halaman Profil Aktor & Filmografi (*Person Detail & Filmography*)**, serta **Hub Waralaba / Koleksi Film (*Franchise Collection Hub*)** dengan kurva animasi transisi yang mulus (`Curves.easeOutCubic`) dan konsistensi warna tema **Pure OLED Black (`#000000`)**.
+Pembaruan Cineva versi 1.1.3 menghadirkan paket pembaruan besar **Eksplorasi & Penemuan Konten (*Content Discovery Suite*)** yang membawa pengalaman menjelajah film dan serial TV setara platform streaming kelas dunia. Menghadirkan **Jadwal Rilis & Radar Rilis 2-Tab (*Airing Calendar & Coming Soon*)**, **Hub Semesta & Urutan Nonton Serial TV (*TV Universe & Watch Order Hub*)**, **Pemutar Trailer Resmi di Dalam Aplikasi (*In-App Official Trailer*)**, **Halaman Profil Aktor & Filmografi (*Person Detail & Filmography*)**, serta **Hub Waralaba Film (*Franchise Collection Hub*)** dengan kurva animasi transisi yang mulus (`Curves.easeOutCubic`) dan konsistensi warna tema **Pure OLED Black (`#000000`)**.
 
 ---
 
 ## Ringkasan Perubahan
 
-### 1. Jadwal Rilis & Kalender Episode (Airing Calendar)
-- **Kartu Banner Interaktif di Beranda**:
-  - Pengguna dapat mengakses kalender rilis langsung melalui banner promosi interaktif yang elegan di halaman Beranda tepat di bawah *Hero Carousel / Trending*.
-- **Pita Tanggal Horizontal (*Date Picker Ribbon*)**:
-  - Menampilkan rentang 14 hari (3 hari lalu, hari ini, dan 10 hari ke depan) dengan highlight Cinema Amber pada tanggal yang dipilih dan tombol pintas *"Hari Ini / Today"*.
-- **Filter Kategori Instan**:
-  - Filter cepat sekali sentuh untuk:
-    - **Semua**: Semua serial yang tayang di tanggal terpilih.
-    - **Anime**: Serial animasi Jepang (`with_original_language=ja`, `with_genres=16`).
-    - **K-Drama**: Drama Korea (`with_original_language=ko`).
-    - **Barat**: Serial televisi Amerika & Inggris (`with_original_language=en`).
-    - **Indonesia**: Serial lokal tanah air (`with_original_language=id`).
-- **Kartu Episode Sinematik**:
-  - Menampilkan poster beresolusi tinggi, badge kategori/negara (*ANIME*, *K-DRAMA*, *INDONESIA*, dll.), rating bintang, dan ringkasan episode.
-  - Mengetuk kartu langsung membuka halaman detail serial TV secara *seamless*.
+### 1. Kalender Siaran & Radar Rilis 2-Tab (Airing Calendar & Coming Soon)
+- **Desain Minimalis & Borderless**:
+  - Menggantikan kartu-kartu tebal dengan daftar minimalis elegan bergaris batas halus (*smooth hairline divider*), memberikan ruang pandang yang lega, modern, dan konsisten dengan antarmuka Cineva lainnya.
+- **Banner Beranda Sinematik dengan Rotasi Poster Otomatis**:
+  - Ditempatkan presisi di halaman Beranda tepat di bawah *Hero Billboard Carousel* dan di atas *Lanjutkan Menonton*.
+  - Dilengkapi animasi latar belakang poster berputar dinamis setiap 4 detik untuk menyajikan konten segar secara visual.
+- **Dukungan 2 Tab Navigasi Atas**:
+  - **Tab 1: Episode Mingguan (*Weekly Schedule*)**:
+    - Pita tanggal horizontal 14 hari dengan tombol pintas *"Hari Ini / Today"*.
+    - Filter kategori cepat: *Semua*, *Anime* (Jepang), *K-Drama* (Korea), *Barat* (US/UK), dan *Indonesia*.
+  - **Tab 2: Segera Hadir (*Coming Soon / Release Radar*)**:
+    - Radar rilisan film bioskop dan serial TV yang paling dinantikan di masa mendatang.
+    - Filter kategori instan (*Semua*, *Film Bioskop*, *Serial TV & Anime*).
+    - Lencana hitung mundur rilis dinamis: *"Rilis Hari Ini"*, *"Rilis Besok"*, atau *"X Hari Lagi"*.
+    - Tombol pintas 1-sentuhan untuk langsung menyimpan judul mendatang ke *Watchlist*.
 
-### 2. In-App Official Trailer
+### 2. Hub Semesta & Panduan Urutan Nonton Serial TV (TV Universe Hub)
+- **Pemisahan Khusus Antara Waralaba Serial TV dan Film**:
+  - Berbeda dengan film bioskop yang dikelompokkan oleh TMDB Collection, serial TV memiliki semesta multi-seri yang kompleks. Cineva kini menghadirkan kurasi semesta serial TV tersendiri (*TV Universe Hub*).
+- **Banner Semesta di Halaman Detail Serial**:
+  - Jika serial TV memiliki keterkaitan dengan semesta cerita lain (misal *House of the Dragon*, *Better Call Saul*, *Naruto Shippuden*, *Gen V*, *Berlin*, *1923*), banner elegan langsung muncul di bawah sinopsis serial.
+- **Halaman Hub Semesta TV (`/tv-universe/:id`)**:
+  - Menyajikan backdrop megah semesta serial TV lengkap dengan deskripsi alur cerita.
+  - **Panduan Urutan Cerita Rekomendasi (*Recommended Story Order*)**:
+    - Menampilkan lencana nomor urut menonton (#1, #2, #3...).
+    - Lencana taksonomi jenis serial yang jelas: **Serial Utama (*Main Series*)**, **Prekuel (*Prequel*)**, **Sekuel (*Sequel*)**, atau **Spin-off**.
+    - Rentang tahun tayang dan catatan panduan cerita agar penonton tidak bingung memahami alur semesta serial tersebut.
+    - Akses langsung sekali sentuh ke serial yang dituju.
+  - Mendukung semesta populer: *Naruto & Boruto*, *Breaking Bad & Better Call Saul*, *Game of Thrones & House of the Dragon*, *The Walking Dead*, *The Boys & Gen V*, *Money Heist (La Casa de Papel)*, *Dragon Ball*, *Yellowstone*, dan banyak lagi.
+
+### 3. In-App Official Trailer & Perbaikan Error 153
 - **Modal Pemutar Video Sinematik Gelap**:
   - Membuka trailer resmi langsung di dalam aplikasi melalui modal bottom sheet berlatar hitam pekat OLED tanpa perlu beralih ke aplikasi pihak ketiga.
-- **Teknologi YouTube No-Cookie Embed**:
-  - Menggunakan komponen embed ringan `webview_flutter` yang bebas pelacak, tidak memerlukan login akun, dan hemat daya.
-  - Dilengkapi tombol fallback untuk membuka langsung di aplikasi YouTube eksternal jika pengguna menginginkannya.
+- **Resolusi Masalah YouTube Error 153 (*Video Player Configuration Error*)**:
+  - Mengonfigurasi `baseUrl: 'https://www.youtube-nocookie.com'`, User-Agent peramban bergerak, dan header kebijakan rujukan `strict-origin-when-cross-origin` sehingga seluruh trailer YouTube dapat diputar secara lancar tanpa peringatan pemutar.
 - **Pilihan Trailer Cerdas (*Smart Trailer Fallback*)**:
   - Algoritma secara otomatis memprioritaskan trailer resmi (*Official Trailer*), trailer standar, teaser, dan fallback ke bahasa Inggris jika server TMDB belum menandai trailer dalam bahasa lokal.
 - **Tombol Aksi "Tonton Sekarang" Terintegrasi**:
   - Pengguna dapat langsung menekan tombol *"Tonton Sekarang / Watch Now"* dari dalam modal trailer untuk seketika beralih memutar film atau serial penuh.
 
-### 3. Halaman Profil Aktor & Filmografi (Person Detail Screen)
+### 4. Halaman Profil Aktor & Filmografi (Person Detail Screen)
 - **Akses Langsung dari Daftar Pemeran**:
   - Mengetuk avatar aktor/aktris pada halaman detail film atau serial TV kini langsung membuka halaman profil aktor tersebut (`/person/:id`).
 - **Avatar Sinematik dengan Amber Glow**:
@@ -47,17 +60,18 @@ Pembaruan Cineva versi 1.1.3 menghadirkan paket pembaruan besar **Eksplorasi & P
   - Dilengkapi filter tab (*Semua Karya*, *Film Saja*, *Serial TV Saja*).
   - Mengetuk poster karya langsung menavigasi ke halaman detail film atau serial TV terkait.
 
-### 4. Hub Waralaba / Koleksi Film (Franchise Collection Hub)
+### 5. Hub Waralaba / Koleksi Film Bioskop (Franchise Collection Hub)
 - **Banner Koleksi pada Halaman Detail Film**:
-  - Jika sebuah film tergabung dalam semesta waralaba (misal *The Avengers*, *Harry Potter*, *Spider-Man*, *Fast & Furious*), muncul banner kartu horizontal eksklusif *"Bagian dari Waralaba"* yang menyajikan poster mini dan tautan *"Lihat Koleksi Lengkap →"*.
+  - Jika sebuah film tergabung dalam koleksi waralaba (misal *The Avengers*, *Harry Potter*, *Spider-Man*, *Fast & Furious*, *The Dark Knight*), muncul banner horizontal eksklusif *"Bagian dari Waralaba"* yang menyajikan poster mini dan tautan *"Lihat Koleksi Lengkap →"*.
 - **Halaman Hub Koleksi (`/collection/:id`)**:
-  - Menampilkan backdrop megah semesta waralaba dengan gradasi hitam yang menyatu ke latar OLED Black.
+  - Menampilkan backdrop megah semesta waralaba film dengan gradasi hitam yang menyatu ke latar OLED Black.
   - Menyajikan sinopsis koleksi dan badge total jumlah film (*misal: "8 Film dalam Koleksi"*).
 - **Urutan Kronologis Rilis (*Chronological Timeline*)**:
-  - Daftar film disusun rapi secara kronologis dari film pertama hingga rilisan terbaru dengan lencana nomor urut (1, 2, 3...), tahun rilis, rating, sinopsis ringkas, dan tombol aksi tonton langsung.
+  - Daftar film disusun rapi secara kronologis dari film pertama hingga rilisan terbaru dengan lencana nomor urut, tahun rilis, rating, sinopsis ringkas, dan tombol aksi tonton langsung.
 
-### 5. Konsistensi UI/UX & Lokalisasi Penuh
+### 6. Konsistensi UI/UX & Lokalisasi Penuh
 - **Pure OLED Black (#000000)**: Seluruh layar baru, modal bottom sheet, dan banner menggunakan latar belakang hitam pekat murni yang hemat daya layar AMOLED dan nyaman di mata saat kondisi gelap.
+- **Garis Batas Halus (*Smooth Dividers*)**: Menghindari pemakaian card bertumpuk yang berlebih dengan memanfaatkan hairline dividers transparan `0.8px` untuk hierarki visual yang bersih dan modern.
 - **Kurva Animasi Halus**: Transisi rute menggunakan `Curves.easeOutCubic` dengan staggered animation delay bergradasi 30ms pada daftar item.
 - **100% Dukungan Dwibahasa**: Seluruh string baru terdaftar lengkap dalam Bahasa Indonesia dan English pada `AppStrings`.
 

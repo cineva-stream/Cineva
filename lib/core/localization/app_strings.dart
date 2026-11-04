@@ -831,4 +831,54 @@ class AppStrings {
       isIndonesian ? 'Urutan Kronologis' : 'Chronological Order';
   String get collectionPart => isIndonesian ? 'Bagian' : 'Part';
   String get collectionWatchNow => isIndonesian ? 'Tonton' : 'Watch';
+
+  // ── Airing Calendar Tabs ──
+  String get calendarTabWeekly =>
+      isIndonesian ? 'Episode Mingguan' : 'Weekly Schedule';
+  String get calendarTabUpcoming =>
+      isIndonesian ? 'Segera Hadir' : 'Coming Soon';
+
+  // ── Coming Soon / Release Radar ──
+  String get upcomingTitle =>
+      isIndonesian ? 'Segera Hadir' : 'Coming Soon';
+  String get upcomingSubtitle => isIndonesian
+      ? 'Daftar film bioskop & serial TV yang paling dinantikan'
+      : 'Most anticipated upcoming movies & TV shows';
+  String get upcomingFilterAll => isIndonesian ? 'Semua' : 'All';
+  String get upcomingFilterMovies => isIndonesian ? 'Film Bioskop' : 'Movies';
+  String get upcomingFilterTv => isIndonesian ? 'Serial TV & Anime' : 'TV Shows';
+  String get upcomingReleasedToday => isIndonesian ? 'Rilis Hari Ini' : 'Releases Today';
+  String get upcomingTomorrow => isIndonesian ? 'Rilis Besok' : 'Releases Tomorrow';
+  String upcomingInDays(int days) =>
+      isIndonesian ? '$days Hari Lagi' : 'In $days Days';
+  String get upcomingNoMedia => isIndonesian
+      ? 'Tidak ada film atau serial mendatang untuk filter ini'
+      : 'No upcoming titles found for this filter';
+  String get upcomingNoMediaSub => isIndonesian
+      ? 'Coba ubah kategori filter atau periksa kembali nanti'
+      : 'Try changing category filter or check back later';
+
+  // ── TV Franchise / Universe Hub ──
+  String get tvUniversePartOf =>
+      isIndonesian ? 'Semesta Serial TV' : 'TV Universe';
+  String get tvUniversePartOfFranchise =>
+      isIndonesian ? 'Bagian dari Semesta' : 'Part of Universe';
+  String get tvUniverseWatchOrder =>
+      isIndonesian ? 'Panduan Urutan Nonton' : 'Watch Order Guide';
+  String get tvUniverseViewGuide =>
+      isIndonesian ? 'Lihat Panduan Urutan Nonton →' : 'View Watch Order Guide →';
+  String tvUniverseOrderNumber(int index, int total) => isIndonesian
+      ? 'Urutan #$index dari $total Serial'
+      : 'Watch Order #$index of $total Series';
+  String tvUniverseCountSeries(int count) => isIndonesian
+      ? '$count Serial dalam Semesta'
+      : '$count Series in Universe';
+  String get tvUniverseMainSeries =>
+      isIndonesian ? 'Serial Utama' : 'Main Series';
+  String get tvUniversePrequel => isIndonesian ? 'Prekuel' : 'Prequel';
+  String get tvUniverseSequel => isIndonesian ? 'Sekuel' : 'Sequel';
+  String get tvUniverseSpinoff => isIndonesian ? 'Spin-off' : 'Spin-off';
+  String get tvUniverseViewSeries => isIndonesian ? 'Buka Serial' : 'View Series';
+  String get tvUniverseChronologicalOrder =>
+      isIndonesian ? 'Urutan Cerita Rekomendasi' : 'Recommended Story Order';
 }
