@@ -375,6 +375,14 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
 
+          // ── AIRING CALENDAR BANNER (Directly below Hero Carousel) ──
+          if (activeGenre.id == 'all' &&
+              (activeFilter == HomeCategoryFilter.all ||
+                  activeFilter == HomeCategoryFilter.tv))
+            const SliverToBoxAdapter(
+              child: AiringCalendarBanner(),
+            ),
+
           // ── CONTINUE WATCHING SECTION (In-Progress Movies & TV Series) ──
           if (activeGenre.id == 'all' &&
               (activeFilter == HomeCategoryFilter.all ||
@@ -382,14 +390,6 @@ class HomeScreen extends ConsumerWidget {
                   activeFilter == HomeCategoryFilter.tv))
             const SliverToBoxAdapter(
               child: ContinueWatchingSection(),
-            ),
-
-          // ── AIRING CALENDAR BANNER (Interactive Episode Release Schedule) ──
-          if (activeGenre.id == 'all' &&
-              (activeFilter == HomeCategoryFilter.all ||
-                  activeFilter == HomeCategoryFilter.tv))
-            const SliverToBoxAdapter(
-              child: AiringCalendarBanner(),
             ),
 
           if (activeFilter == HomeCategoryFilter.all ||

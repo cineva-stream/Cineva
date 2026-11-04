@@ -1,126 +1,189 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/constants/api_constants.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../providers/home_providers.dart';
 
-class AiringCalendarBanner extends ConsumerWidget {
+/// Minimalist, modern Airing Calendar promotional banner.
+///
+/// Features no harsh borders and a cinematic background that smoothly
+/// crossfades upcoming movie and TV series backdrops every 4 seconds.
+class AiringCalendarBanner extends ConsumerStatefulWidget {
   const AiringCalendarBanner({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AiringCalendarBanner> createState() => _AiringCalendarBannerState();
+}
+
+class _AiringCalendarBannerState extends ConsumerState<AiringCalendarBanner> {
+  Timer? _rotationTimer;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _rotationTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) {
+        setState(() {
+          _currentIndex++;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _rotationTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final s = ref.watch(appStringsProvider);
+    final upcoming = ref.watch(upcomingMoviesProvider).valueOrNull ?? [];
+    final popularTv = ref.watch(popularTvProvider).valueOrNull ?? [];
+
+    // Extract backdrop/poster paths for cycling background
+    final images = [
+      ...upcoming.map((m) => m.backdropPath ?? m.posterPath),
+      ...popularTv.map((t) => t.backdropPath ?? t.posterPath),
+    ].whereType<String>().where((p) => p.isNotEmpty).toList();
+
+    final currentImage =
+        images.isNotEmpty ? images[_currentIndex % images.length] : null;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: GestureDetector(
         onTap: () => context.push('/calendar'),
         child: Container(
+          height: 98,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF1E1A11), // Subtle warm amber-black tone
-                Color(0xFF131317), // Deep surface tone
-                Color(0xFF0D0D11),
-              ],
-            ),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.3),
-              width: 1.2,
-            ),
+            borderRadius: BorderRadius.circular(16),
+            color: const Color(0xFF111116),
+            // Borderless design per user preference
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                blurRadius: 18,
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
+          clipBehavior: Clip.antiAlias,
           child: Stack(
+            fit: StackFit.expand,
             children: [
-              // Decorative background element
-              Positioned(
-                right: -15,
-                top: -15,
-                child: Opacity(
-                  opacity: 0.08,
-                  child: Icon(
-                    Iconsax.calendar_tick,
-                    size: 130,
-                    color: AppColors.primary,
+              // ── Smooth 4-second Rotating Background ──
+              if (currentImage != null)
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 1000),
+                  transitionBuilder: (child, animation) =>
+                      FadeTransition(opacity: animation, child: child),
+                  child: CachedNetworkImage(
+                    key: ValueKey<String>(currentImage),
+                    imageUrl: ApiConstants.imageUrl(
+                      currentImage,
+                      size: ApiConstants.backdropMedium,
+                    ),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
+                ),
+
+              // ── Multi-Layer Gradient Overlays (Ensures high contrast & readability) ──
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.94),
+                      Colors.black.withValues(alpha: 0.82),
+                      Colors.black.withValues(alpha: 0.45),
+                    ],
+                    stops: const [0.0, 0.60, 1.0],
                   ),
                 ),
               ),
 
+              // Subtle bottom vignette
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.2),
+                      Colors.black.withValues(alpha: 0.6),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Content Layout ──
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
-                    // Icon Box
+                    // Minimalist Icon
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.5),
-                          width: 1,
-                        ),
+                        color: AppColors.primary.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
-                        Iconsax.calendar_search,
+                        Iconsax.calendar_tick,
                         color: AppColors.primary,
-                        size: 24,
+                        size: 22,
                       ),
                     ),
                     const SizedBox(width: 14),
 
-                    // Text Info
+                    // Title & Description
                     Expanded(
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  'NEW',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.black,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
                               Text(
                                 s.calendarTitle.toUpperCase(),
                                 style: GoogleFonts.inter(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.primary,
-                                  letterSpacing: 1.0,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                width: 4,
+                                height: 4,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 3),
                           Text(
                             s.calendarBannerTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.outfit(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -133,7 +196,7 @@ class AiringCalendarBanner extends ConsumerWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(
-                              fontSize: 11.5,
+                              fontSize: 11,
                               color: AppColors.textMuted,
                             ),
                           ),
@@ -141,22 +204,36 @@ class AiringCalendarBanner extends ConsumerWidget {
                       ),
                     ),
 
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
 
-                    // Arrow Icon
+                    // Minimalist Action Button
                     Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.08),
-                        ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
                       ),
-                      child: const Icon(
-                        Icons.arrow_forward_rounded,
-                        color: AppColors.primary,
-                        size: 16,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            s.isIndonesian ? 'Buka' : 'Open',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            color: Colors.white,
+                            size: 10,
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -166,7 +243,6 @@ class AiringCalendarBanner extends ConsumerWidget {
           ),
         ),
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0);
+    ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.04, end: 0);
   }
 }
-

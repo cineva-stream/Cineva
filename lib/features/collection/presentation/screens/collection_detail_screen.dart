@@ -199,19 +199,22 @@ class CollectionDetailScreen extends ConsumerWidget {
         // ── Chronological Parts Timeline ──
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final part = collection.parts[index];
-                return _CollectionPartCard(
-                  part: part,
-                  partNumber: index + 1,
-                  totalParts: collection.parts.length,
-                  s: s,
-                );
-              },
-              childCount: collection.parts.length,
+          sliver: SliverList.separated(
+            itemCount: collection.parts.length,
+            separatorBuilder: (_, _) => Divider(
+              color: Colors.white.withValues(alpha: 0.08),
+              height: 1,
+              thickness: 0.8,
             ),
+            itemBuilder: (context, index) {
+              final part = collection.parts[index];
+              return _CollectionPartListItem(
+                part: part,
+                partNumber: index + 1,
+                totalParts: collection.parts.length,
+                s: s,
+              );
+            },
           ),
         ),
 
@@ -221,13 +224,13 @@ class CollectionDetailScreen extends ConsumerWidget {
   }
 }
 
-class _CollectionPartCard extends StatelessWidget {
+class _CollectionPartListItem extends StatelessWidget {
   final CollectionPartModel part;
   final int partNumber;
   final int totalParts;
   final AppStrings s;
 
-  const _CollectionPartCard({
+  const _CollectionPartListItem({
     required this.part,
     required this.partNumber,
     required this.totalParts,
@@ -236,163 +239,152 @@ class _CollectionPartCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-          width: 1,
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => context.push('/movie/${part.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Chronological Index Badge
-              Container(
-                width: 32,
-                height: 32,
-                margin: const EdgeInsets.only(right: 10, top: 4),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.6),
-                    width: 1.2,
-                  ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => context.push('/movie/${part.id}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Chronological Index Badge
+            Container(
+              width: 28,
+              height: 28,
+              margin: const EdgeInsets.only(right: 10, top: 2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withValues(alpha: 0.15),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.5),
+                  width: 1,
                 ),
-                child: Center(
-                  child: Text(
-                    '$partNumber',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                    ),
+              ),
+              child: Center(
+                child: Text(
+                  '$partNumber',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
                   ),
                 ),
               ),
+            ),
 
-              // Poster
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: part.posterPath != null
-                    ? CachedNetworkImage(
-                        imageUrl: ApiConstants.imageUrl(
-                          part.posterPath,
-                          size: ApiConstants.posterSmall,
-                        ),
-                        width: 70,
-                        height: 100,
-                        fit: BoxFit.cover,
-                        placeholder: (_, _) => Container(
-                          width: 70,
-                          height: 100,
-                          color: AppColors.surfaceVariant,
-                        ),
-                      )
-                    : Container(
-                        width: 70,
-                        height: 100,
-                        color: AppColors.surfaceVariant,
-                        child: const Icon(Icons.movie, color: AppColors.textMuted),
+            // Poster
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: part.posterPath != null
+                  ? CachedNetworkImage(
+                      imageUrl: ApiConstants.imageUrl(
+                        part.posterPath,
+                        size: ApiConstants.posterSmall,
                       ),
-              ),
-              const SizedBox(width: 12),
+                      width: 68,
+                      height: 98,
+                      fit: BoxFit.cover,
+                      placeholder: (_, _) => Container(
+                        width: 68,
+                        height: 98,
+                        color: AppColors.surfaceVariant,
+                      ),
+                    )
+                  : Container(
+                      width: 68,
+                      height: 98,
+                      color: AppColors.surfaceVariant,
+                      child: const Icon(Icons.movie, color: AppColors.textMuted),
+                    ),
+            ),
+            const SizedBox(width: 12),
 
-              // Info & Action
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (part.year.isNotEmpty) ...[
-                          Text(
-                            part.year,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          const Text(
-                            ' • ',
-                            style: TextStyle(color: AppColors.textMuted),
-                          ),
-                        ],
-                        const Icon(Icons.star_rounded, size: 14, color: AppColors.star),
-                        const SizedBox(width: 2),
+            // Info & Action
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      if (part.year.isNotEmpty) ...[
                         Text(
-                          part.voteAverage > 0
-                              ? part.voteAverage.toStringAsFixed(1)
-                              : 'N/A',
+                          part.year,
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      part.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      part.overview.isNotEmpty
-                          ? part.overview
-                          : 'No synopsis available.',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 11.5,
-                        color: AppColors.textMuted,
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Iconsax.play_circle, size: 14, color: AppColors.primary),
-                        const SizedBox(width: 4),
-                        Text(
-                          s.collectionWatchNow,
-                          style: GoogleFonts.inter(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
                             color: AppColors.primary,
                           ),
                         ),
-                        const Spacer(),
-                        const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.textMuted),
+                        const Text(
+                          ' • ',
+                          style: TextStyle(color: AppColors.textMuted),
+                        ),
                       ],
+                      const Icon(Icons.star_rounded, size: 14, color: AppColors.star),
+                      const SizedBox(width: 2),
+                      Text(
+                        part.voteAverage > 0
+                            ? part.voteAverage.toStringAsFixed(1)
+                            : 'N/A',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    part.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    part.overview.isNotEmpty
+                        ? part.overview
+                        : 'No synopsis available.',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      color: AppColors.textMuted,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Iconsax.play_circle, size: 14, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        s.collectionWatchNow,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 11, color: AppColors.textMuted),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     )
         .animate()
-        .fadeIn(delay: Duration(milliseconds: (partNumber.clamp(0, 10)) * 30))
-        .slideY(begin: 0.05, end: 0);
+        .fadeIn(delay: Duration(milliseconds: (partNumber.clamp(0, 10)) * 25))
+        .slideY(begin: 0.04, end: 0);
   }
 }
 

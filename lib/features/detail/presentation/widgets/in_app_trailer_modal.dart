@@ -63,6 +63,9 @@ class _InAppTrailerModalState extends ConsumerState<InAppTrailerModal> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
+      ..setUserAgent(
+        'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (_) {
@@ -74,7 +77,10 @@ class _InAppTrailerModalState extends ConsumerState<InAppTrailerModal> {
           },
         ),
       )
-      ..loadHtmlString(_buildHtml(widget.trailer.key));
+      ..loadHtmlString(
+        _buildHtml(widget.trailer.key),
+        baseUrl: 'https://www.youtube-nocookie.com',
+      );
   }
 
   String _buildHtml(String videoKey) {
@@ -83,6 +89,7 @@ class _InAppTrailerModalState extends ConsumerState<InAppTrailerModal> {
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <style>
     * { box-sizing: border-box; }
     html, body {
@@ -105,8 +112,11 @@ class _InAppTrailerModalState extends ConsumerState<InAppTrailerModal> {
 </head>
 <body>
   <iframe
-    src="https://www.youtube-nocookie.com/embed/$videoKey?autoplay=1&playsinline=1&modestbranding=1&rel=0&iv_load_policy=3"
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    src="https://www.youtube-nocookie.com/embed/$videoKey?autoplay=1&playsinline=1&modestbranding=1&rel=0&enablejsapi=1&origin=https://www.youtube-nocookie.com"
+    title="YouTube video player"
+    frameborder="0"
+    referrerpolicy="strict-origin-when-cross-origin"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
     allowfullscreen>
   </iframe>
 </body>
@@ -263,11 +273,37 @@ class _InAppTrailerModalState extends ConsumerState<InAppTrailerModal> {
 
               const SizedBox(height: 16),
 
-              // ── Action Row (Watch Now) ──
+              // ── Action Row (Watch Now & Open in YouTube) ──
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
+                    // YouTube External Shortcut
+                    Tooltip(
+                      message: 'YouTube',
+                      child: InkWell(
+                        onTap: _openExternalYouTube,
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.4),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.open_in_new_rounded,
+                            color: Colors.redAccent,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     if (widget.onWatchNow != null)
                       Expanded(
                         child: ElevatedButton.icon(

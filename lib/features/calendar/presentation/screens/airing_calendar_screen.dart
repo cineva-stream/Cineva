@@ -320,13 +320,17 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                   }
 
                   return ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     physics: const BouncingScrollPhysics(),
                     itemCount: shows.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => Divider(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      height: 1,
+                      thickness: 0.8,
+                    ),
                     itemBuilder: (context, index) {
                       final show = shows[index];
-                      return _AiringShowCard(show: show, index: index);
+                      return _AiringShowListItem(show: show, index: index, s: s);
                     },
                   );
                 },
@@ -399,55 +403,53 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
   }
 }
 
-class _AiringShowCard extends StatelessWidget {
+class _AiringShowListItem extends StatelessWidget {
   final AiringShowModel show;
   final int index;
+  final AppStrings s;
 
-  const _AiringShowCard({required this.show, required this.index});
+  const _AiringShowListItem({
+    required this.show,
+    required this.index,
+    required this.s,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
       onTap: () => context.push('/tv/${show.id}'),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.06),
-            width: 1,
-          ),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Poster
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               child: show.posterPath != null
                   ? CachedNetworkImage(
                       imageUrl: ApiConstants.imageUrl(
                         show.posterPath,
                         size: ApiConstants.posterSmall,
                       ),
-                      width: 75,
-                      height: 110,
+                      width: 72,
+                      height: 104,
                       fit: BoxFit.cover,
                       placeholder: (_, _) => Container(
-                        width: 75,
-                        height: 110,
+                        width: 72,
+                        height: 104,
                         color: AppColors.surfaceVariant,
                       ),
                     )
                   : Container(
-                      width: 75,
-                      height: 110,
+                      width: 72,
+                      height: 104,
                       color: AppColors.surfaceVariant,
                       child: const Icon(Icons.tv, color: AppColors.textMuted),
                     ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
 
             // Info
             Expanded(
@@ -457,10 +459,10 @@ class _AiringShowCard extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(5),
                           border: Border.all(
                             color: AppColors.primary.withValues(alpha: 0.4),
                             width: 0.8,
@@ -469,7 +471,7 @@ class _AiringShowCard extends StatelessWidget {
                         child: Text(
                           show.regionBadge,
                           style: GoogleFonts.inter(
-                            fontSize: 10,
+                            fontSize: 9.5,
                             fontWeight: FontWeight.w800,
                             color: AppColors.primary,
                             letterSpacing: 0.5,
@@ -477,7 +479,7 @@ class _AiringShowCard extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      const Icon(Icons.star_rounded, size: 16, color: AppColors.star),
+                      const Icon(Icons.star_rounded, size: 15, color: AppColors.star),
                       const SizedBox(width: 3),
                       Text(
                         show.voteAverage > 0 ? show.voteAverage.toStringAsFixed(1) : 'N/A',
@@ -489,7 +491,7 @@ class _AiringShowCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 5),
                   Text(
                     show.name,
                     maxLines: 1,
@@ -500,7 +502,7 @@ class _AiringShowCard extends StatelessWidget {
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     show.overview.isNotEmpty ? show.overview : 'No overview available.',
                     maxLines: 2,
@@ -517,7 +519,7 @@ class _AiringShowCard extends StatelessWidget {
                       const Icon(Iconsax.play_circle, size: 14, color: AppColors.primary),
                       const SizedBox(width: 4),
                       Text(
-                        'Watch Series',
+                        s.isIndonesian ? 'Lihat Serial' : 'View Series',
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -525,7 +527,7 @@ class _AiringShowCard extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.textMuted),
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 11, color: AppColors.textMuted),
                     ],
                   ),
                 ],
@@ -536,8 +538,8 @@ class _AiringShowCard extends StatelessWidget {
       ),
     )
         .animate()
-        .fadeIn(delay: Duration(milliseconds: (index.clamp(0, 10)) * 30))
-        .slideY(begin: 0.05, end: 0);
+        .fadeIn(delay: Duration(milliseconds: (index.clamp(0, 10)) * 25))
+        .slideY(begin: 0.04, end: 0);
   }
 }
 
