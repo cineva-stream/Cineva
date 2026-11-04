@@ -22,16 +22,25 @@ final calendarActiveTabProvider = StateProvider<int>((ref) => 0);
 /// Active filter category on Coming Soon: 'all', 'movie', 'tv'
 final upcomingCategoryFilterProvider = StateProvider<String>((ref) => 'all');
 
+/// Selected date filter on Coming Soon: null means "Semua Tanggal / All Dates"
+final selectedUpcomingDateProvider = StateProvider<DateTime?>((ref) => null);
+
 /// Upcoming movies and TV shows provider
 final upcomingMediaListProvider = FutureProvider.autoDispose<List<UpcomingMediaModel>>((ref) async {
   final category = ref.watch(upcomingCategoryFilterProvider);
+  final targetDate = ref.watch(selectedUpcomingDateProvider);
   final lang = ref.watch(appLanguageProvider);
   final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
+
+  final targetDateStr = targetDate != null
+      ? '${targetDate.year.toString().padLeft(4, '0')}-${targetDate.month.toString().padLeft(2, '0')}-${targetDate.day.toString().padLeft(2, '0')}'
+      : null;
 
   final dataSource = ref.watch(upcomingRemoteDataSourceProvider);
   return dataSource.getUpcomingMedia(
     category: category,
     language: tmdbLang,
+    targetDate: targetDateStr,
   );
 });
 

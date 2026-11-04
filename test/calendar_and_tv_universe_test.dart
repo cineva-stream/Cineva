@@ -155,6 +155,17 @@ void main() {
       expect(ids.contains('yellowstone-universe'), isTrue);
     });
 
+    test('Registry entries have valid poster paths and titles', () {
+      final all = TvUniverseRegistry.allUniverses;
+      for (final universe in all) {
+        for (final entry in universe.entries) {
+          expect(entry.title.isNotEmpty, isTrue);
+          expect(entry.posterPath, isNotNull);
+          expect(entry.posterPath!.startsWith('/'), isTrue);
+        }
+      }
+    });
+
     test('Header image resolution handles missing backdrop using fallback poster', () {
       const universeNoBackdrop = TvUniverse(
         id: 'sample-no-bg',

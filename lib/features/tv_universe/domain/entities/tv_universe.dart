@@ -27,6 +27,7 @@ class TvUniverseEntry {
   final TvUniverseEntryType type;
   final String yearRange;
   final String note;
+  final String? posterPath;
 
   const TvUniverseEntry({
     required this.tmdbTvId,
@@ -35,6 +36,7 @@ class TvUniverseEntry {
     required this.type,
     required this.yearRange,
     required this.note,
+    this.posterPath,
   });
 }
 

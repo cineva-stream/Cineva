@@ -316,9 +316,9 @@ class _TvUniverseEntryItem extends StatelessWidget {
           children: [
             // Order Number Badge
             Container(
-              width: 30,
-              height: 30,
-              margin: const EdgeInsets.only(right: 12, top: 4),
+              width: 28,
+              height: 28,
+              margin: const EdgeInsets.only(right: 10, top: 4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.primary.withValues(alpha: 0.15),
@@ -331,13 +331,46 @@ class _TvUniverseEntryItem extends StatelessWidget {
                 child: Text(
                   '${entry.orderIndex}',
                   style: GoogleFonts.outfit(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: AppColors.primary,
                   ),
                 ),
               ),
             ),
+
+            // TV Series Poster Thumbnail
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: entry.posterPath != null && entry.posterPath!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: ApiConstants.imageUrl(
+                        entry.posterPath,
+                        size: ApiConstants.posterSmall,
+                      ),
+                      width: 68,
+                      height: 98,
+                      fit: BoxFit.cover,
+                      placeholder: (_, _) => Container(
+                        width: 68,
+                        height: 98,
+                        color: AppColors.surfaceVariant,
+                      ),
+                      errorWidget: (_, _, _) => Container(
+                        width: 68,
+                        height: 98,
+                        color: AppColors.surfaceVariant,
+                        child: const Icon(Icons.tv_rounded, color: AppColors.textMuted),
+                      ),
+                    )
+                  : Container(
+                      width: 68,
+                      height: 98,
+                      color: AppColors.surfaceVariant,
+                      child: const Icon(Icons.tv_rounded, color: AppColors.textMuted),
+                    ),
+            ),
+            const SizedBox(width: 12),
 
             // Content Info
             Expanded(
