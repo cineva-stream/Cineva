@@ -36,17 +36,17 @@ Whether exploring blockbuster movies, binge-watching serialized television progr
 ### Mobile Experience
 
 <p align="center">
-  <img src="docs/assets/screenshots/02_home_discovery.jpg" alt="Discovery and Browse" width="45%" />
+  <img src="docs/assets/screenshots/02_home_discovery.png" alt="Discovery and Browse" width="45%" />
   &nbsp;&nbsp;
-  <img src="docs/assets/screenshots/03_media_details.jpg" alt="Media Details" width="45%" />
+  <img src="docs/assets/screenshots/03_media_details.png" alt="Media Details" width="45%" />
 </p>
 
 ### Cinematic Playback and Live TV
 
 <p align="center">
-  <img src="docs/assets/screenshots/04_player_controls.jpg" alt="Custom Subtitle Player" width="48%" />
+  <img src="docs/assets/screenshots/04_player_controls.png" alt="Custom Subtitle Player" width="48%" />
   &nbsp;&nbsp;
-  <img src="docs/assets/screenshots/05_live_tv_landscape.jpg" alt="Live TV Landscape Drawer" width="48%" />
+  <img src="docs/assets/screenshots/05_live_tv_landscape.png" alt="Live TV Landscape Drawer" width="48%" />
 </p>
 
 ---
