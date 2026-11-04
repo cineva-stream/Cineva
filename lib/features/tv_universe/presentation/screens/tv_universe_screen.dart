@@ -28,14 +28,17 @@ class TvUniverseScreen extends ConsumerWidget {
   });
 
   String? _resolveHeaderImage(TvUniverse universe, WidgetRef ref) {
-    if (universe.backdropPath != null && universe.backdropPath!.trim().isNotEmpty) {
+    if (universe.backdropPath != null &&
+        universe.backdropPath!.trim().isNotEmpty) {
       return universe.backdropPath;
     }
     if (fallbackBackdrop != null && fallbackBackdrop!.trim().isNotEmpty) {
       return fallbackBackdrop;
     }
     if (universe.entries.isNotEmpty) {
-      final firstTv = ref.watch(tvDetailProvider(universe.entries.first.tmdbTvId)).valueOrNull;
+      final firstTv = ref
+          .watch(tvDetailProvider(universe.entries.first.tmdbTvId))
+          .valueOrNull;
       final dynamicBackdrop = firstTv?['backdrop_path'] as String?;
       if (dynamicBackdrop != null && dynamicBackdrop.isNotEmpty) {
         return dynamicBackdrop;
@@ -61,11 +64,7 @@ class TvUniverseScreen extends ConsumerWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1E1610),
-            Color(0xFF121218),
-            Color(0xFF000000),
-          ],
+          colors: [Color(0xFF1E1610), Color(0xFF121218), Color(0xFF000000)],
         ),
       ),
       child: Center(
@@ -98,9 +97,7 @@ class TvUniverseScreen extends ConsumerWidget {
         Positioned.fill(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: Container(
-              color: Colors.black.withValues(alpha: 0.25),
-            ),
+            child: Container(color: Colors.black.withValues(alpha: 0.25)),
           ),
         ),
         // Layer 2: Main sharp image
@@ -170,7 +167,8 @@ class TvUniverseScreen extends ConsumerWidget {
             backgroundColor: AppColors.background,
             elevation: 0,
             leading: IconButton(
-              onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+              onPressed: () =>
+                  context.canPop() ? context.pop() : context.go('/'),
               icon: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -180,7 +178,11 @@ class TvUniverseScreen extends ConsumerWidget {
                     color: Colors.white.withValues(alpha: 0.1),
                   ),
                 ),
-                child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.arrow_back,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
             ),
             flexibleSpace: FlexibleSpaceBar(
@@ -198,7 +200,10 @@ class TvUniverseScreen extends ConsumerWidget {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(6),
@@ -251,7 +256,11 @@ class TvUniverseScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      const Icon(Iconsax.sort, size: 18, color: AppColors.primary),
+                      const Icon(
+                        Iconsax.sort,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         s.tvUniverseChronologicalOrder,
@@ -281,11 +290,7 @@ class TvUniverseScreen extends ConsumerWidget {
               ),
               itemBuilder: (context, index) {
                 final entry = universe.entries[index];
-                return _TvUniverseEntryItem(
-                  entry: entry,
-                  s: s,
-                  index: index,
-                );
+                return _TvUniverseEntryItem(entry: entry, s: s, index: index);
               },
             ),
           ),
@@ -324,170 +329,189 @@ class _TvUniverseEntryItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final badgeColor = _typeBadgeColor(entry.type);
-    final dynamicDetail = ref.watch(tvDetailProvider(entry.tmdbTvId)).valueOrNull;
-    final effectivePoster = (entry.posterPath != null && entry.posterPath!.isNotEmpty)
+    final dynamicDetail = ref
+        .watch(tvDetailProvider(entry.tmdbTvId))
+        .valueOrNull;
+    final effectivePoster =
+        (entry.posterPath != null && entry.posterPath!.isNotEmpty)
         ? entry.posterPath
         : dynamicDetail?['poster_path'] as String?;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: () => context.push('/tv/${entry.tmdbTvId}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 2),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Order Number Badge
-            Container(
-              width: 28,
-              height: 28,
-              margin: const EdgeInsets.only(right: 10, top: 4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primary.withValues(alpha: 0.15),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.6),
-                  width: 1.2,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  '${entry.orderIndex}',
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => context.push('/tv/${entry.tmdbTvId}'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Order Number Badge
+                Container(
+                  width: 28,
+                  height: 28,
+                  margin: const EdgeInsets.only(right: 10, top: 4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.6),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${entry.orderIndex}',
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
 
-            // TV Series Poster Thumbnail
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: effectivePoster != null && effectivePoster.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: ApiConstants.imageUrl(
-                        effectivePoster,
-                        size: ApiConstants.posterSmall,
+                // TV Series Poster Thumbnail
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: effectivePoster != null && effectivePoster.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: ApiConstants.imageUrl(
+                            effectivePoster,
+                            size: ApiConstants.posterSmall,
+                          ),
+                          width: 68,
+                          height: 98,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => Container(
+                            width: 68,
+                            height: 98,
+                            color: AppColors.surfaceVariant,
+                            child: const Center(
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (_, _, _) => Container(
+                            width: 68,
+                            height: 98,
+                            color: AppColors.surfaceVariant,
+                            child: const Icon(
+                              Icons.tv_rounded,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          width: 68,
+                          height: 98,
+                          color: AppColors.surfaceVariant,
+                          child: const Icon(
+                            Icons.tv_rounded,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                ),
+                const SizedBox(width: 12),
+
+                // Content Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          // Entry Type Pill
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: badgeColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(
+                                color: badgeColor.withValues(alpha: 0.4),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              entry.type.localizedLabel(s),
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: badgeColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            entry.yearRange,
+                            style: GoogleFonts.inter(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
                       ),
-                      width: 68,
-                      height: 98,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => Container(
-                        width: 68,
-                        height: 98,
-                        color: AppColors.surfaceVariant,
-                        child: const Center(
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
+                      const SizedBox(height: 5),
+                      Text(
+                        entry.title,
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        entry.note,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Iconsax.play_circle,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            s.tvUniverseViewSeries,
+                            style: GoogleFonts.inter(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
                               color: AppColors.primary,
                             ),
                           ),
-                        ),
-                      ),
-                      errorWidget: (_, _, _) => Container(
-                        width: 68,
-                        height: 98,
-                        color: AppColors.surfaceVariant,
-                        child: const Icon(Icons.tv_rounded, color: AppColors.textMuted),
-                      ),
-                    )
-                  : Container(
-                      width: 68,
-                      height: 98,
-                      color: AppColors.surfaceVariant,
-                      child: const Icon(Icons.tv_rounded, color: AppColors.textMuted),
-                    ),
-            ),
-            const SizedBox(width: 12),
-
-            // Content Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      // Entry Type Pill
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: badgeColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(5),
-                          border: Border.all(
-                            color: badgeColor.withValues(alpha: 0.4),
-                            width: 0.8,
+                          const Spacer(),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 11,
+                            color: AppColors.textMuted,
                           ),
-                        ),
-                        child: Text(
-                          entry.type.localizedLabel(s),
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: badgeColor,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        entry.yearRange,
-                        style: GoogleFonts.inter(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textMuted,
-                        ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    entry.title,
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    entry.note,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Iconsax.play_circle, size: 14, color: AppColors.primary),
-                      const SizedBox(width: 4),
-                      Text(
-                        s.tvUniverseViewSeries,
-                        style: GoogleFonts.inter(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const Spacer(),
-                      const Icon(Icons.arrow_forward_ios_rounded, size: 11, color: AppColors.textMuted),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    )
+          ),
+        )
         .animate()
         .fadeIn(delay: Duration(milliseconds: (index.clamp(0, 10)) * 25))
         .slideY(begin: 0.04, end: 0);
   }
 }
-
