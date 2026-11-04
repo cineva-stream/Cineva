@@ -19,7 +19,8 @@ class AiringCalendarScreen extends ConsumerStatefulWidget {
   const AiringCalendarScreen({super.key});
 
   @override
-  ConsumerState<AiringCalendarScreen> createState() => _AiringCalendarScreenState();
+  ConsumerState<AiringCalendarScreen> createState() =>
+      _AiringCalendarScreenState();
 }
 
 class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
@@ -72,12 +73,32 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
 
   String _getMonthName(DateTime date, AppStrings s) {
     const enMonths = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     const idMonths = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     final idx = date.month - 1;
     return s.isIndonesian ? idMonths[idx] : enMonths[idx];
@@ -94,11 +115,13 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
     final scheduleAsync = ref.watch(calendarScheduleProvider);
     final upcomingAsync = ref.watch(upcomingMediaListProvider);
 
-    final isSelectedDateToday = selectedDate.year == _today.year &&
+    final isSelectedDateToday =
+        selectedDate.year == _today.year &&
         selectedDate.month == _today.month &&
         selectedDate.day == _today.day;
 
-    final isUpcomingDateToday = selectedUpcomingDate != null &&
+    final isUpcomingDateToday =
+        selectedUpcomingDate != null &&
         selectedUpcomingDate.year == _today.year &&
         selectedUpcomingDate.month == _today.month &&
         selectedUpcomingDate.day == _today.day;
@@ -115,7 +138,8 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+                    onPressed: () =>
+                        context.canPop() ? context.pop() : context.go('/'),
                     icon: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -125,7 +149,11 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                           color: Colors.white.withValues(alpha: 0.08),
                         ),
                       ),
-                      child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -145,8 +173,8 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                           activeTab == 0
                               ? '${selectedDate.day} ${_getMonthName(selectedDate, s)} ${selectedDate.year}${isSelectedDateToday ? ' • ${s.calendarToday}' : ''}'
                               : (selectedUpcomingDate == null
-                                  ? s.upcomingSubtitle
-                                  : '${selectedUpcomingDate.day} ${_getMonthName(selectedUpcomingDate, s)} ${selectedUpcomingDate.year}${isUpcomingDateToday ? ' • ${s.calendarToday}' : ''}'),
+                                    ? s.upcomingSubtitle
+                                    : '${selectedUpcomingDate.day} ${_getMonthName(selectedUpcomingDate, s)} ${selectedUpcomingDate.year}${isUpcomingDateToday ? ' • ${s.calendarToday}' : ''}'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.inter(
@@ -161,7 +189,8 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                   if (activeTab == 0 && !isSelectedDateToday)
                     TextButton.icon(
                       onPressed: () {
-                        ref.read(selectedCalendarDateProvider.notifier).state = _today;
+                        ref.read(selectedCalendarDateProvider.notifier).state =
+                            _today;
                         if (_dateScrollController.hasClients) {
                           _dateScrollController.animateTo(
                             210.0,
@@ -171,14 +200,26 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                         }
                       },
                       style: TextButton.styleFrom(
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                        backgroundColor: AppColors.primary.withValues(
+                          alpha: 0.15,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
-                          side: const BorderSide(color: AppColors.primary, width: 1),
+                          side: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1,
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                       ),
-                      icon: const Icon(Iconsax.calendar_1, size: 14, color: AppColors.primary),
+                      icon: const Icon(
+                        Iconsax.calendar_1,
+                        size: 14,
+                        color: AppColors.primary,
+                      ),
                       label: Text(
                         s.calendarToday,
                         style: GoogleFonts.inter(
@@ -191,17 +232,30 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                   else if (activeTab == 1 && selectedUpcomingDate != null)
                     TextButton.icon(
                       onPressed: () {
-                        ref.read(selectedUpcomingDateProvider.notifier).state = null;
+                        ref.read(selectedUpcomingDateProvider.notifier).state =
+                            null;
                       },
                       style: TextButton.styleFrom(
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                        backgroundColor: AppColors.primary.withValues(
+                          alpha: 0.15,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
-                          side: const BorderSide(color: AppColors.primary, width: 1),
+                          side: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1,
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                       ),
-                      icon: const Icon(Iconsax.calendar_tick, size: 14, color: AppColors.primary),
+                      icon: const Icon(
+                        Iconsax.calendar_tick,
+                        size: 14,
+                        color: AppColors.primary,
+                      ),
                       label: Text(
                         s.upcomingFilterAll,
                         style: GoogleFonts.inter(
@@ -268,36 +322,43 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                   separatorBuilder: (_, _) => const SizedBox(width: 10),
                   itemBuilder: (context, index) {
                     final date = _dates[index];
-                    final isSelected = date.year == selectedDate.year &&
+                    final isSelected =
+                        date.year == selectedDate.year &&
                         date.month == selectedDate.month &&
                         date.day == selectedDate.day;
-                    final isDateToday = date.year == _today.year &&
+                    final isDateToday =
+                        date.year == _today.year &&
                         date.month == _today.month &&
                         date.day == _today.day;
 
                     return GestureDetector(
                       onTap: () {
-                        ref.read(selectedCalendarDateProvider.notifier).state = date;
+                        ref.read(selectedCalendarDateProvider.notifier).state =
+                            date;
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
                         curve: Curves.easeOutCubic,
                         width: 58,
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.surfaceVariant,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: isSelected
                                 ? AppColors.primary
                                 : (isDateToday
-                                    ? AppColors.primary.withValues(alpha: 0.5)
-                                    : Colors.white.withValues(alpha: 0.08)),
+                                      ? AppColors.primary.withValues(alpha: 0.5)
+                                      : Colors.white.withValues(alpha: 0.08)),
                             width: isSelected || isDateToday ? 1.5 : 1,
                           ),
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.35),
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.35,
+                                    ),
                                     blurRadius: 10,
                                     offset: const Offset(0, 3),
                                   ),
@@ -312,10 +373,14 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                               _getDayName(date, s),
                               style: GoogleFonts.inter(
                                 fontSize: 11,
-                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                fontWeight: isSelected
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
                                 color: isSelected
                                     ? Colors.black
-                                    : (isDateToday ? AppColors.primary : AppColors.textMuted),
+                                    : (isDateToday
+                                          ? AppColors.primary
+                                          : AppColors.textMuted),
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -324,7 +389,9 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                               style: GoogleFonts.outfit(
                                 fontSize: 19,
                                 fontWeight: FontWeight.w800,
-                                color: isSelected ? Colors.black : AppColors.textPrimary,
+                                color: isSelected
+                                    ? Colors.black
+                                    : AppColors.textPrimary,
                               ),
                             ),
                             if (isDateToday && !isSelected)
@@ -354,15 +421,45 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    _buildCategoryChip(context, ref, id: 'all', label: s.calendarFilterAll, isSelected: selectedCategory == 'all'),
+                    _buildCategoryChip(
+                      context,
+                      ref,
+                      id: 'all',
+                      label: s.calendarFilterAll,
+                      isSelected: selectedCategory == 'all',
+                    ),
                     const SizedBox(width: 8),
-                    _buildCategoryChip(context, ref, id: 'anime', label: s.calendarFilterAnime, isSelected: selectedCategory == 'anime'),
+                    _buildCategoryChip(
+                      context,
+                      ref,
+                      id: 'anime',
+                      label: s.calendarFilterAnime,
+                      isSelected: selectedCategory == 'anime',
+                    ),
                     const SizedBox(width: 8),
-                    _buildCategoryChip(context, ref, id: 'kdrama', label: s.calendarFilterKdrama, isSelected: selectedCategory == 'kdrama'),
+                    _buildCategoryChip(
+                      context,
+                      ref,
+                      id: 'kdrama',
+                      label: s.calendarFilterKdrama,
+                      isSelected: selectedCategory == 'kdrama',
+                    ),
                     const SizedBox(width: 8),
-                    _buildCategoryChip(context, ref, id: 'western', label: s.calendarFilterWestern, isSelected: selectedCategory == 'western'),
+                    _buildCategoryChip(
+                      context,
+                      ref,
+                      id: 'western',
+                      label: s.calendarFilterWestern,
+                      isSelected: selectedCategory == 'western',
+                    ),
                     const SizedBox(width: 8),
-                    _buildCategoryChip(context, ref, id: 'indonesian', label: s.calendarFilterIndonesian, isSelected: selectedCategory == 'indonesian'),
+                    _buildCategoryChip(
+                      context,
+                      ref,
+                      id: 'indonesian',
+                      label: s.calendarFilterIndonesian,
+                      isSelected: selectedCategory == 'indonesian',
+                    ),
                   ],
                 ),
               ),
@@ -380,7 +477,11 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Iconsax.calendar_remove, size: 56, color: AppColors.textMuted),
+                              const Icon(
+                                Iconsax.calendar_remove,
+                                size: 56,
+                                color: AppColors.textMuted,
+                              ),
                               const SizedBox(height: 16),
                               Text(
                                 s.calendarNoShows,
@@ -407,7 +508,10 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                     }
 
                     return ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
                       physics: const BouncingScrollPhysics(),
                       itemCount: shows.length,
                       separatorBuilder: (_, _) => Divider(
@@ -417,7 +521,11 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                       ),
                       itemBuilder: (context, index) {
                         final show = shows[index];
-                        return _AiringShowListItem(show: show, index: index, s: s);
+                        return _AiringShowListItem(
+                          show: show,
+                          index: index,
+                          s: s,
+                        );
                       },
                     );
                   },
@@ -428,15 +536,24 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
+                        const Icon(
+                          Iconsax.warning_2,
+                          size: 48,
+                          color: AppColors.textMuted,
+                        ),
                         const SizedBox(height: 12),
                         Text(
-                          s.isIndonesian ? 'Gagal memuat jadwal tayang' : 'Failed to load schedule',
-                          style: GoogleFonts.inter(color: AppColors.textPrimary),
+                          s.isIndonesian
+                              ? 'Gagal memuat jadwal tayang'
+                              : 'Failed to load schedule',
+                          style: GoogleFonts.inter(
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton(
-                          onPressed: () => ref.invalidate(calendarScheduleProvider),
+                          onPressed: () =>
+                              ref.invalidate(calendarScheduleProvider),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.black,
@@ -465,14 +582,19 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                       final isAllSelected = selectedUpcomingDate == null;
                       return GestureDetector(
                         onTap: () {
-                          ref.read(selectedUpcomingDateProvider.notifier).state = null;
+                          ref
+                                  .read(selectedUpcomingDateProvider.notifier)
+                                  .state =
+                              null;
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
                           curve: Curves.easeOutCubic,
                           width: 62,
                           decoration: BoxDecoration(
-                            color: isAllSelected ? AppColors.primary : AppColors.surfaceVariant,
+                            color: isAllSelected
+                                ? AppColors.primary
+                                : AppColors.surfaceVariant,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: isAllSelected
@@ -483,7 +605,9 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                             boxShadow: isAllSelected
                                 ? [
                                     BoxShadow(
-                                      color: AppColors.primary.withValues(alpha: 0.35),
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.35,
+                                      ),
                                       blurRadius: 10,
                                       offset: const Offset(0, 3),
                                     ),
@@ -497,7 +621,9 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                               Icon(
                                 Iconsax.calendar_tick,
                                 size: 18,
-                                color: isAllSelected ? Colors.black : AppColors.primary,
+                                color: isAllSelected
+                                    ? Colors.black
+                                    : AppColors.primary,
                               ),
                               const SizedBox(height: 5),
                               Text(
@@ -505,7 +631,9 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                                 style: GoogleFonts.outfit(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
-                                  color: isAllSelected ? Colors.black : AppColors.textPrimary,
+                                  color: isAllSelected
+                                      ? Colors.black
+                                      : AppColors.textPrimary,
                                 ),
                               ),
                             ],
@@ -515,37 +643,44 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                     }
 
                     final date = _upcomingDates[index - 1];
-                    final isSelected = selectedUpcomingDate != null &&
+                    final isSelected =
+                        selectedUpcomingDate != null &&
                         date.year == selectedUpcomingDate.year &&
                         date.month == selectedUpcomingDate.month &&
                         date.day == selectedUpcomingDate.day;
-                    final isDateToday = date.year == _today.year &&
+                    final isDateToday =
+                        date.year == _today.year &&
                         date.month == _today.month &&
                         date.day == _today.day;
 
                     return GestureDetector(
                       onTap: () {
-                        ref.read(selectedUpcomingDateProvider.notifier).state = date;
+                        ref.read(selectedUpcomingDateProvider.notifier).state =
+                            date;
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
                         curve: Curves.easeOutCubic,
                         width: 58,
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.surfaceVariant,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: isSelected
                                 ? AppColors.primary
                                 : (isDateToday
-                                    ? AppColors.primary.withValues(alpha: 0.5)
-                                    : Colors.white.withValues(alpha: 0.08)),
+                                      ? AppColors.primary.withValues(alpha: 0.5)
+                                      : Colors.white.withValues(alpha: 0.08)),
                             width: isSelected || isDateToday ? 1.5 : 1,
                           ),
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.35),
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.35,
+                                    ),
                                     blurRadius: 10,
                                     offset: const Offset(0, 3),
                                   ),
@@ -560,10 +695,14 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                               _getDayName(date, s),
                               style: GoogleFonts.inter(
                                 fontSize: 11,
-                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                fontWeight: isSelected
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
                                 color: isSelected
                                     ? Colors.black
-                                    : (isDateToday ? AppColors.primary : AppColors.textMuted),
+                                    : (isDateToday
+                                          ? AppColors.primary
+                                          : AppColors.textMuted),
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -572,7 +711,9 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                               style: GoogleFonts.outfit(
                                 fontSize: 19,
                                 fontWeight: FontWeight.w800,
-                                color: isSelected ? Colors.black : AppColors.textPrimary,
+                                color: isSelected
+                                    ? Colors.black
+                                    : AppColors.textPrimary,
                               ),
                             ),
                             if (isDateToday && !isSelected)
@@ -602,11 +743,29 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    _buildUpcomingChip(context, ref, id: 'all', label: s.upcomingFilterAll, isSelected: upcomingCategory == 'all'),
+                    _buildUpcomingChip(
+                      context,
+                      ref,
+                      id: 'all',
+                      label: s.upcomingFilterAll,
+                      isSelected: upcomingCategory == 'all',
+                    ),
                     const SizedBox(width: 8),
-                    _buildUpcomingChip(context, ref, id: 'movie', label: s.upcomingFilterMovies, isSelected: upcomingCategory == 'movie'),
+                    _buildUpcomingChip(
+                      context,
+                      ref,
+                      id: 'movie',
+                      label: s.upcomingFilterMovies,
+                      isSelected: upcomingCategory == 'movie',
+                    ),
                     const SizedBox(width: 8),
-                    _buildUpcomingChip(context, ref, id: 'tv', label: s.upcomingFilterTv, isSelected: upcomingCategory == 'tv'),
+                    _buildUpcomingChip(
+                      context,
+                      ref,
+                      id: 'tv',
+                      label: s.upcomingFilterTv,
+                      isSelected: upcomingCategory == 'tv',
+                    ),
                   ],
                 ),
               ),
@@ -624,7 +783,11 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Iconsax.clock, size: 56, color: AppColors.textMuted),
+                              const Icon(
+                                Iconsax.clock,
+                                size: 56,
+                                color: AppColors.textMuted,
+                              ),
                               const SizedBox(height: 16),
                               Text(
                                 s.upcomingNoMedia,
@@ -648,19 +811,33 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                                 const SizedBox(height: 16),
                                 ElevatedButton.icon(
                                   onPressed: () {
-                                    ref.read(selectedUpcomingDateProvider.notifier).state = null;
+                                    ref
+                                            .read(
+                                              selectedUpcomingDateProvider
+                                                  .notifier,
+                                            )
+                                            .state =
+                                        null;
                                   },
-                                  icon: const Icon(Iconsax.calendar_tick, size: 16),
+                                  icon: const Icon(
+                                    Iconsax.calendar_tick,
+                                    size: 16,
+                                  ),
                                   label: Text(
                                     s.isIndonesian
                                         ? 'Tampilkan Semua Rilis Mendatang'
                                         : 'Show All Upcoming Releases',
-                                    style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary,
                                     foregroundColor: Colors.black,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -671,7 +848,10 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                     }
 
                     return ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
                       physics: const BouncingScrollPhysics(),
                       itemCount: items.length,
                       separatorBuilder: (_, _) => Divider(
@@ -681,7 +861,11 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                       ),
                       itemBuilder: (context, index) {
                         final media = items[index];
-                        return _UpcomingMediaListItem(media: media, index: index, s: s);
+                        return _UpcomingMediaListItem(
+                          media: media,
+                          index: index,
+                          s: s,
+                        );
                       },
                     );
                   },
@@ -692,15 +876,24 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
+                        const Icon(
+                          Iconsax.warning_2,
+                          size: 48,
+                          color: AppColors.textMuted,
+                        ),
                         const SizedBox(height: 12),
                         Text(
-                          s.isIndonesian ? 'Gagal memuat daftar rilis mendatang' : 'Failed to load upcoming releases',
-                          style: GoogleFonts.inter(color: AppColors.textPrimary),
+                          s.isIndonesian
+                              ? 'Gagal memuat daftar rilis mendatang'
+                              : 'Failed to load upcoming releases',
+                          style: GoogleFonts.inter(
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton(
-                          onPressed: () => ref.invalidate(upcomingMediaListProvider),
+                          onPressed: () =>
+                              ref.invalidate(upcomingMediaListProvider),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.black,
@@ -781,7 +974,9 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
           color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.white.withValues(alpha: 0.08),
+            color: isSelected
+                ? AppColors.primary
+                : Colors.white.withValues(alpha: 0.08),
             width: 1,
           ),
         ),
@@ -816,7 +1011,9 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
           color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.white.withValues(alpha: 0.08),
+            color: isSelected
+                ? AppColors.primary
+                : Colors.white.withValues(alpha: 0.08),
             width: 1,
           ),
         ),
@@ -847,126 +1044,148 @@ class _AiringShowListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: () => context.push('/tv/${show.id}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Poster
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: show.posterPath != null
-                  ? CachedNetworkImage(
-                      imageUrl: ApiConstants.imageUrl(
-                        show.posterPath,
-                        size: ApiConstants.posterSmall,
-                      ),
-                      width: 72,
-                      height: 104,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => Container(
-                        width: 72,
-                        height: 104,
-                        color: AppColors.surfaceVariant,
-                      ),
-                    )
-                  : Container(
-                      width: 72,
-                      height: 104,
-                      color: AppColors.surfaceVariant,
-                      child: const Icon(Icons.tv, color: AppColors.textMuted),
-                    ),
-            ),
-            const SizedBox(width: 14),
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => context.push('/tv/${show.id}'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Poster
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: show.posterPath != null
+                      ? CachedNetworkImage(
+                          imageUrl: ApiConstants.imageUrl(
+                            show.posterPath,
+                            size: ApiConstants.posterSmall,
+                          ),
+                          width: 72,
+                          height: 104,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => Container(
+                            width: 72,
+                            height: 104,
+                            color: AppColors.surfaceVariant,
+                          ),
+                        )
+                      : Container(
+                          width: 72,
+                          height: 104,
+                          color: AppColors.surfaceVariant,
+                          child: const Icon(
+                            Icons.tv,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                ),
+                const SizedBox(width: 14),
 
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(5),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.4),
-                            width: 0.8,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.4),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              show.regionBadge,
+                              style: GoogleFonts.inter(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          show.regionBadge,
-                          style: GoogleFonts.inter(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                            letterSpacing: 0.5,
+                          const Spacer(),
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 15,
+                            color: AppColors.star,
                           ),
-                        ),
+                          const SizedBox(width: 3),
+                          Text(
+                            show.voteAverage > 0
+                                ? show.voteAverage.toStringAsFixed(1)
+                                : 'N/A',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
                       ),
-                      const Spacer(),
-                      const Icon(Icons.star_rounded, size: 15, color: AppColors.star),
-                      const SizedBox(width: 3),
+                      const SizedBox(height: 5),
                       Text(
-                        show.voteAverage > 0 ? show.voteAverage.toStringAsFixed(1) : 'N/A',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
+                        show.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    show.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    show.overview.isNotEmpty ? show.overview : 'No overview available.',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      color: AppColors.textMuted,
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Iconsax.play_circle, size: 14, color: AppColors.primary),
-                      const SizedBox(width: 4),
+                      const SizedBox(height: 3),
                       Text(
-                        s.isIndonesian ? 'Lihat Serial' : 'View Series',
+                        show.overview.isNotEmpty
+                            ? show.overview
+                            : 'No overview available.',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
+                          fontSize: 11.5,
+                          color: AppColors.textMuted,
+                          height: 1.35,
                         ),
                       ),
-                      const Spacer(),
-                      const Icon(Icons.arrow_forward_ios_rounded, size: 11, color: AppColors.textMuted),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Iconsax.play_circle,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            s.isIndonesian ? 'Lihat Serial' : 'View Series',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const Spacer(),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 11,
+                            color: AppColors.textMuted,
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    )
+          ),
+        )
         .animate()
         .fadeIn(delay: Duration(milliseconds: (index.clamp(0, 10)) * 25))
         .slideY(begin: 0.04, end: 0);
@@ -989,179 +1208,183 @@ class _UpcomingMediaListItem extends ConsumerWidget {
     final isMovie = media.mediaType == 'movie';
 
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: () {
-        if (isMovie) {
-          context.push('/movie/${media.id}');
-        } else {
-          context.push('/tv/${media.id}');
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Poster
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: media.posterPath != null
-                  ? CachedNetworkImage(
-                      imageUrl: ApiConstants.imageUrl(
-                        media.posterPath,
-                        size: ApiConstants.posterSmall,
-                      ),
-                      width: 72,
-                      height: 104,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => Container(
-                        width: 72,
-                        height: 104,
-                        color: AppColors.surfaceVariant,
-                      ),
-                    )
-                  : Container(
-                      width: 72,
-                      height: 104,
-                      color: AppColors.surfaceVariant,
-                      child: Icon(
-                        isMovie ? Icons.movie : Icons.tv,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-            ),
-            const SizedBox(width: 14),
+          borderRadius: BorderRadius.circular(10),
+          onTap: () {
+            if (isMovie) {
+              context.push('/movie/${media.id}');
+            } else {
+              context.push('/tv/${media.id}');
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Poster
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: media.posterPath != null
+                      ? CachedNetworkImage(
+                          imageUrl: ApiConstants.imageUrl(
+                            media.posterPath,
+                            size: ApiConstants.posterSmall,
+                          ),
+                          width: 72,
+                          height: 104,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => Container(
+                            width: 72,
+                            height: 104,
+                            color: AppColors.surfaceVariant,
+                          ),
+                        )
+                      : Container(
+                          width: 72,
+                          height: 104,
+                          color: AppColors.surfaceVariant,
+                          child: Icon(
+                            isMovie ? Icons.movie : Icons.tv,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                ),
+                const SizedBox(width: 14),
 
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Countdown Pill
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(5),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.5),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Text(
-                          media.countdownLabel(s),
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      // Type tag (MOVIE / TV)
-                      Text(
-                        isMovie ? 'FILM' : 'SERIAL',
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textMuted,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const Spacer(),
-                      // Watchlist Quick Bookmark Icon
-                      Consumer(
-                        builder: (context, ref, _) {
-                          final isInWatchlist = ref.watch(
-                            isInWatchlistProvider((
-                              id: media.id,
-                              type: media.mediaType,
-                            )),
-                          );
-                          return GestureDetector(
-                            onTap: () async {
-                              final item = WatchlistItem(
-                                id: media.id,
-                                title: media.title,
-                                posterPath: media.posterPath,
-                                voteAverage: media.voteAverage,
-                                type: media.mediaType,
-                                addedAt: DateTime.now(),
-                              );
-                              final added = await ref
-                                  .read(watchlistProvider.notifier)
-                                  .toggle(item);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      added
-                                          ? s.detailAddedToWatchlist
-                                          : s.detailRemovedFromWatchlist,
-                                    ),
-                                    backgroundColor: AppColors.surfaceVariant,
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
-                              }
-                            },
-                            child: Icon(
-                              isInWatchlist
-                                  ? Icons.bookmark_rounded
-                                  : Icons.bookmark_border_rounded,
-                              color: isInWatchlist
-                                  ? AppColors.primary
-                                  : AppColors.textMuted,
-                              size: 20,
+                      Row(
+                        children: [
+                          // Countdown Pill
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
                             ),
-                          );
-                        },
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.5),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              media.countdownLabel(s),
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          // Type tag (MOVIE / TV)
+                          Text(
+                            isMovie ? 'FILM' : 'SERIAL',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMuted,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const Spacer(),
+                          // Watchlist Quick Bookmark Icon
+                          Consumer(
+                            builder: (context, ref, _) {
+                              final isInWatchlist = ref.watch(
+                                isInWatchlistProvider((
+                                  id: media.id,
+                                  type: media.mediaType,
+                                )),
+                              );
+                              return GestureDetector(
+                                onTap: () async {
+                                  final item = WatchlistItem(
+                                    id: media.id,
+                                    title: media.title,
+                                    posterPath: media.posterPath,
+                                    voteAverage: media.voteAverage,
+                                    type: media.mediaType,
+                                    addedAt: DateTime.now(),
+                                  );
+                                  final added = await ref
+                                      .read(watchlistProvider.notifier)
+                                      .toggle(item);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          added
+                                              ? s.detailAddedToWatchlist
+                                              : s.detailRemovedFromWatchlist,
+                                        ),
+                                        backgroundColor:
+                                            AppColors.surfaceVariant,
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Icon(
+                                  isInWatchlist
+                                      ? Icons.bookmark_rounded
+                                      : Icons.bookmark_border_rounded,
+                                  color: isInWatchlist
+                                      ? AppColors.primary
+                                      : AppColors.textMuted,
+                                  size: 20,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        media.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      if (media.formattedDate.isNotEmpty)
+                        Text(
+                          'Rilis: ${media.formattedDate}',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primaryLight,
+                          ),
+                        ),
+                      const SizedBox(height: 3),
+                      Text(
+                        media.overview.isNotEmpty
+                            ? media.overview
+                            : 'No synopsis available yet.',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          color: AppColors.textMuted,
+                          height: 1.35,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    media.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  if (media.formattedDate.isNotEmpty)
-                    Text(
-                      'Rilis: ${media.formattedDate}',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryLight,
-                      ),
-                    ),
-                  const SizedBox(height: 3),
-                  Text(
-                    media.overview.isNotEmpty
-                        ? media.overview
-                        : 'No synopsis available yet.',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      color: AppColors.textMuted,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    )
+          ),
+        )
         .animate()
         .fadeIn(delay: Duration(milliseconds: (index.clamp(0, 10)) * 25))
         .slideY(begin: 0.04, end: 0);

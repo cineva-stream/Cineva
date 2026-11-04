@@ -13,6 +13,7 @@ import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../data/tv_universe_registry.dart';
 import '../../domain/entities/tv_universe.dart';
+import '../../../detail/presentation/screens/tv_detail_screen.dart';
 
 class TvUniverseScreen extends ConsumerWidget {
   final String universeId;
@@ -26,12 +27,19 @@ class TvUniverseScreen extends ConsumerWidget {
     this.fallbackBackdrop,
   });
 
-  String? _resolveHeaderImage(TvUniverse universe) {
+  String? _resolveHeaderImage(TvUniverse universe, WidgetRef ref) {
     if (universe.backdropPath != null && universe.backdropPath!.trim().isNotEmpty) {
       return universe.backdropPath;
     }
     if (fallbackBackdrop != null && fallbackBackdrop!.trim().isNotEmpty) {
       return fallbackBackdrop;
+    }
+    if (universe.entries.isNotEmpty) {
+      final firstTv = ref.watch(tvDetailProvider(universe.entries.first.tmdbTvId)).valueOrNull;
+      final dynamicBackdrop = firstTv?['backdrop_path'] as String?;
+      if (dynamicBackdrop != null && dynamicBackdrop.isNotEmpty) {
+        return dynamicBackdrop;
+      }
     }
     if (universe.posterPath != null && universe.posterPath!.trim().isNotEmpty) {
       return universe.posterPath;
@@ -39,31 +47,40 @@ class TvUniverseScreen extends ConsumerWidget {
     if (fallbackPoster != null && fallbackPoster!.trim().isNotEmpty) {
       return fallbackPoster;
     }
+    for (final entry in universe.entries) {
+      if (entry.posterPath != null && entry.posterPath!.trim().isNotEmpty) {
+        return entry.posterPath;
+      }
+    }
     return null;
+  }
+
+  Widget _buildFallbackMesh() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1E1610),
+            Color(0xFF121218),
+            Color(0xFF000000),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.movie_filter_rounded,
+          size: 64,
+          color: AppColors.primary.withValues(alpha: 0.15),
+        ),
+      ),
+    );
   }
 
   Widget _buildHeaderImage(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) {
-      return Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1E1610),
-              Color(0xFF121218),
-              Color(0xFF000000),
-            ],
-          ),
-        ),
-        child: Center(
-          child: Icon(
-            Icons.movie_filter_rounded,
-            size: 64,
-            color: AppColors.primary.withValues(alpha: 0.15),
-          ),
-        ),
-      );
+      return _buildFallbackMesh();
     }
 
     return Stack(
@@ -76,6 +93,7 @@ class TvUniverseScreen extends ConsumerWidget {
             size: ApiConstants.backdropMedium,
           ),
           fit: BoxFit.cover,
+          errorWidget: (_, _, _) => _buildFallbackMesh(),
         ),
         Positioned.fill(
           child: BackdropFilter(
@@ -92,6 +110,7 @@ class TvUniverseScreen extends ConsumerWidget {
             size: ApiConstants.backdropLarge,
           ),
           fit: BoxFit.cover,
+          errorWidget: (_, _, _) => const SizedBox.shrink(),
         ),
         // Layer 3: Cinema OLED gradient overlay
         Container(
@@ -137,7 +156,7 @@ class TvUniverseScreen extends ConsumerWidget {
       );
     }
 
-    final headerImage = _resolveHeaderImage(universe);
+    final headerImage = _resolveHeaderImage(universe, ref);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -278,7 +297,7 @@ class TvUniverseScreen extends ConsumerWidget {
   }
 }
 
-class _TvUniverseEntryItem extends StatelessWidget {
+class _TvUniverseEntryItem extends ConsumerWidget {
   final TvUniverseEntry entry;
   final AppStrings s;
   final int index;
@@ -303,8 +322,12 @@ class _TvUniverseEntryItem extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final badgeColor = _typeBadgeColor(entry.type);
+    final dynamicDetail = ref.watch(tvDetailProvider(entry.tmdbTvId)).valueOrNull;
+    final effectivePoster = (entry.posterPath != null && entry.posterPath!.isNotEmpty)
+        ? entry.posterPath
+        : dynamicDetail?['poster_path'] as String?;
 
     return InkWell(
       borderRadius: BorderRadius.circular(10),
@@ -342,10 +365,10 @@ class _TvUniverseEntryItem extends StatelessWidget {
             // TV Series Poster Thumbnail
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: entry.posterPath != null && entry.posterPath!.isNotEmpty
+              child: effectivePoster != null && effectivePoster.isNotEmpty
                   ? CachedNetworkImage(
                       imageUrl: ApiConstants.imageUrl(
-                        entry.posterPath,
+                        effectivePoster,
                         size: ApiConstants.posterSmall,
                       ),
                       width: 68,
@@ -355,6 +378,16 @@ class _TvUniverseEntryItem extends StatelessWidget {
                         width: 68,
                         height: 98,
                         color: AppColors.surfaceVariant,
+                        child: const Center(
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
                       ),
                       errorWidget: (_, _, _) => Container(
                         width: 68,
