@@ -34,6 +34,14 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Setup Environment File
+        run: |
+          if [ -f .env.example ]; then
+            cp .env.example .env
+          else
+            touch .env
+          fi
+
       - name: Run Static Analysis
         run: flutter analyze --no-fatal-infos
 

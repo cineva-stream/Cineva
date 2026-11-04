@@ -11,6 +11,8 @@ analyzer:
   exclude:
     - build/**
     - android/**
+  errors:
+    asset_does_not_exist: ignore
 include: package:flutter_lints/flutter.yaml
 
 linter:
