@@ -71,18 +71,6 @@ Pembaruan Cineva versi 1.1.3 menghadirkan paket pembaruan besar **Eksplorasi & P
 - **Panel Informasi Film & Episode pada Pemutar Video**: Ikon info di bilah kontrol pemutar untuk membuka panel samping sinopsis dan detail episode bergaya YouTube tanpa menghentikan pemutaran video.
 - **Modal Detail Pembaruan Aplikasi & Auto-Translasi**: Popup changelog interaktif dengan fitur auto-translasi dwibahasa untuk catatan rilis GitHub.
 
-### Cineva v1.1.1
-- **Sinkronisasi Cluster Scraper Flixquest (`scraper.flix.quest`)**: Akses ke 17+ upstream scrapers terverifikasi dan multi-instance failover.
-- **Prioritas Provider Film Bioskop Indonesia & Asia**: Penempatan provider `movy` dan `moviepire` di urutan teratas untuk film bioskop Indonesia dan anime.
-- **Native 404 Stream Unavailable Overlay**: Pencegahan pemutaran video iklan atau salah judul dengan overlay bertema *Cinema Amber & Deep Obsidian*.
-- **Pembersihan Kontrol Ganda & Side Panel Border Tipis**: Redesain menu server, episode, kualitas, dan subtitle dengan *subtle border* 0.8px tanpa card tebal.
-- **Katalog TV Live Terlengkap**: Saluran nasional (Indosiar HD, Moji HD, SCTV HD, Trans TV, Trans7 HD, dll.) dan internasional dengan *YouTube-Style Channel Drawer*.
-
-### Cineva v1.1.0
-- **Navigasi Kembali TV Live & Animasi Slide-Up**: Pemulihan instan bottom navigation bar tanpa perlu menekan tombol back dua kali.
-- **Kunci Otomatis Orientasi Lanskap Layar Penuh TV Live**: Rotasi instan ke lanskap saat tombol fullscreen ditekan.
-- **Penyimpanan Permanen Pengaturan Subtitle**: Penyimpanan persistensi untuk stroke/outline, offset vertikal, dan warna font pada Hive settings.
-
 ---
 
 ## Informasi Versi
