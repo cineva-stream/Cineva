@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../app/theme/app_colors.dart';
 import '../../core/localization/app_language_provider.dart';
 import '../../features/live_tv/presentation/providers/live_tv_providers.dart';
+import '../../features/search/presentation/screens/search_screen.dart';
 import 'exit_confirmation_bottom_sheet.dart';
 
 /// Lightweight, modern, and minimalist bottom navigation shell.
@@ -29,15 +30,20 @@ class MainShell extends ConsumerWidget {
     return -1; // Other routes like /watchlist do not select any bottom navigation tab
   }
 
-  void _onTap(BuildContext context, int index) {
+  void _onTap(BuildContext context, WidgetRef ref, int index) {
     switch (index) {
       case 0:
+        resetSearchState(ref);
         context.go('/');
         break;
       case 1:
         context.go('/live-tv');
         break;
       case 2:
+        if (_currentIndex(context) == 2 &&
+            ref.read(searchQueryProvider).isNotEmpty) {
+          resetSearchState(ref);
+        }
         context.go('/search');
         break;
       case 3:
@@ -86,7 +92,8 @@ class MainShell extends ConsumerWidget {
         }
         final currentIdx = _currentIndex(context);
         if (currentIdx != 0) {
-          // If anywhere other than Beranda, back button returns to Beranda
+          // If anywhere other than Beranda, back button returns to Beranda and resets search
+          resetSearchState(ref);
           context.go('/');
         } else {
           // If already on Beranda, show smooth exit confirmation bottom sheet
@@ -138,7 +145,7 @@ class MainShell extends ConsumerWidget {
                               label: s.navHome,
                               isActive: currentIndex == 0,
                               isCompact: isCompact,
-                              onTap: () => _onTap(context, 0),
+                              onTap: () => _onTap(context, ref, 0),
                             ),
                             _NavTab(
                               icon: Icons.live_tv_outlined,
@@ -146,7 +153,7 @@ class MainShell extends ConsumerWidget {
                               label: s.navLiveTv,
                               isActive: currentIndex == 1,
                               isCompact: isCompact,
-                              onTap: () => _onTap(context, 1),
+                              onTap: () => _onTap(context, ref, 1),
                             ),
                             _NavTab(
                               icon: Icons.search_rounded,
@@ -154,7 +161,7 @@ class MainShell extends ConsumerWidget {
                               label: s.navSearch,
                               isActive: currentIndex == 2,
                               isCompact: isCompact,
-                              onTap: () => _onTap(context, 2),
+                              onTap: () => _onTap(context, ref, 2),
                             ),
                             _NavTab(
                               icon: Icons.history_rounded,
@@ -162,7 +169,7 @@ class MainShell extends ConsumerWidget {
                               label: s.navHistory,
                               isActive: currentIndex == 3,
                               isCompact: isCompact,
-                              onTap: () => _onTap(context, 3),
+                              onTap: () => _onTap(context, ref, 3),
                             ),
                             _NavTab(
                               icon: Icons.settings_outlined,
@@ -170,7 +177,7 @@ class MainShell extends ConsumerWidget {
                               label: s.navSettings,
                               isActive: currentIndex == 4,
                               isCompact: isCompact,
-                              onTap: () => _onTap(context, 4),
+                              onTap: () => _onTap(context, ref, 4),
                             ),
                           ],
                         ),

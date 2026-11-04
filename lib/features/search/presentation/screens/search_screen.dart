@@ -54,6 +54,14 @@ final searchTvResultsProvider = FutureProvider<List<TvSeries>>((ref) async {
 /// Search tab index: 0 = All, 1 = Movies, 2 = TV Series
 final searchTabProvider = StateProvider<int>((ref) => 0);
 
+/// Resets all search-related state (query, tab filter, genre filter) to defaults.
+void resetSearchState(WidgetRef ref) {
+  ref.read(searchQueryProvider.notifier).state = '';
+  ref.read(searchTabProvider.notifier).state = 0;
+  ref.read(selectedSearchGenreProvider.notifier).state =
+      GenreConstants.filters.first;
+}
+
 /// Search screen with real-time TMDB search, history, trends, and top searches.
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -65,6 +73,12 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
   final _debouncer = Debouncer(delay: AppConstants.searchDebounce);
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.text = ref.read(searchQueryProvider);
+  }
 
   @override
   void dispose() {
@@ -89,6 +103,18 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String>(searchQueryProvider, (previous, next) {
+      if (next.isEmpty) {
+        _debouncer.cancel();
+      }
+      if (_controller.text != next) {
+        _controller.text = next;
+        _controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: next.length),
+        );
+      }
+    });
+
     final s = ref.watch(appStringsProvider);
     final query = ref.watch(searchQueryProvider);
     final tabIndex = ref.watch(searchTabProvider);

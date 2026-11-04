@@ -25,6 +25,7 @@ import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../profile/presentation/widgets/avatar_display.dart';
 import '../../../updater/presentation/widgets/in_app_update_banner.dart';
 import '../widgets/airing_calendar_banner.dart';
+import '../../../search/presentation/screens/search_screen.dart';
 
 /// Active category filter on the Home Screen.
 enum HomeCategoryFilter {
@@ -56,6 +57,13 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Ensure search state is reset when user lands on Beranda
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.read(searchQueryProvider).isNotEmpty) {
+        resetSearchState(ref);
+      }
+    });
+
     final s = ref.watch(appStringsProvider);
     final activeFilter = ref.watch(homeFilterProvider);
     final activeGenre = ref.watch(selectedHomeGenreProvider);
