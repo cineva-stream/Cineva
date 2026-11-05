@@ -9,6 +9,7 @@ import '../../core/platform/device_form_factor.dart';
 import '../../features/live_tv/presentation/providers/live_tv_providers.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
 import 'adaptive_nav_rail.dart';
+import 'desktop_window_caption.dart';
 import 'exit_confirmation_bottom_sheet.dart';
 
 /// Lightweight, modern, and adaptive navigation shell.
@@ -111,7 +112,7 @@ class MainShell extends ConsumerWidget {
     final formFactor = resolveFormFactor(context, isTv: isTv);
     final isWideScreen = formFactor == DeviceFormFactor.desktop ||
         formFactor == DeviceFormFactor.tv ||
-        screenWidth >= 768;
+        screenWidth >= 960;
 
     // Smoothly hide bottom nav bar when on Watchlist or when Live TV is actively streaming
     final bool shouldHideBottomNav =
@@ -150,14 +151,21 @@ class MainShell extends ConsumerWidget {
         extendBody: !isWideScreen,
         extendBodyBehindAppBar: !isWideScreen,
         body: isWideScreen
-            ? Row(
+            ? Column(
                 children: [
-                  AdaptiveNavRail(
-                    currentIndex: _currentRailIndex(context),
-                    onDestinationSelected: (idx) => _onTapRail(context, ref, idx),
-                    isTv: isTv,
+                  const DesktopWindowCaption(title: 'Cineva'),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        AdaptiveNavRail(
+                          currentIndex: _currentRailIndex(context),
+                          onDestinationSelected: (idx) => _onTapRail(context, ref, idx),
+                          isTv: isTv,
+                        ),
+                        Expanded(child: child),
+                      ],
+                    ),
                   ),
-                  Expanded(child: child),
                 ],
               )
             : child,

@@ -50,14 +50,11 @@ final isDesktopProvider = Provider<bool>((ref) {
   return Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 });
 
-/// Context helper to resolve the effective form factor based on screen width & platform.
+/// Context helper to resolve the effective form factor based on screen width & TV mode.
 DeviceFormFactor resolveFormFactor(BuildContext context, {required bool isTv}) {
   if (isTv) return DeviceFormFactor.tv;
-  if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
-    return DeviceFormFactor.desktop;
-  }
   final width = MediaQuery.sizeOf(context).width;
-  if (width >= 1024) return DeviceFormFactor.desktop;
+  if (width >= 960) return DeviceFormFactor.desktop;
   if (width >= 600) return DeviceFormFactor.tablet;
   return DeviceFormFactor.mobile;
 }

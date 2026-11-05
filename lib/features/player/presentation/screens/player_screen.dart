@@ -13,6 +13,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
@@ -5694,6 +5695,39 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             isActive: _isSidePanelOpen && _sidePanelPage != _SidePanelPage.info,
             onTap: () => _toggleSidePanel(_SidePanelPage.main),
           ),
+
+          if (!kIsWeb &&
+              !Platform.environment.containsKey('FLUTTER_TEST') &&
+              (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) ...[
+            const SizedBox(width: 8),
+            Container(
+              height: 20,
+              width: 1,
+              color: Colors.white.withValues(alpha: 0.15),
+            ),
+            const SizedBox(width: 4),
+            _buildTopBarIconButton(
+              icon: Icons.remove_rounded,
+              isActive: false,
+              onTap: () => windowManager.minimize(),
+            ),
+            _buildTopBarIconButton(
+              icon: Icons.crop_square_rounded,
+              isActive: false,
+              onTap: () async {
+                if (await windowManager.isMaximized()) {
+                  await windowManager.unmaximize();
+                } else {
+                  await windowManager.maximize();
+                }
+              },
+            ),
+            _buildTopBarIconButton(
+              icon: Icons.close_rounded,
+              isActive: false,
+              onTap: () => windowManager.close(),
+            ),
+          ],
         ],
       ),
     );

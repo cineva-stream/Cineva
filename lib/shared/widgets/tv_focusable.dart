@@ -17,6 +17,8 @@ class TvFocusable extends StatefulWidget {
   final bool autofocus;
   final double focusedScale;
   final Color? glowColor;
+  final double glowBlurRadius;
+  final double glowSpreadRadius;
   final BorderRadius? borderRadius;
   final EdgeInsetsGeometry padding;
   final ValueChanged<bool>? onFocusChange;
@@ -30,6 +32,8 @@ class TvFocusable extends StatefulWidget {
     this.autofocus = false,
     this.focusedScale = 1.11, // User preference: 1.11x magnification
     this.glowColor,
+    this.glowBlurRadius = 16.0,
+    this.glowSpreadRadius = 1.0,
     this.borderRadius,
     this.padding = EdgeInsets.zero,
     this.onFocusChange,
@@ -152,15 +156,10 @@ class _TvFocusableState extends State<TvFocusable> {
                                 borderRadius: radius,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: effectiveGlowColor.withValues(alpha: 0.65),
-                                    blurRadius: 28,
-                                    spreadRadius: 6,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                  BoxShadow(
-                                    color: effectiveGlowColor.withValues(alpha: 0.35),
-                                    blurRadius: 14,
-                                    spreadRadius: 2,
+                                    color: effectiveGlowColor.withValues(alpha: 0.32),
+                                    blurRadius: widget.glowBlurRadius,
+                                    spreadRadius: widget.glowSpreadRadius,
+                                    offset: Offset.zero,
                                   ),
                                 ],
                               ),

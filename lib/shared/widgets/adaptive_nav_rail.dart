@@ -89,26 +89,12 @@ class _AdaptiveNavRailState extends ConsumerState<AdaptiveNavRail> {
         child: Column(
           children: [
             const SizedBox(height: 16),
-            // Top App Brand Icon with gentle amber glow
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.24),
-                    blurRadius: 14,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.movie_filter_rounded,
-                color: AppColors.primary,
-                size: 26,
-              ),
+            // Top App Brand Logo (official logo_cineva.png)
+            Image.asset(
+              'assets/images/logo_cineva.png',
+              width: widget.isTv ? 48 : 42,
+              height: widget.isTv ? 48 : 42,
+              fit: BoxFit.contain,
             ),
             const SizedBox(height: 24),
             // Navigation Items
@@ -127,7 +113,9 @@ class _AdaptiveNavRailState extends ConsumerState<AdaptiveNavRail> {
                       order: NumericFocusOrder(index.toDouble()),
                       child: TvFocusable(
                         focusNode: _focusNodes[index],
-                        focusedScale: 1.08,
+                        focusedScale: 1.04,
+                        glowBlurRadius: 10,
+                        glowSpreadRadius: 0,
                         borderRadius: BorderRadius.circular(12),
                         onTap: () => widget.onDestinationSelected(index),
                         child: AnimatedContainer(
