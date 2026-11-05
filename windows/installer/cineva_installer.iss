@@ -32,7 +32,7 @@ AllowNoIcons=yes
 LicenseFile=terms_and_conditions.txt
 
 ; Ikon installer dan ikon uninstaller
-SetupIconFile=..\runner\resources\app_icon.ico
+SetupIconFile=app_icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 ; Lokasi dan nama berkas installer keluaran
