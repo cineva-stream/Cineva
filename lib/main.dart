@@ -10,9 +10,10 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
 import 'core/constants/app_constants.dart';
+import 'core/platform/smooth_mouse_scroll.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  CinevaWidgetsBinding.ensureInitialized();
 
   // Initialize frameless window on desktop (Windows, macOS, Linux) with hidden native titlebar
   if (!kIsWeb &&

@@ -27,9 +27,22 @@ Pembaruan Cineva versi 1.1.4 menghadirkan lonjakan kapabilitas besar **Ekspansi 
 - **Dukungan Hover & D-Pad Lengkap**:
   - Setiap menu navigasi (Beranda, Live TV, Pencarian, Watchlist, Riwayat, Pengaturan) mendukung kursor mouse, tombol keyboard, serta D-Pad remote dengan animasi indikator aktif Amber Glow.
 
-### 4. Windows Desktop Runner & Pintasan Keyboard Pemutar Video
+### 4. Windows Desktop Runner, Frameless UI & Buttery-Smooth Mouse Scrolling
 - **Runner Native Windows**:
   - Proyek kini menyertakan runner resmi Windows Desktop yang terintegrasi dengan pustaka video `media_kit_libs_windows_video`.
+- **Smooth Mouse Wheel Scrolling Berkecepatan Tinggi**:
+  - Mengeliminasi *choppy / stepped scrolling* bawaan Flutter Desktop melalui interpolasi eksponensial matematis (`SmoothMouseScrollBindingMixin` dan `SmoothMouseScrollHandler`) dengan refresh rate 60Hz/120Hz/144Hz yang mulus tanpa patah-patah.
+  - Peredaman instan saat memutar roda mouse ke arah berlawanan tanpa *lag* serta pembatasan *buffer backlog* agar guliran roda mouse tidak meluncur berlebihan.
+  - Dukungan *drag scrolling* dengan mouse dan trackpad (`CinevaScrollBehavior`) yang menyatu dengan *native desktop clamping physics*.
+- **Frameless Window & Tombol Kontrol Kustom Native**:
+  - Membuka aplikasi secara *maximized* sejak awal peluncuran dengan bilah judul Windows bawaan disembunyikan (*TitleBarStyle.hidden*).
+  - Dilengkapi tombol kendali jendela terpadu (Minimize, Maximize / Restore, dan Close) bergaya modern minimalis yang menyatu rapi dengan tema gelap Cineva.
+- **Penyempurnaan Tampilan Desktop**:
+  - Logo resmi `logo_cineva.png` tersemat rapi di pucuk Navigation Rail kiri.
+  - Efek *amber glow* saat kursor hover disesuaikan menjadi lembut (*blur radius 10px*, *opacity 0.32*) agar terlihat rapi dan elegan.
+  - Avatar profil pengguna pada halaman Akun diposisikan rata tengah (*centered*).
+- **Installer Tunggal Windows (`Cineva_setup_v1.1.4.exe`)**:
+  - Menggunakan Inno Setup dengan ikon resmi Cineva, konfirmasi Syarat & Ketentuan Lisensi (Perjanjian Pengguna), pemilihan folder target pemasangan, serta pembuatan shortcut Desktop dan Taskbar.
 - **Pintasan Kontrol Keyboard & Remote pada Pemutar**:
   - **Panah Kiri / Kanan**: Mundur / maju cepat 10 detik (*relative seek*).
   - **Panah Atas / Bawah**: Menaikkan / menurunkan volume secara instan dengan kurva boost hingga 150%.
