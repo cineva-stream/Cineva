@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1631,6 +1632,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     debugPrint(
       '[PlayerScreen] Loading web stream from ${server.name}: $streamUrl',
     );
+
+    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+      debugPrint('[PlayerScreen] WebView fallback not supported on desktop platform');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Server webview tidak didukung di platform desktop'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
 
     final controller = WebViewController();
     controller
@@ -5705,7 +5719,44 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         }
         await _handleExit();
       },
-      child: Scaffold(
+      child: Focus(
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
+            final key = event.logicalKey;
+            if (key == LogicalKeyboardKey.select ||
+                key == LogicalKeyboardKey.enter ||
+                key == LogicalKeyboardKey.space ||
+                key == LogicalKeyboardKey.gameButtonA) {
+              _togglePlayPause();
+              return KeyEventResult.handled;
+            } else if (key == LogicalKeyboardKey.arrowLeft) {
+              _seekRelative(-10);
+              return KeyEventResult.handled;
+            } else if (key == LogicalKeyboardKey.arrowRight) {
+              _seekRelative(10);
+              return KeyEventResult.handled;
+            } else if (key == LogicalKeyboardKey.arrowUp) {
+              _setVolume((_volume + 10.0).clamp(0.0, 150.0));
+              return KeyEventResult.handled;
+            } else if (key == LogicalKeyboardKey.arrowDown) {
+              _setVolume((_volume - 10.0).clamp(0.0, 150.0));
+              return KeyEventResult.handled;
+            } else if (key == LogicalKeyboardKey.keyM) {
+              _setVolume(_volume > 0 ? 0.0 : 100.0);
+              return KeyEventResult.handled;
+            } else if (key == LogicalKeyboardKey.escape) {
+              if (_isSidePanelOpen) {
+                _closeSidePanel();
+              } else {
+                _handleExit();
+              }
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Scaffold(
         backgroundColor: Colors.black,
         body: LayoutBuilder(
           builder: (context, constraints) {
@@ -6275,6 +6326,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           },
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

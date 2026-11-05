@@ -181,7 +181,10 @@ void main() {
     testWidgets('Renders platform name, filter chips, and posters', (tester) async {
       tester.view.physicalSize = const Size(800, 2400);
       tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
 
       final platform = StreamingPlatform.fromId('netflix');
 
@@ -471,7 +474,10 @@ void main() {
     testWidgets('Renders landscape player and toggles YouTube-style channel drawer', (tester) async {
       tester.view.physicalSize = const Size(1920, 1080);
       tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
 
       final channel = LiveTvChannelsData.defaultChannels.first;
 
