@@ -111,7 +111,7 @@ class MainShell extends ConsumerWidget {
     final formFactor = resolveFormFactor(context, isTv: isTv);
     final isWideScreen = formFactor == DeviceFormFactor.desktop ||
         formFactor == DeviceFormFactor.tv ||
-        screenWidth >= 960;
+        screenWidth >= 768;
 
     // Smoothly hide bottom nav bar when on Watchlist or when Live TV is actively streaming
     final bool shouldHideBottomNav =
