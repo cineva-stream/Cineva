@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -13,6 +14,8 @@ import '../../../watchlist/data/watchlist_repository.dart';
 import '../../../download/presentation/widgets/download_options_modal.dart';
 import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/localization/app_strings.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../widgets/in_app_trailer_modal.dart';
 import '../../data/models/trailer_video_model.dart';
 import '../../../tv_universe/presentation/widgets/tv_universe_banner.dart';
@@ -173,7 +176,949 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
     final trailer = TrailerVideoModel.findBestTrailer(data['videos']);
 
     final screenWidth = MediaQuery.sizeOf(context).width;
+    final isWide = screenWidth >= 960;
     final isCompact = screenWidth < 360;
+
+    if (isWide) {
+      return _buildDesktopLayout(
+        context,
+        ref: ref,
+        s: s,
+        data: data,
+        name: name,
+        tagline: tagline,
+        overview: overview,
+        posterPath: posterPath,
+        backdropPath: backdropPath,
+        voteAverage: voteAverage,
+        genres: genres,
+        firstAirDate: firstAirDate,
+        seasons: seasons,
+        numberOfSeasons: numberOfSeasons,
+        numberOfEpisodes: numberOfEpisodes,
+        castList: castList,
+        imdbId: imdbId,
+        tvId: tvId,
+        trailer: trailer,
+      );
+    }
+
+    return _buildMobileLayout(
+      context,
+      ref: ref,
+      s: s,
+      data: data,
+      name: name,
+      tagline: tagline,
+      overview: overview,
+      posterPath: posterPath,
+      backdropPath: backdropPath,
+      voteAverage: voteAverage,
+      genres: genres,
+      firstAirDate: firstAirDate,
+      seasons: seasons,
+      numberOfSeasons: numberOfSeasons,
+      numberOfEpisodes: numberOfEpisodes,
+      castList: castList,
+      imdbId: imdbId,
+      tvId: tvId,
+      trailer: trailer,
+      isCompact: isCompact,
+    );
+  }
+
+  static Future<void> _playTvEpisode(
+    BuildContext context, {
+    required String name,
+    required String episodeTitle,
+    required String? imdbId,
+    required int season,
+    required int episode,
+    required int tvId,
+    required String? posterPath,
+    required String? backdropPath,
+    required String overview,
+  }) async {
+    await context.push('/player', extra: {
+      'title': name,
+      'episodeTitle': episodeTitle,
+      'imdbId': imdbId,
+      'season': season,
+      'episode': episode,
+      'tmdbId': tvId,
+      'mediaType': 'tv',
+      'posterPath': posterPath,
+      'backdropPath': backdropPath,
+      'overview': overview,
+      'magnetLink': '',
+    });
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
+
+  Widget _buildDesktopLayout(
+    BuildContext context, {
+    required WidgetRef ref,
+    required AppStrings s,
+    required Map<String, dynamic> data,
+    required String name,
+    required String tagline,
+    required String overview,
+    required String? posterPath,
+    required String? backdropPath,
+    required double voteAverage,
+    required List<String> genres,
+    required String firstAirDate,
+    required List<dynamic> seasons,
+    required int numberOfSeasons,
+    required int numberOfEpisodes,
+    required List<dynamic> castList,
+    required String? imdbId,
+    required int tvId,
+    required TrailerVideoModel? trailer,
+  }) {
+    final firstAirYear = firstAirDate.length >= 4 ? firstAirDate.substring(0, 4) : '';
+
+    return CustomScrollView(
+      slivers: [
+        // ── Widescreen Cinematic Header Canvas ──
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 480,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // High-Res Backdrop
+                if (backdropPath != null || posterPath != null)
+                  CachedNetworkImage(
+                    imageUrl: ApiConstants.imageUrl(
+                      backdropPath ?? posterPath,
+                      size: ApiConstants.backdropOriginal,
+                    ),
+                    memCacheWidth: 1920,
+                    fit: BoxFit.cover,
+                  ),
+
+                // Left-to-Right Dark Vignette
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      stops: const [0.0, 0.40, 0.70, 1.0],
+                      colors: [
+                        Colors.black.withValues(alpha: 0.95),
+                        Colors.black.withValues(alpha: 0.82),
+                        Colors.black.withValues(alpha: 0.25),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Bottom Vignette blending into page background
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      stops: const [0.0, 0.35, 1.0],
+                      colors: [
+                        AppColors.background,
+                        AppColors.background.withValues(alpha: 0.75),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Top Vignette for Back Button
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.25],
+                      colors: [
+                        Colors.black.withValues(alpha: 0.6),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Back Button
+                Positioned(
+                  top: 24,
+                  left: 36,
+                  child: TvFocusable(
+                    focusedScale: 1.1,
+                    borderRadius: BorderRadius.circular(24),
+                    onTap: () => context.canPop() ? context.pop() : context.go('/'),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
+                    ),
+                  ),
+                ),
+
+                // Header Content Row (Poster Card + Desktop Info)
+                Positioned(
+                  left: 36,
+                  right: 36,
+                  bottom: 32,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1300),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Large Floating Poster Card
+                          TvFocusable(
+                            focusedScale: 1.03,
+                            glowBlurRadius: 18,
+                            borderRadius: BorderRadius.circular(18),
+                            child: Container(
+                              width: 210,
+                              height: 315,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.7),
+                                    blurRadius: 26,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(18),
+                                child: CachedNetworkImage(
+                                  imageUrl: ApiConstants.imageUrl(posterPath),
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 32),
+
+                          // Metadata & Action Buttons Column
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Title
+                                Text(
+                                  name,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                    height: 1.15,
+                                    letterSpacing: -0.4,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+
+                                if (tagline.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    tagline,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontStyle: FontStyle.italic,
+                                      color: AppColors.primaryLight,
+                                    ),
+                                  ),
+                                ],
+
+                                const SizedBox(height: 12),
+
+                                // Badges Row: Rating, Seasons/Episodes, Year, 4K
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.star.withValues(alpha: 0.18),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: AppColors.star.withValues(alpha: 0.4),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.star_rounded, color: AppColors.star, size: 16),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            voteAverage.toStringAsFixed(1),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 13,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const Text(' / 10', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        s.detailSeasonEpisodes(numberOfSeasons, numberOfEpisodes),
+                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                    if (firstAirYear.isNotEmpty) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          firstAirYear,
+                                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.8),
+                                      ),
+                                      child: const Text('4K UHD', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 12),
+
+                                // Genres
+                                if (genres.isNotEmpty)
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 6,
+                                    children: genres
+                                        .map(
+                                          (g) => Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.surfaceVariant.withValues(alpha: 0.7),
+                                              borderRadius: BorderRadius.circular(16),
+                                              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                                            ),
+                                            child: Text(g, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+
+                                const SizedBox(height: 18),
+
+                                // Action Buttons Row (Widescreen fixed widths)
+                                Row(
+                                  children: [
+                                    // Watch Now
+                                    TvFocusable(
+                                      focusedScale: 1.04,
+                                      glowBlurRadius: 12,
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () => _playTvEpisode(
+                                        context,
+                                        name: name,
+                                        episodeTitle: 'Season $_selectedSeasonNumber Episode 1',
+                                        imdbId: imdbId,
+                                        season: _selectedSeasonNumber,
+                                        episode: 1,
+                                        tvId: tvId,
+                                        posterPath: posterPath,
+                                        backdropPath: backdropPath,
+                                        overview: overview,
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary,
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppColors.primary.withValues(alpha: 0.35),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 24),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              s.detailWatchTv(_selectedSeasonNumber, 1),
+                                              style: GoogleFonts.inter(
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+
+                                    if (trailer != null) ...[
+                                      const SizedBox(width: 12),
+                                      TvFocusable(
+                                        focusedScale: 1.04,
+                                        borderRadius: BorderRadius.circular(12),
+                                        onTap: () {
+                                          InAppTrailerModal.show(
+                                            context,
+                                            trailer: trailer,
+                                            title: name,
+                                            onWatchNow: () => _playTvEpisode(
+                                              context,
+                                              name: name,
+                                              episodeTitle: 'Season $_selectedSeasonNumber Episode 1',
+                                              imdbId: imdbId,
+                                              season: _selectedSeasonNumber,
+                                              episode: 1,
+                                              tvId: tvId,
+                                              posterPath: posterPath,
+                                              backdropPath: backdropPath,
+                                              overview: overview,
+                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 1),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.smart_display_rounded, color: Colors.redAccent, size: 20),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                s.trailerTitle,
+                                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+
+                                    const SizedBox(width: 12),
+                                    // Watchlist Button
+                                    Consumer(
+                                      builder: (context, ref, _) {
+                                        final isInWatchlist = ref.watch(
+                                          isInWatchlistProvider((id: tvId, type: 'tv')),
+                                        );
+                                        return TvFocusable(
+                                          focusedScale: 1.04,
+                                          borderRadius: BorderRadius.circular(12),
+                                          onTap: () async {
+                                            final item = WatchlistItem(
+                                              id: tvId,
+                                              title: name,
+                                              posterPath: posterPath,
+                                              voteAverage: voteAverage,
+                                              type: 'tv',
+                                              addedAt: DateTime.now(),
+                                            );
+                                            final added = await ref.read(watchlistProvider.notifier).toggle(item);
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(added ? s.detailAddedToWatchlist : s.detailRemovedFromWatchlist),
+                                                  backgroundColor: AppColors.surfaceVariant,
+                                                  duration: const Duration(seconds: 2),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                                            decoration: BoxDecoration(
+                                              color: isInWatchlist
+                                                  ? AppColors.primary.withValues(alpha: 0.15)
+                                                  : Colors.white.withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: isInWatchlist
+                                                    ? AppColors.primary.withValues(alpha: 0.6)
+                                                    : Colors.white.withValues(alpha: 0.2),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  isInWatchlist ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                                  color: isInWatchlist ? AppColors.primary : Colors.white,
+                                                  size: 20,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'Watchlist',
+                                                  style: GoogleFonts.inter(
+                                                    color: isInWatchlist ? AppColors.primary : Colors.white,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+
+                                    const SizedBox(width: 12),
+                                    // Download Button
+                                    TvFocusable(
+                                      focusedScale: 1.04,
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () {
+                                        DownloadOptionsModal.show(
+                                          context,
+                                          tmdbId: tvId,
+                                          mediaType: 'tv',
+                                          title: name,
+                                          releaseYear: firstAirYear,
+                                          posterPath: posterPath,
+                                          backdropPath: backdropPath,
+                                          imdbId: imdbId,
+                                          runtimeMinutes: 45,
+                                        );
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.download_rounded, color: Colors.white, size: 20),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              s.navDownloads,
+                                              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Below Header Sections (Constrained to 1300 max width) ──
+        SliverToBoxAdapter(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1300),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Synopsis
+                    Text(s.detailSynopsis, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                    const SizedBox(height: 10),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 900),
+                      child: Text(
+                        overview.isNotEmpty ? overview : s.detailNoSynopsis,
+                        style: GoogleFonts.inter(fontSize: 15, height: 1.6, color: AppColors.textSecondary),
+                      ),
+                    ),
+
+                    // TV Universe Banner
+                    const SizedBox(height: 24),
+                    TvUniverseBanner(
+                      tvId: tvId,
+                      posterPath: posterPath,
+                      backdropPath: backdropPath,
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // Season Selector
+                    Text('Episode', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                    const SizedBox(height: 12),
+                    if (seasons.isNotEmpty)
+                      SizedBox(
+                        height: 42,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: seasons.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            final seasonItem = seasons[index];
+                            final sNum = seasonItem['season_number'] as int? ?? (index + 1);
+                            final sTitle = seasonItem['name'] as String? ?? 'Season $sNum';
+                            final isSelected = sNum == _selectedSeasonNumber;
+
+                            return TvFocusable(
+                              focusedScale: 1.05,
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () {
+                                setState(() => _selectedSeasonNumber = sNum);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    sTitle,
+                                    style: TextStyle(
+                                      color: isSelected ? Colors.black : Colors.white,
+                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                    const SizedBox(height: 20),
+
+                    // Widescreen 2-Column Episode Cards Grid
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final epAsync = ref.watch(tvSeasonEpisodesProvider((
+                          tvId: tvId,
+                          seasonNumber: _selectedSeasonNumber,
+                        )));
+
+                        return epAsync.when(
+                          loading: () => const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 32),
+                              child: CircularProgressIndicator(color: AppColors.primary),
+                            ),
+                          ),
+                          error: (err, _) => Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceVariant,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Iconsax.info_circle, color: AppColors.textMuted),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    s.detailEpisodesUnavailable,
+                                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => ref.invalidate(tvSeasonEpisodesProvider((
+                                    tvId: tvId,
+                                    seasonNumber: _selectedSeasonNumber,
+                                  ))),
+                                  child: Text(s.detailRetry),
+                                ),
+                              ],
+                            ),
+                          ),
+                          data: (episodes) {
+                            if (episodes.isEmpty) {
+                              return Container(
+                                padding: const EdgeInsets.all(24),
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Text(
+                                  s.detailNoEpisodesInSeason(_selectedSeasonNumber),
+                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                                ),
+                              );
+                            }
+
+                            return LayoutBuilder(
+                              builder: (context, constraints) {
+                                final cardWidth = (constraints.maxWidth - 20) / 2;
+                                return Wrap(
+                                  spacing: 20,
+                                  runSpacing: 16,
+                                  children: episodes.map((ep) {
+                                    final epNum = ep['episode_number'] as int? ?? 1;
+                                    final epName = ep['name'] as String? ?? 'Episode $epNum';
+                                    final epStill = ep['still_path'] as String?;
+                                    final epOverview = (ep['overview'] as String? ?? '').trim();
+                                    final epRuntime = ep['runtime'] as int?;
+                                    final epAirDate = ep['air_date'] as String? ?? '';
+
+                                    return SizedBox(
+                                      width: cardWidth,
+                                      child: TvFocusable(
+                                        focusedScale: 1.02,
+                                        glowBlurRadius: 12,
+                                        borderRadius: BorderRadius.circular(14),
+                                        onTap: () => _playTvEpisode(
+                                          context,
+                                          name: name,
+                                          episodeTitle: 'S$_selectedSeasonNumber:E$epNum $epName',
+                                          imdbId: imdbId,
+                                          season: _selectedSeasonNumber,
+                                          episode: epNum,
+                                          tvId: tvId,
+                                          posterPath: posterPath,
+                                          backdropPath: epStill ?? backdropPath,
+                                          overview: epOverview.isNotEmpty ? epOverview : overview,
+                                        ),
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: AppColors.surfaceVariant.withValues(alpha: 0.55),
+                                            borderRadius: BorderRadius.circular(14),
+                                            border: Border.all(
+                                              color: Colors.white.withValues(alpha: 0.08),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.all(10),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              // Episode Still Thumbnail
+                                              ClipRRect(
+                                                borderRadius: BorderRadius.circular(10),
+                                                child: Stack(
+                                                  alignment: Alignment.center,
+                                                  children: [
+                                                    CachedNetworkImage(
+                                                      imageUrl: ApiConstants.imageUrl(epStill, size: ApiConstants.backdropSmall),
+                                                      width: 140,
+                                                      height: 80,
+                                                      fit: BoxFit.cover,
+                                                      placeholder: (_, _) => Container(width: 140, height: 80, color: AppColors.surfaceElevated),
+                                                      errorWidget: (_, _, _) => Container(
+                                                        width: 140,
+                                                        height: 80,
+                                                        color: AppColors.surfaceElevated,
+                                                        child: const Icon(Icons.movie_outlined, color: AppColors.textMuted, size: 28),
+                                                      ),
+                                                    ),
+                                                    Container(
+                                                      width: 34,
+                                                      height: 34,
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.black.withValues(alpha: 0.65),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Icon(Icons.play_arrow_rounded, color: AppColors.primary, size: 22),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 14),
+                                              // Episode Info
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'E$epNum • $epName',
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: GoogleFonts.inter(
+                                                        color: Colors.white,
+                                                        fontWeight: FontWeight.w700,
+                                                        fontSize: 13,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Row(
+                                                      children: [
+                                                        if (epRuntime != null && epRuntime > 0) ...[
+                                                          Text(
+                                                            '${epRuntime}m',
+                                                            style: const TextStyle(color: AppColors.primaryLight, fontSize: 11, fontWeight: FontWeight.w600),
+                                                          ),
+                                                          const Text('  •  ', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                                                        ],
+                                                        if (epAirDate.isNotEmpty)
+                                                          Text(
+                                                            epAirDate,
+                                                            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                                          ),
+                                                      ],
+                                                    ),
+                                                    if (epOverview.isNotEmpty) ...[
+                                                      const SizedBox(height: 6),
+                                                      Text(
+                                                        epOverview,
+                                                        maxLines: 2,
+                                                        overflow: TextOverflow.ellipsis,
+                                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, height: 1.3),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
+                    ),
+
+                    // Cast Section
+                    if (castList.isNotEmpty) ...[
+                      const SizedBox(height: 32),
+                      Text(s.detailCast, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 140,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: castList.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 16),
+                          itemBuilder: (context, index) {
+                            final cast = castList[index];
+                            final profilePath = cast['profile_path'] as String?;
+                            final castId = cast['id'] as int?;
+                            return GestureDetector(
+                              onTap: () {
+                                if (castId != null) {
+                                  context.push('/person/$castId', extra: cast['name'] as String?);
+                                }
+                              },
+                              child: SizedBox(
+                                width: 88,
+                                child: Column(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 36,
+                                      backgroundColor: AppColors.surfaceVariant,
+                                      backgroundImage: profilePath != null
+                                          ? CachedNetworkImageProvider(
+                                              ApiConstants.imageUrl(profilePath, size: ApiConstants.posterSmall))
+                                          : null,
+                                      child: profilePath == null ? const Icon(Icons.person, color: AppColors.textMuted) : null,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(cast['name'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                    Text(cast['character'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 48),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(
+    BuildContext context, {
+    required WidgetRef ref,
+    required AppStrings s,
+    required Map<String, dynamic> data,
+    required String name,
+    required String tagline,
+    required String overview,
+    required String? posterPath,
+    required String? backdropPath,
+    required double voteAverage,
+    required List<String> genres,
+    required String firstAirDate,
+    required List<dynamic> seasons,
+    required int numberOfSeasons,
+    required int numberOfEpisodes,
+    required List<dynamic> castList,
+    required String? imdbId,
+    required int tvId,
+    required TrailerVideoModel? trailer,
+    required bool isCompact,
+  }) {
     final posterWidth = isCompact ? 100.0 : 120.0;
     final posterHeight = isCompact ? 150.0 : 180.0;
 

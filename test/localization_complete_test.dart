@@ -35,6 +35,14 @@ void main() {
       // 3. Navigation downloads tooltip
       expect(sEn.navDownloads, 'Downloads');
       expect(sId.navDownloads, 'Unduhan');
+
+      // 4. Player Upload Subtitle localization
+      expect(sEn.playerUploadSubtitle, 'Upload Subtitle');
+      expect(sId.playerUploadSubtitle, 'Upload Subtitle');
+      expect(sEn.playerUploadSubtitleHint, contains('.srt or .vtt'));
+      expect(sId.playerUploadSubtitleHint, contains('.srt atau .vtt'));
+      expect(sEn.playerCustomSubtitleTag, 'Custom');
+      expect(sId.playerCustomSubtitleTag, 'Kustom');
     });
 
     test('ContentPreference localized labels & descriptions for ID and EN', () {

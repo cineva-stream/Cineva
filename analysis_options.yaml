@@ -11,6 +11,7 @@ analyzer:
   exclude:
     - build/**
     - android/**
+    - windows/**
   errors:
     asset_does_not_exist: ignore
 include: package:flutter_lints/flutter.yaml

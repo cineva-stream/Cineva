@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -13,6 +14,8 @@ import '../../../watchlist/data/watchlist_repository.dart';
 import '../../../download/presentation/widgets/download_options_modal.dart';
 import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/localization/app_strings.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../widgets/in_app_trailer_modal.dart';
 import '../../data/models/trailer_video_model.dart';
 import '../../../collection/presentation/widgets/franchise_collection_banner.dart';
@@ -128,7 +131,744 @@ class _DetailContent extends ConsumerWidget {
     final similarList = (data['similar']?['results'] as List<dynamic>?)?.take(10).toList() ?? [];
 
     final screenWidth = MediaQuery.sizeOf(context).width;
+    final isWide = screenWidth >= 960;
     final isCompact = screenWidth < 360;
+
+    if (isWide) {
+      return _buildDesktopLayout(
+        context,
+        ref: ref,
+        s: s,
+        data: data,
+        title: title,
+        tagline: tagline,
+        overview: overview,
+        releaseDate: releaseDate,
+        runtime: runtime,
+        voteAverage: voteAverage,
+        genres: genres,
+        posterPath: posterPath,
+        backdropPath: backdropPath,
+        belongsToCollection: belongsToCollection,
+        castList: castList,
+        similarList: similarList,
+        trailer: trailer,
+        imdbId: imdbId,
+      );
+    }
+
+    return _buildMobileLayout(
+      context,
+      ref: ref,
+      s: s,
+      data: data,
+      title: title,
+      tagline: tagline,
+      overview: overview,
+      releaseDate: releaseDate,
+      runtime: runtime,
+      voteAverage: voteAverage,
+      genres: genres,
+      posterPath: posterPath,
+      backdropPath: backdropPath,
+      belongsToCollection: belongsToCollection,
+      castList: castList,
+      similarList: similarList,
+      trailer: trailer,
+      imdbId: imdbId,
+      isCompact: isCompact,
+    );
+  }
+
+  static Future<void> _playMovie(
+    BuildContext context, {
+    required String title,
+    required String? imdbId,
+    required Map<String, dynamic> data,
+    required String overview,
+  }) async {
+    await context.push('/player', extra: {
+      'title': title,
+      'imdbId': imdbId,
+      'tmdbId': data['id'] as int?,
+      'mediaType': 'movie',
+      'posterPath': data['poster_path'] as String?,
+      'backdropPath': data['backdrop_path'] as String?,
+      'overview': overview,
+      'magnetLink': '',
+    });
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
+
+  Widget _buildDesktopLayout(
+    BuildContext context, {
+    required WidgetRef ref,
+    required AppStrings s,
+    required Map<String, dynamic> data,
+    required String title,
+    required String tagline,
+    required String overview,
+    required String releaseDate,
+    required int runtime,
+    required double voteAverage,
+    required List<String> genres,
+    required String? posterPath,
+    required String? backdropPath,
+    required Map<String, dynamic>? belongsToCollection,
+    required List<dynamic> castList,
+    required List<dynamic> similarList,
+    required TrailerVideoModel? trailer,
+    required String? imdbId,
+  }) {
+    final mediaId = data['id'] as int? ?? 0;
+    final releaseYear = releaseDate.length >= 4 ? releaseDate.substring(0, 4) : '';
+
+    return CustomScrollView(
+      slivers: [
+        // ── Widescreen Cinematic Header Canvas ──
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 480,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // High-Res Backdrop
+                if (backdropPath != null || posterPath != null)
+                  CachedNetworkImage(
+                    imageUrl: ApiConstants.imageUrl(
+                      backdropPath ?? posterPath,
+                      size: ApiConstants.backdropOriginal,
+                    ),
+                    memCacheWidth: 1920,
+                    fit: BoxFit.cover,
+                  ),
+
+                // Left-to-Right Dark Vignette
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      stops: const [0.0, 0.40, 0.70, 1.0],
+                      colors: [
+                        Colors.black.withValues(alpha: 0.95),
+                        Colors.black.withValues(alpha: 0.82),
+                        Colors.black.withValues(alpha: 0.25),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Bottom Vignette blending into page background
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      stops: const [0.0, 0.35, 1.0],
+                      colors: [
+                        AppColors.background,
+                        AppColors.background.withValues(alpha: 0.75),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Top Vignette for Back Button
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.25],
+                      colors: [
+                        Colors.black.withValues(alpha: 0.6),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Back Button
+                Positioned(
+                  top: 24,
+                  left: 36,
+                  child: TvFocusable(
+                    focusedScale: 1.1,
+                    borderRadius: BorderRadius.circular(24),
+                    onTap: () => context.canPop() ? context.pop() : context.go('/'),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
+                    ),
+                  ),
+                ),
+
+                // Header Content Row (Poster Card + Desktop Info)
+                Positioned(
+                  left: 36,
+                  right: 36,
+                  bottom: 32,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1300),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Large Floating Poster Card
+                          TvFocusable(
+                            focusedScale: 1.03,
+                            glowBlurRadius: 18,
+                            borderRadius: BorderRadius.circular(18),
+                            child: Container(
+                              width: 210,
+                              height: 315,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.7),
+                                    blurRadius: 26,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(18),
+                                child: CachedNetworkImage(
+                                  imageUrl: ApiConstants.imageUrl(posterPath),
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 32),
+
+                          // Metadata & Action Buttons Column
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Title
+                                Text(
+                                  title,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                    height: 1.15,
+                                    letterSpacing: -0.4,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+
+                                if (tagline.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    tagline,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontStyle: FontStyle.italic,
+                                      color: AppColors.primaryLight,
+                                    ),
+                                  ),
+                                ],
+
+                                const SizedBox(height: 12),
+
+                                // Badges Row: Rating, Year, Duration, 4K
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.star.withValues(alpha: 0.18),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: AppColors.star.withValues(alpha: 0.4),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.star_rounded, color: AppColors.star, size: 16),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            voteAverage.toStringAsFixed(1),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 13,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const Text(' / 10', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                                        ],
+                                      ),
+                                    ),
+                                    if (releaseYear.isNotEmpty) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          releaseYear,
+                                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                    ],
+                                    if (runtime > 0) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          '${runtime ~/ 60}${s.isIndonesian ? 'j' : 'h'} ${runtime % 60}m',
+                                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.8),
+                                      ),
+                                      child: const Text('4K UHD', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 12),
+
+                                // Genres
+                                if (genres.isNotEmpty)
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 6,
+                                    children: genres
+                                        .map(
+                                          (g) => Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.surfaceVariant.withValues(alpha: 0.7),
+                                              borderRadius: BorderRadius.circular(16),
+                                              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                                            ),
+                                            child: Text(g, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+
+                                const SizedBox(height: 18),
+
+                                // Action Buttons Row (Widescreen fixed widths)
+                                Row(
+                                  children: [
+                                    // Watch Now
+                                    TvFocusable(
+                                      focusedScale: 1.04,
+                                      glowBlurRadius: 12,
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () => _playMovie(context, title: title, imdbId: imdbId, data: data, overview: overview),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary,
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppColors.primary.withValues(alpha: 0.35),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 24),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              s.detailWatchNow,
+                                              style: GoogleFonts.inter(
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+
+                                    if (trailer != null) ...[
+                                      const SizedBox(width: 12),
+                                      TvFocusable(
+                                        focusedScale: 1.04,
+                                        borderRadius: BorderRadius.circular(12),
+                                        onTap: () {
+                                          InAppTrailerModal.show(
+                                            context,
+                                            trailer: trailer,
+                                            title: title,
+                                            onWatchNow: () => _playMovie(context, title: title, imdbId: imdbId, data: data, overview: overview),
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 1),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.smart_display_rounded, color: Colors.redAccent, size: 20),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                s.trailerTitle,
+                                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+
+                                    const SizedBox(width: 12),
+                                    // Watchlist Button
+                                    Consumer(
+                                      builder: (context, ref, _) {
+                                        final isInWatchlist = ref.watch(
+                                          isInWatchlistProvider((id: mediaId, type: 'movie')),
+                                        );
+                                        return TvFocusable(
+                                          focusedScale: 1.04,
+                                          borderRadius: BorderRadius.circular(12),
+                                          onTap: () async {
+                                            final item = WatchlistItem(
+                                              id: mediaId,
+                                              title: title,
+                                              posterPath: posterPath,
+                                              voteAverage: voteAverage,
+                                              type: 'movie',
+                                              addedAt: DateTime.now(),
+                                            );
+                                            final added = await ref.read(watchlistProvider.notifier).toggle(item);
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(added ? s.detailAddedToWatchlist : s.detailRemovedFromWatchlist),
+                                                  backgroundColor: AppColors.surfaceVariant,
+                                                  duration: const Duration(seconds: 2),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                                            decoration: BoxDecoration(
+                                              color: isInWatchlist
+                                                  ? AppColors.primary.withValues(alpha: 0.15)
+                                                  : Colors.white.withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: isInWatchlist
+                                                    ? AppColors.primary.withValues(alpha: 0.6)
+                                                    : Colors.white.withValues(alpha: 0.2),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  isInWatchlist ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                                  color: isInWatchlist ? AppColors.primary : Colors.white,
+                                                  size: 20,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'Watchlist',
+                                                  style: GoogleFonts.inter(
+                                                    color: isInWatchlist ? AppColors.primary : Colors.white,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+
+                                    const SizedBox(width: 12),
+                                    // Download Button
+                                    TvFocusable(
+                                      focusedScale: 1.04,
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () {
+                                        DownloadOptionsModal.show(
+                                          context,
+                                          tmdbId: mediaId,
+                                          mediaType: 'movie',
+                                          title: title,
+                                          releaseYear: releaseYear,
+                                          posterPath: posterPath,
+                                          backdropPath: backdropPath,
+                                          imdbId: imdbId,
+                                          runtimeMinutes: runtime > 0 ? runtime : 100,
+                                        );
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.download_rounded, color: Colors.white, size: 20),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              s.detailDownloadMovie,
+                                              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Below Header Sections (Constrained to 1300 max width) ──
+        SliverToBoxAdapter(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1300),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Synopsis
+                    Text(s.detailSynopsis, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                    const SizedBox(height: 10),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 900),
+                      child: Text(
+                        overview.isNotEmpty ? overview : s.detailNoSynopsis,
+                        style: GoogleFonts.inter(fontSize: 15, height: 1.6, color: AppColors.textSecondary),
+                      ),
+                    ),
+
+                    // Franchise Collection Banner
+                    if (belongsToCollection != null) ...[
+                      const SizedBox(height: 24),
+                      FranchiseCollectionBanner(
+                        collection: belongsToCollection,
+                        callerPosterPath: data['poster_path'] as String?,
+                        callerBackdropPath: data['backdrop_path'] as String?,
+                      ),
+                    ],
+
+                    // Cast Section
+                    if (castList.isNotEmpty) ...[
+                      const SizedBox(height: 28),
+                      Text(s.detailCast, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 140,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: castList.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 16),
+                          itemBuilder: (context, index) {
+                            final cast = castList[index];
+                            final profilePath = cast['profile_path'] as String?;
+                            final castId = cast['id'] as int?;
+                            return GestureDetector(
+                              onTap: () {
+                                if (castId != null) {
+                                  context.push('/person/$castId', extra: cast['name'] as String?);
+                                }
+                              },
+                              child: SizedBox(
+                                width: 88,
+                                child: Column(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 36,
+                                      backgroundColor: AppColors.surfaceVariant,
+                                      backgroundImage: profilePath != null
+                                          ? CachedNetworkImageProvider(
+                                              ApiConstants.imageUrl(profilePath, size: ApiConstants.posterSmall),
+                                            )
+                                          : null,
+                                      child: profilePath == null ? const Icon(Icons.person, color: AppColors.textMuted) : null,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      cast['name'] ?? '',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                    ),
+                                    Text(
+                                      cast['character'] ?? '',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+
+                    // Similar Movies
+                    if (similarList.isNotEmpty) ...[
+                      const SizedBox(height: 28),
+                      Text(s.detailSimilarMovies, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 220,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: similarList.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 14),
+                          itemBuilder: (context, index) {
+                            final similar = similarList[index];
+                            final sId = similar['id'] as int;
+                            final sPoster = similar['poster_path'] as String?;
+                            final sTitle = similar['title'] as String? ?? '';
+                            final sRating = (similar['vote_average'] as num?)?.toDouble() ?? 0.0;
+                            return TvFocusable(
+                              focusedScale: 1.11,
+                              glowBlurRadius: 16,
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: () => context.push('/movie/$sId'),
+                              child: SizedBox(
+                                width: 130,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(14),
+                                        child: CachedNetworkImage(
+                                          imageUrl: ApiConstants.imageUrl(sPoster),
+                                          fit: BoxFit.cover,
+                                          width: 130,
+                                          placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(sTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.star, size: 12, color: AppColors.star),
+                                        const SizedBox(width: 3),
+                                        Text(sRating.toStringAsFixed(1),
+                                            style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 48),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(
+    BuildContext context, {
+    required WidgetRef ref,
+    required AppStrings s,
+    required Map<String, dynamic> data,
+    required String title,
+    required String tagline,
+    required String overview,
+    required String releaseDate,
+    required int runtime,
+    required double voteAverage,
+    required List<String> genres,
+    required String? posterPath,
+    required String? backdropPath,
+    required Map<String, dynamic>? belongsToCollection,
+    required List<dynamic> castList,
+    required List<dynamic> similarList,
+    required TrailerVideoModel? trailer,
+    required String? imdbId,
+    required bool isCompact,
+  }) {
     final posterWidth = isCompact ? 100.0 : 120.0;
     final posterHeight = isCompact ? 150.0 : 180.0;
 

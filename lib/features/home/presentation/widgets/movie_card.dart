@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/utils/tmdb_genres.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../domain/entities/movie.dart';
 
 /// Modern, informative movie poster card for horizontal lists.
@@ -42,7 +43,9 @@ class MovieCard extends StatelessWidget {
     final isHighRating = movie.voteAverage >= 7.5;
 
     return RepaintBoundary(
-      child: GestureDetector(
+      child: TvFocusable(
+        focusedScale: 1.11,
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap ??
             () {
               if (isTv) {
@@ -265,14 +268,12 @@ class Top10MovieCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push('/movie/${movie.id}'),
-      child: SizedBox(
-        width: 175,
-        height: 205,
-        child: Stack(
-          alignment: Alignment.bottomLeft,
-          children: [
+    return SizedBox(
+      width: 175,
+      height: 205,
+      child: Stack(
+        alignment: Alignment.bottomLeft,
+        children: [
             // Giant Rank Number in the background/left
             Positioned(
               left: 0,
@@ -339,7 +340,6 @@ class Top10MovieCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 }
