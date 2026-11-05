@@ -38,7 +38,8 @@ class _AdaptiveNavRailState extends ConsumerState<AdaptiveNavRail> {
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(appStringsProvider);
-    final width = widget.isTv ? 92.0 : 88.0;
+    final width = widget.isTv ? 96.0 : 88.0;
+    final itemWidth = widget.isTv ? 76.0 : 70.0;
 
     final destinations = [
       _NavDestination(
@@ -87,79 +88,104 @@ class _AdaptiveNavRailState extends ConsumerState<AdaptiveNavRail> {
       child: SafeArea(
         right: false,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 16),
-            // Top App Brand Logo (official logo_cineva.png)
-            Image.asset(
-              'assets/images/logo_cineva.png',
-              width: widget.isTv ? 48 : 42,
-              height: widget.isTv ? 48 : 42,
-              fit: BoxFit.contain,
+            const SizedBox(height: 18),
+            // Top App Brand Logo (pinned at the top)
+            Center(
+              child: Image.asset(
+                'assets/images/logo_cineva.png',
+                width: widget.isTv ? 48 : 42,
+                height: widget.isTv ? 48 : 42,
+                fit: BoxFit.contain,
+              ),
             ),
-            const SizedBox(height: 24),
-            // Navigation Items
-            Expanded(
-              child: FocusTraversalGroup(
-                policy: OrderedTraversalPolicy(),
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: destinations.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final item = destinations[index];
-                    final isSelected = widget.currentIndex == index;
 
-                    return FocusTraversalOrder(
-                      order: NumericFocusOrder(index.toDouble()),
-                      child: TvFocusable(
-                        focusNode: _focusNodes[index],
-                        focusedScale: 1.04,
-                        glowBlurRadius: 10,
-                        glowSpreadRadius: 0,
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => widget.onDestinationSelected(index),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOutCubic,
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.primary.withValues(alpha: 0.14)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                isSelected ? item.activeIcon : item.icon,
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.textMuted,
-                                size: widget.isTv ? 26 : 23,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                item.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(
-                                  fontSize: widget.isTv ? 11.5 : 10.5,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected ? AppColors.primary : AppColors.textMuted,
-                                  letterSpacing: 0.1,
+            // Navigation Items centered vertically within remaining space
+            Expanded(
+              child: Center(
+                child: FocusTraversalGroup(
+                  policy: OrderedTraversalPolicy(),
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        for (int index = 0; index < destinations.length; index++) ...[
+                          if (index > 0) const SizedBox(height: 8),
+                          Builder(
+                            builder: (context) {
+                              final item = destinations[index];
+                              final isSelected = widget.currentIndex == index;
+
+                              return FocusTraversalOrder(
+                                order: NumericFocusOrder(index.toDouble()),
+                                child: SizedBox(
+                                  width: itemWidth,
+                                  child: TvFocusable(
+                                    focusNode: _focusNodes[index],
+                                    focusedScale: 1.04,
+                                    glowBlurRadius: 10,
+                                    glowSpreadRadius: 0,
+                                    borderRadius: BorderRadius.circular(14),
+                                    onTap: () => widget.onDestinationSelected(index),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      curve: Curves.easeOutCubic,
+                                      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? AppColors.primary.withValues(alpha: 0.16)
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: isSelected
+                                            ? Border.all(
+                                                color: AppColors.primary.withValues(alpha: 0.35),
+                                                width: 1.0,
+                                              )
+                                            : Border.all(color: Colors.transparent, width: 1.0),
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            isSelected ? item.activeIcon : item.icon,
+                                            color: isSelected
+                                                ? AppColors.primary
+                                                : AppColors.textMuted,
+                                            size: widget.isTv ? 25 : 22,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            item.label,
+                                            maxLines: 1,
+                                            textAlign: TextAlign.center,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.inter(
+                                              fontSize: widget.isTv ? 11.0 : 10.0,
+                                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                              color: isSelected ? AppColors.primary : AppColors.textMuted,
+                                              letterSpacing: 0.1,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
-                        ),
-                      ),
-                    );
-                  },
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 18),
           ],
         ),
       ),

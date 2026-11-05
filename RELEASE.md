@@ -24,10 +24,25 @@ Pembaruan Cineva versi 1.1.4 menghadirkan lonjakan kapabilitas besar **Ekspansi 
 ### 3. Bilah Navigasi Kiri Adaptif (Adaptive Navigation Rail)
 - **Transisi Responsif Layar Lebar & Desktop**:
   - Pada layar lebar (Android TV atau Desktop Windows dengan lebar $\ge 960\text{ px}$), aplikasi secara cerdas beralih dari Bottom Navigation Bar ponsel ke **Adaptive Left Navigation Rail** yang modern dan minimalis.
+- **Tata Letak Rata Tengah Vertikal & Horizontal Presisi**:
+  - Logo Cineva disematkan secara elegan di pucuk atas navbar, sementara deretan menu utama (Beranda, Live TV, Pencarian, Watchlist, Riwayat, Pengaturan) diposisikan rata tengah (*centered*) secara vertikal pada sisa ruang bilah samping.
+  - Setiap tombol menu diposisikan simetris rata tengah sesuai lebar navbar (70px di desktop, 76px di TV) dengan indikator aktif bergradasi halus dan garis tepi amber yang rapi.
 - **Dukungan Hover & D-Pad Lengkap**:
-  - Setiap menu navigasi (Beranda, Live TV, Pencarian, Watchlist, Riwayat, Pengaturan) mendukung kursor mouse, tombol keyboard, serta D-Pad remote dengan animasi indikator aktif Amber Glow.
+  - Setiap menu navigasi mendukung kursor mouse, tombol keyboard, serta D-Pad remote dengan animasi indikator aktif Amber Glow.
 
-### 4. Windows Desktop Runner, Frameless UI & Buttery-Smooth Mouse Scrolling
+### 4. Redesign Layar Lebar: Hero Beranda & Halaman Detail Movies / TV Series
+- **Redesign Hero Carousel Beranda (Widescreen Billboard)**:
+  - Format billboard teater meluas hingga ketinggian **490px** pada layar lebar ($\ge 960\text{ px}$).
+  - Vinyet gradien hitam horizontal dari kiri ke kanan yang dramatis dan vinyet bawah yang menyatu ke latar belakang beranda.
+  - Menampilkan cuplikan sinopsis film (3 baris rapi) dengan tipografi Outfit 38px tebal dan badge kualitas (4K UHD, HDR10).
+  - Tombol aksi terstruktur dengan lebar alami (*natural fixed widths*) alih-alih merenggang tak beraturan, lengkap dengan tombol navigasi chevron samping untuk mouse desktop dan D-Pad remote.
+- **Redesign Halaman Detail Movies & TV Series Layar Lebar**:
+  - **Cinematic Header Canvas (480px)**: Menggabungkan backdrop beresolusi tinggi dengan kartu poster mengambang (*floating poster card*) berukuran megah ($210\times 315\text{ px}$) serta tombol kembali glassmorphic.
+  - **Panel Informasi & Aksi**: Deretan badge rating bintang emas, durasi/musim, resolusi 4K, genre chips, dan tombol aksi horizontal ("Nonton Sekarang", "Trailer", "Watchlist", dan "Download").
+  - **Grid Episode 2-Kolom untuk Serial TV**: Daftar episode pada desktop dan Android TV disajikan dalam bentuk kartu kisi 2-kolom yang luas dengan thumbnail 16:9, nomor episode, judul, durasi, tanggal siar, dan deskripsi cerita ringkas.
+  - **Area Konten Berbatas Maksimal (Max-Width 1300px)**: Menghindari teks merenggang ke ujung layar ultrawide, menjaga keterbacaan mata yang nyaman dan seimbang.
+
+### 5. Windows Desktop Runner, Frameless UI & Buttery-Smooth Mouse Scrolling
 - **Runner Native Windows**:
   - Proyek kini menyertakan runner resmi Windows Desktop yang terintegrasi dengan pustaka video `media_kit_libs_windows_video`.
 - **Smooth Mouse Wheel Scrolling Berkecepatan Tinggi**:
@@ -52,7 +67,7 @@ Pembaruan Cineva versi 1.1.4 menghadirkan lonjakan kapabilitas besar **Ekspansi 
 - **Proteksi Server WebView di Desktop**:
   - Menangani isolasi arsitektur agar server WebView Android tidak memicu *unsupported platform crash* pada Windows Desktop.
 
-### 5. Strategi Distribusi Berkas APK Ringan (Split-per-ABI)
+### 6. Strategi Distribusi Berkas APK Ringan (Split-per-ABI)
 - Tetap mempertahankan pembagian berkas APK terpisah per arsitektur CPU agar ukuran unduhan tetap sangat ramping (~16 MB) untuk perangkat TV dan TV Box yang memiliki kapasitas memori terbatas.
 
 ---
