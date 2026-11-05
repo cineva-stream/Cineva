@@ -72,3 +72,4 @@ if __name__ == '__main__':
             'windows/installer/app_icon.ico',
         ]
     )
+
