@@ -142,6 +142,7 @@ class _TvFocusableState extends State<TvFocusable> {
                   scale: scale,
                   alignment: Alignment.center,
                   child: Stack(
+                    alignment: Alignment.center,
                     clipBehavior: Clip.none,
                     children: [
                       // Atmospheric smooth ambient glow layer behind the poster (no border)

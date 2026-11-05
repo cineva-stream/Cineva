@@ -33,6 +33,16 @@ void main() {
 
       // Verify logo is present
       expect(find.byType(Image), findsOneWidget);
+      final logoCenter = tester.getCenter(find.byType(Image));
+      final homeIconCenter = tester.getCenter(find.byIcon(Icons.home_rounded));
+      final searchIconCenter = tester.getCenter(find.byIcon(Icons.search_rounded));
+      final settingsIconCenter = tester.getCenter(find.byIcon(Icons.settings_outlined));
+
+      // Verify strict horizontal centering: logo and all navigation icons share the exact same dx axis
+      expect(logoCenter.dx, equals(44.0));
+      expect(homeIconCenter.dx, equals(44.0));
+      expect(searchIconCenter.dx, equals(44.0));
+      expect(settingsIconCenter.dx, equals(44.0));
 
       // Verify all 6 destination icons are rendered
       expect(find.byIcon(Icons.home_rounded), findsOneWidget);
