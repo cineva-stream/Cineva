@@ -14,6 +14,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
@@ -230,6 +231,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _isAutoTranslating = false;
   double _translationProgress = 0.0;
   bool _isSubtitleTranslated = false;
+  final Map<String, List<SubtitleCue>> _customSubtitleCues = {};
 
   DateTime _lastHistorySaveTime = DateTime.now();
   bool _hasRestoredPosition = false;
@@ -996,6 +998,55 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // Ensure media_kit internal subtitle renderer is completely disabled!
       await _player.setSubtitleTrack(SubtitleTrack.no());
 
+      // 1. In-memory custom uploaded subtitle
+      if (_customSubtitleCues.containsKey(sub.id)) {
+        ref.read(activeSubtitleCuesProvider.notifier).state =
+            _customSubtitleCues[sub.id]!;
+        return true;
+      }
+
+      // 2. Local file path (custom uploaded or offline downloaded subtitle)
+      if (sub.downloadUrl != null &&
+          !sub.downloadUrl!.startsWith('http://') &&
+          !sub.downloadUrl!.startsWith('https://')) {
+        final localFile = File(sub.downloadUrl!);
+        if (await localFile.exists()) {
+          final bytes = await localFile.readAsBytes();
+          String content;
+          try {
+            content = utf8.decode(bytes);
+          } catch (_) {
+            content = latin1.decode(bytes);
+          }
+          final cues = SubtitleCue.parseSrt(content);
+          if (cues.isNotEmpty) {
+            final refinedCues = cues
+                .map(
+                  (c) => SubtitleCue(
+                    start: c.start,
+                    end: c.end,
+                    text: sub.language.toLowerCase() == 'id'
+                        ? SubtitleTranslatorService.balanceSubtitleLines(
+                            SubtitleTranslatorService.smartFormatIndonesianSubtitle(
+                              SubtitleTranslatorService.refineIndonesianPronouns(
+                                c.text,
+                              ),
+                            ),
+                          )
+                        : SubtitleTranslatorService.balanceSubtitleLines(
+                            c.text,
+                          ),
+                  ),
+                )
+                .toList();
+            _customSubtitleCues[sub.id] = refinedCues;
+            ref.read(activeSubtitleCuesProvider.notifier).state = refinedCues;
+            return true;
+          }
+        }
+      }
+
+      // 3. Online stream / OpenSubtitles download
       final subService = ref.read(subtitleServiceProvider);
       final downloadUrl =
           (sub.downloadUrl != null && sub.downloadUrl!.isNotEmpty)
@@ -1036,6 +1087,82 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     return false;
   }
 
+  Future<void> _pickAndUploadSubtitle() async {
+    _resetControlsTimer();
+    final s = ref.read(appStringsProvider);
+    try {
+      final file = await FilePicker.pickFile(
+        dialogTitle: s.playerUploadSubtitle,
+        type: FileType.custom,
+        allowedExtensions: ['srt', 'vtt', 'sub', 'txt', 'ass'],
+      );
+
+      if (file == null) {
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+      String? content;
+      try {
+        content = utf8.decode(bytes);
+      } catch (_) {
+        content = latin1.decode(bytes);
+      }
+
+      if (content.trim().isEmpty) {
+        _showToastSubtitle(s.playerUploadSubtitleEmpty);
+        return;
+      }
+
+      final cues = SubtitleCue.parseSrt(content);
+      if (cues.isEmpty) {
+        _showToastSubtitle(s.playerUploadSubtitleEmpty);
+        return;
+      }
+
+      final refinedCues = cues.map((c) {
+        return SubtitleCue(
+          start: c.start,
+          end: c.end,
+          text: SubtitleTranslatorService.balanceSubtitleLines(c.text),
+        );
+      }).toList();
+
+      final cleanName = file.name.isNotEmpty
+          ? file.name
+          : 'custom_${DateTime.now().millisecondsSinceEpoch}.srt';
+
+      final customSub = SubtitleInfo(
+        id: 'uploaded_${DateTime.now().millisecondsSinceEpoch}',
+        language: 'custom',
+        languageName: s.playerCustomSubtitleTag,
+        fileName: cleanName,
+        downloadCount: 1,
+        downloadUrl: file.path,
+      );
+
+      _customSubtitleCues[customSub.id] = refinedCues;
+      ref.read(activeSubtitleCuesProvider.notifier).state = refinedCues;
+
+      await _player.setSubtitleTrack(SubtitleTrack.no());
+
+      if (mounted) {
+        setState(() {
+          _availableSubtitles.removeWhere((item) => item.id == customSub.id);
+          _availableSubtitles.insert(0, customSub);
+          _selectedSubtitle = customSub;
+          _isSubtitleTranslated = false;
+        });
+        _showToastSubtitle('${s.playerUploadSubtitleSuccess}: $cleanName');
+      }
+    } catch (e) {
+      debugPrint('[PlayerScreen] Failed to pick custom subtitle: $e');
+      if (mounted) {
+        _showToastSubtitle(s.playerUploadSubtitleFailed);
+      }
+    }
+  }
+
   Future<bool> _applyAndAutoTranslateSubtitle(
     SubtitleInfo sub, {
     String? targetLang,
@@ -1051,64 +1178,84 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // Ensure media_kit internal subtitle renderer is completely disabled!
       await _player.setSubtitleTrack(SubtitleTrack.no());
 
-      final subService = ref.read(subtitleServiceProvider);
-      final downloadUrl =
-          (sub.downloadUrl != null && sub.downloadUrl!.isNotEmpty)
-          ? sub.downloadUrl
-          : await subService.getDownloadUrl(sub.id);
-      if (downloadUrl != null) {
-        final content = await subService.downloadSubtitleContent(downloadUrl);
-        if (content != null && mounted) {
-          final originalCues = SubtitleCue.parseSrt(content);
-          if (originalCues.isNotEmpty) {
-            // Immediately show original cues with line balancing while background translating
-            final balancedOriginalCues = originalCues
-                .map(
-                  (c) => SubtitleCue(
-                    start: c.start,
-                    end: c.end,
-                    text: SubtitleTranslatorService.balanceSubtitleLines(
-                      c.text,
-                    ),
-                  ),
-                )
-                .toList();
-            ref.read(activeSubtitleCuesProvider.notifier).state =
-                balancedOriginalCues;
-
-            final targetLanguage = (targetLang ?? _getTargetTranslateLang())
-                .toLowerCase();
-            final translator = ref.read(subtitleTranslatorServiceProvider);
-            final cacheKey =
-                'sub_${widget.imdbId ?? widget.tmdbId}_auto_${targetLanguage}_${sub.id.hashCode}_s${_currentSeason ?? 0}_e${_currentEpisode ?? 0}';
-
-            final translatedCues = await translator.translateCues(
-              cues: originalCues,
-              cacheKey: cacheKey,
-              targetLang: targetLanguage,
-              onProgress: (p) {
-                if (mounted && _activePopup == _PlayerMiniPopup.subtitle) {
-                  setState(() => _translationProgress = p);
-                }
-              },
-            );
-
-            if (mounted && translatedCues.isNotEmpty) {
-              ref.read(activeSubtitleCuesProvider.notifier).state =
-                  translatedCues;
-              setState(() {
-                _isAutoTranslating = false;
-                _isSubtitleTranslated = true;
-              });
-              final langObj = SubtitleLanguageCatalog.findByCode(
-                targetLanguage,
-              );
-              _showToastSubtitle(s.playerSubAutoTranslatedToast(langObj.name));
-              return true;
-            }
-            return true;
+      List<SubtitleCue> originalCues = [];
+      if (_customSubtitleCues.containsKey(sub.id)) {
+        originalCues = _customSubtitleCues[sub.id]!;
+      } else if (sub.downloadUrl != null &&
+          !sub.downloadUrl!.startsWith('http://') &&
+          !sub.downloadUrl!.startsWith('https://')) {
+        final localFile = File(sub.downloadUrl!);
+        if (await localFile.exists()) {
+          final bytes = await localFile.readAsBytes();
+          String content;
+          try {
+            content = utf8.decode(bytes);
+          } catch (_) {
+            content = latin1.decode(bytes);
+          }
+          originalCues = SubtitleCue.parseSrt(content);
+        }
+      } else {
+        final subService = ref.read(subtitleServiceProvider);
+        final downloadUrl =
+            (sub.downloadUrl != null && sub.downloadUrl!.isNotEmpty)
+            ? sub.downloadUrl
+            : await subService.getDownloadUrl(sub.id);
+        if (downloadUrl != null) {
+          final content = await subService.downloadSubtitleContent(downloadUrl);
+          if (content != null && mounted) {
+            originalCues = SubtitleCue.parseSrt(content);
           }
         }
+      }
+
+      if (originalCues.isNotEmpty) {
+        // Immediately show original cues with line balancing while background translating
+        final balancedOriginalCues = originalCues
+            .map(
+              (c) => SubtitleCue(
+                start: c.start,
+                end: c.end,
+                text: SubtitleTranslatorService.balanceSubtitleLines(
+                  c.text,
+                ),
+              ),
+            )
+            .toList();
+        ref.read(activeSubtitleCuesProvider.notifier).state =
+            balancedOriginalCues;
+
+        final targetLanguage = (targetLang ?? _getTargetTranslateLang())
+            .toLowerCase();
+        final translator = ref.read(subtitleTranslatorServiceProvider);
+        final cacheKey =
+            'sub_${widget.imdbId ?? widget.tmdbId}_auto_${targetLanguage}_${sub.id.hashCode}_s${_currentSeason ?? 0}_e${_currentEpisode ?? 0}';
+
+        final translatedCues = await translator.translateCues(
+          cues: originalCues,
+          cacheKey: cacheKey,
+          targetLang: targetLanguage,
+          onProgress: (p) {
+            if (mounted && _activePopup == _PlayerMiniPopup.subtitle) {
+              setState(() => _translationProgress = p);
+            }
+          },
+        );
+
+        if (mounted && translatedCues.isNotEmpty) {
+          ref.read(activeSubtitleCuesProvider.notifier).state =
+              translatedCues;
+          setState(() {
+            _isAutoTranslating = false;
+            _isSubtitleTranslated = true;
+          });
+          final langObj = SubtitleLanguageCatalog.findByCode(
+            targetLanguage,
+          );
+          _showToastSubtitle(s.playerSubAutoTranslatedToast(langObj.name));
+          return true;
+        }
+        return true;
       }
     } catch (e) {
       debugPrint('[PlayerScreen] Failed to auto-translate subtitle: $e');
@@ -2736,6 +2883,58 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           ),
         ),
 
+        // 3. Menu "Upload Subtitle" (Pilih file .srt / .vtt dari penyimpanan lokal)
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: _pickAndUploadSubtitle,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.file_upload_outlined,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        s.playerUploadSubtitle,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        s.playerUploadSubtitleHint,
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.add_circle_outline_rounded,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+              ],
+            ),
+          ),
+        ),
+
         // Border pembatas yang smooth
         const Divider(color: Colors.white12, height: 16),
 
@@ -2822,6 +3021,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         else
           ..._availableSubtitles.map((sub) {
             final isSelected = _selectedSubtitle?.id == sub.id;
+            final isCustom =
+                sub.id.startsWith('uploaded_') || sub.language == 'custom';
             final isPreferred =
                 sub.language.toLowerCase() == targetLangCode.toLowerCase();
 
@@ -2875,17 +3076,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: isPreferred
-                            ? AppColors.success.withValues(alpha: 0.25)
-                            : AppColors.surfaceElevated,
+                        color: isCustom
+                            ? AppColors.primary.withValues(alpha: 0.25)
+                            : (isPreferred
+                                ? AppColors.success.withValues(alpha: 0.25)
+                                : AppColors.surfaceElevated),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        sub.language.toUpperCase(),
+                        isCustom
+                            ? (s.isIndonesian ? 'UPLOAD' : 'CUSTOM')
+                            : sub.language.toUpperCase(),
                         style: TextStyle(
-                          color: isPreferred
-                              ? AppColors.success
-                              : Colors.white70,
+                          color: isCustom
+                              ? AppColors.primary
+                              : (isPreferred
+                                  ? AppColors.success
+                                  : Colors.white70),
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
@@ -5000,6 +5207,60 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           ),
         ),
 
+        // 3. Action: Upload Subtitle (Unggah File Subtitle .srt / .vtt)
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _pickAndUploadSubtitle,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.white12, width: 0.8),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.file_upload_outlined,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          s.playerUploadSubtitle,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          s.playerUploadSubtitleHint,
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.add_circle_outline_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
         // 3. 1-Tap Auto-Translate Action
         if (_selectedSubtitle != null &&
             _selectedSubtitle!.language.toLowerCase() !=
@@ -5113,6 +5374,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         else
           ..._availableSubtitles.map((sub) {
             final isSelected = _selectedSubtitle?.id == sub.id;
+            final isCustom =
+                sub.id.startsWith('uploaded_') || sub.language == 'custom';
             final isPreferred =
                 sub.language.toLowerCase() == targetLangCode.toLowerCase();
 
@@ -5160,17 +5423,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: isPreferred
-                              ? AppColors.success.withValues(alpha: 0.25)
-                              : AppColors.surfaceElevated,
+                          color: isCustom
+                              ? AppColors.primary.withValues(alpha: 0.25)
+                              : (isPreferred
+                                  ? AppColors.success.withValues(alpha: 0.25)
+                                  : AppColors.surfaceElevated),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          sub.language.toUpperCase(),
+                          isCustom
+                              ? (s.isIndonesian ? 'UPLOAD' : 'CUSTOM')
+                              : sub.language.toUpperCase(),
                           style: TextStyle(
-                            color: isPreferred
-                                ? AppColors.success
-                                : Colors.white70,
+                            color: isCustom
+                                ? AppColors.primary
+                                : (isPreferred
+                                    ? AppColors.success
+                                    : Colors.white70),
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),

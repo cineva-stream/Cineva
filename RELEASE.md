@@ -67,7 +67,16 @@ Pembaruan Cineva versi 1.1.4 menghadirkan lonjakan kapabilitas besar **Ekspansi 
 - **Proteksi Server WebView di Desktop**:
   - Menangani isolasi arsitektur agar server WebView Android tidak memicu *unsupported platform crash* pada Windows Desktop.
 
-### 6. Strategi Distribusi Berkas APK Ringan (Split-per-ABI)
+### 6. Fitur Unggah Subtitle Mandiri (Upload Custom Subtitle) pada Kontrol Pemutar
+- **Pemuatan Berkas Subtitle Lokal Langsung (.srt, .vtt, .sub, .txt, .ass)**:
+  - Pengguna kini dapat mengunggah berkas subtitle eksternal dari penyimpanan perangkat (HP Android, Android TV, maupun Windows Desktop) langsung dari menu **Pilih Subtitle** di bilah panel samping (*Side Panel*) maupun *Mini Popup*.
+  - Mendukung deteksi encoding otomatis (UTF-8 dan Latin-1 / ISO-8859-1) serta pembersihan karakter *Byte Order Mark* (BOM).
+  - Teks subtitle yang diunggah otomatis dirapikan pembagian barisnya (*line balancing*) agar nyaman dibaca dan tidak terpotong di tepi layar.
+- **Badge Status "UPLOAD" & Integrasi Penuh Translator AI**:
+  - Subtitle yang berhasil diunggah langsung disematkan di urutan teratas daftar dengan lencana status amber `UPLOAD`.
+  - Terintegrasi penuh dengan fitur 1-Tap AI Auto-Translate Cineva, sehingga berkas subtitle bahasa asing yang diunggah pengguna (seperti bahasa Inggris, Jepang, Korea) dapat langsung diterjemahkan secara otomatis ke Bahasa Indonesia secara instan.
+
+### 7. Strategi Distribusi Berkas APK Ringan (Split-per-ABI)
 - Tetap mempertahankan pembagian berkas APK terpisah per arsitektur CPU agar ukuran unduhan tetap sangat ramping (~16 MB) untuk perangkat TV dan TV Box yang memiliki kapasitas memori terbatas.
 
 ---

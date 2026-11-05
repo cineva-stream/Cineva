@@ -254,5 +254,20 @@ We must protect this place.
         'Kami menjaga anak-anak di taman.',
       );
     });
+
+    test('Uploaded custom subtitle parsing with BOM, line balancing, and cue mapping', () {
+      const uploadedSrtWithBom = '\uFEFF1\r\n00:01:10,000 --> 00:01:14,000\r\nLook up in the sky, it is a bird, it is a plane, it is Superman!\r\n\r\n2\r\n00:01:15,000 --> 00:01:18,500\r\n<i>He saved the city again.</i>\r\n';
+
+      final cues = SubtitleCue.parseSrt(uploadedSrtWithBom);
+      expect(cues.length, 2);
+      expect(cues[0].start, const Duration(minutes: 1, seconds: 10));
+      expect(cues[0].end, const Duration(minutes: 1, seconds: 14));
+      expect(cues[0].text, contains('Look up in the sky'));
+
+      final balanced = SubtitleTranslatorService.balanceSubtitleLines(cues[0].text);
+      expect(balanced.isNotEmpty, isTrue);
+
+      expect(cues[1].text, 'He saved the city again.');
+    });
   });
 }

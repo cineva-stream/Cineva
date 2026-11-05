@@ -264,6 +264,22 @@ class AppStrings {
 
   String get playerSubtitleTrack =>
       isIndonesian ? 'Pilih Subtitle' : 'Select Subtitle';
+  String get playerUploadSubtitle =>
+      isIndonesian ? 'Upload Subtitle' : 'Upload Subtitle';
+  String get playerUploadSubtitleHint => isIndonesian
+      ? 'Pilih file .srt atau .vtt dari perangkat'
+      : 'Select .srt or .vtt file from device';
+  String get playerUploadSubtitleSuccess => isIndonesian
+      ? 'Subtitle berhasil dimuat'
+      : 'Subtitle loaded successfully';
+  String get playerUploadSubtitleEmpty => isIndonesian
+      ? 'File subtitle kosong atau format tidak sesuai (.srt / .vtt)'
+      : 'Subtitle file is empty or invalid (.srt / .vtt)';
+  String get playerUploadSubtitleFailed => isIndonesian
+      ? 'Gagal membaca file subtitle'
+      : 'Failed to load subtitle file';
+  String get playerCustomSubtitleTag =>
+      isIndonesian ? 'Kustom' : 'Custom';
   String get playerDisableSubtitle =>
       isIndonesian ? 'Matikan Subtitle' : 'Disable Subtitles';
   String get playerNoSubtitleFound =>
