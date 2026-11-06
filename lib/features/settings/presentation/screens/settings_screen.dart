@@ -11,6 +11,7 @@ import '../../../../core/constants/content_preference.dart';
 import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/platform/device_form_factor.dart';
 import '../../../../shared/widgets/modern_flag_badge.dart';
 import '../../../home/presentation/providers/home_providers.dart';
 import '../../data/settings_service.dart';
@@ -871,6 +872,116 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             size: 16,
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            // ── Mobile-Only: Tautkan ke Android TV / PC QR Scanner Banner ──
+            Consumer(
+              builder: (context, ref, _) {
+                final isTv = ref.watch(isTvProvider);
+                final isDesktop = ref.watch(isDesktopProvider);
+                if (isTv || isDesktop) return const SizedBox.shrink();
+
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => context.push('/tv-pairing-scanner'),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primary.withValues(alpha: 0.12),
+                              const Color(0xFF161622),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.35),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.18),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(alpha: 0.4),
+                                  width: 1,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.qr_code_scanner_rounded,
+                                color: AppColors.primary,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Tautkan ke Android TV / PC',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          'BARU',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Pindai QR di layar TV atau PC untuk kirim profil (Wi-Fi / 4G)',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11.5,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

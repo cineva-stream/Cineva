@@ -10,9 +10,11 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/platform/device_form_factor.dart';
 import '../../domain/models/avatar_catalog.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/avatar_display.dart';
+import '../widgets/tv_qr_sync_view.dart';
 import 'avatar_crop_screen.dart';
 import '../../../settings/data/settings_service.dart';
 
@@ -39,6 +41,7 @@ class _OnboardingProfileScreenState
 
   String _selectedAvatarId = 'avatar_popcorn';
   String? _customAvatarPath;
+  bool _isDesktopQrMode = true;
 
   @override
   void initState() {
@@ -139,16 +142,51 @@ class _OnboardingProfileScreenState
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(appStringsProvider);
+    final isTv = ref.watch(isTvProvider);
+    final isDesktop = ref.watch(isDesktopProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
+    // 1. Android TV: 10-Foot UI with QR Pairing, no manual keyboard form
+    if (isTv) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: TvQrSyncView(
+          showManualOption: false,
+        ),
+      );
+    }
+
+    // 2. Windows Desktop: Dual-Mode with QR Sync or Manual Setup
+    if (isDesktop && _isDesktopQrMode) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            _buildDesktopModeSelector(isQr: true),
+            Expanded(
+              child: TvQrSyncView(
+                showManualOption: true,
+                onSwitchToManual: () => setState(() => _isDesktopQrMode = false),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 3. Desktop Manual Mode or Smartphone Setup
+    final formContent = SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: isDesktop ? 540 : double.infinity),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.symmetric(
+              horizontal: isDesktop ? 32 : 24,
+              vertical: 16,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
               // ── Top Bar: Logo & Skip Action ──
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -466,6 +504,143 @@ class _OnboardingProfileScreenState
                   .slideY(begin: 0.1, end: 0, duration: 500.ms),
 
               const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: isDesktop
+          ? Column(
+              children: [
+                _buildDesktopModeSelector(isQr: false),
+                Expanded(child: formContent),
+              ],
+            )
+          : formContent,
+    );
+  }
+
+  Widget _buildDesktopModeSelector({required bool isQr}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F0F16),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.06),
+          ),
+        ),
+      ),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 480),
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.08),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _isDesktopQrMode = true),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    decoration: BoxDecoration(
+                      color: isQr ? AppColors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: isQr
+                          ? [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.qr_code_2_rounded,
+                          size: 18,
+                          color: isQr ? Colors.black : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Tautkan via QR (dari HP)',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: isQr ? Colors.black : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _isDesktopQrMode = false),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    decoration: BoxDecoration(
+                      color: !isQr ? AppColors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: !isQr
+                          ? [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.edit_note_rounded,
+                          size: 18,
+                          color: !isQr ? Colors.black : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Setup Profil di PC',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: !isQr ? Colors.black : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

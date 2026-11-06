@@ -17,6 +17,7 @@ import '../../features/settings/presentation/screens/about_info_screen.dart';
 import '../../features/profile/presentation/screens/onboarding_profile_screen.dart';
 import '../../features/profile/presentation/screens/legal_agreement_screen.dart';
 import '../../features/profile/presentation/screens/edit_profile_screen.dart';
+import '../../features/profile/presentation/screens/tv_pairing_scanner_screen.dart';
 import '../../features/live_tv/presentation/screens/live_tv_screen.dart';
 import '../../features/live_tv/presentation/screens/live_tv_player_screen.dart';
 import '../../features/live_tv/domain/entities/live_tv_channel.dart';
@@ -99,6 +100,26 @@ final GoRouter appRouter = GoRouter(
         child: const EditProfileScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(0.06, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeOutCubic;
+          final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: FadeTransition(opacity: animation, child: child),
+          );
+        },
+      ),
+    ),
+
+    // ── TV Pairing QR Scanner Screen (Smartphone) ──
+    GoRoute(
+      path: '/tv-pairing-scanner',
+      name: 'tv-pairing-scanner',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const TvPairingScannerScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 0.08);
           const end = Offset.zero;
           const curve = Curves.easeOutCubic;
           final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
