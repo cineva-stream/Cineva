@@ -525,6 +525,7 @@ class _OnboardingProfileScreenState
   }
 
   Widget _buildDesktopModeSelector({required bool isQr}) {
+    final s = ref.watch(appStringsProvider);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -580,7 +581,7 @@ class _OnboardingProfileScreenState
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            'Tautkan via QR (dari HP)',
+                            s.desktopSyncTabQr,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(
@@ -626,7 +627,7 @@ class _OnboardingProfileScreenState
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            'Setup Profil di PC',
+                            s.desktopSyncTabManual,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(

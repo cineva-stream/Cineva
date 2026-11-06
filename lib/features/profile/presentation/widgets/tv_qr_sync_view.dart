@@ -395,6 +395,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
   }
 
   Widget _buildQrCard() {
+    final s = ref.watch(appStringsProvider);
     if (_isLoading || _sessionInfo == null) {
       return Container(
         height: 340,
@@ -492,7 +493,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                   .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.3, 1.3), duration: 800.ms),
               const SizedBox(width: 8),
               Text(
-                'Menunggu pemindaian ponsel...',
+                s.tvSyncWaitingScan,
                 style: GoogleFonts.inter(
                   color: AppColors.primaryLight,
                   fontWeight: FontWeight.w600,
@@ -506,7 +507,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
 
           // Network & PIN Info
           Text(
-            'Kode Alternatif: ${_sessionInfo!.pinCode}',
+            s.tvSyncAlternativeCode(_sessionInfo!.pinCode),
             style: GoogleFonts.inter(
               color: Colors.white.withValues(alpha: 0.6),
               fontSize: 11,
@@ -519,6 +520,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
   }
 
   Widget _buildSuccessCelebration() {
+    final s = ref.watch(appStringsProvider);
     return Center(
       child: Container(
         constraints: const BoxConstraints(maxWidth: 480),
@@ -560,7 +562,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                 const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 24),
                 const SizedBox(width: 8),
                 Text(
-                  'Profil Berhasil Ditautkan!',
+                  s.tvSyncSuccessTitle,
                   style: GoogleFonts.outfit(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -573,7 +575,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
             const SizedBox(height: 6),
 
             Text(
-              'Selamat Datang, ${_syncedUserName ?? 'Pengguna Cineva'}',
+              s.tvSyncWelcomeUser(_syncedUserName ?? s.tvSyncDefaultUser),
               style: GoogleFonts.inter(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,

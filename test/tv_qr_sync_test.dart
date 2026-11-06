@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:cineva/core/constants/app_constants.dart';
+import 'package:cineva/core/localization/app_language.dart';
+import 'package:cineva/core/localization/app_language_provider.dart';
 import 'package:cineva/core/platform/device_form_factor.dart';
 import 'package:cineva/features/profile/data/sync_crypto_service.dart';
 import 'package:cineva/features/profile/data/profile_sync_sender.dart';
@@ -204,6 +206,38 @@ void main() {
 
       // Mobile directly shows manual setup fields
       expect(find.byType(TextField), findsNWidgets(2));
+    });
+
+    testWidgets('English localization renders translated texts for TV sync and desktop modes', (tester) async {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appLanguageProvider.overrideWith((ref) => AppLanguageNotifier(AppLanguage.en)),
+            isTvProvider.overrideWith((ref) => _FakeTvNotifier(false)),
+            isDesktopProvider.overrideWithValue(true),
+          ],
+          child: const MaterialApp(
+            home: OnboardingProfileScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // In English, tabs and TV Sync show English labels
+      expect(find.text('Link via QR (from Phone)'), findsOneWidget);
+      expect(find.text('Set Up Profile on PC'), findsOneWidget);
+      expect(find.text('Connect Your Cineva Account'), findsOneWidget);
+      expect(find.text('Continue as Guest'), findsOneWidget);
+      expect(find.text('Manual PC Setup'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
     });
   });
 }

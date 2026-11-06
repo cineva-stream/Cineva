@@ -885,6 +885,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 final isTv = ref.watch(isTvProvider);
                 final isDesktop = ref.watch(isDesktopProvider);
                 if (isTv || isDesktop) return const SizedBox.shrink();
+                final s = ref.watch(appStringsProvider);
 
                 return Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -938,7 +939,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   Row(
                                     children: [
                                       Text(
-                                        'Tautkan ke Android TV / PC',
+                                        s.settingsSyncTvTitle,
                                         style: GoogleFonts.outfit(
                                           fontSize: 14.5,
                                           fontWeight: FontWeight.w700,
@@ -953,7 +954,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                           borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Text(
-                                          'BARU',
+                                          s.badgeNew,
                                           style: GoogleFonts.inter(
                                             fontSize: 9.5,
                                             fontWeight: FontWeight.w800,
@@ -965,7 +966,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    'Pindai QR di layar TV atau PC untuk kirim profil (Wi-Fi / 4G)',
+                                    s.settingsSyncTvSubtitle,
                                     style: GoogleFonts.inter(
                                       fontSize: 11.5,
                                       color: AppColors.textSecondary,

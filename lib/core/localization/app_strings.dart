@@ -897,4 +897,92 @@ class AppStrings {
   String get tvUniverseViewSeries => isIndonesian ? 'Buka Serial' : 'View Series';
   String get tvUniverseChronologicalOrder =>
       isIndonesian ? 'Urutan Cerita Rekomendasi' : 'Recommended Story Order';
+
+  // ── TV / Desktop QR Profile Sync & Pairing ──
+  String get tvSyncTitle =>
+      isIndonesian ? 'Tautkan Akun Cineva Anda' : 'Connect Your Cineva Account';
+  String get tvSyncSubtitle => isIndonesian
+      ? 'Pindai QR code ini melalui aplikasi Cineva di handphone Anda. Bekerja otomatis baik di Wi-Fi rumah maupun paket data seluler (4G/5G).'
+      : 'Scan this QR code from your Cineva smartphone app. Works seamlessly over home Wi-Fi and mobile cellular (4G/5G).';
+  String get tvSyncStep1Title =>
+      isIndonesian ? 'Buka Cineva di Handphone' : 'Open Cineva on Smartphone';
+  String get tvSyncStep1Desc => isIndonesian
+      ? 'Gunakan aplikasi Cineva di smartphone Android Anda'
+      : 'Launch the Cineva Android app on your phone';
+  String get tvSyncStep2Title =>
+      isIndonesian ? 'Pilih "Tautkan ke TV"' : 'Select "Connect to TV"';
+  String get tvSyncStep2Desc => isIndonesian
+      ? 'Masuk ke Pengaturan ➔ Tautkan ke Android TV / PC'
+      : 'Go to Settings ➔ Connect to Android TV / PC';
+  String get tvSyncStep3Title =>
+      isIndonesian ? 'Pindai QR Code di Samping' : 'Scan the QR Code Beside';
+  String get tvSyncStep3Desc => isIndonesian
+      ? 'Arahkan kamera ponsel Anda untuk sinkronisasi instan'
+      : 'Aim your phone camera for instant transfer';
+  String get tvSyncContinueGuest =>
+      isIndonesian ? 'Masuk sebagai Tamu' : 'Continue as Guest';
+  String get tvSyncManualPcSetup =>
+      isIndonesian ? 'Setup Manual di PC' : 'Manual PC Setup';
+  String get tvSyncWaitingScan =>
+      isIndonesian ? 'Menunggu pemindaian ponsel...' : 'Waiting for smartphone scan...';
+  String tvSyncAlternativeCode(String code) =>
+      isIndonesian ? 'Kode Alternatif: $code' : 'Alternative Code: $code';
+  String get tvSyncSuccessTitle =>
+      isIndonesian ? 'Profil Berhasil Ditautkan!' : 'Profile Linked Successfully!';
+  String tvSyncWelcomeUser(String name) =>
+      isIndonesian ? 'Selamat Datang, $name' : 'Welcome, $name';
+  String get tvSyncDefaultUser =>
+      isIndonesian ? 'Pengguna Cineva' : 'Cineva User';
+
+  // Desktop Onboarding Mode Switcher
+  String get desktopSyncTabQr =>
+      isIndonesian ? 'Tautkan via QR (dari HP)' : 'Link via QR (from Phone)';
+  String get desktopSyncTabManual =>
+      isIndonesian ? 'Setup Profil di PC' : 'Set Up Profile on PC';
+
+  // Mobile Scanner Screen
+  String get scannerTitle =>
+      isIndonesian ? 'Pindai QR TV / PC' : 'Scan TV / PC QR';
+  String get scannerInstructions => isIndonesian
+      ? 'Arahkan kamera ke QR Code di layar Android TV atau Windows PC Anda.'
+      : 'Point your camera at the QR code on your Android TV or Windows PC screen.';
+  String get scannerManualEntryBtn =>
+      isIndonesian ? 'Masukkan Kode Pairing Manual' : 'Enter Pairing Code Manually';
+  String get scannerConnecting =>
+      isIndonesian ? 'Menghubungkan ke layar...' : 'Connecting to screen...';
+  String scannerSending(String name) =>
+      isIndonesian ? 'Mengirim profil $name...' : 'Sending profile $name...';
+  String get scannerFailed => isIndonesian
+      ? 'Gagal menghubungkan ke TV/PC. Silakan coba lagi.'
+      : 'Failed to connect to TV/PC. Please try again.';
+  String get scannerSuccessViaCloud => isIndonesian
+      ? 'Terkirim aman via End-to-End Encrypted Cloud Relay (Beda Jaringan / 4G/5G).'
+      : 'Securely sent via End-to-End Encrypted Cloud Relay (Cross-Network / 4G/5G).';
+  String get scannerSuccessViaLan => isIndonesian
+      ? 'Terkirim langsung via Wi-Fi Lokal dalam hitungan milidetik.'
+      : 'Sent directly via Local Wi-Fi in milliseconds.';
+  String get scannerDone => isIndonesian ? 'Selesai' : 'Done';
+  String get scannerManualDialogTitle =>
+      isIndonesian ? 'Kode Pairing Manual' : 'Manual Pairing Code';
+  String get scannerManualDialogDesc => isIndonesian
+      ? 'Masukkan Topic ID dan Key yang tertera pada layar TV jika kamera bermasalah:'
+      : 'Enter the Topic ID and Key displayed on the TV screen if your camera has issues:';
+  String get scannerManualTopicLabel => isIndonesian
+      ? 'Topic Sesi (contoh: cineva_sync_...)'
+      : 'Session Topic (e.g. cineva_sync_...)';
+  String get scannerManualKeyLabel =>
+      isIndonesian ? 'Secret Key (Base64)' : 'Secret Key (Base64)';
+  String get scannerSendBtn => isIndonesian ? 'Kirim' : 'Send';
+  String get scannerCancelBtn => isIndonesian ? 'Batal' : 'Cancel';
+  String get scannerDoNotClose =>
+      isIndonesian ? 'Harap jangan menutup aplikasi' : 'Please do not close the app';
+
+  // Settings Tile
+  String get settingsSyncTvTitle =>
+      isIndonesian ? 'Tautkan ke Android TV / PC' : 'Connect to Android TV / PC';
+  String get settingsSyncTvSubtitle => isIndonesian
+      ? 'Pindai QR di layar TV atau PC untuk kirim profil (Wi-Fi / 4G)'
+      : 'Scan QR on TV or PC screen to send profile (Wi-Fi / 4G)';
+  String get badgeNew => isIndonesian ? 'BARU' : 'NEW';
+  String get retry => isIndonesian ? 'Coba Lagi' : 'Retry';
 }

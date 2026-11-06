@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/localization/app_language_provider.dart';
 import '../../data/profile_sync_sender.dart';
 import '../providers/profile_provider.dart';
 
@@ -63,10 +64,11 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
 
       final parsed = ParsedPairingQr.tryParse(rawValue);
       if (parsed != null) {
+        final s = ref.read(appStringsProvider);
         HapticFeedback.mediumImpact();
         setState(() {
           _isProcessing = true;
-          _statusText = 'Menghubungkan ke layar...';
+          _statusText = s.scannerConnecting;
         });
 
         await _transferProfile(parsed);
@@ -76,10 +78,11 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
   }
 
   Future<void> _transferProfile(ParsedPairingQr qrData) async {
+    final s = ref.read(appStringsProvider);
     final profile = ref.read(userProfileProvider);
 
     setState(() {
-      _statusText = 'Mengirim profil ${profile.name}...';
+      _statusText = s.scannerSending(profile.name);
     });
 
     final result = await ProfileSyncSender.sendProfile(
@@ -103,11 +106,11 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
         SnackBar(
           backgroundColor: Colors.red.shade900,
           content: Text(
-            result.errorMessage ?? 'Gagal menghubungkan ke TV/PC. Silakan coba lagi.',
+            result.errorMessage ?? s.scannerFailed,
             style: GoogleFonts.inter(color: Colors.white),
           ),
           action: SnackBarAction(
-            label: 'Coba Lagi',
+            label: s.retry,
             textColor: Colors.white,
             onPressed: () {},
           ),
@@ -117,6 +120,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
   }
 
   void _showSuccessDialog(bool usedCloudRelay) {
+    final s = ref.read(appStringsProvider);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -166,7 +170,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                 const SizedBox(height: 20),
 
                 Text(
-                  'Profil Berhasil Ditautkan!',
+                  s.tvSyncSuccessTitle,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.outfit(
                     fontSize: 20,
@@ -179,8 +183,8 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
 
                 Text(
                   usedCloudRelay
-                      ? 'Terkirim aman via End-to-End Encrypted Cloud Relay (Beda Jaringan / 4G/5G).'
-                      : 'Terkirim langsung via Wi-Fi Lokal dalam hitungan milidetik.',
+                      ? s.scannerSuccessViaCloud
+                      : s.scannerSuccessViaLan,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 13,
@@ -207,7 +211,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                       ),
                     ),
                     child: Text(
-                      'Selesai',
+                      s.scannerDone,
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -224,6 +228,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
   }
 
   void _showManualEntryDialog() {
+    final s = ref.read(appStringsProvider);
     final topicCtrl = TextEditingController();
     final keyCtrl = TextEditingController();
 
@@ -244,7 +249,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                     const Icon(Icons.dialpad_rounded, color: AppColors.primary, size: 22),
                     const SizedBox(width: 10),
                     Text(
-                      'Kode Pairing Manual',
+                      s.scannerManualDialogTitle,
                       style: GoogleFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -255,7 +260,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Masukkan Topic ID dan Key yang tertera pada layar TV jika kamera bermasalah:',
+                  s.scannerManualDialogDesc,
                   style: GoogleFonts.inter(
                     fontSize: 12.5,
                     color: AppColors.textSecondary,
@@ -266,7 +271,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                   controller: topicCtrl,
                   style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
-                    labelText: 'Topic Session (contoh: cineva_sync_...)',
+                    labelText: s.scannerManualTopicLabel,
                     labelStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12),
                     filled: true,
                     fillColor: AppColors.surface,
@@ -278,7 +283,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                   controller: keyCtrl,
                   style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
-                    labelText: 'Secret Key (Base64)',
+                    labelText: s.scannerManualKeyLabel,
                     labelStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12),
                     filled: true,
                     fillColor: AppColors.surface,
@@ -291,7 +296,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                   children: [
                     TextButton(
                       onPressed: () => Navigator.of(ctx).pop(),
-                      child: Text('Batal', style: GoogleFonts.inter(color: AppColors.textSecondary)),
+                      child: Text(s.scannerCancelBtn, style: GoogleFonts.inter(color: AppColors.textSecondary)),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -308,7 +313,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                         foregroundColor: Colors.black,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: Text('Kirim', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                      child: Text(s.scannerSendBtn, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
                     ),
                   ],
                 ),
@@ -322,6 +327,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
     const scanBoxSize = 260.0;
 
     return Scaffold(
@@ -402,7 +408,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                     ),
                   ),
                   Text(
-                    'Pindai QR TV / PC',
+                    s.scannerTitle,
                     style: GoogleFonts.outfit(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -440,7 +446,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
             ),
           ),
 
-          // 5. Instruction & Network Badges
+          // 5. Instruction & Manual Entry Button (Without network badge)
           Positioned(
             left: 24,
             right: 24,
@@ -449,41 +455,8 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Hybrid Network Pill
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: const Color(0xCC12121A),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.12),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.wifi_rounded, size: 14, color: AppColors.primary),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.swap_horiz_rounded, size: 12, color: Colors.white54),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.signal_cellular_alt_rounded, size: 14, color: AppColors.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Mendukung Wi-Fi & Seluler 4G/5G',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
                   Text(
-                    'Arahkan kamera ke QR Code di layar Android TV atau Windows PC Anda.',
+                    s.scannerInstructions,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 13.5,
@@ -504,7 +477,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                     onPressed: _showManualEntryDialog,
                     icon: const Icon(Icons.keyboard_alt_outlined, size: 17, color: AppColors.primaryLight),
                     label: Text(
-                      'Masukkan Kode Pairing Manual',
+                      s.scannerManualEntryBtn,
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -541,7 +514,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      _statusText ?? 'Menghubungkan...',
+                      _statusText ?? s.scannerConnecting,
                       style: GoogleFonts.outfit(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
@@ -550,7 +523,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Harap jangan menutup aplikasi',
+                      s.scannerDoNotClose,
                       style: GoogleFonts.inter(
                         fontSize: 12.5,
                         color: AppColors.textSecondary,
