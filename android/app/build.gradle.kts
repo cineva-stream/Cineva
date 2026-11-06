@@ -94,7 +94,10 @@ afterEvaluate {
         // Mapping of source Gradle APK names to customized Cineva release filenames
         val apkMapping = mapOf(
             "app-arm64-v8a-release.apk" to listOf("Cineva_v${finalVersion}-arm64-v8a.apk"),
-            "app-armeabi-v7a-release.apk" to listOf("Cineva_v${finalVersion}-armeabi-v7a.apk"),
+            "app-armeabi-v7a-release.apk" to listOf(
+                "Cineva_v${finalVersion}-armeabi-v7a.apk",
+                "Cineva_v${finalVersion}-android-tv.apk"
+            ),
             "app-x86_64-release.apk" to listOf("Cineva_v${finalVersion}-x86_64.apk"),
             "app-release.apk" to listOf("Cineva_v${finalVersion}.apk")
         )

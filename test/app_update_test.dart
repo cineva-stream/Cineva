@@ -71,6 +71,11 @@ void main() {
         'size': 18874368,
       },
       {
+        'name': 'Cineva_v1.1.2-android-tv.apk',
+        'browser_download_url': 'https://github.com/cineva/Cineva_v1.1.2-android-tv.apk',
+        'size': 15728640,
+      },
+      {
         'name': 'Cineva_v1.1.2.apk',
         'browser_download_url': 'https://github.com/cineva/Cineva_v1.1.2.apk',
         'size': 39845888,
@@ -108,6 +113,18 @@ void main() {
 
       expect(asset['name'], 'Cineva_v1.1.2-x86_64.apk');
       expect(asset['targetAbi'], 'x86_64');
+    });
+
+    test('Picks dedicated Cineva_v{ver}-android-tv.apk when isTv is true', () {
+      final asset = AppUpdateService.selectBestApkAsset(
+        assets: mockReleaseAssets,
+        supportedAbis: ['arm64-v8a', 'armeabi-v7a'],
+        version: '1.1.2',
+        isTv: true,
+      );
+
+      expect(asset['name'], 'Cineva_v1.1.2-android-tv.apk');
+      expect(asset['targetAbi'], 'Android TV');
     });
 
     test('Falls back to Cineva_v{ver}.apk when ABI is unknown or empty', () {

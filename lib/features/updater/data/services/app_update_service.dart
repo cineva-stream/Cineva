@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../core/platform/device_form_factor.dart';
 import '../../domain/entities/app_update_info.dart';
 
 /// Service that handles GitHub release checking, APK download with streaming progress,
@@ -76,13 +77,14 @@ class AppUpdateService {
     return [];
   }
 
-  /// Selects the best matching APK asset based on device CPU architecture.
-  /// Prioritizes specific ABIs (arm64-v8a, armeabi-v7a, x86_64) to minimize download size,
-  /// falling back to universal or default Cineva_v{ver}.apk for maximum compatibility.
+  /// Selects the best matching APK asset based on device CPU architecture and form factor.
+  /// Prioritizes dedicated Android TV build on TV, and specific ABIs (arm64-v8a, armeabi-v7a, x86_64) on mobile
+  /// to minimize download size, falling back to universal or default Cineva_v{ver}.apk for maximum compatibility.
   static Map<String, dynamic> selectBestApkAsset({
     required List<Map<String, dynamic>> assets,
     required List<String> supportedAbis,
     required String version,
+    bool isTv = false,
   }) {
     final apkAssets = assets.where((a) {
       final name = a['name']?.toString().toLowerCase() ?? '';
@@ -91,11 +93,26 @@ class AppUpdateService {
 
     if (apkAssets.isEmpty) return {};
 
+    // 0. If running on Android TV, prioritize the dedicated Cineva_v{ver}-android-tv.apk build
+    if (isTv) {
+      for (final a in apkAssets) {
+        final name = a['name']?.toString().toLowerCase() ?? '';
+        if (name.contains('android-tv')) {
+          return {
+            ...a,
+            'targetAbi': 'Android TV',
+          };
+        }
+      }
+    }
+
     // 1. Try matching against device's supported ABIs in priority order
     for (final abi in supportedAbis) {
       final cleanAbi = abi.toLowerCase();
       for (final a in apkAssets) {
         final name = a['name']?.toString().toLowerCase() ?? '';
+        // Skip android-tv asset on mobile phones if specific ABI assets are available
+        if (!isTv && name.contains('android-tv')) continue;
         if (name.contains(cleanAbi)) {
           return {
             ...a,
@@ -105,13 +122,14 @@ class AppUpdateService {
       }
     }
 
-    // 2. Fallback: Universal build (standard Cineva_v{ver}.apk without ABI suffix)
+    // 2. Fallback: Universal build (standard Cineva_v{ver}.apk without ABI/TV suffix)
     for (final a in apkAssets) {
       final name = a['name']?.toString().toLowerCase() ?? '';
       if (!name.contains('arm64') &&
           !name.contains('armeabi') &&
           !name.contains('armv7') &&
-          !name.contains('x86_64')) {
+          !name.contains('x86_64') &&
+          !name.contains('android-tv')) {
         return {
           ...a,
           'targetAbi': 'universal',
@@ -181,6 +199,7 @@ class AppUpdateService {
           assets: assets,
           supportedAbis: supportedAbis,
           version: cleanRemoteVersion,
+          isTv: gIsTelevision,
         );
         targetAbi = selectedAsset['targetAbi']?.toString() ?? 'universal';
       }
