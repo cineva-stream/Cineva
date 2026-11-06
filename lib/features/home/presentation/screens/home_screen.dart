@@ -26,6 +26,7 @@ import '../../../profile/presentation/widgets/avatar_display.dart';
 import '../../../updater/presentation/widgets/in_app_update_banner.dart';
 import '../widgets/airing_calendar_banner.dart';
 import '../../../search/presentation/screens/search_screen.dart';
+import '../../../../core/platform/device_form_factor.dart';
 
 /// Active category filter on the Home Screen.
 enum HomeCategoryFilter {
@@ -65,6 +66,11 @@ class HomeScreen extends ConsumerWidget {
     });
 
     final s = ref.watch(appStringsProvider);
+    final isTv = ref.watch(isTvProvider);
+    final isWide = isWideScreenLayout(context, isTv: isTv);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isSuperWide = screenWidth >= 1380;
+
     final activeFilter = ref.watch(homeFilterProvider);
     final activeGenre = ref.watch(selectedHomeGenreProvider);
     final pref = ref.watch(contentPreferenceProvider);
@@ -362,7 +368,7 @@ class HomeScreen extends ConsumerWidget {
             child: InAppUpdateBanner(),
           ),
 
-          // ── Hero Billboard Carousel (Trending) ──
+          // ── Hero Billboard Carousel (Trending) + Airing Calendar Companion ──
           if (activeFilter == HomeCategoryFilter.all ||
               activeFilter == HomeCategoryFilter.movies)
             SliverToBoxAdapter(
@@ -370,12 +376,55 @@ class HomeScreen extends ConsumerWidget {
                 data: (movies) {
                   final filtered = filterMovies(movies);
                   if (filtered.isEmpty) return const SizedBox.shrink();
+                  if (isWide) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: isSuperWide ? 72 : 67,
+                            child: MovieCarousel(movies: filtered),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            flex: isSuperWide ? 28 : 33,
+                            child: const AiringCalendarBanner(isCompanion: true),
+                          ),
+                        ],
+                      ),
+                    )
+                        .animate()
+                        .fadeIn(duration: 500.ms)
+                        .slideY(begin: 0.04, end: 0, duration: 500.ms);
+                  }
                   return MovieCarousel(movies: filtered)
                       .animate()
                       .fadeIn(duration: 500.ms)
                       .slideY(begin: 0.04, end: 0, duration: 500.ms);
                 },
-                loading: () => const ShimmerHeroCarousel(),
+                loading: () {
+                  if (isWide) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: isSuperWide ? 72 : 67,
+                            child: const ShimmerHeroCarousel(padding: EdgeInsets.zero),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            flex: isSuperWide ? 28 : 33,
+                            child: const AiringCalendarBanner(isCompanion: true),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const ShimmerHeroCarousel();
+                },
                 error: (e, _) => AppErrorWidget(
                   message: s.isIndonesian ? 'Gagal memuat film trending' : 'Failed to load trending movies',
                   onRetry: () => ref.invalidate(trendingMoviesProvider),
@@ -383,10 +432,12 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
 
-          // ── AIRING CALENDAR BANNER (Directly below Hero Carousel) ──
+          // ── AIRING CALENDAR BANNER (Shown below carousel on mobile, or when TV tab is active on widescreen) ──
           if (activeGenre.id == 'all' &&
-              (activeFilter == HomeCategoryFilter.all ||
-                  activeFilter == HomeCategoryFilter.tv))
+              ((!isWide &&
+                      (activeFilter == HomeCategoryFilter.all ||
+                          activeFilter == HomeCategoryFilter.tv)) ||
+                  (isWide && activeFilter == HomeCategoryFilter.tv)))
             const SliverToBoxAdapter(
               child: AiringCalendarBanner(),
             ),

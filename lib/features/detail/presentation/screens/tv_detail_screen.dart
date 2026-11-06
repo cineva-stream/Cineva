@@ -19,6 +19,7 @@ import '../../../../shared/widgets/tv_focusable.dart';
 import '../widgets/in_app_trailer_modal.dart';
 import '../../data/models/trailer_video_model.dart';
 import '../../../tv_universe/presentation/widgets/tv_universe_banner.dart';
+import '../../../../core/platform/device_form_factor.dart';
 
 // ── TV Detail Provider ──
 
@@ -176,7 +177,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
     final trailer = TrailerVideoModel.findBestTrailer(data['videos']);
 
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final isWide = screenWidth >= 960;
+    final isWide = isWideScreenLayout(context, isTv: ref.watch(isTvProvider));
     final isCompact = screenWidth < 360;
 
     if (isWide) {

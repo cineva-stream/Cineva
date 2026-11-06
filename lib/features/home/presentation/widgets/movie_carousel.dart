@@ -9,6 +9,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/utils/tmdb_genres.dart';
+import '../../../../core/platform/device_form_factor.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
 import '../../domain/entities/movie.dart';
 
@@ -39,7 +40,7 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 0.96);
+    _pageController = PageController(viewportFraction: 1.0);
     _startAutoSlide();
   }
 
@@ -93,9 +94,12 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final screenHeight = MediaQuery.sizeOf(context).height;
-    final isWide = screenWidth >= 960;
+    final isTv = ref.watch(isTvProvider);
+    final isWide = isWideScreenLayout(context, isTv: isTv);
     final isCompact = screenWidth < 360 || screenHeight < 700;
-    final carouselHeight = isWide ? 490.0 : (isCompact ? 375.0 : 430.0);
+    final carouselHeight = isWide
+        ? (screenHeight < 650 ? 400.0 : 490.0)
+        : (isCompact ? 375.0 : 430.0);
 
     return Column(
       children: [
@@ -117,8 +121,8 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                   return AnimatedPadding(
                     duration: const Duration(milliseconds: 300),
                     padding: EdgeInsets.symmetric(
-                      horizontal: isWide ? 8 : 5,
-                      vertical: _currentPage == index ? 0 : (isWide ? 4 : 6),
+                      horizontal: isWide ? 0 : 5,
+                      vertical: _currentPage == index ? 0 : (isWide ? 2 : 6),
                     ),
                     child: GestureDetector(
                       onTap: () => context.push('/movie/${movie.id}'),

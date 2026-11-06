@@ -38,11 +38,55 @@ class MainActivity : FlutterActivity() {
             }
         }
 
+        // On Android TV or TV boxes (720p, 1080p, 4K), lock to landscape immediately
+        if (isTelevisionDevice()) {
+            try {
+                requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            } catch (t: Throwable) {
+                Log.w(TAG, "Non-fatal: Failed to set landscape orientation: ${t.message}")
+            }
+        }
+
         try {
             UpdateCheckWorker.schedule(applicationContext)
         } catch (t: Throwable) {
             Log.w(TAG, "Non-fatal: Failed to schedule update check in onCreate: ${t.message}")
         }
+    }
+
+    private fun isTelevisionDevice(): Boolean {
+        try {
+            // 1. UiModeManager TV mode
+            val uiModeManager = getSystemService(android.content.Context.UI_MODE_SERVICE) as? android.app.UiModeManager
+            if (uiModeManager?.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) {
+                return true
+            }
+
+            // 2. Leanback and TV system features
+            val pm = packageManager
+            if (pm.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK) ||
+                pm.hasSystemFeature("android.hardware.type.television") ||
+                pm.hasSystemFeature("android.software.leanback_only") ||
+                pm.hasSystemFeature("amazon.hardware.fire_tv")) {
+                return true
+            }
+
+            // 3. Android TV / STB without touchscreen and without telephony
+            val hasTouch = pm.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN)
+            val hasTelephony = pm.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TELEPHONY)
+            if (!hasTouch && !hasTelephony) {
+                return true
+            }
+
+            // 4. Non-touch device in landscape orientation (e.g. 720p Android TV emulator or box)
+            val config = resources.configuration
+            if (!hasTouch && config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+                return true
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Error detecting TV device: ${t.message}")
+        }
+        return false
     }
 
     override fun onStop() {
@@ -62,14 +106,7 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, deviceChannel).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isTelevision" -> {
-                    try {
-                        val uiModeManager = getSystemService(android.content.Context.UI_MODE_SERVICE) as? android.app.UiModeManager
-                        val isTv = uiModeManager?.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
-                        val hasLeanback = packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
-                        result.success(isTv || hasLeanback)
-                    } catch (e: Exception) {
-                        result.success(false)
-                    }
+                    result.success(isTelevisionDevice())
                 }
                 else -> result.notImplemented()
             }

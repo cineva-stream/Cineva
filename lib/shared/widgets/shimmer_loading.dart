@@ -58,16 +58,25 @@ class ShimmerMovieRow extends StatelessWidget {
 
 /// Shimmer placeholder for a hero carousel.
 class ShimmerHeroCarousel extends StatelessWidget {
-  const ShimmerHeroCarousel({super.key});
+  final EdgeInsetsGeometry? padding;
+  final double? height;
+  final double borderRadius;
+
+  const ShimmerHeroCarousel({
+    super.key,
+    this.padding,
+    this.height,
+    this.borderRadius = 28,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16),
+    return Padding(
+      padding: padding ?? const EdgeInsets.symmetric(horizontal: 16),
       child: ShimmerLoading(
         width: double.infinity,
-        height: 430,
-        borderRadius: 24,
+        height: height ?? 490,
+        borderRadius: borderRadius,
       ),
     );
   }

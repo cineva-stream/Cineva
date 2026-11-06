@@ -10,6 +10,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
 import 'core/constants/app_constants.dart';
+import 'core/platform/device_form_factor.dart';
 import 'core/platform/smooth_mouse_scroll.dart';
 
 Future<void> main() async {
@@ -39,11 +40,29 @@ Future<void> main() async {
     }
   }
 
-  // Lock to portrait on phones; allow landscape on player screen
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  // For Android TV, maintain landscape orientation; for smartphones, lock to portrait
+  bool isTv = false;
+  if (!kIsWeb && Platform.isAndroid) {
+    try {
+      const channel = MethodChannel('com.primadev.cineva/device');
+      isTv = await channel.invokeMethod<bool>('isTelevision') ?? false;
+      gIsTelevision = isTv;
+    } catch (e) {
+      debugPrint('[main] Non-fatal error detecting TV: $e');
+    }
+  }
+
+  if (isTv) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  } else if (!kIsWeb && Platform.isAndroid) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
 
   // Enable edge-to-edge: draw content behind both system bars
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

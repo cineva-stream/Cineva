@@ -19,6 +19,7 @@ import '../../../../shared/widgets/tv_focusable.dart';
 import '../widgets/in_app_trailer_modal.dart';
 import '../../data/models/trailer_video_model.dart';
 import '../../../collection/presentation/widgets/franchise_collection_banner.dart';
+import '../../../../core/platform/device_form_factor.dart';
 
 // ── Detail Providers ──
 
@@ -131,7 +132,7 @@ class _DetailContent extends ConsumerWidget {
     final similarList = (data['similar']?['results'] as List<dynamic>?)?.take(10).toList() ?? [];
 
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final isWide = screenWidth >= 960;
+    final isWide = isWideScreenLayout(context, isTv: ref.watch(isTvProvider));
     final isCompact = screenWidth < 360;
 
     if (isWide) {
