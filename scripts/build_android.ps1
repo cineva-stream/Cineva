@@ -2,10 +2,11 @@
 # Script Otomatis Pembuatan APK Cineva (Ponsel & Android TV)
 # ==============================================================================
 # Cara menjalankan:
-#   .\scripts\build_android.ps1           # Build semua varian (Default)
-#   .\scripts\build_android.ps1 -Tv       # Khusus Android TV (32-bit ARM super ringan)
-#   .\scripts\build_android.ps1 -Mobile   # Khusus Ponsel Android Modern (64-bit ARM)
+#   .\scripts\build_android.ps1           # Build semua varian + Obfuscate (Default)
+#   .\scripts\build_android.ps1 -Tv       # Khusus Android TV (32-bit ARM super ringan + Obfuscate)
+#   .\scripts\build_android.ps1 -Mobile   # Khusus Ponsel Android Modern (64-bit ARM + Obfuscate)
 #   .\scripts\build_android.ps1 -All      # Build semua (arm64, armeabi-v7a, x86_64, universal, & android-tv)
+#   .\scripts\build_android.ps1 -NoObfuscate # Nonaktifkan obfuscation (untuk debug simbol)
 # ==============================================================================
 
 [CmdletBinding(DefaultParameterSetName = "Default")]
@@ -21,7 +22,10 @@ param(
 
     [Parameter(ParameterSetName = "TargetParam")]
     [ValidateSet("tv", "mobile", "all")]
-    [string]$Target = "all"
+    [string]$Target = "all",
+
+    [Parameter()]
+    [switch]$NoObfuscate
 )
 
 $ErrorActionPreference = "Stop"
@@ -52,53 +56,53 @@ if ($Tv.IsPresent -or $Target -eq "tv") {
     $mode = "mobile"
 }
 
-Write-Host "[2/3] Memulai kompilasi Flutter APK (Target: $mode)..." -ForegroundColor Cyan
+Write-Host "[2/3] Mengonfigurasi parameter kompilasi (Target: $mode)..." -ForegroundColor Cyan
 
 $apkOutputDir = "build\app\outputs\flutter-apk"
+$symbolsDir = "build\app\outputs\symbols"
+
+$flutterArgs = @("build", "apk", "--release", "--split-per-abi")
 
 switch ($mode) {
     "tv" {
-        Write-Host "[-] Mengompilasi build khusus Android TV (32-bit ARM, hemat penyimpanan & ringan)..." -ForegroundColor Yellow
-        # Build khusus 32-bit ARM (kompatibel dengan 99.9% Android TV / Smart TV / TV Stick)
-        flutter build apk --release --target-platform android-arm --split-per-abi
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Gagal melakukan build Flutter APK untuk Android TV."
-        }
-        
-        # Pastikan file Cineva_v{ver}-android-tv.apk tercipta dari armeabi-v7a
-        $srcArmV7 = Join-Path $apkOutputDir "app-armeabi-v7a-release.apk"
-        if (-not (Test-Path $srcArmV7)) {
-            $srcArmV7 = Join-Path $apkOutputDir "Cineva_v$appVersion-armeabi-v7a.apk"
-        }
-        if (Test-Path $srcArmV7) {
-            $tvDest = Join-Path $apkOutputDir "Cineva_v$appVersion-android-tv.apk"
-            Copy-Item -Path $srcArmV7 -Destination $tvDest -Force
-        }
+        Write-Host "[-] Menyiapkan target khusus Android TV (32-bit ARM, hemat penyimpanan & ringan)..." -ForegroundColor Yellow
+        $flutterArgs += @("--target-platform", "android-arm")
     }
     "mobile" {
-        Write-Host "[-] Mengompilasi build khusus Ponsel Android Modern (64-bit ARM)..." -ForegroundColor Yellow
-        flutter build apk --release --target-platform android-arm64 --split-per-abi
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Gagal melakukan build Flutter APK untuk Ponsel."
-        }
+        Write-Host "[-] Menyiapkan target khusus Ponsel Android Modern (64-bit ARM)..." -ForegroundColor Yellow
+        $flutterArgs += @("--target-platform", "android-arm64")
     }
     default {
-        Write-Host "[-] Mengompilasi seluruh varian dengan --split-per-abi..." -ForegroundColor Yellow
-        flutter build apk --release --split-per-abi
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Gagal melakukan build Flutter APK release."
-        }
-        
-        # Pastikan file Cineva_v{ver}-android-tv.apk juga siap
-        $srcArmV7 = Join-Path $apkOutputDir "app-armeabi-v7a-release.apk"
-        if (-not (Test-Path $srcArmV7)) {
-            $srcArmV7 = Join-Path $apkOutputDir "Cineva_v$appVersion-armeabi-v7a.apk"
-        }
-        if (Test-Path $srcArmV7) {
-            $tvDest = Join-Path $apkOutputDir "Cineva_v$appVersion-android-tv.apk"
-            Copy-Item -Path $srcArmV7 -Destination $tvDest -Force
-        }
+        Write-Host "[-] Menyiapkan seluruh varian arsitektur CPU (--split-per-abi)..." -ForegroundColor Yellow
     }
+}
+
+# Konfigurasi Obfuscation
+if (-not $NoObfuscate) {
+    if (-not (Test-Path $symbolsDir)) {
+        New-Item -ItemType Directory -Force -Path $symbolsDir | Out-Null
+    }
+    $flutterArgs += @("--obfuscate", "--split-debug-info=$symbolsDir")
+    Write-Host "[-] Proteksi Kode: AKTIF (--release, --obfuscate, & symbols diekspor ke $symbolsDir)" -ForegroundColor Magenta
+} else {
+    Write-Host "[-] Proteksi Kode: NONAKTIF (--no-obfuscate)" -ForegroundColor DarkGray
+}
+
+Write-Host "[-] Menjalankan perintah: flutter $($flutterArgs -join ' ')" -ForegroundColor DarkCyan
+
+& flutter $flutterArgs
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Gagal melakukan build Flutter APK."
+}
+
+# Pastikan file Cineva_v{ver}-android-tv.apk tercipta dari armeabi-v7a jika ada
+$srcArmV7 = Join-Path $apkOutputDir "app-armeabi-v7a-release.apk"
+if (-not (Test-Path $srcArmV7)) {
+    $srcArmV7 = Join-Path $apkOutputDir "Cineva_v$appVersion-armeabi-v7a.apk"
+}
+if (Test-Path $srcArmV7) {
+    $tvDest = Join-Path $apkOutputDir "Cineva_v$appVersion-android-tv.apk"
+    Copy-Item -Path $srcArmV7 -Destination $tvDest -Force
 }
 
 Write-Host "[3/3] Memeriksa artefak APK yang dihasilkan..." -ForegroundColor Cyan
@@ -116,7 +120,10 @@ if (Test-Path $apkOutputDir) {
             Write-Host " -> $($apk.Name) (${sizeMB} MB)" -ForegroundColor White
         }
     }
-    Write-Host " Lokasi direktori: $apkOutputDir" -ForegroundColor White
+    if (-not $NoObfuscate) {
+        Write-Host " Simbol Obfuscation: $symbolsDir" -ForegroundColor DarkCyan
+    }
+    Write-Host " Lokasi direktori APK: $apkOutputDir" -ForegroundColor White
     Write-Host "==========================================================" -ForegroundColor Green
 } else {
     Write-Warning "Direktori output $apkOutputDir tidak ditemukan."
