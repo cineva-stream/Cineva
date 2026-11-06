@@ -1,10 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:markdown/markdown.dart' as md;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/platform/device_form_factor.dart';
 import '../../domain/entities/app_update_info.dart';
 import '../providers/app_update_provider.dart';
 import 'install_permission_dialog.dart';
@@ -264,11 +268,21 @@ class _UpdateDetailModalState extends ConsumerState<UpdateDetailModal> {
       formattedDate = '${p.day} ${_monthName(p.month, s.isIndonesian)} ${p.year}';
     }
 
+    final isTv = ref.watch(isTvProvider);
+    final isDesktop = ref.watch(isDesktopProvider);
+
+    final modalWidth = isTv
+        ? (size.width > 1200 ? 760.0 : 660.0)
+        : (isDesktop
+            ? (size.width > 1200 ? 700.0 : 600.0)
+            : (size.width > 600 ? 540.0 : size.width * 0.92));
+    final maxHeight = size.height * (isTv ? 0.86 : 0.82);
+
     return Center(
       child: Container(
-        width: size.width > 600 ? 540 : size.width * 0.92,
+        width: modalWidth,
         constraints: BoxConstraints(
-          maxHeight: size.height * 0.82,
+          maxHeight: maxHeight,
         ),
         decoration: BoxDecoration(
           color: AppColors.background,
@@ -570,98 +584,81 @@ class _UpdateDetailModalState extends ConsumerState<UpdateDetailModal> {
     );
   }
 
-  /// Parses markdown changelog lines into clean structured native UI elements.
+  /// Renders GitHub release changelog using GitHub-flavored Markdown for 100% clean formatting.
   Widget _buildFormattedChangelog(String markdown) {
-    final lines = markdown.split('\n');
-    final widgets = <Widget>[];
-
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i].trim();
-      if (line.isEmpty) {
-        widgets.add(const SizedBox(height: 6));
-        continue;
-      }
-
-      // Markdown Headers (e.g. ## What's Changed, ### New Features)
-      if (line.startsWith('#')) {
-        final cleanHeader = line.replaceFirst(RegExp(r'^#+\s*'), '');
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 10, bottom: 4),
-            child: Text(
-              cleanHeader,
-              style: GoogleFonts.outfit(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
-            ),
+    return MarkdownBody(
+      data: markdown,
+      selectable: true,
+      extensionSet: md.ExtensionSet.gitHubFlavored,
+      onTapLink: (text, href, title) {
+        if (href != null && href.isNotEmpty) {
+          launchUrl(Uri.parse(href), mode: LaunchMode.externalApplication);
+        }
+      },
+      styleSheet: MarkdownStyleSheet(
+        h1: GoogleFonts.outfit(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+        h2: GoogleFonts.outfit(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w700,
+          color: AppColors.primary,
+        ),
+        h3: GoogleFonts.outfit(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primaryLight,
+        ),
+        p: GoogleFonts.inter(
+          fontSize: 12.5,
+          height: 1.55,
+          color: Colors.white.withValues(alpha: 0.88),
+        ),
+        listBullet: GoogleFonts.inter(
+          fontSize: 13,
+          color: AppColors.primary,
+          fontWeight: FontWeight.w600,
+        ),
+        strong: GoogleFonts.inter(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+        em: GoogleFonts.inter(
+          fontSize: 12.5,
+          fontStyle: FontStyle.italic,
+          color: Colors.white70,
+        ),
+        a: GoogleFonts.inter(
+          fontSize: 12.5,
+          color: AppColors.primary,
+          decoration: TextDecoration.underline,
+        ),
+        code: GoogleFonts.jetBrainsMono(
+          fontSize: 11.5,
+          color: AppColors.primaryLight,
+          backgroundColor: Colors.white.withValues(alpha: 0.08),
+        ),
+        codeblockDecoration: BoxDecoration(
+          color: const Color(0xFF0F0F16),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white12, width: 0.8),
+        ),
+        blockquoteDecoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(4),
+          border: const Border(
+            left: BorderSide(color: AppColors.primary, width: 3),
           ),
-        );
-      }
-      // Bullet items (e.g. - Fix crash, * Added server)
-      else if (line.startsWith('-') || line.startsWith('*') || line.startsWith('•')) {
-        final cleanBullet = line.replaceFirst(RegExp(r'^[-*•]\s*'), '');
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 6, right: 9),
-                  width: 5,
-                  height: 5,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    cleanBullet,
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      height: 1.5,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        ),
+        horizontalRuleDecoration: const BoxDecoration(
+          border: Border(
+            top: BorderSide(color: Colors.white12, width: 1.0),
           ),
-        );
-      }
-      // Horizontal dividers (--- or ***)
-      else if (line.startsWith('---') || line.startsWith('***')) {
-        widgets.add(
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Divider(color: Colors.white12, height: 1),
-          ),
-        );
-      }
-      // Regular paragraphs
-      else {
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Text(
-              line,
-              style: GoogleFonts.inter(
-                fontSize: 12.5,
-                height: 1.5,
-                color: Colors.white.withValues(alpha: 0.85),
-              ),
-            ),
-          ),
-        );
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: widgets,
+        ),
+      ),
     );
   }
 }

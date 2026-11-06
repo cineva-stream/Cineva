@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../history/data/models/watch_history_item.dart';
@@ -74,16 +73,24 @@ class HybridPairingService {
     // 3. Generate secure topic, AES-256 key, and 6-digit PIN
     final topic = 'cineva_sync_${_generateRandomString(12)}';
     final key = SyncCryptoService.generatePairingKey();
-    final pinCode = '${Random().nextInt(900) + 100} ${Random().nextInt(900) + 100}';
+    final pinCode =
+        '${Random().nextInt(900) + 100} ${Random().nextInt(900) + 100}';
 
     // 4. Construct QR payload URI
-    final qrPayload = 'cineva://sync?topic=$topic&key=$key&ip=$localIp&port=$port&pin=${pinCode.replaceAll(' ', '')}';
+    final qrPayload =
+        'cineva://sync?topic=$topic&key=$key&ip=$localIp&port=$port&pin=${pinCode.replaceAll(' ', '')}';
 
     // 5. Handle incoming Local LAN HTTP POST
     _localServer!.listen((HttpRequest request) async {
       request.response.headers.add('Access-Control-Allow-Origin', '*');
-      request.response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS');
-      request.response.headers.add('Access-Control-Allow-Headers', 'Content-Type');
+      request.response.headers.add(
+        'Access-Control-Allow-Methods',
+        'POST, OPTIONS',
+      );
+      request.response.headers.add(
+        'Access-Control-Allow-Headers',
+        'Content-Type',
+      );
 
       if (request.method == 'OPTIONS') {
         request.response.statusCode = HttpStatus.ok;
@@ -112,7 +119,9 @@ class HybridPairingService {
           request.response
             ..statusCode = HttpStatus.ok
             ..headers.contentType = ContentType.json
-            ..write(jsonEncode({'status': 'ok', 'message': 'Profile received'}));
+            ..write(
+              jsonEncode({'status': 'ok', 'message': 'Profile received'}),
+            );
           await request.response.close();
         } catch (e) {
           request.response
@@ -147,34 +156,45 @@ class HybridPairingService {
     void Function(Map<String, dynamic> profileData) onProfileReceived,
   ) async {
     try {
-      _relayClient = HttpClient()..connectionTimeout = const Duration(seconds: 6);
+      _relayClient = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 6);
       final url = Uri.parse('https://ntfy.sh/$topic/json');
-      final request = await _relayClient!.getUrl(url).timeout(const Duration(seconds: 5));
-      final response = await request.close().timeout(const Duration(seconds: 5));
+      final request = await _relayClient!
+          .getUrl(url)
+          .timeout(const Duration(seconds: 5));
+      final response = await request.close().timeout(
+        const Duration(seconds: 5),
+      );
 
       _relaySubscription = response
           .transform(utf8.decoder)
           .transform(const LineSplitter())
-          .listen((line) {
-        if (_isClosed || line.trim().isEmpty) return;
-        try {
-          final event = jsonDecode(line) as Map<String, dynamic>;
-          if (event['event'] == 'message') {
-            final encryptedMessage = event['message'] as String;
-            final decrypted = SyncCryptoService.decryptPayload(encryptedMessage, key);
-            final data = jsonDecode(decrypted) as Map<String, dynamic>;
+          .listen(
+            (line) {
+              if (_isClosed || line.trim().isEmpty) return;
+              try {
+                final event = jsonDecode(line) as Map<String, dynamic>;
+                if (event['event'] == 'message') {
+                  final encryptedMessage = event['message'] as String;
+                  final decrypted = SyncCryptoService.decryptPayload(
+                    encryptedMessage,
+                    key,
+                  );
+                  final data = jsonDecode(decrypted) as Map<String, dynamic>;
 
-            if (!_isClosed) {
-              onProfileReceived(data);
-              stopSession();
-            }
-          }
-        } catch (e) {
-          debugPrint('[HybridPairingService] Relay parse non-fatal: $e');
-        }
-      }, onError: (e) {
-        debugPrint('[HybridPairingService] Relay stream error: $e');
-      });
+                  if (!_isClosed) {
+                    onProfileReceived(data);
+                    stopSession();
+                  }
+                }
+              } catch (e) {
+                debugPrint('[HybridPairingService] Relay parse non-fatal: $e');
+              }
+            },
+            onError: (e) {
+              debugPrint('[HybridPairingService] Relay stream error: $e');
+            },
+          );
     } catch (e) {
       debugPrint('[HybridPairingService] Non-fatal relay connect error: $e');
     }
@@ -204,12 +224,16 @@ class HybridPairingService {
         : data;
 
     String? localAvatarPath;
-    final base64Image = (profileMap['customAvatarBase64'] ?? data['customAvatarBase64']) as String?;
+    final base64Image =
+        (profileMap['customAvatarBase64'] ?? data['customAvatarBase64'])
+            as String?;
     if (base64Image != null && base64Image.isNotEmpty) {
       try {
         final bytes = base64Decode(base64Image);
         final docsDir = await getApplicationDocumentsDirectory();
-        final avatarFile = File('${docsDir.path}/synced_avatar_${DateTime.now().millisecondsSinceEpoch}.png');
+        final avatarFile = File(
+          '${docsDir.path}/synced_avatar_${DateTime.now().millisecondsSinceEpoch}.png',
+        );
         await avatarFile.writeAsBytes(bytes);
         localAvatarPath = avatarFile.path;
       } catch (e) {
@@ -220,13 +244,16 @@ class HybridPairingService {
     final name = (profileMap['name'] as String?)?.trim().isNotEmpty == true
         ? profileMap['name'] as String
         : 'Penikmat Film';
-    final username = (profileMap['username'] as String?)?.trim().isNotEmpty == true
+    final username =
+        (profileMap['username'] as String?)?.trim().isNotEmpty == true
         ? (profileMap['username'] as String).replaceAll('@', '')
         : 'cineva_fan';
     final avatarId = (profileMap['avatarId'] as String?) ?? 'avatar_popcorn';
 
     // Commit to Riverpod & Hive
-    await ref.read(userProfileProvider.notifier).save(
+    await ref
+        .read(userProfileProvider.notifier)
+        .save(
           name: name,
           username: username,
           avatarId: localAvatarPath != null ? 'custom' : avatarId,
@@ -246,7 +273,9 @@ class HybridPairingService {
           try {
             items.add(WatchlistItem.fromJson(raw));
           } catch (e) {
-            debugPrint('[HybridPairingService] Failed parsing WatchlistItem: $e');
+            debugPrint(
+              '[HybridPairingService] Failed parsing WatchlistItem: $e',
+            );
           }
         }
       }
@@ -267,7 +296,9 @@ class HybridPairingService {
           try {
             items.add(WatchHistoryItem.fromJson(raw));
           } catch (e) {
-            debugPrint('[HybridPairingService] Failed parsing WatchHistoryItem: $e');
+            debugPrint(
+              '[HybridPairingService] Failed parsing WatchHistoryItem: $e',
+            );
           }
         }
       }
@@ -282,7 +313,9 @@ class HybridPairingService {
     final rawSettings = data['settings'];
     if (rawSettings is Map) {
       try {
-        await SettingsService.importPreferences(rawSettings.cast<String, dynamic>());
+        await SettingsService.importPreferences(
+          rawSettings.cast<String, dynamic>(),
+        );
       } catch (e) {
         debugPrint('[HybridPairingService] Failed importing settings: $e');
       }
@@ -295,7 +328,9 @@ class HybridPairingService {
         final queries = rawSearchHistory.map((e) => e.toString()).toList();
         await ref.read(searchHistoryProvider.notifier).importQueries(queries);
       } catch (e) {
-        debugPrint('[HybridPairingService] Failed importing search history: $e');
+        debugPrint(
+          '[HybridPairingService] Failed importing search history: $e',
+        );
       }
     }
 
@@ -330,6 +365,9 @@ class HybridPairingService {
   String _generateRandomString(int length) {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     final rnd = Random.secure();
-    return List.generate(length, (_) => chars[rnd.nextInt(chars.length)]).join();
+    return List.generate(
+      length,
+      (_) => chars[rnd.nextInt(chars.length)],
+    ).join();
   }
 }

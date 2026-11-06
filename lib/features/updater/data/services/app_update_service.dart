@@ -154,26 +154,45 @@ class AppUpdateService {
           ? DateTime.tryParse(publishedAtStr)
           : null;
 
-      // Locate the APK asset in release matching device CPU architecture
+      // Locate the release asset matching platform and CPU architecture
       final assets =
           (data['assets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      final supportedAbis = await getSupportedAbis();
 
-      final apkAsset = selectBestApkAsset(
-        assets: assets,
-        supportedAbis: supportedAbis,
-        version: cleanRemoteVersion,
-      );
+      Map<String, dynamic> selectedAsset = {};
+      String targetAbi = 'universal';
 
-      final apkUrl = apkAsset['browser_download_url']?.toString();
+      // On Windows desktop, look for .exe installer
+      if (!kIsWeb && Platform.isWindows) {
+        final exeAssets = assets.where((a) {
+          final name = a['name']?.toString().toLowerCase() ?? '';
+          return name.endsWith('.exe');
+        }).toList();
+
+        if (exeAssets.isNotEmpty) {
+          selectedAsset = exeAssets.first;
+          targetAbi = 'Windows x64';
+        }
+      }
+
+      // Android fallback or default APK selection
+      if (selectedAsset.isEmpty) {
+        final supportedAbis = await getSupportedAbis();
+        selectedAsset = selectBestApkAsset(
+          assets: assets,
+          supportedAbis: supportedAbis,
+          version: cleanRemoteVersion,
+        );
+        targetAbi = selectedAsset['targetAbi']?.toString() ?? 'universal';
+      }
+
+      final apkUrl = selectedAsset['browser_download_url']?.toString();
       if (apkUrl == null || apkUrl.isEmpty) {
         return null;
       }
 
       final apkFileName =
-          apkAsset['name']?.toString() ?? 'Cineva_v$cleanRemoteVersion.apk';
-      final apkSizeBytes = (apkAsset['size'] as num?)?.toInt() ?? 0;
-      final targetAbi = apkAsset['targetAbi']?.toString() ?? 'universal';
+          selectedAsset['name']?.toString() ?? 'Cineva_v$cleanRemoteVersion.apk';
+      final apkSizeBytes = (selectedAsset['size'] as num?)?.toInt() ?? 0;
 
       return AppUpdateInfo(
         latestVersion: cleanRemoteVersion,
@@ -225,7 +244,9 @@ class AppUpdateService {
 
   /// Checks if Cineva currently has permission to install unknown apps on Android 8.0+.
   Future<bool> canRequestPackageInstalls() async {
-    if (kIsWeb || !Platform.isAndroid) return false;
+    if (kIsWeb) return false;
+    if (Platform.isWindows) return true; // Windows does not require Android unknown app permission
+    if (!Platform.isAndroid) return false;
     try {
       final bool? allowed = await _channel.invokeMethod<bool>(
         'canRequestPackageInstalls',
@@ -247,9 +268,22 @@ class AppUpdateService {
     }
   }
 
-  /// Launches the native Android package installer modal for the given [filePath].
+  /// Launches the native installer for the downloaded package (APK on Android, setup.exe on Windows).
   Future<bool> installApk(String filePath) async {
-    if (kIsWeb || !Platform.isAndroid) return false;
+    if (kIsWeb) return false;
+
+    // Launch Windows installer executable
+    if (Platform.isWindows) {
+      try {
+        await Process.start(filePath, []);
+        return true;
+      } catch (e) {
+        debugPrint('[AppUpdateService] Windows launch error: $e');
+        return false;
+      }
+    }
+
+    if (!Platform.isAndroid) return false;
     try {
       final bool? success = await _channel.invokeMethod<bool>('installApk', {
         'filePath': filePath,

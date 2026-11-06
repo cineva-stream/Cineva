@@ -14,7 +14,6 @@ import 'package:cineva/features/history/data/repositories/watch_history_reposito
 import 'package:cineva/features/profile/data/hybrid_pairing_service.dart';
 import 'package:cineva/features/profile/data/profile_sync_sender.dart';
 import 'package:cineva/features/profile/data/sync_crypto_service.dart';
-import 'package:cineva/features/profile/presentation/providers/profile_provider.dart';
 import 'package:cineva/features/profile/presentation/screens/onboarding_profile_screen.dart';
 import 'package:cineva/features/profile/presentation/widgets/tv_qr_sync_view.dart';
 import 'package:cineva/features/search/presentation/providers/search_history_provider.dart';

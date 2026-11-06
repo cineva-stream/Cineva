@@ -5,6 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/localization/app_strings.dart';
+import '../../../../core/platform/device_form_factor.dart';
+import '../../domain/entities/app_update_info.dart';
 import '../providers/app_update_provider.dart';
 import 'install_permission_dialog.dart';
 import 'update_detail_modal.dart';
@@ -20,6 +23,9 @@ class InAppUpdateBanner extends ConsumerWidget {
     final updateState = ref.watch(appUpdateProvider);
     final notifier = ref.read(appUpdateProvider.notifier);
     final s = ref.watch(appStringsProvider);
+    final isTv = ref.watch(isTvProvider);
+    final isDesktop = ref.watch(isDesktopProvider);
+    final isWidescreen = isTv || isDesktop;
 
     // If dismissed or no update available, do not render
     if (updateState.isDismissed || updateState.updateInfo == null) {
@@ -27,10 +33,6 @@ class InAppUpdateBanner extends ConsumerWidget {
     }
 
     final info = updateState.updateInfo!;
-    final isDownloading = updateState.status == AppUpdateStatus.downloading;
-    final isReadyToInstall = updateState.status == AppUpdateStatus.readyToInstall ||
-        updateState.status == AppUpdateStatus.installing;
-    final isError = updateState.status == AppUpdateStatus.error;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 14),
@@ -45,11 +47,290 @@ class InAppUpdateBanner extends ConsumerWidget {
       child: Material(
         color: Colors.transparent,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.symmetric(
+            horizontal: isWidescreen ? 20 : 16,
+            vertical: isWidescreen ? 14 : 16,
+          ),
+          child: isWidescreen
+              ? _buildWidescreenBanner(context, s, info, updateState, notifier, isTv)
+              : _buildMobileBanner(context, s, info, updateState, notifier),
+        ),
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.05, end: 0, duration: 400.ms);
+  }
+
+  /// Horizontal balanced layout optimized for Android TV and Windows Widescreen.
+  Widget _buildWidescreenBanner(
+    BuildContext context,
+    AppStrings s,
+    AppUpdateInfo info,
+    AppUpdateState updateState,
+    AppUpdateNotifier notifier,
+    bool isTv,
+  ) {
+    final isDownloading = updateState.status == AppUpdateStatus.downloading;
+    final isReadyToInstall = updateState.status == AppUpdateStatus.readyToInstall ||
+        updateState.status == AppUpdateStatus.installing;
+    final isError = updateState.status == AppUpdateStatus.error;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Left Icon
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: const Icon(
+            Icons.system_update_rounded,
+            color: AppColors.primary,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: 14),
+
+        // Expanded Info Block
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // ── Header: Icon, Title, Version Tag & Dismiss Button ──
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  Text(
+                    s.updateAvailableTitle,
+                    style: GoogleFonts.outfit(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.5),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Text(
+                      'v${info.latestVersion}',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  if (info.isArchitectureSpecific)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: Colors.white12,
+                          width: 0.6,
+                        ),
+                      ),
+                      child: Text(
+                        info.targetAbi,
+                        style: GoogleFonts.inter(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  Text(
+                    info.formattedSize,
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text(
+                info.shortSummary.isNotEmpty
+                    ? info.shortSummary
+                    : s.updateNewVersionSubtitle(info.latestVersion),
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  height: 1.35,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(width: 16),
+
+        // Action Block: View Details Button
+        OutlinedButton.icon(
+          onPressed: () => UpdateDetailModal.show(context, info: info),
+          icon: const Icon(Icons.article_outlined, size: 14),
+          label: Text(s.updateSeeMore),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primaryLight,
+            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            textStyle: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600),
+          ),
+        ),
+
+        const SizedBox(width: 10),
+
+        // Primary Action Button or Progress
+        if (isDownloading)
+          Container(
+            width: 180,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${(updateState.progress * 100).toInt()}%',
+                      style: GoogleFonts.outfit(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: notifier.cancelDownload,
+                      child: Text(
+                        s.updateCancel,
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.redAccent.shade100,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: updateState.progress,
+                    minHeight: 4,
+                    backgroundColor: Colors.white12,
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (isReadyToInstall)
+          ElevatedButton.icon(
+            onPressed: () async {
+              final allowed = await notifier.canRequestPackageInstalls();
+              if (!allowed && context.mounted) {
+                final granted = await InstallPermissionDialog.show(context);
+                if (granted == true) {
+                  await notifier.triggerInstall();
+                }
+              } else {
+                await notifier.triggerInstall();
+              }
+            },
+            icon: const Icon(Icons.install_mobile_rounded, size: 15),
+            label: Text(s.updateInstallAction),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+              textStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          )
+        else if (isError)
+          ElevatedButton.icon(
+            onPressed: notifier.startDownload,
+            icon: const Icon(Icons.refresh_rounded, size: 15),
+            label: Text(s.updateRetry),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade900,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+              textStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          )
+        else
+          ElevatedButton.icon(
+            onPressed: notifier.startDownload,
+            icon: const Icon(Icons.download_rounded, size: 15),
+            label: Text(s.updateAction),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+              textStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
+
+        const SizedBox(width: 8),
+
+        IconButton(
+          onPressed: isDownloading ? null : notifier.dismiss,
+          icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.textMuted),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          tooltip: s.updateDismissTooltip,
+        ),
+      ],
+    );
+  }
+
+  /// Vertical stacked layout optimized for Mobile portrait.
+  Widget _buildMobileBanner(
+    BuildContext context,
+    AppStrings s,
+    AppUpdateInfo info,
+    AppUpdateState updateState,
+    AppUpdateNotifier notifier,
+  ) {
+    final isDownloading = updateState.status == AppUpdateStatus.downloading;
+    final isReadyToInstall = updateState.status == AppUpdateStatus.readyToInstall ||
+        updateState.status == AppUpdateStatus.installing;
+    final isError = updateState.status == AppUpdateStatus.error;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Header: Icon, Title, Version Tag & Dismiss Button ──
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -347,9 +628,6 @@ class InAppUpdateBanner extends ConsumerWidget {
                 ),
               ],
             ],
-          ),
-        ),
-      ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.05, end: 0, duration: 400.ms);
+          );
   }
 }

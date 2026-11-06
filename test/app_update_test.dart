@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cineva/core/localization/app_language.dart';
 import 'package:cineva/core/localization/app_strings.dart';
+import 'package:cineva/core/platform/device_form_factor.dart';
 import 'package:cineva/features/updater/data/services/app_update_service.dart';
 import 'package:cineva/features/updater/domain/entities/app_update_info.dart';
 import 'package:cineva/features/updater/presentation/providers/app_update_provider.dart';
 import 'package:cineva/features/updater/presentation/widgets/in_app_update_banner.dart';
 import 'package:cineva/features/updater/presentation/widgets/install_permission_dialog.dart';
+import 'package:cineva/features/updater/presentation/widgets/update_detail_modal.dart';
+
+class _FakeTvNotifier extends TvModeNotifier {
+  _FakeTvNotifier(bool value) {
+    state = value;
+  }
+}
 
 void main() {
   group('AppUpdateService Semver Comparison Tests', () {
@@ -286,6 +295,73 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Pasang Sekarang'), findsOneWidget);
+    });
+
+    testWidgets('Renders widescreen balanced horizontal layout on Android TV and Windows', (tester) async {
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            isTvProvider.overrideWith((ref) => _FakeTvNotifier(true)),
+            isDesktopProvider.overrideWithValue(false),
+            appUpdateProvider.overrideWith((ref) => _MockAppUpdateNotifier(
+                  AppUpdateState(
+                    status: AppUpdateStatus.available,
+                    updateInfo: mockInfo,
+                  ),
+                )),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: InAppUpdateBanner()),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pembaruan Tersedia'), findsOneWidget);
+      expect(find.text('v1.0.4'), findsOneWidget);
+      expect(find.text('Perbarui Sekarang'), findsOneWidget);
+      expect(find.text('Lihat Detail'), findsOneWidget);
+      expect(find.byIcon(Icons.system_update_rounded), findsOneWidget);
+    });
+
+    testWidgets('UpdateDetailModal renders GitHub Markdown changelog with MarkdownBody', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const markdownInfo = AppUpdateInfo(
+        latestVersion: '1.1.4',
+        releaseTitle: 'Cineva Release 1.1.4',
+        changelog: '## What\'s Changed\n\n- **Fix**: Resolved player subtitle crash\n- **Feat**: Support QR sync\n\n---\n*Enjoy streaming!*',
+        apkUrl: 'https://github.com/.../Cineva.apk',
+        apkFileName: 'Cineva.apk',
+        apkSizeBytes: 50000000,
+        currentVersion: '1.1.3',
+      );
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: UpdateDetailModal(info: markdownInfo),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify MarkdownBody is rendered
+      expect(find.byType(MarkdownBody), findsOneWidget);
+      expect(find.textContaining("What's Changed"), findsOneWidget);
+      expect(find.textContaining('Support QR sync'), findsOneWidget);
     });
   });
 
