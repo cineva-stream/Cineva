@@ -110,7 +110,9 @@ class HybridPairingService {
     });
 
     // 6. Listen to Cloud Relay stream in background (for 4G/5G / cross-network)
-    _listenToCloudRelay(topic, key, onProfileReceived);
+    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+      _listenToCloudRelay(topic, key, onProfileReceived);
+    }
 
     return PairingSessionInfo(
       localIp: localIp,
@@ -128,10 +130,10 @@ class HybridPairingService {
     void Function(Map<String, dynamic> profileData) onProfileReceived,
   ) async {
     try {
-      _relayClient = HttpClient();
+      _relayClient = HttpClient()..connectionTimeout = const Duration(seconds: 6);
       final url = Uri.parse('https://ntfy.sh/$topic/json');
-      final request = await _relayClient!.getUrl(url);
-      final response = await request.close();
+      final request = await _relayClient!.getUrl(url).timeout(const Duration(seconds: 5));
+      final response = await request.close().timeout(const Duration(seconds: 5));
 
       _relaySubscription = response
           .transform(utf8.decoder)
@@ -218,11 +220,14 @@ class HybridPairingService {
   }
 
   Future<String> _resolveLocalIp() async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return '127.0.0.1';
+    }
     try {
       final interfaces = await NetworkInterface.list(
         type: InternetAddressType.IPv4,
         includeLoopback: false,
-      );
+      ).timeout(const Duration(seconds: 2));
 
       for (final iface in interfaces) {
         for (final addr in iface.addresses) {

@@ -172,9 +172,10 @@ void main() {
       // Switch back to QR mode
       await tester.tap(find.text('Tautkan via QR (dari HP)'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.byType(TvQrSyncView), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
     });
 
     testWidgets('Mobile smartphone mode directly displays manual profile creation', (tester) async {

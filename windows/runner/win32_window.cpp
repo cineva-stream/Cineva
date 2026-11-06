@@ -82,6 +82,7 @@ class WindowClassRegistrar {
   static WindowClassRegistrar* instance_;
 
   bool class_registered_ = false;
+  HBRUSH background_brush_ = nullptr;
 };
 
 WindowClassRegistrar* WindowClassRegistrar::instance_ = nullptr;
@@ -97,7 +98,8 @@ const wchar_t* WindowClassRegistrar::GetWindowClass() {
     window_class.hInstance = GetModuleHandle(nullptr);
     window_class.hIcon =
         LoadIcon(window_class.hInstance, MAKEINTRESOURCE(IDI_APP_ICON));
-    window_class.hbrBackground = 0;
+    background_brush_ = CreateSolidBrush(RGB(13, 13, 15));
+    window_class.hbrBackground = background_brush_;
     window_class.lpszMenuName = nullptr;
     window_class.lpfnWndProc = Win32Window::WndProc;
     RegisterClass(&window_class);
@@ -108,6 +110,10 @@ const wchar_t* WindowClassRegistrar::GetWindowClass() {
 
 void WindowClassRegistrar::UnregisterWindowClass() {
   UnregisterClass(kWindowClassName, nullptr);
+  if (background_brush_) {
+    DeleteObject(background_brush_);
+    background_brush_ = nullptr;
+  }
   class_registered_ = false;
 }
 
