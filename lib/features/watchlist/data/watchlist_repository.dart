@@ -31,10 +31,10 @@ class WatchlistItem {
       };
 
   factory WatchlistItem.fromJson(Map<dynamic, dynamic> json) => WatchlistItem(
-        id: json['id'] as int,
-        title: json['title'] as String,
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        title: (json['title'] as String?) ?? '',
         posterPath: json['posterPath'] as String?,
-        voteAverage: (json['voteAverage'] as num).toDouble(),
+        voteAverage: (json['voteAverage'] as num?)?.toDouble() ?? 0.0,
         type: json['type'] as String? ?? 'movie',
         addedAt: DateTime.tryParse(json['addedAt'] as String? ?? '') ?? DateTime.now(),
       );
@@ -76,6 +76,19 @@ class WatchlistRepository {
     await _box.delete('${type}_$id');
   }
 
+  /// Bulk import or merge watchlist items (used during device synchronization).
+  Future<void> importItems(List<WatchlistItem> items) async {
+    final entries = <String, Map<String, dynamic>>{};
+    for (final item in items) {
+      if (item.id > 0) {
+        entries['${item.type}_${item.id}'] = item.toJson();
+      }
+    }
+    if (entries.isNotEmpty) {
+      await _box.putAll(entries);
+    }
+  }
+
   /// Toggle item in watchlist. Returns true if added, false if removed.
   Future<bool> toggle(WatchlistItem item) async {
     if (isInWatchlist(item.id, item.type)) {
@@ -101,6 +114,15 @@ class WatchlistNotifier extends StateNotifier<List<WatchlistItem>> {
   WatchlistNotifier(this._repo) : super(_repo.getAll());
 
   bool isInWatchlist(int id, String type) => _repo.isInWatchlist(id, type);
+
+  void refresh() {
+    state = _repo.getAll();
+  }
+
+  Future<void> importItems(List<WatchlistItem> items) async {
+    await _repo.importItems(items);
+    state = _repo.getAll();
+  }
 
   Future<bool> toggle(WatchlistItem item) async {
     final added = await _repo.toggle(item);

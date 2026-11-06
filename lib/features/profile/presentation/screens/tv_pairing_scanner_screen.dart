@@ -7,6 +7,10 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../history/data/repositories/watch_history_repository.dart';
+import '../../../search/presentation/providers/search_history_provider.dart';
+import '../../../settings/data/settings_service.dart';
+import '../../../watchlist/data/watchlist_repository.dart';
 import '../../data/profile_sync_sender.dart';
 import '../providers/profile_provider.dart';
 
@@ -80,21 +84,29 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
   Future<void> _transferProfile(ParsedPairingQr qrData) async {
     final s = ref.read(appStringsProvider);
     final profile = ref.read(userProfileProvider);
+    final watchlist = ref.read(watchlistRepositoryProvider).getAll();
+    final watchHistory = ref.read(watchHistoryRepositoryProvider).getAll();
+    final searchHistory = ref.read(searchHistoryProvider);
+    final settings = SettingsService.exportPreferences();
 
     setState(() {
-      _statusText = s.scannerSending(profile.name);
+      _statusText = s.scannerSendingData(profile.name, watchlist.length, watchHistory.length);
     });
 
     final result = await ProfileSyncSender.sendProfile(
       qrData: qrData,
       profile: profile,
+      watchlist: watchlist,
+      watchHistory: watchHistory,
+      settings: settings,
+      searchHistory: searchHistory,
     );
 
     if (!mounted) return;
 
     if (result.success) {
       HapticFeedback.heavyImpact();
-      _showSuccessDialog(result.usedCloudRelay);
+      _showSuccessDialog(result.usedCloudRelay, watchlist.length, watchHistory.length);
     } else {
       HapticFeedback.vibrate();
       setState(() {
@@ -119,7 +131,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
     }
   }
 
-  void _showSuccessDialog(bool usedCloudRelay) {
+  void _showSuccessDialog(bool usedCloudRelay, int watchlistCount, int historyCount) {
     final s = ref.read(appStringsProvider);
     showDialog(
       context: context,
@@ -153,19 +165,14 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.primary,
-                      width: 2,
-                    ),
+                    border: Border.all(color: AppColors.primary, width: 2),
                   ),
                   child: const Icon(
                     Icons.check_rounded,
                     color: AppColors.primary,
                     size: 36,
                   ),
-                )
-                    .animate()
-                    .scale(duration: 400.ms, curve: Curves.easeOutBack),
+                ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
 
                 const SizedBox(height: 20),
 
@@ -192,6 +199,30 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                     height: 1.4,
                   ),
                 ),
+
+                if (watchlistCount > 0 || historyCount > 0) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      s.scannerSuccessDetailed(watchlistCount, historyCount),
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryLight,
+                      ),
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 24),
 
@@ -237,7 +268,9 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
       builder: (ctx) {
         return Dialog(
           backgroundColor: const Color(0xFF141420),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(22),
             child: Column(
@@ -246,7 +279,11 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.dialpad_rounded, color: AppColors.primary, size: 22),
+                    const Icon(
+                      Icons.dialpad_rounded,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
                     const SizedBox(width: 10),
                     Text(
                       s.scannerManualDialogTitle,
@@ -272,10 +309,15 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                   style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
                     labelText: s.scannerManualTopicLabel,
-                    labelStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12),
+                    labelStyle: GoogleFonts.inter(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
                     filled: true,
                     fillColor: AppColors.surface,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -284,10 +326,15 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                   style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
                     labelText: s.scannerManualKeyLabel,
-                    labelStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12),
+                    labelStyle: GoogleFonts.inter(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
                     filled: true,
                     fillColor: AppColors.surface,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -296,7 +343,12 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                   children: [
                     TextButton(
                       onPressed: () => Navigator.of(ctx).pop(),
-                      child: Text(s.scannerCancelBtn, style: GoogleFonts.inter(color: AppColors.textSecondary)),
+                      child: Text(
+                        s.scannerCancelBtn,
+                        style: GoogleFonts.inter(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -305,15 +357,22 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                         final key = keyCtrl.text.trim();
                         if (topic.isNotEmpty && key.isNotEmpty) {
                           Navigator.of(ctx).pop();
-                          _transferProfile(ParsedPairingQr(topic: topic, key: key));
+                          _transferProfile(
+                            ParsedPairingQr(topic: topic, key: key),
+                          );
                         }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      child: Text(s.scannerSendBtn, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                      child: Text(
+                        s.scannerSendBtn,
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ],
                 ),
@@ -335,10 +394,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
       body: Stack(
         children: [
           // 1. Mobile Scanner Camera Preview
-          MobileScanner(
-            controller: _cameraController,
-            onDetect: _onDetect,
-          ),
+          MobileScanner(controller: _cameraController, onDetect: _onDetect),
 
           // 2. Translucent Cutout Background Overlay
           CustomPaint(
@@ -414,10 +470,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                       shadows: [
-                        const Shadow(
-                          color: Colors.black87,
-                          blurRadius: 8,
-                        ),
+                        const Shadow(color: Colors.black87, blurRadius: 8),
                       ],
                     ),
                   ),
@@ -435,7 +488,9 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        _isTorchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                        _isTorchOn
+                            ? Icons.flash_on_rounded
+                            : Icons.flash_off_rounded,
                         color: _isTorchOn ? Colors.black : Colors.white,
                         size: 20,
                       ),
@@ -462,10 +517,7 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                       fontSize: 13.5,
                       color: Colors.white70,
                       shadows: [
-                        const Shadow(
-                          color: Colors.black,
-                          blurRadius: 10,
-                        ),
+                        const Shadow(color: Colors.black, blurRadius: 10),
                       ],
                     ),
                   ),
@@ -475,7 +527,11 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                   // Manual entry fallback button
                   TextButton.icon(
                     onPressed: _showManualEntryDialog,
-                    icon: const Icon(Icons.keyboard_alt_outlined, size: 17, color: AppColors.primaryLight),
+                    icon: const Icon(
+                      Icons.keyboard_alt_outlined,
+                      size: 17,
+                      color: AppColors.primaryLight,
+                    ),
                     label: Text(
                       s.scannerManualEntryBtn,
                       style: GoogleFonts.inter(
@@ -485,7 +541,10 @@ class _TvPairingScannerScreenState extends ConsumerState<TvPairingScannerScreen>
                       ),
                     ),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       backgroundColor: Colors.black.withValues(alpha: 0.4),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -587,7 +646,10 @@ class _ScannerOverlayPainter extends CustomPainter {
       Path()
         ..moveTo(left, top + radius + cornerLength)
         ..lineTo(left, top + radius)
-        ..arcToPoint(Offset(left + radius, top), radius: const Radius.circular(radius))
+        ..arcToPoint(
+          Offset(left + radius, top),
+          radius: const Radius.circular(radius),
+        )
         ..lineTo(left + radius + cornerLength, top),
       cornerPaint,
     );
@@ -597,7 +659,10 @@ class _ScannerOverlayPainter extends CustomPainter {
       Path()
         ..moveTo(left + boxSize - radius - cornerLength, top)
         ..lineTo(left + boxSize - radius, top)
-        ..arcToPoint(Offset(left + boxSize, top + radius), radius: const Radius.circular(radius))
+        ..arcToPoint(
+          Offset(left + boxSize, top + radius),
+          radius: const Radius.circular(radius),
+        )
         ..lineTo(left + boxSize, top + radius + cornerLength),
       cornerPaint,
     );
@@ -607,7 +672,10 @@ class _ScannerOverlayPainter extends CustomPainter {
       Path()
         ..moveTo(left, top + boxSize - radius - cornerLength)
         ..lineTo(left, top + boxSize - radius)
-        ..arcToPoint(Offset(left + radius, top + boxSize), radius: const Radius.circular(radius))
+        ..arcToPoint(
+          Offset(left + radius, top + boxSize),
+          radius: const Radius.circular(radius),
+        )
         ..lineTo(left + radius + cornerLength, top + boxSize),
       cornerPaint,
     );
@@ -617,7 +685,10 @@ class _ScannerOverlayPainter extends CustomPainter {
       Path()
         ..moveTo(left + boxSize - radius - cornerLength, top + boxSize)
         ..lineTo(left + boxSize - radius, top + boxSize)
-        ..arcToPoint(Offset(left + boxSize, top + boxSize - radius), radius: const Radius.circular(radius))
+        ..arcToPoint(
+          Offset(left + boxSize, top + boxSize - radius),
+          radius: const Radius.circular(radius),
+        )
         ..lineTo(left + boxSize, top + boxSize - radius - cornerLength),
       cornerPaint,
     );

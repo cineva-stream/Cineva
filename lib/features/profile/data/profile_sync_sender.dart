@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../domain/models/user_profile.dart';
+import '../../history/data/models/watch_history_item.dart';
+import '../../watchlist/data/watchlist_repository.dart';
 import 'sync_crypto_service.dart';
 
 /// Parsed data from scanning a Cineva Pairing QR Code.
@@ -78,6 +80,10 @@ class ProfileSyncSender {
   static Future<SyncSendResult> sendProfile({
     required ParsedPairingQr qrData,
     required UserProfile profile,
+    List<WatchlistItem>? watchlist,
+    List<WatchHistoryItem>? watchHistory,
+    Map<String, dynamic>? settings,
+    List<String>? searchHistory,
   }) async {
     // 1. Prepare Base64 custom avatar if available
     String? customAvatarBase64;
@@ -93,12 +99,27 @@ class ProfileSyncSender {
       }
     }
 
-    final payloadMap = {
+    final payloadMap = <String, dynamic>{
+      'profile': {
+        'name': profile.name,
+        'username': profile.username,
+        'avatarId': profile.avatarId,
+        'customAvatarBase64': customAvatarBase64,
+        'createdAt': profile.createdAt.toIso8601String(),
+      },
+      // Backward compatibility top-level keys
       'name': profile.name,
       'username': profile.username,
       'avatarId': profile.avatarId,
       'customAvatarBase64': customAvatarBase64,
       'createdAt': profile.createdAt.toIso8601String(),
+
+      // Complete cross-device user dataset
+      'watchlist': watchlist?.map((e) => e.toJson()).toList() ?? [],
+      'watchHistory': watchHistory?.map((e) => e.toJson()).toList() ?? [],
+      'settings': settings ?? {},
+      'searchHistory': searchHistory ?? [],
+      'syncedAt': DateTime.now().toIso8601String(),
     };
     final jsonString = jsonEncode(payloadMap);
 

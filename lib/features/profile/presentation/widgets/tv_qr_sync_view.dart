@@ -38,6 +38,8 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
   String? _syncedUserName;
   String? _syncedAvatarId;
   String? _syncedAvatarPath;
+  int? _syncedWatchlistCount;
+  int? _syncedHistoryCount;
   bool _isSuccess = false;
 
   @override
@@ -52,10 +54,11 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
       final info = await _pairingService.startSession(
         onProfileReceived: (data) async {
           if (!mounted) return;
-          final updated = await HybridPairingService.applySyncedProfile(
+          final result = await HybridPairingService.applySyncedProfile(
             ref: ref,
             data: data,
           );
+          final updated = result.profile;
 
           if (mounted) {
             setState(() {
@@ -63,10 +66,12 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
               _syncedUserName = updated.name;
               _syncedAvatarId = updated.avatarId;
               _syncedAvatarPath = updated.customAvatarPath;
+              _syncedWatchlistCount = result.watchlistCount;
+              _syncedHistoryCount = result.historyCount;
             });
 
             // Smooth transition to Home Screen after congratulatory visual
-            Future.delayed(const Duration(milliseconds: 1400), () {
+            Future.delayed(const Duration(milliseconds: 1600), () {
               if (mounted) {
                 context.go('/');
               }
@@ -582,6 +587,29 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                 color: AppColors.primaryLight,
               ),
             ),
+
+            if ((_syncedWatchlistCount ?? 0) > 0 || (_syncedHistoryCount ?? 0) > 0) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  s.tvSyncSummaryText(_syncedWatchlistCount ?? 0, _syncedHistoryCount ?? 0),
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryLight,
+                  ),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 18),
 

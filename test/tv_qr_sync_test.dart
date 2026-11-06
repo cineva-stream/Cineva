@@ -9,10 +9,17 @@ import 'package:cineva/core/constants/app_constants.dart';
 import 'package:cineva/core/localization/app_language.dart';
 import 'package:cineva/core/localization/app_language_provider.dart';
 import 'package:cineva/core/platform/device_form_factor.dart';
-import 'package:cineva/features/profile/data/sync_crypto_service.dart';
+import 'package:cineva/features/history/data/models/watch_history_item.dart';
+import 'package:cineva/features/history/data/repositories/watch_history_repository.dart';
+import 'package:cineva/features/profile/data/hybrid_pairing_service.dart';
 import 'package:cineva/features/profile/data/profile_sync_sender.dart';
+import 'package:cineva/features/profile/data/sync_crypto_service.dart';
+import 'package:cineva/features/profile/presentation/providers/profile_provider.dart';
 import 'package:cineva/features/profile/presentation/screens/onboarding_profile_screen.dart';
 import 'package:cineva/features/profile/presentation/widgets/tv_qr_sync_view.dart';
+import 'package:cineva/features/search/presentation/providers/search_history_provider.dart';
+import 'package:cineva/features/settings/data/settings_service.dart';
+import 'package:cineva/features/watchlist/data/watchlist_repository.dart';
 
 class _FakeTvNotifier extends TvModeNotifier {
   _FakeTvNotifier(bool value) {
@@ -27,6 +34,8 @@ void main() {
     tempDir = await Directory.systemTemp.createTemp('cineva_qr_sync_test_');
     Hive.init(tempDir.path);
     await Hive.openBox(AppConstants.settingsBox);
+    await Hive.openBox(AppConstants.watchlistBox);
+    await Hive.openBox(AppConstants.historyBox);
   });
 
   tearDownAll(() async {
@@ -238,6 +247,139 @@ void main() {
       expect(find.text('Manual PC Setup'), findsOneWidget);
 
       await tester.pump(const Duration(seconds: 1));
+    });
+  });
+
+  group('Multi-Device Full Dataset Sync (Watchlist, History, Preferences) Tests', () {
+    test('HybridPairingService.applySyncedProfile seamlessly imports profile, watchlist, history, and preferences', () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final payload = {
+        'profile': {
+          'name': 'Reza Rahadian',
+          'username': 'reza_films',
+          'avatarId': 'avatar_popcorn',
+        },
+        'watchlist': [
+          {
+            'id': 872585,
+            'title': 'Oppenheimer',
+            'posterPath': '/ptpr0kGAckfQkJeJItAcst5qY66.jpg',
+            'voteAverage': 8.9,
+            'type': 'movie',
+            'addedAt': DateTime.now().toIso8601String(),
+          },
+          {
+            'id': 1396,
+            'title': 'Breaking Bad',
+            'posterPath': '/ggFHVNu6YYI5L9pCfOacjizRGt.jpg',
+            'voteAverage': 9.5,
+            'type': 'tv',
+            'addedAt': DateTime.now().toIso8601String(),
+          },
+        ],
+        'watchHistory': [
+          {
+            'id': 27205,
+            'mediaType': 'movie',
+            'title': 'Inception',
+            'positionMs': 2700000, // 45 mins in
+            'durationMs': 8880000, // ~148 mins
+            'lastWatchedAt': DateTime.now().toIso8601String(),
+            'isCompleted': false,
+          },
+          {
+            'id': 1396,
+            'mediaType': 'tv',
+            'title': 'Breaking Bad',
+            'season': 1,
+            'episode': 1,
+            'episodeTitle': 'Pilot',
+            'positionMs': 3480000,
+            'durationMs': 3500000,
+            'lastWatchedAt': DateTime.now().toIso8601String(),
+            'isCompleted': true,
+          },
+        ],
+        'settings': {
+          SettingsService.keyAppLanguage: 'en',
+          SettingsService.keyDefaultSubtitleLang: 'en',
+          SettingsService.keyDefaultQuality: '1080p',
+          SettingsService.keyAutoTranslate: false,
+        },
+        'searchHistory': ['Christopher Nolan', 'Vince Gilligan'],
+      };
+
+      final result = await HybridPairingService.applySyncedProfile(
+        ref: container,
+        data: payload,
+      );
+
+      // Verify returned counts
+      expect(result.watchlistCount, 2);
+      expect(result.historyCount, 2);
+      expect(result.profile.name, 'Reza Rahadian');
+      expect(result.profile.username, 'reza_films');
+
+      // Verify Watchlist state
+      final watchlist = container.read(watchlistProvider);
+      expect(watchlist.length, 2);
+      expect(watchlist.any((w) => w.id == 872585 && w.type == 'movie'), isTrue);
+      expect(watchlist.any((w) => w.id == 1396 && w.type == 'tv'), isTrue);
+      expect(container.read(isInWatchlistProvider((id: 872585, type: 'movie'))), isTrue);
+
+      // Verify Watch History state
+      final history = container.read(watchHistoryProvider);
+      expect(history.length, 2);
+      expect(history.any((h) => h.id == 27205 && h.title == 'Inception'), isTrue);
+
+      // Verify In-Progress history for Home Screen "Lanjutkan Menonton"
+      final inProgress = container.read(inProgressWatchHistoryProvider);
+      expect(inProgress.any((h) => h.id == 27205), isTrue);
+
+      // Verify Settings
+      expect(SettingsService.getAppLanguage(), 'en');
+      expect(SettingsService.getDefaultSubtitleLang(), 'en');
+      expect(SettingsService.getDefaultQuality(), '1080p');
+      expect(SettingsService.getAutoTranslate(), isFalse);
+
+      // Verify Search History
+      final searches = container.read(searchHistoryProvider);
+      expect(searches.contains('Christopher Nolan'), isTrue);
+      expect(searches.contains('Vince Gilligan'), isTrue);
+    });
+
+    test('WatchHistoryRepository.importItems conflict resolution keeps higher progress or newer watch state', () async {
+      final repo = WatchHistoryRepository();
+      await repo.clearAll();
+
+      final oldItem = WatchHistoryItem(
+        id: 550,
+        mediaType: 'movie',
+        title: 'Fight Club',
+        positionMs: 100000,
+        durationMs: 7000000,
+        lastWatchedAt: DateTime.now().subtract(const Duration(days: 2)),
+        isCompleted: false,
+      );
+      await repo.saveProgress(oldItem);
+
+      // Incoming item from another device has 80% progress
+      final incomingItem = WatchHistoryItem(
+        id: 550,
+        mediaType: 'movie',
+        title: 'Fight Club',
+        positionMs: 5600000,
+        durationMs: 7000000,
+        lastWatchedAt: DateTime.now(),
+        isCompleted: false,
+      );
+      await repo.importItems([incomingItem]);
+
+      final resolved = repo.getItem('movie', 550);
+      expect(resolved, isNotNull);
+      expect(resolved!.positionMs, 5600000);
     });
   });
 }

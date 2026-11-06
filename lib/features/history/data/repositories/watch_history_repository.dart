@@ -100,6 +100,34 @@ class WatchHistoryRepository {
     await _box.put(item.key, item.toJson());
   }
 
+  /// Bulk import or merge watch history items with conflict resolution.
+  Future<void> importItems(List<WatchHistoryItem> items) async {
+    final entries = <String, Map<String, dynamic>>{};
+    for (final item in items) {
+      if (item.id <= 0) continue;
+      final key = item.key;
+      final existingRaw = _box.get(key);
+      if (existingRaw is Map) {
+        try {
+          final existing = WatchHistoryItem.fromJson(existingRaw);
+          // If duplicate exists, favor completed item or newer watched timestamp or higher position
+          if ((item.isCompleted && !existing.isCompleted) ||
+              item.lastWatchedAt.isAfter(existing.lastWatchedAt) ||
+              item.positionMs > existing.positionMs) {
+            entries[key] = item.toJson();
+          }
+        } catch (_) {
+          entries[key] = item.toJson();
+        }
+      } else {
+        entries[key] = item.toJson();
+      }
+    }
+    if (entries.isNotEmpty) {
+      await _box.putAll(entries);
+    }
+  }
+
   /// Removes an individual watch history item.
   Future<void> removeItem(String key) async {
     await _box.delete(key);
@@ -124,6 +152,11 @@ class WatchHistoryNotifier extends StateNotifier<List<WatchHistoryItem>> {
   WatchHistoryNotifier(this._repo) : super(_repo.getAll());
 
   void refresh() {
+    state = _repo.getAll();
+  }
+
+  Future<void> importItems(List<WatchHistoryItem> items) async {
+    await _repo.importItems(items);
     state = _repo.getAll();
   }
 

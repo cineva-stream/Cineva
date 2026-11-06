@@ -933,6 +933,9 @@ class AppStrings {
       isIndonesian ? 'Selamat Datang, $name' : 'Welcome, $name';
   String get tvSyncDefaultUser =>
       isIndonesian ? 'Pengguna Cineva' : 'Cineva User';
+  String tvSyncSummaryText(int watchlist, int history) => isIndonesian
+      ? '$watchlist Watchlist • $history Riwayat Ditransfer'
+      : '$watchlist Watchlist • $history History Transferred';
 
   // Desktop Onboarding Mode Switcher
   String get desktopSyncTabQr =>
@@ -952,6 +955,12 @@ class AppStrings {
       isIndonesian ? 'Menghubungkan ke layar...' : 'Connecting to screen...';
   String scannerSending(String name) =>
       isIndonesian ? 'Mengirim profil $name...' : 'Sending profile $name...';
+  String scannerSendingData(String name, int watchlist, int history) => isIndonesian
+      ? 'Mengirim profil $name ($watchlist watchlist, $history riwayat)...'
+      : 'Sending profile $name ($watchlist watchlist, $history history)...';
+  String scannerSuccessDetailed(int watchlist, int history) => isIndonesian
+      ? '$watchlist Watchlist dan $history Riwayat Tontonan berhasil ditautkan.'
+      : '$watchlist Watchlist and $history Watch History linked successfully.';
   String get scannerFailed => isIndonesian
       ? 'Gagal menghubungkan ke TV/PC. Silakan coba lagi.'
       : 'Failed to connect to TV/PC. Please try again.';

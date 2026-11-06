@@ -222,4 +222,31 @@ class SettingsService {
   static Future<void> setLegalAccepted(bool accepted) async {
     await _box.put(keyLegalAccepted, accepted);
   }
+
+  /// Exports portable user preferences for cross-device synchronization.
+  static Map<String, dynamic> exportPreferences() {
+    return {
+      keyAppLanguage: getAppLanguage(),
+      keyContentPreference: getContentPreference(),
+      keyDefaultSubtitleLang: getDefaultSubtitleLang(),
+      keyAutoTranslate: getAutoTranslate(),
+      keyDefaultQuality: getDefaultQuality(),
+      keySubtitleFontSize: getSubtitleFontSize(),
+      keySubtitleBackground: getSubtitleBackground(),
+      keySubtitleStrokeWidth: getSubtitleStrokeWidth(),
+      keySubtitleBottomOffset: getSubtitleBottomOffset(),
+      keySubtitleTextColor: _box.get(keySubtitleTextColor),
+      keyHardwareAcceleration: getHardwareAcceleration(),
+      keyWifiOnlySeeding: getWifiOnlySeeding(),
+    };
+  }
+
+  /// Imports portable user preferences from a synchronized device.
+  static Future<void> importPreferences(Map<String, dynamic> prefs) async {
+    for (final entry in prefs.entries) {
+      if (entry.value != null) {
+        await _box.put(entry.key, entry.value);
+      }
+    }
+  }
 }

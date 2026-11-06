@@ -6,10 +6,27 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../history/data/models/watch_history_item.dart';
+import '../../history/data/repositories/watch_history_repository.dart';
+import '../../search/presentation/providers/search_history_provider.dart';
 import '../../settings/data/settings_service.dart';
+import '../../watchlist/data/watchlist_repository.dart';
 import '../domain/models/user_profile.dart';
 import '../presentation/providers/profile_provider.dart';
 import 'sync_crypto_service.dart';
+
+/// Result of applying synchronized data from another device.
+class SyncedProfileResult {
+  final UserProfile profile;
+  final int watchlistCount;
+  final int historyCount;
+
+  const SyncedProfileResult({
+    required this.profile,
+    this.watchlistCount = 0,
+    this.historyCount = 0,
+  });
+}
 
 /// Metadata representing an active pairing session.
 class PairingSessionInfo {
@@ -176,15 +193,18 @@ class HybridPairingService {
     _relayClient = null;
   }
 
-  /// Saves the received profile payload into local Hive storage and Riverpod state.
-  static Future<UserProfile> applySyncedProfile({
-    required WidgetRef ref,
+  /// Saves the received profile payload, watchlist, watch history, and preferences into local Hive storage and Riverpod state.
+  static Future<SyncedProfileResult> applySyncedProfile({
+    required dynamic ref,
     required Map<String, dynamic> data,
   }) async {
-    String? localAvatarPath;
+    // 1. Resolve Profile data (support both structured 'profile' map and flat legacy format)
+    final profileMap = (data['profile'] is Map)
+        ? (data['profile'] as Map<String, dynamic>)
+        : data;
 
-    // Save base64 custom avatar image if provided
-    final base64Image = data['customAvatarBase64'] as String?;
+    String? localAvatarPath;
+    final base64Image = (profileMap['customAvatarBase64'] ?? data['customAvatarBase64']) as String?;
     if (base64Image != null && base64Image.isNotEmpty) {
       try {
         final bytes = base64Decode(base64Image);
@@ -197,13 +217,13 @@ class HybridPairingService {
       }
     }
 
-    final name = (data['name'] as String?)?.trim().isNotEmpty == true
-        ? data['name'] as String
+    final name = (profileMap['name'] as String?)?.trim().isNotEmpty == true
+        ? profileMap['name'] as String
         : 'Penikmat Film';
-    final username = (data['username'] as String?)?.trim().isNotEmpty == true
-        ? (data['username'] as String).replaceAll('@', '')
+    final username = (profileMap['username'] as String?)?.trim().isNotEmpty == true
+        ? (profileMap['username'] as String).replaceAll('@', '')
         : 'cineva_fan';
-    final avatarId = (data['avatarId'] as String?) ?? 'avatar_popcorn';
+    final avatarId = (profileMap['avatarId'] as String?) ?? 'avatar_popcorn';
 
     // Commit to Riverpod & Hive
     await ref.read(userProfileProvider.notifier).save(
@@ -216,7 +236,74 @@ class HybridPairingService {
     // Auto-accept legal agreements since they were already accepted on mobile
     await SettingsService.setLegalAccepted(true);
 
-    return ref.read(userProfileProvider);
+    // 2. Synchronize Watchlist
+    int watchlistCount = 0;
+    final rawWatchlist = data['watchlist'];
+    if (rawWatchlist is List && rawWatchlist.isNotEmpty) {
+      final items = <WatchlistItem>[];
+      for (final raw in rawWatchlist) {
+        if (raw is Map) {
+          try {
+            items.add(WatchlistItem.fromJson(raw));
+          } catch (e) {
+            debugPrint('[HybridPairingService] Failed parsing WatchlistItem: $e');
+          }
+        }
+      }
+      if (items.isNotEmpty) {
+        await ref.read(watchlistRepositoryProvider).importItems(items);
+        ref.read(watchlistProvider.notifier).refresh();
+        watchlistCount = items.length;
+      }
+    }
+
+    // 3. Synchronize Watch History & Progress
+    int historyCount = 0;
+    final rawHistory = data['watchHistory'];
+    if (rawHistory is List && rawHistory.isNotEmpty) {
+      final items = <WatchHistoryItem>[];
+      for (final raw in rawHistory) {
+        if (raw is Map) {
+          try {
+            items.add(WatchHistoryItem.fromJson(raw));
+          } catch (e) {
+            debugPrint('[HybridPairingService] Failed parsing WatchHistoryItem: $e');
+          }
+        }
+      }
+      if (items.isNotEmpty) {
+        await ref.read(watchHistoryRepositoryProvider).importItems(items);
+        ref.read(watchHistoryProvider.notifier).refresh();
+        historyCount = items.length;
+      }
+    }
+
+    // 4. Synchronize User Preferences & Settings
+    final rawSettings = data['settings'];
+    if (rawSettings is Map) {
+      try {
+        await SettingsService.importPreferences(rawSettings.cast<String, dynamic>());
+      } catch (e) {
+        debugPrint('[HybridPairingService] Failed importing settings: $e');
+      }
+    }
+
+    // 5. Synchronize Search History
+    final rawSearchHistory = data['searchHistory'];
+    if (rawSearchHistory is List && rawSearchHistory.isNotEmpty) {
+      try {
+        final queries = rawSearchHistory.map((e) => e.toString()).toList();
+        await ref.read(searchHistoryProvider.notifier).importQueries(queries);
+      } catch (e) {
+        debugPrint('[HybridPairingService] Failed importing search history: $e');
+      }
+    }
+
+    return SyncedProfileResult(
+      profile: ref.read(userProfileProvider),
+      watchlistCount: watchlistCount,
+      historyCount: historyCount,
+    );
   }
 
   Future<String> _resolveLocalIp() async {

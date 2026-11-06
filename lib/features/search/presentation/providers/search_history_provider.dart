@@ -53,6 +53,24 @@ class SearchHistoryNotifier extends StateNotifier<List<String>> {
       await box.delete(_key);
     } catch (_) {}
   }
+
+  Future<void> importQueries(List<String> queries) async {
+    final clean = queries.map((q) => q.trim()).where((q) => q.isNotEmpty).toList();
+    if (clean.isEmpty) return;
+
+    final merged = <String>[];
+    for (final q in [...clean, ...state]) {
+      if (!merged.any((existing) => existing.toLowerCase() == q.toLowerCase())) {
+        merged.add(q);
+      }
+    }
+    final updated = merged.take(15).toList();
+    state = updated;
+    try {
+      final box = Hive.box(AppConstants.settingsBox);
+      await box.put(_key, updated);
+    } catch (_) {}
+  }
 }
 
 final searchHistoryProvider = StateNotifierProvider<SearchHistoryNotifier, List<String>>((ref) {

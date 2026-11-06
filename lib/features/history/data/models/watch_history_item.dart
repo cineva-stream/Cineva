@@ -138,18 +138,18 @@ class WatchHistoryItem {
   };
 
   factory WatchHistoryItem.fromJson(Map<dynamic, dynamic> json) => WatchHistoryItem(
-    id: json['id'] as int? ?? 0,
+    id: (json['id'] as num?)?.toInt() ?? 0,
     mediaType: json['mediaType'] as String? ?? 'movie',
     title: json['title'] as String? ?? '',
     episodeTitle: json['episodeTitle'] as String?,
-    season: json['season'] as int?,
-    episode: json['episode'] as int?,
+    season: (json['season'] as num?)?.toInt(),
+    episode: (json['episode'] as num?)?.toInt(),
     imdbId: json['imdbId'] as String?,
     posterPath: json['posterPath'] as String?,
     backdropPath: json['backdropPath'] as String?,
     voteAverage: (json['voteAverage'] as num?)?.toDouble() ?? 0.0,
-    positionMs: json['positionMs'] as int? ?? 0,
-    durationMs: json['durationMs'] as int? ?? 0,
+    positionMs: (json['positionMs'] as num?)?.toInt() ?? 0,
+    durationMs: (json['durationMs'] as num?)?.toInt() ?? 0,
     lastWatchedAt: DateTime.tryParse(json['lastWatchedAt'] as String? ?? '') ?? DateTime.now(),
     isCompleted: json['isCompleted'] as bool? ?? false,
   );
