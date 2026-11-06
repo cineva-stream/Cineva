@@ -21,7 +21,7 @@ $versionLine = Get-Content $pubspecPath | Where-Object { $_ -match "^version:\s*
 if ($versionLine -match "([0-9]+\.[0-9]+\.[0-9]+)") {
     $appVersion = $Matches[1]
 } else {
-    $appVersion = "1.1.4"
+    $appVersion = "1.1.5"
 }
 Write-Host "[1/4] Versi aplikasi terdeteksi: v$appVersion" -ForegroundColor Green
 

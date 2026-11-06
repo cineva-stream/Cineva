@@ -1,7 +1,7 @@
 ================================================================================
 CINEVA - SYARAT DAN KETENTUAN PENGGUNAAN PIRANTI LUNAK
 ================================================================================
-Versi: 1.1.4
+Versi: 1.1.5
 Perjanjian Hukum Penggunaan Piranti Lunak Cineva Secara Global
 
 PERHATIAN PENTING:
