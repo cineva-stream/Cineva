@@ -80,6 +80,34 @@ void main() {
         throwsA(anything),
       );
     });
+
+    test('Encrypted and compressed (gz:) payload roundtrip preserves large dataset', () {
+      final key = SyncCryptoService.generatePairingKey();
+      // Generate realistic > 2KB JSON dataset
+      final largeData = {
+        'profile': {'name': 'Tester', 'username': 'tester'},
+        'watchlist': List.generate(50, (i) => {'id': '$i', 'title': 'Movie #$i', 'mediaType': 'movie'}),
+        'watchHistory': List.generate(50, (i) => {'id': '$i', 'title': 'Movie #$i', 'progress': 0.8}),
+      };
+      final rawJson = jsonEncode(largeData);
+      final jsonBytes = utf8.encode(rawJson);
+      expect(jsonBytes.length, greaterThan(2000));
+
+      final compressed = gzip.encode(jsonBytes);
+      final preparedPayload = 'gz:${base64Encode(compressed)}';
+
+      final ciphertext = SyncCryptoService.encryptPayload(preparedPayload, key);
+      final decrypted = SyncCryptoService.decryptPayload(ciphertext, key);
+
+      expect(decrypted.startsWith('gz:'), isTrue);
+      final decompressed = gzip.decode(base64Decode(decrypted.substring(3)));
+      final recoveredJson = utf8.decode(decompressed);
+      final recoveredData = jsonDecode(recoveredJson) as Map<String, dynamic>;
+
+      expect(recoveredData['profile']['name'], 'Tester');
+      expect((recoveredData['watchlist'] as List).length, 50);
+      expect((recoveredData['watchHistory'] as List).length, 50);
+    });
   });
 
   group('ParsedPairingQr URI Parser Tests', () {

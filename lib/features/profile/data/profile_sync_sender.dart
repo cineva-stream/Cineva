@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:image/image.dart' as img;
 
 import '../domain/models/user_profile.dart';
 import '../../history/data/models/watch_history_item.dart';
@@ -85,13 +86,30 @@ class ProfileSyncSender {
     Map<String, dynamic>? settings,
     List<String>? searchHistory,
   }) async {
-    // 1. Prepare Base64 custom avatar if available
+    // 1. Prepare Base64 custom avatar if available (with lightweight thumbnailing if large)
     String? customAvatarBase64;
     if (profile.customAvatarPath != null) {
       try {
         final file = File(profile.customAvatarPath!);
         if (await file.exists()) {
-          final bytes = await file.readAsBytes();
+          List<int> bytes = await file.readAsBytes();
+          // Downscale large avatar images to prevent multi-megabyte payloads
+          if (bytes.length > 100 * 1024) {
+            try {
+              final decodedImage = img.decodeImage(Uint8List.fromList(bytes));
+              if (decodedImage != null) {
+                final resized = img.copyResize(
+                  decodedImage,
+                  width: 256,
+                  height: 256,
+                  interpolation: img.Interpolation.linear,
+                );
+                bytes = img.encodeJpg(resized, quality: 85);
+              }
+            } catch (imgError) {
+              debugPrint('[ProfileSyncSender] Image downscale fallback: $imgError');
+            }
+          }
           customAvatarBase64 = base64Encode(bytes);
         }
       } catch (e) {
@@ -123,6 +141,16 @@ class ProfileSyncSender {
     };
     final jsonString = jsonEncode(payloadMap);
 
+    // GZIP compress payload if larger than 1024 bytes to keep payload under ntfy inline limit
+    final jsonBytes = utf8.encode(jsonString);
+    final String preparedPayload;
+    if (jsonBytes.length > 1024) {
+      final compressed = gzip.encode(jsonBytes);
+      preparedPayload = 'gz:${base64Encode(compressed)}';
+    } else {
+      preparedPayload = jsonString;
+    }
+
     // 2. PATH 1: Try Local LAN Direct Connection (Fast Path: ~30-50ms)
     if (qrData.ip != null &&
         qrData.port != null &&
@@ -134,7 +162,7 @@ class ProfileSyncSender {
 
         final request = await client.postUrl(lanUri);
         request.headers.contentType = ContentType.json;
-        request.write(jsonString);
+        request.write(preparedPayload);
 
         final response = await request.close().timeout(const Duration(milliseconds: 1500));
         client.close();
@@ -149,7 +177,7 @@ class ProfileSyncSender {
 
     // 3. PATH 2: Zero-Config End-to-End Encrypted Cloud Relay (Works on 4G/5G & different Wi-Fi)
     try {
-      final encryptedPayload = SyncCryptoService.encryptPayload(jsonString, qrData.key);
+      final encryptedPayload = SyncCryptoService.encryptPayload(preparedPayload, qrData.key);
       final relayUri = Uri.parse('https://ntfy.sh/${qrData.topic}');
 
       final client = HttpClient()..connectionTimeout = const Duration(seconds: 6);

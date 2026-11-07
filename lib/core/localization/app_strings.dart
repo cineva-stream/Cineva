@@ -925,6 +925,8 @@ class AppStrings {
       isIndonesian ? 'Setup Manual di PC' : 'Manual PC Setup';
   String get tvSyncWaitingScan =>
       isIndonesian ? 'Menunggu pemindaian ponsel...' : 'Waiting for smartphone scan...';
+  String get tvSyncReceiving =>
+      isIndonesian ? 'Menerima profil dari ponsel...' : 'Receiving profile from phone...';
   String tvSyncAlternativeCode(String code) =>
       isIndonesian ? 'Kode Alternatif: $code' : 'Alternative Code: $code';
   String get tvSyncSuccessTitle =>

@@ -46,6 +46,13 @@ class PairingSessionInfo {
   });
 }
 
+/// Connection/synchronization lifecycle state during pairing.
+enum HybridPairingStatus {
+  listening,
+  receiving,
+  success,
+}
+
 /// Service that manages the receiving end of the QR pairing flow on Android TV & Windows.
 ///
 /// Implements Hybrid Mode:
@@ -55,13 +62,18 @@ class HybridPairingService {
   HttpServer? _localServer;
   HttpClient? _relayClient;
   StreamSubscription? _relaySubscription;
+  Timer? _pollTimer;
   bool _isClosed = false;
+  bool _hasReceived = false;
 
   /// Starts both Local LAN server and Cloud Relay listener.
   Future<PairingSessionInfo> startSession({
     required void Function(Map<String, dynamic> profileData) onProfileReceived,
+    void Function(HybridPairingStatus status)? onStatusChanged,
   }) async {
     _isClosed = false;
+    _hasReceived = false;
+    onStatusChanged?.call(HybridPairingStatus.listening);
 
     // 1. Resolve local IPv4 network address
     final localIp = await _resolveLocalIp();
@@ -103,18 +115,15 @@ class HybridPairingService {
           final body = await utf8.decodeStream(request);
           final Map<String, dynamic> payload;
 
-          // Payload could be encrypted or plain JSON
-          if (body.contains(':') && !body.startsWith('{')) {
+          // Payload could be encrypted or plain (with or without gz: compression)
+          if (body.contains(':') && !body.startsWith('{') && !body.startsWith('gz:')) {
             final decrypted = SyncCryptoService.decryptPayload(body, key);
-            payload = jsonDecode(decrypted) as Map<String, dynamic>;
+            payload = _decodeAndParsePayload(decrypted);
           } else {
-            payload = jsonDecode(body) as Map<String, dynamic>;
+            payload = _decodeAndParsePayload(body);
           }
 
-          if (!_isClosed) {
-            onProfileReceived(payload);
-            stopSession();
-          }
+          _handleIncomingData(payload, onProfileReceived, onStatusChanged);
 
           request.response
             ..statusCode = HttpStatus.ok
@@ -137,7 +146,8 @@ class HybridPairingService {
 
     // 6. Listen to Cloud Relay stream in background (for 4G/5G / cross-network)
     if (!Platform.environment.containsKey('FLUTTER_TEST')) {
-      _listenToCloudRelay(topic, key, onProfileReceived);
+      _listenToCloudRelay(topic, key, onProfileReceived, onStatusChanged);
+      _startPeriodicPolling(topic, key, onProfileReceived, onStatusChanged);
     }
 
     return PairingSessionInfo(
@@ -150,59 +160,182 @@ class HybridPairingService {
     );
   }
 
+  void _handleIncomingData(
+    Map<String, dynamic> data,
+    void Function(Map<String, dynamic>) onProfileReceived,
+    void Function(HybridPairingStatus status)? onStatusChanged,
+  ) {
+    if (_hasReceived || _isClosed) return;
+    _hasReceived = true;
+    onStatusChanged?.call(HybridPairingStatus.receiving);
+    try {
+      onProfileReceived(data);
+      onStatusChanged?.call(HybridPairingStatus.success);
+    } catch (e) {
+      debugPrint('[HybridPairingService] onProfileReceived error: $e');
+    } finally {
+      stopSession();
+    }
+  }
+
+  /// Extracts ciphertext from ntfy event, retrieving attachment if payload exceeded 4KB limit.
+  Future<String?> _extractCiphertextFromEvent(Map<String, dynamic> event) async {
+    if (event['event'] != 'message') return null;
+
+    // Case 1: Attachment present (> 4KB payload converted by ntfy to file)
+    final attachment = event['attachment'];
+    if (attachment is Map && attachment['url'] != null) {
+      final urlStr = attachment['url'] as String;
+      try {
+        final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
+        final req = await client.getUrl(Uri.parse(urlStr));
+        final resp = await req.close().timeout(const Duration(seconds: 8));
+        if (resp.statusCode == HttpStatus.ok) {
+          final content = await utf8.decodeStream(resp);
+          client.close();
+          if (content.contains(':')) {
+            return content.trim();
+          }
+        }
+        client.close();
+      } catch (e) {
+        debugPrint('[HybridPairingService] Attachment download failed: $e');
+      }
+    }
+
+    // Case 2: Inline message
+    final msg = event['message'];
+    if (msg is String && msg.contains(':')) {
+      return msg.trim();
+    }
+
+    return null;
+  }
+
+  /// Decodes plain or gz-compressed JSON payload into a Map.
+  static Map<String, dynamic> _decodeAndParsePayload(String raw) {
+    final String jsonText;
+    if (raw.startsWith('gz:')) {
+      final compressed = base64Decode(raw.substring(3));
+      final decompressed = gzip.decode(compressed);
+      jsonText = utf8.decode(decompressed);
+    } else {
+      jsonText = raw;
+    }
+    return jsonDecode(jsonText) as Map<String, dynamic>;
+  }
+
+  /// Decrypts ciphertext and unpacks payload.
+  static Map<String, dynamic>? _processRawCiphertext(String ciphertext, String key) {
+    try {
+      final decrypted = SyncCryptoService.decryptPayload(ciphertext.trim(), key);
+      return _decodeAndParsePayload(decrypted);
+    } catch (e) {
+      debugPrint('[HybridPairingService] Decrypt error: $e');
+      return null;
+    }
+  }
+
+  /// Persistent SSE stream with auto-reconnect.
   void _listenToCloudRelay(
     String topic,
     String key,
     void Function(Map<String, dynamic> profileData) onProfileReceived,
+    void Function(HybridPairingStatus status)? onStatusChanged,
   ) async {
-    try {
-      _relayClient = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 6);
-      final url = Uri.parse('https://ntfy.sh/$topic/json');
-      final request = await _relayClient!
-          .getUrl(url)
-          .timeout(const Duration(seconds: 5));
-      final response = await request.close().timeout(
-        const Duration(seconds: 5),
-      );
+    while (!_isClosed && !_hasReceived) {
+      try {
+        _relayClient?.close(force: true);
+        _relayClient = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+        final url = Uri.parse('https://ntfy.sh/$topic/json');
+        final request = await _relayClient!.getUrl(url).timeout(const Duration(seconds: 8));
+        final response = await request.close().timeout(const Duration(seconds: 8));
 
-      _relaySubscription = response
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(
-            (line) {
-              if (_isClosed || line.trim().isEmpty) return;
-              try {
-                final event = jsonDecode(line) as Map<String, dynamic>;
-                if (event['event'] == 'message') {
-                  final encryptedMessage = event['message'] as String;
-                  final decrypted = SyncCryptoService.decryptPayload(
-                    encryptedMessage,
-                    key,
-                  );
-                  final data = jsonDecode(decrypted) as Map<String, dynamic>;
+        await for (final line in response.transform(utf8.decoder).transform(const LineSplitter())) {
+          if (_isClosed || _hasReceived) break;
+          if (line.trim().isEmpty) continue;
 
-                  if (!_isClosed) {
-                    onProfileReceived(data);
-                    stopSession();
-                  }
-                }
-              } catch (e) {
-                debugPrint('[HybridPairingService] Relay parse non-fatal: $e');
+          try {
+            final event = jsonDecode(line) as Map<String, dynamic>;
+            final cipher = await _extractCiphertextFromEvent(event);
+            if (cipher != null && !_hasReceived && !_isClosed) {
+              onStatusChanged?.call(HybridPairingStatus.receiving);
+              final data = _processRawCiphertext(cipher, key);
+              if (data != null) {
+                _handleIncomingData(data, onProfileReceived, onStatusChanged);
+                return;
               }
-            },
-            onError: (e) {
-              debugPrint('[HybridPairingService] Relay stream error: $e');
-            },
-          );
-    } catch (e) {
-      debugPrint('[HybridPairingService] Non-fatal relay connect error: $e');
+            }
+          } catch (e) {
+            debugPrint('[HybridPairingService] SSE parse error: $e');
+          }
+        }
+      } catch (e) {
+        debugPrint('[HybridPairingService] SSE connect/stream info: $e');
+      }
+
+      if (!_isClosed && !_hasReceived) {
+        await Future.delayed(const Duration(seconds: 2));
+      }
     }
+  }
+
+  /// Periodic polling fallback (every 2 seconds) querying cached messages via `?poll=1&since=10m`.
+  void _startPeriodicPolling(
+    String topic,
+    String key,
+    void Function(Map<String, dynamic> profileData) onProfileReceived,
+    void Function(HybridPairingStatus status)? onStatusChanged,
+  ) {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+      if (_isClosed || _hasReceived) {
+        timer.cancel();
+        return;
+      }
+
+      try {
+        final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+        final pollUrl = Uri.parse('https://ntfy.sh/$topic/json?poll=1&since=10m');
+        final req = await client.getUrl(pollUrl).timeout(const Duration(seconds: 4));
+        final resp = await req.close().timeout(const Duration(seconds: 4));
+
+        if (resp.statusCode == HttpStatus.ok) {
+          final body = await utf8.decodeStream(resp);
+          client.close();
+          if (_isClosed || _hasReceived) return;
+
+          for (final line in const LineSplitter().convert(body)) {
+            if (line.trim().isEmpty) continue;
+            try {
+              final event = jsonDecode(line) as Map<String, dynamic>;
+              final cipher = await _extractCiphertextFromEvent(event);
+              if (cipher != null && !_hasReceived && !_isClosed) {
+                onStatusChanged?.call(HybridPairingStatus.receiving);
+                final data = _processRawCiphertext(cipher, key);
+                if (data != null) {
+                  _handleIncomingData(data, onProfileReceived, onStatusChanged);
+                  timer.cancel();
+                  return;
+                }
+              }
+            } catch (_) {}
+          }
+        } else {
+          client.close();
+        }
+      } catch (_) {
+        // Polling retry on next interval
+      }
+    });
   }
 
   /// Closes both Local Server and Cloud Relay connections.
   void stopSession() {
     _isClosed = true;
+    _pollTimer?.cancel();
+    _pollTimer = null;
+
     _localServer?.close(force: true);
     _localServer = null;
 

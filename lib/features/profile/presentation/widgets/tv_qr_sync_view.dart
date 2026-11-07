@@ -41,6 +41,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
   int? _syncedWatchlistCount;
   int? _syncedHistoryCount;
   bool _isSuccess = false;
+  bool _isReceiving = false;
 
   @override
   void initState() {
@@ -52,6 +53,12 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
     setState(() => _isLoading = true);
     try {
       final info = await _pairingService.startSession(
+        onStatusChanged: (status) {
+          if (!mounted) return;
+          if (status == HybridPairingStatus.receiving) {
+            setState(() => _isReceiving = true);
+          }
+        },
         onProfileReceived: (data) async {
           if (!mounted) return;
           final result = await HybridPairingService.applySyncedProfile(
@@ -475,36 +482,56 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
 
           const SizedBox(height: 18),
 
-          // Listening Radar Status
+          // Listening Radar or Receiving Status
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.9),
-                      blurRadius: 8,
-                      spreadRadius: 2,
-                    ),
-                  ],
+              if (_isReceiving) ...[
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
                 ),
-              )
-                  .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                  .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.3, 1.3), duration: 800.ms),
-              const SizedBox(width: 8),
-              Text(
-                s.tvSyncWaitingScan,
-                style: GoogleFonts.inter(
-                  color: AppColors.primaryLight,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
+                const SizedBox(width: 8),
+                Text(
+                  s.tvSyncReceiving,
+                  style: GoogleFonts.inter(
+                    color: AppColors.primaryLight,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
                 ),
-              ),
+              ] else ...[
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.9),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                )
+                    .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                    .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.3, 1.3), duration: 800.ms),
+                const SizedBox(width: 8),
+                Text(
+                  s.tvSyncWaitingScan,
+                  style: GoogleFonts.inter(
+                    color: AppColors.primaryLight,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ],
           ),
 
