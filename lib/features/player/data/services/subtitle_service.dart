@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../../core/constants/app_env.dart';
 import 'vixsrc_stream_service.dart';
 
 /// Represents a subtitle file available for download.
@@ -75,7 +75,7 @@ class SubtitleService {
   late final Dio _dio;
 
   SubtitleService() {
-    final apiKey = dotenv.env['OPENSUBTITLES_API_KEY'] ?? '';
+    final apiKey = AppEnv.openSubtitlesApiKey;
     _dio = Dio(BaseOptions(
       baseUrl: 'https://api.opensubtitles.com/api/v1',
       connectTimeout: const Duration(seconds: 15),

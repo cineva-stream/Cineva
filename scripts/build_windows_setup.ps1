@@ -56,7 +56,12 @@ python scripts\generate_windows_icon.py
 
 # 3. Jalankan Flutter Build Windows Release
 Write-Host "[3/4] Melakukan kompilasi Flutter Windows Release..." -ForegroundColor Cyan
-flutter build windows --release
+$windowsArgs = @("build", "windows", "--release")
+if (Test-Path ".env") {
+    $windowsArgs += @("--dart-define-from-file=.env")
+    Write-Host "[-] Menyuntikkan konfigurasi .env ke biner native (--dart-define-from-file=.env)..." -ForegroundColor Magenta
+}
+& flutter $windowsArgs
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Gagal melakukan build Flutter Windows release."
 }

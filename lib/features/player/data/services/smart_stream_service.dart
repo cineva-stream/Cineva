@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../../core/constants/app_env.dart';
 
 import '../models/provider_stream_models.dart';
 
@@ -205,8 +205,7 @@ class SmartStreamService {
     int resolvedTmdb = tmdbId ?? 0;
     String? resolvedImdb = imdbId;
 
-    final apiKey =
-        dotenv.env['TMDB_API_KEY'] ?? 'a219d8d995720253534ff876696baf3b';
+    final apiKey = AppEnv.tmdbApiKey;
 
     // 1. If TMDB ID is missing but IMDb ID is present, find TMDB ID
     if (resolvedTmdb == 0 && resolvedImdb != null && resolvedImdb.isNotEmpty) {

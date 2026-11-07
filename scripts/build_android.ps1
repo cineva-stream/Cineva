@@ -77,6 +77,12 @@ switch ($mode) {
     }
 }
 
+# Konfigurasi Environment Aman (.env ke biner native)
+if (Test-Path ".env") {
+    $flutterArgs += @("--dart-define-from-file=.env")
+    Write-Host "[-] Menyuntikkan konfigurasi .env ke biner native (--dart-define-from-file=.env)..." -ForegroundColor Magenta
+}
+
 # Konfigurasi Obfuscation
 if (-not $NoObfuscate) {
     if (-not (Test-Path $symbolsDir)) {

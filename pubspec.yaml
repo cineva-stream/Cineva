@@ -34,9 +34,6 @@ dependencies:
   hive_flutter: ^1.1.0
   path_provider: ^2.1.5
 
-  # Environment
-  flutter_dotenv: ^5.2.1
-
   # UI/UX
   google_fonts: ^6.2.1
   shimmer: ^3.0.0
@@ -78,6 +75,5 @@ flutter:
   uses-material-design: true
 
   assets:
-    - .env
     - assets/images/
     - assets/images/platforms/

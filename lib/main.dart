@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:media_kit/media_kit.dart';
@@ -116,13 +115,6 @@ Future<void> main() async {
     } catch (e) {
       debugPrint('[main] Non-fatal error configuring Android SystemChrome: $e');
     }
-  }
-
-  // Load environment variables safely
-  try {
-    await dotenv.load(fileName: '.env');
-  } catch (e) {
-    debugPrint('[main] Non-fatal: .env could not be loaded: $e');
   }
 
   // Initialize Hive for local storage safely

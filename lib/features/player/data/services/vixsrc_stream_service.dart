@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../../core/constants/app_env.dart';
 
 import '../../../../core/network/dio_client.dart';
 import '../models/provider_stream_models.dart';
@@ -309,7 +309,7 @@ class VixSrcStreamService {
   static Future<int?> _findTmdbIdByImdb(String imdbId) async {
     try {
       final cleanId = imdbId.startsWith('tt') ? imdbId : 'tt$imdbId';
-      final apiKey = dotenv.env['TMDB_API_KEY'] ?? 'a219d8d995720253534ff876696baf3b';
+      final apiKey = AppEnv.tmdbApiKey;
       final url =
           'https://api.themoviedb.org/3/find/$cleanId?external_source=imdb_id&api_key=$apiKey';
 

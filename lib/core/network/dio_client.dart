@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../constants/api_constants.dart';
 import '../constants/app_constants.dart';
+import '../constants/app_env.dart';
 import 'interceptors/header_interceptor.dart';
 import 'interceptors/retry_interceptor.dart';
 import 'interceptors/single_flight_interceptor.dart';
@@ -60,7 +60,7 @@ class DioClient {
         receiveTimeout: AppConstants.receiveTimeout,
         headers: {
           'Accept': 'application/json',
-          'Authorization': 'Bearer ${dotenv.env['TMDB_ACCESS_TOKEN'] ?? ''}',
+          'Authorization': 'Bearer ${AppEnv.tmdbAccessToken}',
         },
       ),
     );
@@ -86,7 +86,7 @@ class DioClient {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Api-Key': dotenv.env['OPENSUBTITLES_API_KEY'] ?? '',
+          'Api-Key': AppEnv.openSubtitlesApiKey,
           'User-Agent': 'Cineva v${AppConstants.appVersion}',
         },
       ),

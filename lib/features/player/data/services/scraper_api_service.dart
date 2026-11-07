@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../../core/constants/app_env.dart';
 
 import '../../../../core/network/dio_client.dart';
 import '../models/provider_stream_models.dart';
@@ -21,10 +21,7 @@ class ScraperApiService {
 
   ScraperApiService({String? baseUrl, Dio? dio})
       : _baseUrl = _normalizeBaseUrl(
-          baseUrl ??
-              (dotenv.isInitialized
-                  ? (dotenv.env['CINEVA_SCRAPER_API_URL'] ?? defaultScraperUrl)
-                  : defaultScraperUrl),
+          baseUrl ?? AppEnv.cinevaScraperApiUrl,
         ),
         _dio = dio ?? DioClient.streamClient;
 
