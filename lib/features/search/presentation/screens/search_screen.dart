@@ -653,7 +653,6 @@ class _SearchDiscoveryView extends ConsumerWidget {
                 children: List.generate(
                   4,
                   (index) => Container(
-                    margin: const EdgeInsets.symmetric(horizontal: -16),
                     height: 68,
                     decoration: BoxDecoration(
                       border: Border(
@@ -713,7 +712,6 @@ class _SearchDiscoveryView extends ConsumerWidget {
                 );
 
                 return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: -16),
                   decoration: BoxDecoration(
                     color: Colors.transparent,
                     border: Border(
@@ -734,7 +732,7 @@ class _SearchDiscoveryView extends ConsumerWidget {
                         }
                       },
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Row(
                           children: [
                             // Rank Number Badge (smooth text, no background)
