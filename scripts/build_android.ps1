@@ -1,16 +1,19 @@
 # ==============================================================================
-# Script Otomatis Pembuatan APK Cineva (Ponsel & Android TV)
+# Script Otomatis Pembuatan APK Cineva (Ponsel, Android TV & Universal)
 # ==============================================================================
 # Cara menjalankan:
-#   .\scripts\build_android.ps1           # Build semua varian + Obfuscate (Default)
-#   .\scripts\build_android.ps1 -Tv       # Khusus Android TV (32-bit ARM super ringan + Obfuscate)
-#   .\scripts\build_android.ps1 -Mobile   # Khusus Ponsel Android Modern (64-bit ARM + Obfuscate)
-#   .\scripts\build_android.ps1 -All      # Build semua (arm64, armeabi-v7a, x86_64, universal, & android-tv)
+#   .\scripts\build_android.ps1             # Build semua varian CPU (Split per ABI + Android TV + Obfuscate)
+#   .\scripts\build_android.ps1 -Universal  # Build 1 APK Universal tunggal (Kompatibel semua CPU + Obfuscate)
+#   .\scripts\build_android.ps1 -Tv         # Khusus Android TV (32-bit ARM super ringan + Obfuscate)
+#   .\scripts\build_android.ps1 -Mobile     # Khusus Ponsel Android Modern (64-bit ARM + Obfuscate)
 #   .\scripts\build_android.ps1 -NoObfuscate # Nonaktifkan obfuscation (untuk debug simbol)
 # ==============================================================================
 
 [CmdletBinding(DefaultParameterSetName = "Default")]
 param(
+    [Parameter(ParameterSetName = "Universal")]
+    [switch]$Universal,
+
     [Parameter(ParameterSetName = "Tv")]
     [switch]$Tv,
 
@@ -21,7 +24,7 @@ param(
     [switch]$All,
 
     [Parameter(ParameterSetName = "TargetParam")]
-    [ValidateSet("tv", "mobile", "all")]
+    [ValidateSet("tv", "mobile", "all", "universal")]
     [string]$Target = "all",
 
     [Parameter()]
@@ -50,7 +53,9 @@ Write-Host "[1/3] Versi aplikasi terdeteksi: v$appVersion" -ForegroundColor Gree
 
 # Tentukan Mode Target
 $mode = "all"
-if ($Tv.IsPresent -or $Target -eq "tv") {
+if ($Universal.IsPresent -or $Target -eq "universal") {
+    $mode = "universal"
+} elseif ($Tv.IsPresent -or $Target -eq "tv") {
     $mode = "tv"
 } elseif ($Mobile.IsPresent -or $Target -eq "mobile") {
     $mode = "mobile"
@@ -61,19 +66,24 @@ Write-Host "[2/3] Mengonfigurasi parameter kompilasi (Target: $mode)..." -Foregr
 $apkOutputDir = "build\app\outputs\flutter-apk"
 $symbolsDir = "build\app\outputs\symbols"
 
-$flutterArgs = @("build", "apk", "--release", "--split-per-abi")
+$flutterArgs = @("build", "apk", "--release")
 
 switch ($mode) {
+    "universal" {
+        Write-Host "[-] Menyiapkan target Universal APK (1 file tunggal untuk semua CPU)..." -ForegroundColor Yellow
+        # Tidak menyertakan --split-per-abi agar menghasilkan 1 file APK universal
+    }
     "tv" {
         Write-Host "[-] Menyiapkan target khusus Android TV (32-bit ARM, hemat penyimpanan & ringan)..." -ForegroundColor Yellow
-        $flutterArgs += @("--target-platform", "android-arm")
+        $flutterArgs += @("--split-per-abi", "--target-platform", "android-arm")
     }
     "mobile" {
         Write-Host "[-] Menyiapkan target khusus Ponsel Android Modern (64-bit ARM)..." -ForegroundColor Yellow
-        $flutterArgs += @("--target-platform", "android-arm64")
+        $flutterArgs += @("--split-per-abi", "--target-platform", "android-arm64")
     }
     default {
         Write-Host "[-] Menyiapkan seluruh varian arsitektur CPU (--split-per-abi)..." -ForegroundColor Yellow
+        $flutterArgs += @("--split-per-abi")
     }
 }
 
