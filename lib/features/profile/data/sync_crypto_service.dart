@@ -10,6 +10,8 @@ import 'package:encrypt/encrypt.dart' as enc;
 class SyncCryptoService {
   SyncCryptoService._();
 
+  static const String _magicPrefix = 'cv1:';
+
   /// Generates a cryptographically strong 256-bit (32-byte) key formatted as URL-safe string.
   static String generatePairingKey() {
     final rnd = Random.secure();
@@ -26,7 +28,7 @@ class SyncCryptoService {
     final iv = enc.IV.fromSecureRandom(16);
 
     final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
-    final encrypted = encrypter.encrypt(plainText, iv: iv);
+    final encrypted = encrypter.encrypt('$_magicPrefix$plainText', iv: iv);
 
     return '${iv.base64}:${encrypted.base64}';
   }
@@ -45,7 +47,22 @@ class SyncCryptoService {
     final key = enc.Key(keyBytes);
 
     final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
-    return encrypter.decrypt(encrypted, iv: iv);
+    final decryptedBytes = encrypter.decryptBytes(encrypted, iv: iv);
+
+    // Strict UTF-8 validation: throws FormatException on invalid UTF-8 sequences
+    final rawText = utf8.decode(decryptedBytes, allowMalformed: false);
+
+    // Validate integrity header
+    if (rawText.startsWith(_magicPrefix)) {
+      return rawText.substring(_magicPrefix.length);
+    }
+
+    // Backward compatibility for legacy v1.1.5 payloads (raw JSON or gz compressed)
+    if (rawText.startsWith('{') || rawText.startsWith('gz:')) {
+      return rawText;
+    }
+
+    throw const FormatException('Decryption integrity check failed: invalid key or corrupted payload');
   }
 
   static Uint8List _normalizeKey(String keyString) {

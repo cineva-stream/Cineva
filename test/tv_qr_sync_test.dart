@@ -70,15 +70,17 @@ void main() {
     });
 
     test('decryptPayload throws on incorrect key', () {
-      final key1 = SyncCryptoService.generatePairingKey();
-      final key2 = SyncCryptoService.generatePairingKey();
-      const payload = 'Secret profile message';
+      for (int i = 0; i < 50; i++) {
+        final key1 = SyncCryptoService.generatePairingKey();
+        final key2 = SyncCryptoService.generatePairingKey();
+        final payload = 'Secret profile message #$i';
 
-      final ciphertext = SyncCryptoService.encryptPayload(payload, key1);
-      expect(
-        () => SyncCryptoService.decryptPayload(ciphertext, key2),
-        throwsA(anything),
-      );
+        final ciphertext = SyncCryptoService.encryptPayload(payload, key1);
+        expect(
+          () => SyncCryptoService.decryptPayload(ciphertext, key2),
+          throwsA(anything),
+        );
+      }
     });
 
     test('Encrypted and compressed (gz:) payload roundtrip preserves large dataset', () {
