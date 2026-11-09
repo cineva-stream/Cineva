@@ -21,7 +21,6 @@ import '../providers/search_history_provider.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../domain/entities/streaming_platform.dart';
-import 'platform_catalog_screen.dart';
 
 // ── Search Providers ──
 
@@ -862,13 +861,7 @@ class _SearchDiscoveryView extends ConsumerWidget {
 
   Widget _buildPlatformChip(BuildContext context, StreamingPlatform platform) {
     return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => PlatformCatalogScreen(platform: platform),
-          ),
-        );
-      },
+      onTap: () => context.push('/platform/${platform.id}'),
       child: Container(
         width: 104,
         height: 50,

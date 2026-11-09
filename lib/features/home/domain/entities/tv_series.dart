@@ -1,3 +1,5 @@
+import 'movie.dart';
+
 /// TV Series entity — domain layer representation of a TV show.
 class TvSeries {
   final int id;
@@ -34,5 +36,24 @@ class TvSeries {
   String get year {
     if (firstAirDate.isEmpty) return '';
     return firstAirDate.substring(0, 4);
+  }
+
+  /// Adapts this TV series into a Movie entity with mediaType = 'tv' for generic media rendering.
+  Movie toMovie() {
+    return Movie(
+      id: id,
+      title: name,
+      overview: overview,
+      posterPath: posterPath,
+      backdropPath: backdropPath,
+      voteAverage: voteAverage,
+      voteCount: voteCount,
+      releaseDate: firstAirDate,
+      genreIds: genreIds,
+      popularity: popularity,
+      mediaType: 'tv',
+      originalLanguage: originalLanguage,
+      originCountry: originCountry,
+    );
   }
 }

@@ -219,6 +219,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   int _subtitleSettingsTab = 0; // 0: Waktu (Sync), 1: Tampilan
   bool _isShowingSubtitleSettingsInPopup = false;
 
+  // ── Desktop Mouse Cursor & Vibration Filter State ──
+  static const double _mouseMoveThreshold = 14.0;
+  Offset? _lastMousePosition;
+
+  bool get _isCursorVisible {
+    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+      return _showControls ||
+          _isSidePanelOpen ||
+          _isLoading ||
+          _streamNotFound ||
+          _activePopup != _PlayerMiniPopup.none;
+    }
+    return true;
+  }
+
   // ── Right Side Panel State (YouTube-style Collapsible Drawer) ──
   bool _isSidePanelOpen = false;
   _SidePanelPage _sidePanelPage = _SidePanelPage.main;
@@ -2254,6 +2269,41 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         });
       }
     });
+  }
+
+  void _onMouseHover(PointerHoverEvent event) {
+    if (kIsWeb || !(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+      return;
+    }
+
+    final currentPos = event.position;
+    if (_lastMousePosition == null) {
+      _lastMousePosition = currentPos;
+      return;
+    }
+
+    final distance = (currentPos - _lastMousePosition!).distance;
+    if (distance < _mouseMoveThreshold) {
+      // Ignore vibration / sound acoustic mouse shaking
+      return;
+    }
+
+    _lastMousePosition = currentPos;
+
+    if (!_showControls) {
+      setState(() {
+        _showControls = true;
+      });
+    }
+    _resetControlsTimer();
+  }
+
+  void _onMouseEnter(PointerEnterEvent event) {
+    _lastMousePosition = event.position;
+  }
+
+  void _onMouseExit(PointerExitEvent event) {
+    _lastMousePosition = null;
   }
 
   void _toggleControls() {
@@ -6071,10 +6121,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 : totalWidth;
             final effectiveFit = _isSidePanelOpen ? BoxFit.contain : _fitMode;
 
-            return SizedBox(
-              width: totalWidth,
-              height: totalHeight,
-              child: Row(
+            return MouseRegion(
+              cursor: _isCursorVisible
+                  ? SystemMouseCursors.basic
+                  : SystemMouseCursors.none,
+              onHover: _onMouseHover,
+              onEnter: _onMouseEnter,
+              onExit: _onMouseExit,
+              child: SizedBox(
+                width: totalWidth,
+                height: totalHeight,
+                child: Row(
                 children: [
                   // ── 1. Video Player & Controls (Left Container with Animated Width) ──
                   AnimatedContainer(
@@ -6625,8 +6682,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   ),
                 ],
               ),
-            );
-          },
+            ),
+          );
+        },
         ),
       ),
     ),

@@ -79,6 +79,8 @@ class HomeScreen extends ConsumerWidget {
     final topRated = ref.watch(topRatedMoviesProvider);
     final upcoming = ref.watch(upcomingMoviesProvider);
     final popularTv = ref.watch(popularTvProvider);
+    final paginatedMoviesState = ref.watch(paginatedPopularMoviesProvider);
+    final paginatedTvState = ref.watch(paginatedPopularTvProvider);
 
     List<Movie> filterMovies(List<Movie> list) {
       if (activeGenre.id == 'all') return list;
@@ -92,7 +94,18 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (scrollInfo) {
+          if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 400) {
+            if (activeFilter == HomeCategoryFilter.movies) {
+              ref.read(paginatedPopularMoviesProvider.notifier).loadMore();
+            } else if (activeFilter == HomeCategoryFilter.tv) {
+              ref.read(paginatedPopularTvProvider.notifier).loadMore();
+            }
+          }
+          return false;
+        },
+        child: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
           // ── Modern Floating / Pinned App Bar ──
@@ -368,7 +381,7 @@ class HomeScreen extends ConsumerWidget {
             child: InAppUpdateBanner(),
           ),
 
-          // ── Hero Billboard Carousel (Trending) + Airing Calendar Companion ──
+          // ── Hero Billboard Carousel (Trending Movies or Popular TV Series) ──
           if (activeFilter == HomeCategoryFilter.all ||
               activeFilter == HomeCategoryFilter.movies)
             SliverToBoxAdapter(
@@ -430,34 +443,87 @@ class HomeScreen extends ConsumerWidget {
                   onRetry: () => ref.invalidate(trendingMoviesProvider),
                 ),
               ),
+            )
+          else if (activeFilter == HomeCategoryFilter.tv)
+            SliverToBoxAdapter(
+              child: popularTv.when(
+                data: (tvShows) {
+                  final filtered = filterTv(tvShows);
+                  if (filtered.isEmpty) return const SizedBox.shrink();
+                  final adaptedMovies = filtered.map((t) => t.toMovie()).toList();
+                  if (isWide) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: isSuperWide ? 72 : 67,
+                            child: MovieCarousel(movies: adaptedMovies),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            flex: isSuperWide ? 28 : 33,
+                            child: const AiringCalendarBanner(isCompanion: true),
+                          ),
+                        ],
+                      ),
+                    )
+                        .animate()
+                        .fadeIn(duration: 500.ms)
+                        .slideY(begin: 0.04, end: 0, duration: 500.ms);
+                  }
+                  return MovieCarousel(movies: adaptedMovies)
+                      .animate()
+                      .fadeIn(duration: 500.ms)
+                      .slideY(begin: 0.04, end: 0, duration: 500.ms);
+                },
+                loading: () {
+                  if (isWide) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: isSuperWide ? 72 : 67,
+                            child: const ShimmerHeroCarousel(padding: EdgeInsets.zero),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            flex: isSuperWide ? 28 : 33,
+                            child: const AiringCalendarBanner(isCompanion: true),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const ShimmerHeroCarousel();
+                },
+                error: (e, _) => AppErrorWidget(
+                  message: s.isIndonesian ? 'Gagal memuat serial TV populer' : 'Failed to load popular TV series',
+                  onRetry: () => ref.invalidate(popularTvProvider),
+                ),
+              ),
             ),
 
-          // ── AIRING CALENDAR BANNER (Shown below carousel on mobile, or when TV tab is active on widescreen) ──
-          if (activeGenre.id == 'all' &&
-              ((!isWide &&
-                      (activeFilter == HomeCategoryFilter.all ||
-                          activeFilter == HomeCategoryFilter.tv)) ||
-                  (isWide && activeFilter == HomeCategoryFilter.tv)))
-            const SliverToBoxAdapter(
-              child: AiringCalendarBanner(),
-            ),
+          // ── KONDISI 1: TAB "SEMUA" (Layout Dashboard Klasik Lengkap) ──
+          if (activeFilter == HomeCategoryFilter.all) ...[
+            // AIRING CALENDAR BANNER (Shown below carousel on mobile)
+            if (activeGenre.id == 'all' && !isWide)
+              const SliverToBoxAdapter(
+                child: AiringCalendarBanner(),
+              ),
 
-          // ── CONTINUE WATCHING SECTION (In-Progress Movies & TV Series) ──
-          if (activeGenre.id == 'all' &&
-              (activeFilter == HomeCategoryFilter.all ||
-                  activeFilter == HomeCategoryFilter.movies ||
-                  activeFilter == HomeCategoryFilter.tv))
-            const SliverToBoxAdapter(
-              child: ContinueWatchingSection(),
-            ),
+            // CONTINUE WATCHING SECTION
+            if (activeGenre.id == 'all')
+              const SliverToBoxAdapter(
+                child: ContinueWatchingSection(),
+              ),
 
-          if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.movies)
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-          // ── TOP 10 SECTION (Netflix-style Giant Rank Numbers) ──
-          if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.movies)
+            // TOP 10 SECTION (Netflix-style Giant Rank Numbers)
             SliverToBoxAdapter(
               child: _SectionWithHeader<Movie>(
                 title: s.homeTop10,
@@ -470,9 +536,7 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
 
-          // ── POPULAR MOVIES SECTION ──
-          if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.movies)
+            // POPULAR MOVIES SECTION
             SliverToBoxAdapter(
               child: _SectionWithHeader<Movie>(
                 title: s.homePopularMovies,
@@ -485,9 +549,7 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
 
-          // ── POPULAR TV SERIES SECTION ──
-          if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.tv)
+            // POPULAR TV SERIES SECTION
             SliverToBoxAdapter(
               child: _SectionWithHeader<TvSeries>(
                 title: s.homePopularTv,
@@ -500,9 +562,7 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
 
-          // ── TOP RATED MOVIES SECTION ──
-          if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.movies)
+            // TOP RATED MOVIES SECTION
             SliverToBoxAdapter(
               child: _SectionWithHeader<Movie>(
                 title: s.isIndonesian ? 'Rating Tertinggi' : 'Top Rated',
@@ -515,9 +575,7 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
 
-          // ── UPCOMING MOVIES SECTION ──
-          if (activeFilter == HomeCategoryFilter.all ||
-              activeFilter == HomeCategoryFilter.movies)
+            // UPCOMING MOVIES SECTION
             SliverToBoxAdapter(
               child: _SectionWithHeader<Movie>(
                 title: s.isIndonesian ? 'Segera Tayang di Bioskop' : 'Coming Soon in Theaters',
@@ -529,6 +587,205 @@ class HomeScreen extends ConsumerWidget {
                 builder: (movies) => _MovieHorizontalList(movies: movies),
               ),
             ),
+          ],
+
+          // ── KONDISI 2: TAB "FILM" (Grid Responsif SELURUH Film dengan Infinite Scroll) ──
+          if (activeFilter == HomeCategoryFilter.movies) ...[
+            Builder(
+              builder: (context) {
+                final moviesList = filterMovies(paginatedMoviesState.items);
+                final gridCrossAxisCount = isWide ? (isSuperWide ? 6 : 5) : (screenWidth < 340 ? 2 : 3);
+                final gridAspectRatio = isWide ? 0.62 : 0.58;
+                final gridSpacing = isWide ? 14.0 : 10.0;
+
+                return SliverMainAxisGroup(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.movie_rounded, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              s.isIndonesian ? 'Seluruh Film' : 'All Movies',
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '${moviesList.length}${paginatedMoviesState.hasMore ? '+' : ''}',
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (paginatedMoviesState.isLoading && moviesList.isEmpty)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: _MediaShimmerGrid(),
+                        ),
+                      )
+                    else if (moviesList.isEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 40),
+                          child: AppErrorWidget.empty(
+                            message: s.isIndonesian ? 'Tidak ada film ditemukan' : 'No movies found',
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        sliver: SliverGrid(
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: gridCrossAxisCount,
+                            childAspectRatio: gridAspectRatio,
+                            crossAxisSpacing: gridSpacing,
+                            mainAxisSpacing: gridSpacing,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => MovieCard(
+                              movie: moviesList[index],
+                              isTv: false,
+                            ),
+                            childCount: moviesList.length,
+                          ),
+                        ),
+                      ),
+                    if (paginatedMoviesState.isLoadingMore)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+
+          // ── KONDISI 3: TAB "SERIAL TV" (Grid Responsif SELURUH Serial TV dengan Infinite Scroll) ──
+          if (activeFilter == HomeCategoryFilter.tv) ...[
+            Builder(
+              builder: (context) {
+                final tvList = filterTv(paginatedTvState.items);
+                final gridCrossAxisCount = isWide ? (isSuperWide ? 6 : 5) : (screenWidth < 340 ? 2 : 3);
+                final gridAspectRatio = isWide ? 0.62 : 0.58;
+                final gridSpacing = isWide ? 14.0 : 10.0;
+
+                return SliverMainAxisGroup(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.tv_rounded, size: 18, color: Colors.blue),
+                            const SizedBox(width: 8),
+                            Text(
+                              s.isIndonesian ? 'Seluruh Serial TV' : 'All TV Shows',
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '${tvList.length}${paginatedTvState.hasMore ? '+' : ''}',
+                                style: TextStyle(
+                                  color: Colors.blue.shade300,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (paginatedTvState.isLoading && tvList.isEmpty)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: _MediaShimmerGrid(),
+                        ),
+                      )
+                    else if (tvList.isEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 40),
+                          child: AppErrorWidget.empty(
+                            message: s.isIndonesian ? 'Tidak ada serial TV ditemukan' : 'No TV shows found',
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        sliver: SliverGrid(
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: gridCrossAxisCount,
+                            childAspectRatio: gridAspectRatio,
+                            crossAxisSpacing: gridSpacing,
+                            mainAxisSpacing: gridSpacing,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => MovieCard(
+                              movie: tvList[index].toMovie(),
+                              isTv: true,
+                            ),
+                            childCount: tvList.length,
+                          ),
+                        ),
+                      ),
+                    if (paginatedTvState.isLoadingMore)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
 
           // ── Empty State if No Media matches Selected Genre ──
           if (activeGenre.id != 'all')
@@ -623,8 +880,9 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 /// Netflix-style horizontal row displaying Top 10 titles with rank numbers.
@@ -791,6 +1049,36 @@ class _SectionWithHeader<T> extends StatelessWidget {
       error: (e, _) => AppErrorWidget(
         message: 'Gagal memuat $title',
         onRetry: onRetry,
+      ),
+    );
+  }
+}
+
+/// Shimmer grid placeholder for the paginated catalog view.
+class _MediaShimmerGrid extends StatelessWidget {
+  const _MediaShimmerGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final crossAxisCount = screenWidth >= 1380 ? 6 : (screenWidth >= 900 ? 5 : (screenWidth < 340 ? 2 : 3));
+    final childAspectRatio = screenWidth >= 900 ? 0.62 : 0.58;
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: childAspectRatio,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemCount: 12,
+      itemBuilder: (_, _) => const ShimmerLoading(
+        width: 135,
+        height: 205,
+        borderRadius: 16,
       ),
     );
   }

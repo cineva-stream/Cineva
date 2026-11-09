@@ -4,7 +4,7 @@
 ; ==============================================================================
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.5"
+  #define MyAppVersion "1.1.6"
 #endif
 
 #define MyAppName "Cineva"
@@ -29,7 +29,7 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 
 ; Syarat dan Ketentuan (Halaman LEGAL) sebelum instalasi dimulai
-LicenseFile=terms_and_conditions.txt
+LicenseFile=terms_and_conditions_id.rtf
 
 ; Ikon installer dan ikon uninstaller
 SetupIconFile=app_icon.ico
@@ -50,8 +50,8 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 
 [Languages]
-Name: "indonesian"; MessagesFile: "Indonesian.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "indonesian"; MessagesFile: "Indonesian.isl"; LicenseFile: "terms_and_conditions_id.rtf"
+Name: "english"; MessagesFile: "compiler:Default.isl"; LicenseFile: "terms_and_conditions_en.rtf"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked

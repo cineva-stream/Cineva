@@ -1,0 +1,38 @@
+CINEVA - SYARAT DAN KETENTUAN PENGGUNAAN PIRANTI LUNAK
+Versi: 1.1.6
+Perjanjian Hukum Penggunaan Piranti Lunak Cineva Secara Global
+
+PERHATIAN PENTING:
+Aplikasi Cineva disediakan "sebagaimana adanya" (AS-IS) tanpa jaminan apa pun. Seluruh film dan serial TV bukan milik Cineva. Cineva BUKAN layanan komersial dan BUKAN pengganti platform streaming berbayar resmi.
+
+Harap baca Syarat dan Ketentuan berikut dengan saksama sebelum melanjutkan proses instalasi piranti lunak ini ke komputer Anda.
+
+1. PENERIMAAN KETENTUAN PENGGUNAAN
+Dengan mengunduh, memasang, menyalin, atau menggunakan piranti lunak Cineva pada perangkat apa pun di seluruh dunia, Anda menyatakan telah membaca, memahami, dan menyetujui secara mengikat seluruh Syarat dan Ketentuan ini. Apabila Anda tidak menyetujui salah satu butir ketentuan, Anda wajib segera membatalkan proses instalasi ini dan menghapus berkas aplikasi dari perangkat Anda.
+
+2. LISENSI SUMBER TERBUKA (GPL-3.0) & PENYEDIAAN "SEBAGAIMANA ADANYA"
+Piranti lunak Cineva didistribusikan sebagai perangkat lunak bebas dan sumber terbuka di bawah lisensi GNU General Public License v3.0 (GPL-3.0). Aplikasi Cineva disediakan secara mutlak atas dasar "SEBAGAIMANA ADANYA" ("AS IS") dan "SEBAGAIMANA TERSEDIA" ("AS AVAILABLE"), tanpa jaminan dalam bentuk apa pun, baik tersurat maupun tersirat, termasuk namun tidak terbatas pada jaminan tersirat atas kelayakan untuk diperdagangkan (merchantability), kesesuaian untuk tujuan tertentu (fitness for a particular purpose), ketiadaan pelanggaran hak pihak ketiga, serta kebebasan dari cacat, galat, atau gangguan operasional.
+
+3. KEPEMILIKAN PIHAK KETIGA & PENAFIAN KONTEN MEDIA
+Pengguna mengakui dan menyepakati secara tegas bahwa:
+a. Seluruh konten Film, Serial TV, Trailer, Audio, Gambar Poster, dan Subtitle BUKAN merupakan milik aplikasi Cineva maupun pengembangnya.
+b. Cineva tidak memproduksi, tidak menerbitkan, tidak mengunggah, tidak menghosting, dan tidak mengendalikan file media apa pun.
+c. Hak cipta, merek dagang, paten, dan hak kekayaan intelektual atas seluruh film dan serial TV adalah milik penuh dan eksklusif dari masing-masing pemegang hak cipta, studio produksi, dan distributor resmi yang bersangkutan.
+
+4. BUKAN PENGGANTI LAYANAN STREAMING RESMI & SIFAT NON-KOMERSIAL
+Cineva dikembangkan secara murni sebagai piranti lunak utilitas pribadi sumber terbuka (open utility software) tanpa orientasi komersial:
+a. Aplikasi ini 100% NON-KOMERSIAL, bebas biaya langganan, dan tidak menghasilkan pendapatan dari penjualan konten berhak cipta.
+b. Cineva sama sekali BUKAN merupakan pengganti layanan streaming resmi berbayar (seperti Netflix, Disney+, Amazon Prime Video, HBO Max, bioskop, atau gerai distribusi resmi lainnya).
+c. Kami secara aktif mengimbau seluruh pengguna untuk menghargai para sineas, aktor, dan produser film dengan cara berlangganan dan membeli tiket/karya pada platform resmi berlisensi.
+
+5. PENAFIAN KETERSEDIAAN & KEMAMPUAN PEMUTARAN KONTEN
+Kami menyatakan secara tegas bahwa TIDAK SELURUH film atau serial TV dijamin tersedia, lengkap, atau dapat diputar:
+a. Cineva beroperasi dengan mem-parsing indeks publik P2P dan metadata internet secara dinamis.
+b. Keberhasilan streaming, kecepatan unduhan, dan resolusi video sepenuhnya bergantung pada ketersediaan seeders/peers publik aktif dan sumber pihak ketiga di internet.
+c. Pengembang Cineva tidak menjamin ketersediaan berkelanjutan atas judul media tertentu, kelancaran pemutaran, maupun kualitas tayangan.
+
+6. TANGGUNG JAWAB HUKUM PENGGUNA DI SELURUH YURISDIKSI
+Pengguna memikul tanggung jawab hukum tunggal dan mutlak atas cara penggunaan aplikasi ini. Anda bertanggung jawab penuh untuk memastikan bahwa penggunaan protokol P2P dan akses terhadap konten publik selaras dengan peraturan perundang-undangan dan undang-undang hak cipta yang berlaku di negara tempat Anda berdomisili. Pengembang dibebaskan secara penuh dari setiap tuntutan atau sengketa hukum yang melibatkan pengguna.
+
+Penggunaan berkelanjutan atas aplikasi Cineva merupakan bentuk kesepakatan abadi Anda terhadap seluruh klausul hukum dalam Syarat dan Ketentuan ini.
+

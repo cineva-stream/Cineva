@@ -24,7 +24,7 @@ class MainShell extends ConsumerWidget {
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/live-tv')) return 1;
-    if (location.startsWith('/search')) return 2;
+    if (location.startsWith('/search') || location.startsWith('/platform')) return 2;
     if (location.startsWith('/history')) return 3;
     if (location.startsWith('/settings')) return 4;
     if (location == '/' || location.startsWith('/?')) return 0;
@@ -34,7 +34,7 @@ class MainShell extends ConsumerWidget {
   int _currentRailIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/live-tv')) return 1;
-    if (location.startsWith('/search')) return 2;
+    if (location.startsWith('/search') || location.startsWith('/platform')) return 2;
     if (location.startsWith('/watchlist')) return 3;
     if (location.startsWith('/history')) return 4;
     if (location.startsWith('/settings')) return 5;
@@ -43,6 +43,7 @@ class MainShell extends ConsumerWidget {
   }
 
   void _onTapBottomNav(BuildContext context, WidgetRef ref, int index) {
+    Navigator.of(context).popUntil((route) => route.isFirst);
     switch (index) {
       case 0:
         resetSearchState(ref);
@@ -68,6 +69,7 @@ class MainShell extends ConsumerWidget {
   }
 
   void _onTapRail(BuildContext context, WidgetRef ref, int index) {
+    Navigator.of(context).popUntil((route) => route.isFirst);
     switch (index) {
       case 0:
         resetSearchState(ref);
@@ -123,6 +125,14 @@ class MainShell extends ConsumerWidget {
           ref.read(liveTvFullscreenProvider.notifier).state = false;
           ref.read(liveTvIsPlayingProvider.notifier).state = false;
           context.go('/');
+          return;
+        }
+        if (location.startsWith('/platform')) {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/search');
+          }
           return;
         }
         if (isWatchlist) {

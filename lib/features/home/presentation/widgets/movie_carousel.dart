@@ -48,7 +48,7 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
     _autoSlideTimer?.cancel();
     _autoSlideTimer = Timer.periodic(const Duration(seconds: 6), (_) {
       if (!mounted || !_pageController.hasClients) return;
-      final count = widget.movies.take(7).length;
+      final count = widget.movies.take(10).length;
       if (count <= 1) return;
       final nextPage = (_currentPage + 1) % count;
       _pageController.animateToPage(
@@ -89,7 +89,7 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(appStringsProvider);
-    final movies = widget.movies.take(7).toList();
+    final movies = widget.movies.take(10).toList();
     if (movies.isEmpty) return const SizedBox.shrink();
 
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -125,7 +125,7 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                       vertical: _currentPage == index ? 0 : (isWide ? 2 : 6),
                     ),
                     child: GestureDetector(
-                      onTap: () => context.push('/movie/${movie.id}'),
+                      onTap: () => context.push(movie.mediaType == 'tv' ? '/tv/${movie.id}' : '/movie/${movie.id}'),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(isWide ? 28 : 22),
                         child: Stack(
@@ -252,7 +252,9 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                                   size: 14, color: AppColors.primary),
                                               const SizedBox(width: 4),
                                               Text(
-                                                'TRENDING #${index + 1}',
+                                                movie.mediaType == 'tv'
+                                                    ? 'POPULER TV #${index + 1}'
+                                                    : 'TRENDING #${index + 1}',
                                                 style: GoogleFonts.inter(
                                                   color: AppColors.primaryLight,
                                                   fontSize: 11,
@@ -407,7 +409,7 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                             focusedScale: 1.05,
                                             glowBlurRadius: 14,
                                             borderRadius: BorderRadius.circular(14),
-                                            onTap: () => context.push('/movie/${movie.id}'),
+                                            onTap: () => context.push(movie.mediaType == 'tv' ? '/tv/${movie.id}' : '/movie/${movie.id}'),
                                             child: Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
                                               decoration: BoxDecoration(
@@ -443,7 +445,7 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                             focusedScale: 1.05,
                                             glowBlurRadius: 10,
                                             borderRadius: BorderRadius.circular(14),
-                                            onTap: () => context.push('/movie/${movie.id}'),
+                                            onTap: () => context.push(movie.mediaType == 'tv' ? '/tv/${movie.id}' : '/movie/${movie.id}'),
                                             child: Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
                                               decoration: BoxDecoration(
@@ -480,7 +482,7 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                           Expanded(
                                             flex: 6,
                                             child: ElevatedButton.icon(
-                                              onPressed: () => context.push('/movie/${movie.id}'),
+                                              onPressed: () => context.push(movie.mediaType == 'tv' ? '/tv/${movie.id}' : '/movie/${movie.id}'),
                                               icon: Icon(Icons.play_arrow_rounded, color: Colors.black, size: isCompact ? 20 : 24),
                                               label: Text(
                                                 s.homeWatchNow,
@@ -508,7 +510,7 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                           Expanded(
                                             flex: 4,
                                             child: OutlinedButton.icon(
-                                              onPressed: () => context.push('/movie/${movie.id}'),
+                                              onPressed: () => context.push(movie.mediaType == 'tv' ? '/tv/${movie.id}' : '/movie/${movie.id}'),
                                               icon: Icon(Icons.info_outline_rounded, color: Colors.white, size: isCompact ? 16 : 18),
                                               label: Text(
                                                 s.homeDetail,

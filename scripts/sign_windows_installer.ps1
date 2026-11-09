@@ -7,7 +7,7 @@
     Skrip ini mendukung 2 mode:
     1. Self-Signed Certificate (Lokal / Development):
        Membuat sertifikat Code Signing lokal "Cineva Stream", mengekspor .pfx dan .cer,
-       serta menandatangani cineva.exe dan Cineva_setup_v1.1.5.exe.
+       serta menandatangani cineva.exe dan Cineva_setup_v1.1.6.exe.
     2. Official CA Certificate (Produksi):
        Jika Anda memiliki sertifikat dari Sectigo / DigiCert / GlobalSign (.pfx),
        Anda dapat menyediakannya untuk tanda tangan publik tanpa peringatan SmartScreen.
@@ -21,7 +21,7 @@ param(
     [switch]$CreateSelfSigned,
     [string]$CertPath = "",
     [string]$CertPassword = "cineva_stream_secure_dev",
-    [string]$TargetFile = "build\installer\Cineva_setup_v1.1.5.exe"
+    [string]$TargetFile = "build\installer\Cineva_setup_v1.1.6.exe"
 )
 
 $ErrorActionPreference = "Stop"

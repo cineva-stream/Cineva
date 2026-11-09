@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,6 +40,51 @@ class _LivePlayerScreenState extends ConsumerState<LivePlayerScreen> {
   bool _hasError = false;
   String? _errorMessage;
   BoxFit _videoFit = BoxFit.contain;
+
+  // ── Desktop Mouse Cursor & Vibration Filter State ──
+  static const double _mouseMoveThreshold = 14.0;
+  Offset? _lastMousePosition;
+
+  bool get _isCursorVisible {
+    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+      return _controlsVisible || _isLoading || _hasError;
+    }
+    return true;
+  }
+
+  void _onMouseHover(PointerHoverEvent event) {
+    if (kIsWeb || !(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+      return;
+    }
+
+    final currentPos = event.position;
+    if (_lastMousePosition == null) {
+      _lastMousePosition = currentPos;
+      return;
+    }
+
+    final distance = (currentPos - _lastMousePosition!).distance;
+    if (distance < _mouseMoveThreshold) {
+      return;
+    }
+
+    _lastMousePosition = currentPos;
+
+    if (!_controlsVisible) {
+      setState(() {
+        _controlsVisible = true;
+      });
+    }
+    _startHideTimer();
+  }
+
+  void _onMouseEnter(PointerEnterEvent event) {
+    _lastMousePosition = event.position;
+  }
+
+  void _onMouseExit(PointerExitEvent event) {
+    _lastMousePosition = null;
+  }
 
   @override
   void initState() {
@@ -273,10 +320,17 @@ class _LivePlayerScreenState extends ConsumerState<LivePlayerScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: GestureDetector(
-        onTap: _toggleControls,
-        behavior: HitTestBehavior.opaque,
-        child: Stack(
+      body: MouseRegion(
+        cursor: _isCursorVisible
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.none,
+        onHover: _onMouseHover,
+        onEnter: _onMouseEnter,
+        onExit: _onMouseExit,
+        child: GestureDetector(
+          onTap: _toggleControls,
+          behavior: HitTestBehavior.opaque,
+          child: Stack(
           fit: StackFit.expand,
           children: [
             // ── Video Surface ──
@@ -532,6 +586,7 @@ class _LivePlayerScreenState extends ConsumerState<LivePlayerScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

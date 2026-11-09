@@ -164,6 +164,30 @@ final GoRouter appRouter = GoRouter(
           ),
         ),
         GoRoute(
+          path: '/platform/:id',
+          name: 'platformCatalog',
+          pageBuilder: (context, state) {
+            final platformId = state.pathParameters['id'] ?? 'netflix';
+            final platform = StreamingPlatform.fromId(platformId);
+            return CustomTransitionPage(
+              key: state.pageKey,
+              child: PlatformCatalogScreen(platform: platform),
+              transitionDuration: const Duration(milliseconds: 300),
+              reverseTransitionDuration: const Duration(milliseconds: 250),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.06, 0),
+                    end: Offset.zero,
+                  ).animate(curved),
+                  child: FadeTransition(opacity: curved, child: child),
+                );
+              },
+            );
+          },
+        ),
+        GoRoute(
           path: '/history',
           name: 'watchHistory',
           pageBuilder: (context, state) => const NoTransitionPage(
@@ -385,30 +409,7 @@ final GoRouter appRouter = GoRouter(
         },
       ),
     ),
-    GoRoute(
-      path: '/platform/:id',
-      name: 'platformCatalog',
-      pageBuilder: (context, state) {
-        final platformId = state.pathParameters['id'] ?? 'netflix';
-        final platform = StreamingPlatform.fromId(platformId);
-        return CustomTransitionPage(
-          key: state.pageKey,
-          child: PlatformCatalogScreen(platform: platform),
-          transitionDuration: const Duration(milliseconds: 300),
-          reverseTransitionDuration: const Duration(milliseconds: 250),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-            return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.06, 0),
-                end: Offset.zero,
-              ).animate(curved),
-              child: FadeTransition(opacity: curved, child: child),
-            );
-          },
-        );
-      },
-    ),
+
     GoRoute(
       path: '/calendar',
       name: 'airingCalendar',

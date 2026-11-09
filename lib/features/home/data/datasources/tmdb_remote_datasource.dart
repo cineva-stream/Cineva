@@ -27,7 +27,11 @@ class TmdbRemoteDatasource {
       } else {
         final response = await _dio.get(
           '/discover/movie',
-          queryParameters: _buildDiscoverMovieParams(preference, page: page, sortBy: 'popularity.desc'),
+          queryParameters: _buildDiscoverMovieParams(
+            preference,
+            page: page,
+            sortBy: 'popularity.desc',
+          ),
         );
         return _parseMovieList(response.data);
       }
@@ -54,7 +58,11 @@ class TmdbRemoteDatasource {
       } else {
         final response = await _dio.get(
           '/discover/movie',
-          queryParameters: _buildDiscoverMovieParams(preference, page: page, sortBy: 'popularity.desc'),
+          queryParameters: _buildDiscoverMovieParams(
+            preference,
+            page: page,
+            sortBy: 'popularity.desc',
+          ),
         );
         return _parseMovieList(response.data);
       }
@@ -81,7 +89,11 @@ class TmdbRemoteDatasource {
       } else {
         final response = await _dio.get(
           '/discover/movie',
-          queryParameters: _buildDiscoverMovieParams(preference, page: page, sortBy: 'vote_average.desc'),
+          queryParameters: _buildDiscoverMovieParams(
+            preference,
+            page: page,
+            sortBy: 'vote_average.desc',
+          ),
         );
         return _parseMovieList(response.data);
       }
@@ -108,7 +120,11 @@ class TmdbRemoteDatasource {
       } else {
         final response = await _dio.get(
           '/discover/movie',
-          queryParameters: _buildDiscoverMovieParams(preference, page: page, sortBy: 'primary_release_date.desc'),
+          queryParameters: _buildDiscoverMovieParams(
+            preference,
+            page: page,
+            sortBy: 'primary_release_date.desc',
+          ),
         );
         return _parseMovieList(response.data);
       }
@@ -135,7 +151,11 @@ class TmdbRemoteDatasource {
       } else {
         final response = await _dio.get(
           '/discover/tv',
-          queryParameters: _buildDiscoverTvParams(preference, page: page, sortBy: 'popularity.desc'),
+          queryParameters: _buildDiscoverTvParams(
+            preference,
+            page: page,
+            sortBy: 'popularity.desc',
+          ),
         );
         return _parseTvList(response.data);
       }
@@ -162,7 +182,11 @@ class TmdbRemoteDatasource {
       } else {
         final response = await _dio.get(
           '/discover/tv',
-          queryParameters: _buildDiscoverTvParams(preference, page: page, sortBy: 'vote_average.desc'),
+          queryParameters: _buildDiscoverTvParams(
+            preference,
+            page: page,
+            sortBy: 'vote_average.desc',
+          ),
         );
         return _parseTvList(response.data);
       }
@@ -285,7 +309,10 @@ class TmdbRemoteDatasource {
   }
 
   /// Search TV series.
-  Future<List<TvSeriesModel>> searchTvSeries(String query, {int page = 1}) async {
+  Future<List<TvSeriesModel>> searchTvSeries(
+    String query, {
+    int page = 1,
+  }) async {
     try {
       final response = await _dio.get(
         '/search/tv',
@@ -306,7 +333,7 @@ class TmdbRemoteDatasource {
 
   /// Discover movies available on a specific streaming provider (e.g. Netflix = 8, Prime = 9, Disney+ = 337).
   Future<List<MovieModel>> getMoviesByWatchProvider({
-    required int providerId,
+    required dynamic providerId,
     int page = 1,
     String watchRegion = 'US',
   }) async {
@@ -317,7 +344,7 @@ class TmdbRemoteDatasource {
           'page': page,
           'language': languageCode,
           'sort_by': 'popularity.desc',
-          'with_watch_providers': providerId,
+          'with_watch_providers': providerId.toString(),
           'watch_region': watchRegion,
         },
       );
@@ -332,7 +359,7 @@ class TmdbRemoteDatasource {
 
   /// Discover TV series available on a specific streaming provider.
   Future<List<TvSeriesModel>> getTvByWatchProvider({
-    required int providerId,
+    required dynamic providerId,
     int page = 1,
     String watchRegion = 'US',
   }) async {
@@ -343,7 +370,7 @@ class TmdbRemoteDatasource {
           'page': page,
           'language': languageCode,
           'sort_by': 'popularity.desc',
-          'with_watch_providers': providerId,
+          'with_watch_providers': providerId.toString(),
           'watch_region': watchRegion,
         },
       );

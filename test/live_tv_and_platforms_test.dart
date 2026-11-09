@@ -46,7 +46,7 @@ void main() {
       expect(StreamingPlatform.fromId('prime').providerId, 9);
       expect(StreamingPlatform.fromId('disney').providerId, 337);
       expect(StreamingPlatform.fromId('apple').providerId, 350);
-      expect(StreamingPlatform.fromId('max').providerId, 384);
+      expect(StreamingPlatform.fromId('max').providerId, 1899);
       expect(StreamingPlatform.fromId('hulu').providerId, 15);
       expect(StreamingPlatform.fromId('paramount').providerId, 531);
       expect(StreamingPlatform.fromId('peacock').providerId, 387);
@@ -191,10 +191,10 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            platformMoviesProvider(platform.providerId)
-                .overrideWith((ref) => Future.value(mockMovies)),
-            platformTvProvider(platform.providerId)
-                .overrideWith((ref) => Future.value(mockTv)),
+            paginatedPlatformMoviesProvider(platform.watchProviderQuery)
+                .overrideWith((ref) => PlatformMoviesNotifier.withInitial(mockMovies)),
+            paginatedPlatformTvProvider(platform.watchProviderQuery)
+                .overrideWith((ref) => PlatformTvNotifier.withInitial(mockTv)),
           ],
           child: MaterialApp(
             home: PlatformCatalogScreen(platform: platform),

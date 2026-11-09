@@ -30,29 +30,45 @@ class PlatformCatalogScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
     final activeTab = ref.watch(platformTabProvider);
-    final moviesAsync = ref.watch(platformMoviesProvider(platform.providerId));
-    final tvAsync = ref.watch(platformTvProvider(platform.providerId));
+    final moviesState = ref.watch(paginatedPlatformMoviesProvider(platform.watchProviderQuery));
+    final tvState = ref.watch(paginatedPlatformTvProvider(platform.watchProviderQuery));
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final crossAxisCount = screenWidth < 340 ? 2 : 3;
     final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
     final spacing = screenWidth < 360 ? 10.0 : 12.0;
-    final bottomPadding = MediaQuery.of(context).padding.bottom + 32;
+    final bottomPadding = MediaQuery.of(context).padding.bottom + 84;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            // ── 1. Brand Header with Back Button ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => context.pop(),
-                    child: Container(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/search');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              // ── 1. Brand Header with Back Button ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/search');
+                        }
+                      },
+                      child: Container(
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
@@ -164,9 +180,9 @@ class PlatformCatalogScreen extends ConsumerWidget {
             // ── 3. Catalog Content ──
             Expanded(
               child: activeTab == 0
-                  ? _buildAllSections(
-                      moviesAsync: moviesAsync,
-                      tvAsync: tvAsync,
+                  ? _buildAllGrid(
+                      moviesState: moviesState,
+                      tvState: tvState,
                       crossAxisCount: crossAxisCount,
                       childAspectRatio: childAspectRatio,
                       spacing: spacing,
@@ -176,7 +192,7 @@ class PlatformCatalogScreen extends ConsumerWidget {
                     )
                   : activeTab == 1
                       ? _buildMoviesGrid(
-                          moviesAsync: moviesAsync,
+                          moviesState: moviesState,
                           crossAxisCount: crossAxisCount,
                           childAspectRatio: childAspectRatio,
                           spacing: spacing,
@@ -185,7 +201,7 @@ class PlatformCatalogScreen extends ConsumerWidget {
                           ref: ref,
                         )
                       : _buildTvGrid(
-                          tvAsync: tvAsync,
+                          tvState: tvState,
                           crossAxisCount: crossAxisCount,
                           childAspectRatio: childAspectRatio,
                           spacing: spacing,
@@ -197,12 +213,13 @@ class PlatformCatalogScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _buildAllSections({
-    required AsyncValue<List<Movie>> moviesAsync,
-    required AsyncValue<List<TvSeries>> tvAsync,
+  Widget _buildAllGrid({
+    required PaginatedPlatformState<Movie> moviesState,
+    required PaginatedPlatformState<TvSeries> tvState,
     required int crossAxisCount,
     required double childAspectRatio,
     required double spacing,
@@ -210,61 +227,123 @@ class PlatformCatalogScreen extends ConsumerWidget {
     required dynamic s,
     required WidgetRef ref,
   }) {
-    if (moviesAsync.isLoading && tvAsync.isLoading) {
+    if (moviesState.isLoading && tvState.isLoading && moviesState.items.isEmpty && tvState.items.isEmpty) {
       return const _CatalogShimmerGrid();
     }
 
-    final movies = moviesAsync.valueOrNull ?? [];
-    final tvShows = tvAsync.valueOrNull ?? [];
+    if (moviesState.error != null && tvState.error != null && moviesState.items.isEmpty && tvState.items.isEmpty) {
+      return AppErrorWidget(
+        message: s.searchFailed,
+        onRetry: () {
+          ref.read(paginatedPlatformMoviesProvider(platform.watchProviderQuery).notifier).refresh();
+          ref.read(paginatedPlatformTvProvider(platform.watchProviderQuery).notifier).refresh();
+        },
+      );
+    }
 
-    if (movies.isEmpty && tvShows.isEmpty && !moviesAsync.isLoading && !tvAsync.isLoading) {
+    final movies = moviesState.items;
+    final tvShows = tvState.items;
+
+    if (movies.isEmpty && tvShows.isEmpty && !moviesState.isLoading && !tvState.isLoading) {
       return AppErrorWidget.empty(
         message: s.searchNoResults(platform.name),
       );
     }
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        // ── Movies Section ──
-        if (movies.isNotEmpty) ...[
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.movie_rounded, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 6),
-                  Text(
-                    s.searchTabMovies,
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${movies.length}',
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+    // Merge movies and TV series into a single unified stream, ordered by popularity
+    final allMedia = <Movie>[
+      ...movies,
+      ...tvShows.map((t) => t.toMovie()),
+    ];
+    allMedia.sort((a, b) => b.popularity.compareTo(a.popularity));
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: (scrollInfo) {
+        if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 400) {
+          ref.read(paginatedPlatformMoviesProvider(platform.watchProviderQuery).notifier).loadMore();
+          ref.read(paginatedPlatformTvProvider(platform.watchProviderQuery).notifier).loadMore();
+        }
+        return false;
+      },
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                childAspectRatio: childAspectRatio,
+                crossAxisSpacing: spacing,
+                mainAxisSpacing: spacing,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _PlatformMovieCard(
+                  movie: allMedia[index],
+                  index: index,
+                  showTypeBadge: true,
+                ),
+                childCount: allMedia.length,
               ),
             ),
           ),
+          if (moviesState.isLoadingMore || tvState.isLoadingMore)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          SliverToBoxAdapter(
+            child: SizedBox(height: bottomPadding),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMoviesGrid({
+    required PaginatedPlatformState<Movie> moviesState,
+    required int crossAxisCount,
+    required double childAspectRatio,
+    required double spacing,
+    required double bottomPadding,
+    required dynamic s,
+    required WidgetRef ref,
+  }) {
+    if (moviesState.isLoading && moviesState.items.isEmpty) {
+      return const _CatalogShimmerGrid();
+    }
+
+    if (moviesState.error != null && moviesState.items.isEmpty) {
+      return AppErrorWidget(
+        message: s.searchFailed,
+        onRetry: () => ref.read(paginatedPlatformMoviesProvider(platform.watchProviderQuery).notifier).refresh(),
+      );
+    }
+
+    final movies = moviesState.items;
+    if (movies.isEmpty) {
+      return AppErrorWidget.empty(message: s.searchNoMovies(platform.name));
+    }
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: (scrollInfo) {
+        if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 400) {
+          ref.read(paginatedPlatformMoviesProvider(platform.watchProviderQuery).notifier).loadMore();
+        }
+        return false;
+      },
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
             sliver: SliverGrid(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: crossAxisCount,
@@ -281,61 +360,63 @@ class PlatformCatalogScreen extends ConsumerWidget {
               ),
             ),
           ),
-        ],
-
-        // ── Section Divider ──
-        if (movies.isNotEmpty && tvShows.isNotEmpty)
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Divider(
-                color: Colors.white10,
-                height: 1,
-                indent: 16,
-                endIndent: 16,
+          if (moviesState.isLoadingMore)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
             ),
-          ),
-
-        // ── TV Shows Section ──
-        if (tvShows.isNotEmpty) ...[
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.tv_rounded, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 6),
-                  Text(
-                    s.searchTabTv,
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${tvShows.length}',
-                      style: TextStyle(
-                        color: Colors.blue.shade300,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            child: SizedBox(height: bottomPadding),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTvGrid({
+    required PaginatedPlatformState<TvSeries> tvState,
+    required int crossAxisCount,
+    required double childAspectRatio,
+    required double spacing,
+    required double bottomPadding,
+    required dynamic s,
+    required WidgetRef ref,
+  }) {
+    if (tvState.isLoading && tvState.items.isEmpty) {
+      return const _CatalogShimmerGrid();
+    }
+
+    if (tvState.error != null && tvState.items.isEmpty) {
+      return AppErrorWidget(
+        message: s.searchFailed,
+        onRetry: () => ref.read(paginatedPlatformTvProvider(platform.watchProviderQuery).notifier).refresh(),
+      );
+    }
+
+    final tvShows = tvState.items;
+    if (tvShows.isEmpty) {
+      return AppErrorWidget.empty(message: s.searchNoTv(platform.name));
+    }
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: (scrollInfo) {
+        if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 400) {
+          ref.read(paginatedPlatformTvProvider(platform.watchProviderQuery).notifier).loadMore();
+        }
+        return false;
+      },
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
             sliver: SliverGrid(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: crossAxisCount,
@@ -352,87 +433,22 @@ class PlatformCatalogScreen extends ConsumerWidget {
               ),
             ),
           ),
+          if (tvState.isLoadingMore)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.blue,
+                  ),
+                ),
+              ),
+            ),
+          SliverToBoxAdapter(
+            child: SizedBox(height: bottomPadding),
+          ),
         ],
-
-        SliverToBoxAdapter(
-          child: SizedBox(height: bottomPadding),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMoviesGrid({
-    required AsyncValue<List<Movie>> moviesAsync,
-    required int crossAxisCount,
-    required double childAspectRatio,
-    required double spacing,
-    required double bottomPadding,
-    required dynamic s,
-    required WidgetRef ref,
-  }) {
-    return moviesAsync.when(
-      data: (movies) {
-        if (movies.isEmpty) {
-          return AppErrorWidget.empty(message: s.searchNoMovies(platform.name));
-        }
-        return GridView.builder(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(16, 6, 16, bottomPadding),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: childAspectRatio,
-            crossAxisSpacing: spacing,
-            mainAxisSpacing: spacing,
-          ),
-          itemCount: movies.length,
-          itemBuilder: (context, index) => _PlatformMovieCard(
-            movie: movies[index],
-            index: index,
-          ),
-        );
-      },
-      loading: () => const _CatalogShimmerGrid(),
-      error: (e, _) => AppErrorWidget(
-        message: s.searchFailed,
-        onRetry: () => ref.invalidate(platformMoviesProvider(platform.providerId)),
-      ),
-    );
-  }
-
-  Widget _buildTvGrid({
-    required AsyncValue<List<TvSeries>> tvAsync,
-    required int crossAxisCount,
-    required double childAspectRatio,
-    required double spacing,
-    required double bottomPadding,
-    required dynamic s,
-    required WidgetRef ref,
-  }) {
-    return tvAsync.when(
-      data: (tvShows) {
-        if (tvShows.isEmpty) {
-          return AppErrorWidget.empty(message: s.searchNoTv(platform.name));
-        }
-        return GridView.builder(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(16, 6, 16, bottomPadding),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: childAspectRatio,
-            crossAxisSpacing: spacing,
-            mainAxisSpacing: spacing,
-          ),
-          itemCount: tvShows.length,
-          itemBuilder: (context, index) => _PlatformTvCard(
-            tv: tvShows[index],
-            index: index,
-          ),
-        );
-      },
-      loading: () => const _CatalogShimmerGrid(),
-      error: (e, _) => AppErrorWidget(
-        message: s.searchFailed,
-        onRetry: () => ref.invalidate(platformTvProvider(platform.providerId)),
       ),
     );
   }
@@ -480,20 +496,25 @@ class _CatalogFilterChip extends StatelessWidget {
   }
 }
 
-/// Poster card representing a movie with 2:3 aspect ratio and metadata.
-class _PlatformMovieCard extends StatelessWidget {
+/// Poster card representing a movie or unified media item with 2:3 aspect ratio and metadata.
+class _PlatformMovieCard extends ConsumerWidget {
   final Movie movie;
   final int index;
+  final bool showTypeBadge;
 
   const _PlatformMovieCard({
     required this.movie,
     required this.index,
+    this.showTypeBadge = false,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
+    final isTv = movie.mediaType == 'tv';
+
     return GestureDetector(
-      onTap: () => context.push('/movie/${movie.id}'),
+      onTap: () => context.push(isTv ? '/tv/${movie.id}' : '/movie/${movie.id}'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -508,8 +529,12 @@ class _PlatformMovieCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(
                       color: AppColors.surfaceVariant,
-                      child: const Center(
-                        child: Icon(Icons.movie_rounded, color: AppColors.textMuted, size: 22),
+                      child: Center(
+                        child: Icon(
+                          isTv ? Icons.tv_rounded : Icons.movie_rounded,
+                          color: AppColors.textMuted,
+                          size: 22,
+                        ),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
@@ -530,6 +555,33 @@ class _PlatformMovieCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (showTypeBadge)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: (isTv ? Colors.blue.shade700 : AppColors.primary).withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.4),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          isTv ? 'TV' : s.searchBadgeMovie,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

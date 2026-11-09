@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -48,6 +49,56 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
   BoxFit _videoFit = BoxFit.contain;
   bool _isLandscapeChannelDrawerOpen = false;
   String _landscapeSelectedCategory = 'Semua';
+
+  // ── Desktop Mouse Cursor & Vibration Filter State ──
+  static const double _mouseMoveThreshold = 14.0;
+  Offset? _lastMousePosition;
+
+  bool get _isCursorVisible {
+    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+      if (!_isFullscreen) return true;
+      return _controlsVisible ||
+          _isLoading ||
+          _hasError ||
+          _isLandscapeChannelDrawerOpen;
+    }
+    return true;
+  }
+
+  void _onMouseHover(PointerHoverEvent event) {
+    if (kIsWeb || !(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+      return;
+    }
+
+    final currentPos = event.position;
+    if (_lastMousePosition == null) {
+      _lastMousePosition = currentPos;
+      return;
+    }
+
+    final distance = (currentPos - _lastMousePosition!).distance;
+    if (distance < _mouseMoveThreshold) {
+      // Ignore vibration / sound acoustic mouse shaking
+      return;
+    }
+
+    _lastMousePosition = currentPos;
+
+    if (!_controlsVisible) {
+      setState(() {
+        _controlsVisible = true;
+      });
+    }
+    _startHideTimer();
+  }
+
+  void _onMouseEnter(PointerEnterEvent event) {
+    _lastMousePosition = event.position;
+  }
+
+  void _onMouseExit(PointerExitEvent event) {
+    _lastMousePosition = null;
+  }
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -329,82 +380,90 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: _isFullscreen
-            ? _buildFullscreenPlayer(s, isFav, favoritesNotifier, favorites)
-            : SafeArea(
-                bottom: false,
-                child: Column(
-                  children: [
-                    // ── 1. Top 16:9 Video Player ──
-                    _buildTopPlayer(s, _currentChannel),
+        body: MouseRegion(
+          cursor: _isCursorVisible
+              ? SystemMouseCursors.basic
+              : SystemMouseCursors.none,
+          onHover: _onMouseHover,
+          onEnter: _onMouseEnter,
+          onExit: _onMouseExit,
+          child: _isFullscreen
+              ? _buildFullscreenPlayer(s, isFav, favoritesNotifier, favorites)
+              : SafeArea(
+                  bottom: false,
+                  child: Column(
+                    children: [
+                      // ── 1. Top 16:9 Video Player ──
+                      _buildTopPlayer(s, _currentChannel),
 
-                    // ── 2. Scrollable Channel Info & Other Channels Switcher ──
-                    Expanded(
-                      child: CustomScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        slivers: [
-                          // Active Channel Info Header
-                          SliverToBoxAdapter(
-                            child: _buildActiveChannelHeader(
-                              s,
-                              isFav,
-                              favoritesNotifier,
-                              _currentChannel,
+                      // ── 2. Scrollable Channel Info & Other Channels Switcher ──
+                      Expanded(
+                        child: CustomScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          slivers: [
+                            // Active Channel Info Header
+                            SliverToBoxAdapter(
+                              child: _buildActiveChannelHeader(
+                                s,
+                                isFav,
+                                favoritesNotifier,
+                                _currentChannel,
+                              ),
                             ),
-                          ),
 
-                          // Search Bar
-                          SliverToBoxAdapter(child: _buildSearchBar(s)),
+                            // Search Bar
+                            SliverToBoxAdapter(child: _buildSearchBar(s)),
 
-                          // Category Filter Chips
-                          SliverToBoxAdapter(
-                            child: _buildCategoryChips(
-                              s,
-                              categories,
-                              selectedCategory,
+                            // Category Filter Chips
+                            SliverToBoxAdapter(
+                              child: _buildCategoryChips(
+                                s,
+                                categories,
+                                selectedCategory,
+                              ),
                             ),
-                          ),
 
-                          const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                            const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-                          // Channel List Items
-                          if (channels.isEmpty)
-                            SliverFillRemaining(
-                              hasScrollBody: false,
-                              child: Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.tv_off_rounded,
-                                      size: 44,
-                                      color: AppColors.textMuted,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      s.liveTvNoChannels,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13,
+                            // Channel List Items
+                            if (channels.isEmpty)
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.tv_off_rounded,
+                                        size: 44,
                                         color: AppColors.textMuted,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        s.liveTvNoChannels,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
+                              )
+                            else
+                              _buildChannelList(
+                                s,
+                                channels,
+                                favorites,
+                                bottomPadding,
                               ),
-                            )
-                          else
-                            _buildChannelList(
-                              s,
-                              channels,
-                              favorites,
-                              bottomPadding,
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+        ),
       ),
     );
   }
