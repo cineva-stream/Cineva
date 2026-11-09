@@ -55,20 +55,6 @@ Pembaruan Cineva versi 1.1.6 menghadirkan penyempurnaan besar pada **Eksplorasi 
 * **Pemisahan Build Khusus Android TV Super Ringan**: APK khusus 32-bit ARM berukuran hemat memori (~15-20 MB).
 * **Otomasi Tanda Tangan Digital Windows**: Authenticode SHA-256 untuk installer Windows.
 
-### Cineva v1.1.4
-* **Ekspansi Multiplatform**: Rilis perdana resmi untuk Android TV (10-Foot UI Leanback) dan Windows Desktop Runner.
-* **Sistem Fokus D-Pad & Poster Zoom 1.11x**: Efek pembesaran poster dan pendaran cahaya lembut (*ambient amber glow*).
-* **Bilah Navigasi Kiri Adaptif (*Adaptive Navigation Rail*)**: Layout samping rata tengah yang simetris untuk layar lebar.
-* **Windows Frameless UI & Buttery-Smooth Mouse Scrolling**: Scroll roda mouse berkecepatan tinggi tanpa patah-patah.
-* **Fitur Unggah Subtitle Mandiri (.srt, .vtt, .sub, .ass)**: Langsung dari penyimpanan lokal dengan dukungan 1-Tap AI Translator.
-
-### Cineva v1.1.3
-* **Kalender Siaran & Radar Rilis (*Airing Calendar & Coming Soon*)**: Jadwal rilis mingguan anime, k-drama, serial TV, dan film.
-* **Hub Semesta & Urutan Nonton Serial TV (*TV Universe Hub*)**: Panduan urutan tontonan waralaba serial TV.
-* **Pemutar Trailer Resmi di Dalam Aplikasi**: Pemutar YouTube gelap sinematik.
-* **Halaman Profil Aktor & Filmografi**: Portofolio karya aktor/aktris dengan kalkulasi usia otomatis.
-* **Hub Waralaba / Koleksi Film (*Franchise Collection Hub*)**: Timeline kronologis koleksi film bioskop.
-
 ---
 
 ## Informasi Versi

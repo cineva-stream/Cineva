@@ -138,6 +138,18 @@ Ensure your development environment meets the following specifications:
 
 ---
 
+## Windows Installation & SmartScreen Notice
+
+When installing Cineva on Windows (`Cineva_setup.exe`), Windows Defender SmartScreen may display a *"Windows protected your PC"* (*"Windows melindungi PC Anda"*) notification. This is normal for newly released open-source applications building Microsoft reputation.
+
+To safely proceed with installation, simply follow these 2 steps:
+
+1. Click **"More info"** (*Info selengkapnya*)  
+   ↓  
+2. Then click **"Run anyway"** (*Tetap jalankan*)
+
+---
+
 ## Building Release APK
 
 To compile an optimized release APK with code obfuscation and debug symbol splitting:
