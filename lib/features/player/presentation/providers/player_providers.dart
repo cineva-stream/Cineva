@@ -153,6 +153,14 @@ class SubtitleStyleNotifier extends StateNotifier<SubtitleStyleSettings> {
   void resetSyncOffset() {
     state = state.copyWith(syncOffsetMs: 0);
   }
+
+  void resetAppearance() {
+    updateFontSize(20.0);
+    updateTextColor(Colors.white);
+    updateBackgroundOpacity(0.0);
+    updateStrokeWidth(2.5);
+    updateBottomOffset(32.0);
+  }
 }
 
 final subtitleStyleProvider = StateNotifierProvider<SubtitleStyleNotifier, SubtitleStyleSettings>((ref) {

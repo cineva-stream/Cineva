@@ -3183,112 +3183,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── 1. Live Subtitle Preview Screen ──
+        // ── Segmented Navigation Tabs ──
         Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F1218),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white12, width: 0.8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    s.isIndonesian
-                        ? 'PRATINJAU LANGSUNG'
-                        : 'LIVE PREVIEW',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _subtitleSettingsTab == 0
-                          ? (s.isIndonesian ? 'PRATINJAU WAKTU' : 'SYNC PREVIEW')
-                          : (s.isIndonesian ? 'PRATINJAU TAMPILAN' : 'STYLE PREVIEW'),
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(
-                      alpha: style.backgroundOpacity,
-                    ),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (style.strokeWidth > 0)
-                        Text(
-                          s.isIndonesian
-                              ? 'Contoh Teks Subtitle Cineva'
-                              : 'Cineva Subtitle Sample Text',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: (style.fontSize * 0.8).clamp(13.0, 20.0),
-                            fontWeight: FontWeight.bold,
-                            foreground: Paint()
-                              ..style = PaintingStyle.stroke
-                              ..strokeWidth = style.strokeWidth
-                              ..color = Colors.black,
-                          ),
-                        ),
-                      Text(
-                        s.isIndonesian
-                            ? 'Contoh Teks Subtitle Cineva'
-                            : 'Cineva Subtitle Sample Text',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: style.textColor,
-                          fontSize: (style.fontSize * 0.8).clamp(13.0, 20.0),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // ── 2. Segmented Navigation Tabs ──
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
+          margin: const EdgeInsets.fromLTRB(16, 6, 16, 12),
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white12, width: 0.8),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 0.8,
+            ),
           ),
           child: Row(
             children: [
@@ -3313,82 +3218,109 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           ),
         ),
 
-        const SizedBox(height: 10),
-
-        // ── 3. Tab Contents ──
+        // ── Tab Contents ──
         if (_subtitleSettingsTab == 0) ...[
           // ── TAB 0: ATUR WAKTU (TIMING & SYNCHRONIZATION) ──
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: Colors.white12, width: 0.8),
-              ),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Column(
               children: [
-                // Status badge & Offset display
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      s.isIndonesian
-                          ? 'Offset Penyesuaian'
-                          : 'Timing Offset',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
+                // Timing Offset Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.03),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: style.syncOffsetMs != 0
+                          ? AppColors.primary.withValues(alpha: 0.4)
+                          : Colors.white.withValues(alpha: 0.08),
+                      width: 0.8,
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            s.isIndonesian ? 'Status Sinkronisasi' : 'Sync Status',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: style.syncOffsetMs == 0
+                                  ? AppColors.success.withValues(alpha: 0.18)
+                                  : (style.syncOffsetMs > 0
+                                      ? AppColors.primary.withValues(alpha: 0.18)
+                                      : Colors.blueAccent.withValues(alpha: 0.18)),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              style.syncOffsetMs == 0
+                                  ? (s.isIndonesian ? 'Tepat Waktu' : 'On Time')
+                                  : (style.syncOffsetMs > 0
+                                      ? (s.isIndonesian ? 'Terlambat' : 'Delayed')
+                                      : (s.isIndonesian ? 'Lebih Awal' : 'Advanced')),
+                              style: TextStyle(
+                                color: style.syncOffsetMs == 0
+                                    ? AppColors.success
+                                    : (style.syncOffsetMs > 0
+                                        ? AppColors.primary
+                                        : Colors.blueAccent),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      decoration: BoxDecoration(
-                        color: style.syncOffsetMs == 0
-                            ? AppColors.success.withValues(alpha: 0.2)
-                            : (style.syncOffsetMs > 0
-                                  ? AppColors.primary.withValues(alpha: 0.2)
-                                  : Colors.blueAccent.withValues(alpha: 0.2)),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
+                      const SizedBox(height: 10),
+                      Text(
                         style.syncOffsetMs == 0
-                            ? (s.isIndonesian ? 'Tepat Waktu' : 'On Time')
-                            : (style.syncOffsetMs > 0
-                                  ? (s.isIndonesian ? 'Terlambat' : 'Delayed')
-                                  : (s.isIndonesian ? 'Lebih Awal' : 'Advanced')),
-                        style: TextStyle(
-                          color: style.syncOffsetMs == 0
-                              ? AppColors.success
-                              : (style.syncOffsetMs > 0
-                                    ? AppColors.primary
-                                    : Colors.blueAccent),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                            ? (s.isIndonesian ? '0.00 detik' : '0.00 seconds')
+                            : '${style.syncOffsetMs > 0 ? "+" : ""}${(style.syncOffsetMs / 1000.0).toStringAsFixed(2)} ${s.isIndonesian ? "detik" : "seconds"}',
+                        style: GoogleFonts.outfit(
+                          color: style.syncOffsetMs != 0
+                              ? AppColors.primary
+                              : Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  style.syncOffsetMs == 0
-                      ? (s.isIndonesian ? '0.00 detik' : '0.00 seconds')
-                      : '${style.syncOffsetMs > 0 ? "+" : ""}${(style.syncOffsetMs / 1000.0).toStringAsFixed(2)} ${s.isIndonesian ? "detik" : "seconds"}',
-                  style: GoogleFonts.outfit(
-                    color: style.syncOffsetMs != 0
-                        ? AppColors.primary
-                        : Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
+                      const SizedBox(height: 4),
+                      Text(
+                        style.syncOffsetMs == 0
+                            ? (s.isIndonesian
+                                ? 'Subtitle sinkron dengan audio stream'
+                                : 'Subtitle synchronized with audio stream')
+                            : (style.syncOffsetMs > 0
+                                ? (s.isIndonesian
+                                    ? 'Subtitle dimunculkan lebih lambat'
+                                    : 'Subtitle appears later')
+                                : (s.isIndonesian
+                                    ? 'Subtitle dimunculkan lebih cepat'
+                                    : 'Subtitle appears earlier')),
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
-                // Stepper Buttons Row
+                // Quick Stepper Buttons Row
                 Row(
                   children: [
                     _buildTimingStepButton(
@@ -3408,7 +3340,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         child: InkWell(
                           onTap: notifier.resetSyncOffset,
                           borderRadius: BorderRadius.circular(8),
-                          child: Container(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
                             padding: const EdgeInsets.symmetric(vertical: 9),
                             decoration: BoxDecoration(
                               color: style.syncOffsetMs == 0
@@ -3417,7 +3350,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: style.syncOffsetMs == 0
-                                    ? Colors.white12
+                                    ? Colors.white.withValues(alpha: 0.08)
                                     : AppColors.primary,
                                 width: 0.8,
                               ),
@@ -3450,15 +3383,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
-                // Continuous Slider for smooth timing
+                // Continuous Slider
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 6,
-                    ),
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                     activeTrackColor: AppColors.primary,
                     inactiveTrackColor: Colors.white12,
                     thumbColor: AppColors.primary,
@@ -3475,15 +3406,41 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     },
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  s.isIndonesian
-                      ? 'Petunjuk: Tekan [-] jika subtitle muncul terlambat dari ucapan aktor, atau [+] jika subtitle muncul mendahului suara.'
-                      : 'Tip: Tap [-] if subtitle appears after dialogue, or [+] if subtitle appears before the voice.',
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 11,
-                    height: 1.4,
+                const SizedBox(height: 10),
+
+                // Helper Tip Card
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.03),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        color: AppColors.textMuted,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          s.isIndonesian
+                              ? 'Tekan [-] jika subtitle muncul terlambat dari ucapan aktor, atau [+] jika subtitle muncul mendahului suara.'
+                              : 'Tap [-] if subtitle appears after dialogue, or [+] if subtitle appears before dialogue.',
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 11,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -3495,76 +3452,59 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           // 1. Ukuran Font
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: Colors.white12, width: 0.8),
+                bottom: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  width: 0.8,
+                ),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      s.isIndonesian ? 'Ukuran Font' : 'Font Size',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      '${style.fontSize.toInt()} pt',
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                _buildSubtitleSectionHeader(
+                  icon: Icons.format_size_rounded,
+                  title: s.isIndonesian ? 'Ukuran Font' : 'Font Size',
+                  valueLabel: '${style.fontSize.toInt()} pt',
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     _buildPresetPill(
-                      s.isIndonesian ? 'Kecil (16)' : 'Small (16)',
-                      16.0,
-                      style.fontSize,
-                      (v) => notifier.updateFontSize(v),
+                      label: s.isIndonesian ? 'Kecil' : 'Small',
+                      isSelected: (style.fontSize - 16.0).abs() < 1.0,
+                      onTap: () => notifier.updateFontSize(16.0),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      s.isIndonesian ? 'Sedang (20)' : 'Medium (20)',
-                      20.0,
-                      style.fontSize,
-                      (v) => notifier.updateFontSize(v),
+                      label: s.isIndonesian ? 'Sedang' : 'Medium',
+                      isSelected: (style.fontSize - 20.0).abs() < 1.0,
+                      onTap: () => notifier.updateFontSize(20.0),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      s.isIndonesian ? 'Besar (24)' : 'Large (24)',
-                      24.0,
-                      style.fontSize,
-                      (v) => notifier.updateFontSize(v),
+                      label: s.isIndonesian ? 'Besar' : 'Large',
+                      isSelected: (style.fontSize - 24.0).abs() < 1.0,
+                      onTap: () => notifier.updateFontSize(24.0),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      s.isIndonesian ? 'Ekstra (28)' : 'Extra (28)',
-                      28.0,
-                      style.fontSize,
-                      (v) => notifier.updateFontSize(v),
+                      label: s.isIndonesian ? 'Ekstra' : 'Extra',
+                      isSelected: (style.fontSize - 28.0).abs() < 1.0,
+                      onTap: () => notifier.updateFontSize(28.0),
                     ),
                   ],
                 ),
+                const SizedBox(height: 6),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 6,
-                    ),
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                     activeTrackColor: AppColors.primary,
                     inactiveTrackColor: Colors.white12,
                     thumbColor: AppColors.primary,
+                    overlayColor: AppColors.primary.withValues(alpha: 0.2),
                   ),
                   child: Slider(
                     value: style.fontSize.clamp(14.0, 30.0),
@@ -3581,21 +3521,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           // 2. Warna Teks
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: Colors.white12, width: 0.8),
+                bottom: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  width: 0.8,
+                ),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  s.isIndonesian ? 'Warna Teks' : 'Text Color',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+                _buildSubtitleSectionHeader(
+                  icon: Icons.palette_outlined,
+                  title: s.isIndonesian ? 'Warna Teks' : 'Text Color',
+                  valueLabel: _getColorName(style.textColor, s),
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -3633,79 +3573,62 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ),
 
-          // 3. Latar Belakang (Background Opacity)
+          // 3. Latar Belakang Teks (Background Opacity)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: Colors.white12, width: 0.8),
+                bottom: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  width: 0.8,
+                ),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      s.isIndonesian ? 'Latar Belakang Teks' : 'Text Background',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      '${(style.backgroundOpacity * 100).toInt()}%',
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                _buildSubtitleSectionHeader(
+                  icon: Icons.layers_outlined,
+                  title: s.isIndonesian ? 'Latar Belakang Teks' : 'Text Background',
+                  valueLabel: '${(style.backgroundOpacity * 100).toInt()}%',
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     _buildPresetPill(
-                      s.isIndonesian ? 'Transparan' : 'Transparent',
-                      0.0,
-                      style.backgroundOpacity,
-                      (v) => notifier.updateBackgroundOpacity(v),
+                      label: s.isIndonesian ? 'Mati (0%)' : 'None (0%)',
+                      isSelected: (style.backgroundOpacity - 0.0).abs() < 0.05,
+                      onTap: () => notifier.updateBackgroundOpacity(0.0),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      s.isIndonesian ? 'Tipis (30%)' : 'Thin (30%)',
-                      0.3,
-                      style.backgroundOpacity,
-                      (v) => notifier.updateBackgroundOpacity(v),
+                      label: s.isIndonesian ? 'Tipis (30%)' : 'Thin (30%)',
+                      isSelected: (style.backgroundOpacity - 0.3).abs() < 0.08,
+                      onTap: () => notifier.updateBackgroundOpacity(0.3),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      s.isIndonesian ? 'Sedang (65%)' : 'Medium (65%)',
-                      0.65,
-                      style.backgroundOpacity,
-                      (v) => notifier.updateBackgroundOpacity(v),
+                      label: s.isIndonesian ? 'Sedang' : 'Medium',
+                      isSelected: (style.backgroundOpacity - 0.65).abs() < 0.08,
+                      onTap: () => notifier.updateBackgroundOpacity(0.65),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      s.isIndonesian ? 'Pekat (90%)' : 'Solid (90%)',
-                      0.9,
-                      style.backgroundOpacity,
-                      (v) => notifier.updateBackgroundOpacity(v),
+                      label: s.isIndonesian ? 'Pekat' : 'Solid',
+                      isSelected: (style.backgroundOpacity - 0.9).abs() < 0.08,
+                      onTap: () => notifier.updateBackgroundOpacity(0.9),
                     ),
                   ],
                 ),
+                const SizedBox(height: 6),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 6,
-                    ),
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                     activeTrackColor: AppColors.primary,
                     inactiveTrackColor: Colors.white12,
                     thumbColor: AppColors.primary,
+                    overlayColor: AppColors.primary.withValues(alpha: 0.2),
                   ),
                   child: Slider(
                     value: style.backgroundOpacity.clamp(0.0, 1.0),
@@ -3719,47 +3642,62 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ),
 
-          // 4. Garis Tepi (Stroke / Outline)
+          // 4. Garis Tepi Teks (Outline / Stroke)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: Colors.white12, width: 0.8),
+                bottom: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  width: 0.8,
+                ),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _buildSubtitleSectionHeader(
+                  icon: Icons.border_style_rounded,
+                  title: s.isIndonesian ? 'Garis Tepi (Outline)' : 'Text Outline',
+                  valueLabel: '${style.strokeWidth.toStringAsFixed(1)} px',
+                ),
+                const SizedBox(height: 10),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      s.isIndonesian ? 'Garis Tepi Teks (Outline)' : 'Text Outline (Stroke)',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    _buildPresetPill(
+                      label: s.isIndonesian ? 'Mati (0)' : 'None (0)',
+                      isSelected: (style.strokeWidth - 0.0).abs() < 0.2,
+                      onTap: () => notifier.updateStrokeWidth(0.0),
                     ),
-                    Text(
-                      '${style.strokeWidth.toStringAsFixed(1)} px',
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    const SizedBox(width: 6),
+                    _buildPresetPill(
+                      label: s.isIndonesian ? 'Tipis' : 'Thin',
+                      isSelected: (style.strokeWidth - 1.5).abs() < 0.3,
+                      onTap: () => notifier.updateStrokeWidth(1.5),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildPresetPill(
+                      label: s.isIndonesian ? 'Standar' : 'Standard',
+                      isSelected: (style.strokeWidth - 2.5).abs() < 0.3,
+                      onTap: () => notifier.updateStrokeWidth(2.5),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildPresetPill(
+                      label: s.isIndonesian ? 'Tebal' : 'Thick',
+                      isSelected: (style.strokeWidth - 4.0).abs() < 0.3,
+                      onTap: () => notifier.updateStrokeWidth(4.0),
                     ),
                   ],
                 ),
+                const SizedBox(height: 6),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 6,
-                    ),
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                     activeTrackColor: AppColors.primary,
                     inactiveTrackColor: Colors.white12,
                     thumbColor: AppColors.primary,
+                    overlayColor: AppColors.primary.withValues(alpha: 0.2),
                   ),
                   child: Slider(
                     value: style.strokeWidth.clamp(0.0, 5.0),
@@ -3773,47 +3711,62 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ),
 
-          // 5. Posisi Vertikal Subtitle
+          // 5. Posisi Vertikal Subtitle (Bottom Offset)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: Colors.white12, width: 0.8),
+                bottom: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  width: 0.8,
+                ),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _buildSubtitleSectionHeader(
+                  icon: Icons.vertical_align_bottom_rounded,
+                  title: s.isIndonesian ? 'Posisi Vertikal' : 'Vertical Position',
+                  valueLabel: '${style.bottomOffset.toInt()} px',
+                ),
+                const SizedBox(height: 10),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      s.isIndonesian ? 'Jarak dari Bawah (Posisi)' : 'Bottom Offset (Position)',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    _buildPresetPill(
+                      label: s.isIndonesian ? 'Bawah (20)' : 'Bottom (20)',
+                      isSelected: (style.bottomOffset - 20.0).abs() < 3.0,
+                      onTap: () => notifier.updateBottomOffset(20.0),
                     ),
-                    Text(
-                      '${style.bottomOffset.toInt()} px',
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    const SizedBox(width: 6),
+                    _buildPresetPill(
+                      label: s.isIndonesian ? 'Standar (32)' : 'Default (32)',
+                      isSelected: (style.bottomOffset - 32.0).abs() < 3.0,
+                      onTap: () => notifier.updateBottomOffset(32.0),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildPresetPill(
+                      label: s.isIndonesian ? 'Tinggi (48)' : 'Raised (48)',
+                      isSelected: (style.bottomOffset - 48.0).abs() < 3.0,
+                      onTap: () => notifier.updateBottomOffset(48.0),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildPresetPill(
+                      label: s.isIndonesian ? 'Atas (70)' : 'High (70)',
+                      isSelected: (style.bottomOffset - 70.0).abs() < 3.0,
+                      onTap: () => notifier.updateBottomOffset(70.0),
                     ),
                   ],
                 ),
+                const SizedBox(height: 6),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 6,
-                    ),
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                     activeTrackColor: AppColors.primary,
                     inactiveTrackColor: Colors.white12,
                     thumbColor: AppColors.primary,
+                    overlayColor: AppColors.primary.withValues(alpha: 0.2),
                   ),
                   child: Slider(
                     value: style.bottomOffset.clamp(10.0, 100.0),
@@ -3826,9 +3779,108 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ],
             ),
           ),
+
+          // 6. Reset Appearance Button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => notifier.resetAppearance(),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.refresh_rounded,
+                        size: 14,
+                        color: Colors.white70,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        s.isIndonesian
+                            ? 'Kembalikan Tampilan Default'
+                            : 'Reset Appearance to Default',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ],
     );
+  }
+
+  Widget _buildSubtitleSectionHeader({
+    required IconData icon,
+    required String title,
+    required String valueLabel,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: AppColors.primary),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: Text(
+            valueLabel,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getColorName(Color color, AppStrings s) {
+    final argb = color.toARGB32();
+    if (argb == const Color(0xFFFFFFFF).toARGB32()) {
+      return s.isIndonesian ? 'Putih' : 'White';
+    } else if (argb == const Color(0xFFFFD700).toARGB32()) {
+      return s.isIndonesian ? 'Kuning' : 'Yellow';
+    } else if (argb == const Color(0xFF00E5FF).toARGB32()) {
+      return 'Cyan';
+    } else if (argb == const Color(0xFF00E676).toARGB32()) {
+      return s.isIndonesian ? 'Hijau' : 'Green';
+    }
+    return s.isIndonesian ? 'Kustom' : 'Custom';
   }
 
   Widget _buildSubTabButton({
@@ -3842,7 +3894,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primary : Colors.transparent,
@@ -3885,7 +3938,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white12, width: 0.8),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 0.8,
+              ),
             ),
             child: Center(
               child: Text(
@@ -3903,20 +3959,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  Widget _buildPresetPill(
-    String label,
-    double targetVal,
-    double currentVal,
-    void Function(double) onSelected,
-  ) {
-    final isSelected = (currentVal - targetVal).abs() < 1.0;
+  Widget _buildPresetPill({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
     return Expanded(
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => onSelected(targetVal),
+          onTap: onTap,
           borderRadius: BorderRadius.circular(6),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
               color: isSelected
@@ -3924,7 +3979,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   : Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: isSelected ? AppColors.primary : Colors.white12,
+                color: isSelected
+                    ? AppColors.primary
+                    : Colors.white.withValues(alpha: 0.08),
                 width: 0.8,
               ),
             ),
@@ -3959,15 +4016,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         child: InkWell(
           onTap: () => notifier.updateTextColor(color),
           borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 7),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
               color: isSelected
                   ? AppColors.primary.withValues(alpha: 0.18)
                   : Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isSelected ? AppColors.primary : Colors.white12,
+                color: isSelected
+                    ? AppColors.primary
+                    : Colors.white.withValues(alpha: 0.08),
                 width: 0.8,
               ),
             ),
@@ -3980,21 +4040,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   decoration: BoxDecoration(
                     color: color,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white30, width: 1),
+                    border: Border.all(
+                      color: isSelected ? AppColors.primary : Colors.white38,
+                      width: 1.2,
+                    ),
                   ),
                   child: isSelected
-                      ? Center(
+                      ? const Center(
                           child: Icon(
                             Icons.check,
                             size: 12,
-                            color: color == const Color(0xFFFFFFFF)
-                                ? Colors.black
-                                : Colors.black,
+                            color: Colors.black,
                           ),
                         )
                       : null,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Text(
                   name,
                   style: TextStyle(
@@ -4002,6 +4063,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     fontSize: 10,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -4279,14 +4342,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       width: drawerWidth,
       height: totalHeight,
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant.withValues(alpha: 0.96),
+        color: AppColors.background,
         border: const Border(
           left: BorderSide(color: Colors.white12, width: 0.8),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.6),
-            blurRadius: 16,
+            color: Colors.black.withValues(alpha: 0.8),
+            blurRadius: 20,
             offset: const Offset(-4, 0),
           ),
         ],
@@ -4500,7 +4563,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       colors: [
                         Colors.black.withValues(alpha: 0.8),
                         Colors.black.withValues(alpha: 0.15),
-                        AppColors.surfaceVariant.withValues(alpha: 0.98),
+                        AppColors.background,
                       ],
                       stops: const [0.0, 0.45, 1.0],
                     ),
@@ -5527,7 +5590,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Widget _buildSidePanelSubtitleSettings(AppStrings s, {Key? key}) {
     return SingleChildScrollView(
       key: key,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: _buildSubtitleSettingsContent(s),
     );
   }

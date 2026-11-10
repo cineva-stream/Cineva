@@ -49,6 +49,9 @@ debug-info/
 .env.*
 !.env.example
 
+# Firebase
+**/google-services.json
+
 # Keystore & Signing
 key.properties
 *.jks

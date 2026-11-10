@@ -996,4 +996,100 @@ class AppStrings {
       : 'Scan QR on TV or PC screen to send profile (Wi-Fi / 4G)';
   String get badgeNew => isIndonesian ? 'BARU' : 'NEW';
   String get retry => isIndonesian ? 'Coba Lagi' : 'Retry';
+
+  // ── Backup, Restore & Google Cloud Sync ──
+  String get backupSectionTitle =>
+      isIndonesian ? 'Cadangan & Sinkronisasi' : 'Backup & Sync';
+  String get backupExportTitle =>
+      isIndonesian ? 'Cadangkan Data ke File' : 'Backup Data to File';
+  String get backupExportDesc => isIndonesian
+      ? 'Simpan riwayat, watchlist, & setelan ke file .cineva'
+      : 'Export history, watchlist, & settings to a .cineva file';
+  String get backupImportTitle =>
+      isIndonesian ? 'Pulihkan Data dari File' : 'Restore Data from File';
+  String get backupImportDesc => isIndonesian
+      ? 'Impor & pulihkan data dari file .cineva sebelumnya'
+      : 'Import & restore data from a previously saved .cineva file';
+  String get backupCreating => isIndonesian
+      ? 'Membuat file cadangan...'
+      : 'Creating backup file...';
+  String get backupExportSuccess => isIndonesian
+      ? 'Cadangan berhasil disimpan'
+      : 'Backup saved successfully';
+  String get backupExportFailed => isIndonesian
+      ? 'Gagal menyimpan file cadangan'
+      : 'Failed to save backup file';
+  String get backupImporting => isIndonesian
+      ? 'Memulihkan data...'
+      : 'Restoring data...';
+  String backupImportSuccessSummary(int watchlist, int history) => isIndonesian
+      ? 'Berhasil memulihkan $watchlist watchlist dan $history riwayat tontonan.'
+      : 'Successfully restored $watchlist watchlist items and $history watch history records.';
+  String get backupImportFailed => isIndonesian
+      ? 'Gagal memulihkan file cadangan. Format tidak valid atau rusak.'
+      : 'Failed to restore backup file. Invalid format or corrupted.';
+  String get backupConfirmRestoreTitle => isIndonesian
+      ? 'Pulihkan Data Cadangan?'
+      : 'Restore Backup Data?';
+  String backupConfirmRestoreDesc(int watchlist, int history) => isIndonesian
+      ? 'Ditemukan $watchlist item watchlist dan $history riwayat tontonan. Terapkan data ini ke aplikasi?'
+      : 'Found $watchlist watchlist items and $history watch history records. Apply this data to the app?';
+  String get backupApplyBtn => isIndonesian ? 'Terapkan' : 'Apply';
+
+  // Google Cloud Sync
+  String get googleSignInTitle => isIndonesian
+      ? 'Masuk dengan Google'
+      : 'Sign in with Google';
+  String get googleSignInSubtitle => isIndonesian
+      ? 'Sinkronisasi otomatis riwayat & watchlist antar perangkat'
+      : 'Automatic cloud sync for history & watchlist across devices';
+  String get googleConnectTitle => isIndonesian
+      ? 'Hubungkan Akun Google'
+      : 'Connect Google Account';
+  String get googleConnectDesc => isIndonesian
+      ? 'Sinkronkan data profil, riwayat, dan watchlist otomatis ke Google Cloud'
+      : 'Sync profile, watch history, and watchlist automatically to Google Cloud';
+  String get googleConnectedStatus => isIndonesian
+      ? 'Tersambung ke Google'
+      : 'Connected to Google';
+  String googleConnectedAs(String email) => isIndonesian
+      ? 'Tersinkronisasi sebagai $email'
+      : 'Synced as $email';
+  String get googleSyncNow => isIndonesian
+      ? 'Sinkronkan Sekarang'
+      : 'Sync Now';
+  String get googleDisconnect => isIndonesian
+      ? 'Putuskan Sambungan'
+      : 'Disconnect';
+  String get googleSyncing => isIndonesian
+      ? 'Menyinkronkan ke Google Cloud...'
+      : 'Syncing to Google Cloud...';
+  String get googleSyncSuccess => isIndonesian
+      ? 'Data berhasil disinkronkan ke Google Cloud'
+      : 'Data synced successfully to Google Cloud';
+  String get googleSyncFailed => isIndonesian
+      ? 'Gagal menyinkronkan data ke Google Cloud'
+      : 'Failed to sync data to Google Cloud';
+  String get googleDisconnectConfirmTitle => isIndonesian
+      ? 'Putuskan Akun Google?'
+      : 'Disconnect Google Account?';
+  String get googleDisconnectConfirmDesc => isIndonesian
+      ? 'Data lokal Anda tetap aman, namun sinkronisasi otomatis antar perangkat akan dinonaktifkan.'
+      : 'Your local data remains intact, but automatic cross-device sync will be disabled.';
+  String get googleDisconnectBtn => isIndonesian ? 'Putuskan' : 'Disconnect';
+
+  // Onboarding Start Phase
+  String get onboardingRestoreFromFile => isIndonesian
+      ? 'Pulihkan dari File Cadangan'
+      : 'Restore from Backup File';
+  String get onboardingRestoreFromFileDesc => isIndonesian
+      ? 'Pilih file .cineva yang telah disimpan sebelumnya'
+      : 'Select a previously saved .cineva backup file';
+  String get onboardingOrDivider => isIndonesian ? 'atau' : 'or';
+  String get onboardingContinueWithoutAccount => isIndonesian
+      ? 'Mulai Menonton (Tanpa Akun)'
+      : 'Start Watching (Guest Mode)';
+  String get onboardingGoogleSyncSuccessGoHome => isIndonesian
+      ? 'Akun Google terhubung! Memuat data Anda...'
+      : 'Google Account linked! Loading your data...';
 }

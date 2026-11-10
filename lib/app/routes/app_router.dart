@@ -1,5 +1,8 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 import '../../features/splash/presentation/screens/splash_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
@@ -37,6 +40,10 @@ import '../../shared/widgets/shell_pop_scope.dart';
 /// the shell (full-screen) with smooth transitions.
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
+  observers: [
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS))
+      FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+  ],
   routes: [
     // ── Splash Screen ──
     GoRoute(

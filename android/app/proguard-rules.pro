@@ -58,3 +58,48 @@
 -keep class * extends androidx.work.ListenableWorker {
     public <init>(android.content.Context, androidx.work.WorkerParameters);
 }
+
+# Firebase & Google Play Services
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+-keep class io.flutter.plugins.firebase.** { *; }
+
+# Firebase Auth, Database & Google Sign In
+-keep class io.flutter.plugins.firebase.auth.** { *; }
+-keep class io.flutter.plugins.firebase.database.** { *; }
+-keep class io.flutter.plugins.googlesignin.** { *; }
+-keep class com.google.android.gms.auth.api.signin.** { *; }
+-keep class com.google.firebase.auth.** { *; }
+-keep class com.google.firebase.database.** { *; }
+-dontwarn com.google.android.gms.auth.api.signin.**
+
+# Firebase Analytics & App Measurement
+-keep class com.google.android.gms.measurement.** { *; }
+-keep class com.google.android.gms.common.** { *; }
+
+# Keep google-services generated resource identifiers from resource shrinking
+-keepclassmembers class **.R$* {
+    public static <fields>;
+}
+
+# Mobile Scanner & Google ML Kit Barcode
+-keep class dev.steenbakker.mobile_scanner.** { *; }
+-keep class com.google.mlkit.** { *; }
+-dontwarn com.google.mlkit.**
+
+# Image Picker & File Picker
+-keep class io.flutter.plugins.imagepicker.** { *; }
+-keep class com.mr.flutter.plugin.filepicker.** { *; }
+
+# SQFlite & URL Launcher
+-keep class com.tekartik.sqflite.** { *; }
+-keep class io.flutter.plugins.urllauncher.** { *; }
+
+# Screen Brightness, Volume Controller & Wakelock Plus
+-keep class com.github.linusu.screen_brightness.** { *; }
+-keep class com.kurenai.volume_controller.** { *; }
+-keep class dev.fluttercommunity.plus.wakelock.** { *; }
+-keep class androidx.core.content.FileProvider { *; }
+

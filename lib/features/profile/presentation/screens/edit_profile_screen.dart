@@ -6,8 +6,10 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../shared/widgets/google_brand_icon.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../backup/presentation/providers/backup_providers.dart';
 import '../../domain/models/avatar_catalog.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/avatar_display.dart';
@@ -339,7 +341,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 ],
               ),
 
-              const SizedBox(height: 36),
+              const SizedBox(height: 24),
+
+              // ── Google Cloud Sync Integration ──
+              _buildGoogleCloudSyncCard(s),
+
+              const SizedBox(height: 28),
 
               // ── Save Changes Button (No Glow) ──
               Container(
@@ -493,6 +500,263 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             fontSize: 13.5,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleCloudSyncCard(AppStrings s) {
+    final googleSync = ref.watch(googleSyncProvider);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16161F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: googleSync.isSignedIn
+              ? const Color(0xFF34A853).withValues(alpha: 0.35)
+              : Colors.white.withValues(alpha: 0.1),
+          width: 1.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const GoogleBrandIcon(size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  googleSync.isSignedIn
+                      ? s.googleConnectedStatus
+                      : s.googleConnectTitle,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              if (googleSync.isSignedIn)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF34A853).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFF34A853).withValues(alpha: 0.4),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: Color(0xFF34A853),
+                        size: 12,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Cloud Sync',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF34A853),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            googleSync.isSignedIn
+                ? s.googleConnectedAs(googleSync.email ?? '')
+                : s.googleConnectDesc,
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w400,
+              color: Colors.white.withValues(alpha: 0.85),
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (googleSync.isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            )
+          else if (!googleSync.isSignedIn)
+            SizedBox(
+              width: double.infinity,
+              height: 42,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final ok = await ref
+                      .read(googleSyncProvider.notifier)
+                      .signInWithGoogle(ref);
+                  if (ok && mounted) {
+                    final p = ref.read(userProfileProvider);
+                    _nameController.text = p.name;
+                    _usernameController.text = p.username;
+                    _selectedAvatarId = p.avatarId;
+                    _customAvatarPath = p.customAvatarPath;
+                    setState(() {});
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: AppColors.surfaceElevated,
+                        content: Text(
+                          s.googleSyncSuccess,
+                          style: GoogleFonts.inter(color: Colors.white),
+                        ),
+                      ),
+                    );
+                  }
+                },
+                icon: const GoogleBrandIcon(size: 18),
+                label: Text(
+                  s.googleSignInTitle,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1F1F1F),
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF1F1F1F),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 38,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final ok = await ref
+                            .read(googleSyncProvider.notifier)
+                            .syncToCloud(ref);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: AppColors.surfaceElevated,
+                              content: Text(
+                                ok ? s.googleSyncSuccess : s.googleSyncFailed,
+                                style: GoogleFonts.inter(color: Colors.white),
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.sync_rounded,
+                          size: 16, color: AppColors.primary),
+                      label: Text(
+                        s.googleSyncNow,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.15)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  height: 38,
+                  child: TextButton.icon(
+                    onPressed: () => _confirmDisconnectGoogle(s),
+                    icon: const Icon(Icons.link_off_rounded,
+                        size: 16, color: AppColors.error),
+                    label: Text(
+                      s.googleDisconnect,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDisconnectGoogle(AppStrings s) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text(
+          s.googleDisconnectConfirmTitle,
+          style: GoogleFonts.outfit(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          s.googleDisconnectConfirmDesc,
+          style: GoogleFonts.inter(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              s.scannerCancelBtn,
+              style: GoogleFonts.inter(color: AppColors.textMuted),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await ref.read(googleSyncProvider.notifier).signOut();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+            ),
+            child: Text(
+              s.googleDisconnectBtn,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

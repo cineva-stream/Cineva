@@ -13,6 +13,7 @@ import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/platform/device_form_factor.dart';
 import '../../../../shared/widgets/modern_flag_badge.dart';
+import '../../../backup/data/backup_restore_service.dart';
 import '../../../home/presentation/providers/home_providers.dart';
 import '../../data/settings_service.dart';
 import '../../data/subtitle_languages.dart';
@@ -756,6 +757,100 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Future<void> _handleExportBackup(AppStrings s) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.surfaceElevated,
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Text(s.backupCreating,
+                style: GoogleFonts.inter(color: Colors.white)),
+          ],
+        ),
+      ),
+    );
+
+    final result = await BackupRestoreService.exportBackupToFile(ref);
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    if (result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.surfaceElevated,
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded,
+                  color: AppColors.primary, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '${s.backupExportSuccess} (${result.watchlistCount} watchlist, ${result.historyCount} riwayat)',
+                  style: GoogleFonts.inter(
+                      color: Colors.white, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else if (result.errorMessage != null &&
+        !result.errorMessage!.contains('dibatalkan')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.surfaceElevated,
+          content: Text(result.errorMessage ?? s.backupExportFailed,
+              style: GoogleFonts.inter(color: Colors.white)),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleRestoreBackup(AppStrings s) async {
+    final result = await BackupRestoreService.pickAndRestoreBackupFile(ref);
+    if (!mounted) return;
+
+    if (result.success) {
+      _loadSettings();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.surfaceElevated,
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded,
+                  color: AppColors.primary, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  s.backupImportSuccessSummary(
+                      result.watchlistCount, result.historyCount),
+                  style: GoogleFonts.inter(
+                      color: Colors.white, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else if (result.errorMessage != null &&
+        !result.errorMessage!.contains('dibatalkan')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.surfaceElevated,
+          content: Text(result.errorMessage ?? s.backupImportFailed,
+              style: GoogleFonts.inter(color: Colors.white)),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(appStringsProvider);
@@ -1175,6 +1270,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: s.settingsClearHistory,
                 subtitle: s.settingsClearHistoryDesc,
                 onTap: () => _clearHistoryAction(s),
+              ),
+            ]),
+
+            const SizedBox(height: 20),
+
+            // ── SECTION 3.5: CADANGAN & PEMULIHAN ──
+            _buildSectionHeader(s.backupSectionTitle, Iconsax.cloud_connection),
+            _buildSettingsCard([
+              // 1. Cadangkan Data (Backup to File)
+              _SettingsTileItem(
+                icon: Iconsax.export_3,
+                title: s.backupExportTitle,
+                subtitle: s.backupExportDesc,
+                trailingWidget: const Icon(Icons.file_download_outlined,
+                    color: AppColors.primary, size: 18),
+                onTap: () => _handleExportBackup(s),
+              ),
+              _buildCardDivider(),
+              // 2. Pulihkan Data (Restore from File)
+              _SettingsTileItem(
+                icon: Iconsax.import_1,
+                title: s.backupImportTitle,
+                subtitle: s.backupImportDesc,
+                trailingWidget: const Icon(Icons.file_upload_outlined,
+                    color: AppColors.primary, size: 18),
+                onTap: () => _handleRestoreBackup(s),
               ),
             ]),
 

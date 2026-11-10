@@ -4,12 +4,16 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/widgets/modern_flag_badge.dart';
+import '../../../../shared/widgets/google_brand_icon.dart';
 import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/localization/app_strings.dart';
+import '../../../backup/data/backup_restore_service.dart';
+import '../../../backup/presentation/providers/backup_providers.dart';
 import '../../../profile/data/profile_service.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../settings/data/settings_service.dart';
@@ -52,6 +56,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   late final AnimationController _marqueeController;
   bool _showLanguageSelection = false;
+  bool _isGoogleSigningIn = false;
+  bool _isRestoringFile = false;
 
   @override
   void initState() {
@@ -86,6 +92,78 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     });
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isGoogleSigningIn = true);
+    final s = ref.read(appStringsProvider);
+    try {
+      final success =
+          await ref.read(googleSyncProvider.notifier).signInWithGoogle(ref);
+      if (!mounted) return;
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.surfaceElevated,
+            content: Text(
+              s.onboardingGoogleSyncSuccessGoHome,
+              style: GoogleFonts.inter(color: Colors.white),
+            ),
+          ),
+        );
+        if (!SettingsService.hasAcceptedLegal()) {
+          context.go('/onboarding-legal');
+        } else {
+          context.go('/');
+        }
+      } else {
+        final err = ref.read(googleSyncProvider).errorMessage;
+        if (err != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.surfaceElevated,
+              content: Text(err, style: GoogleFonts.inter(color: Colors.white)),
+            ),
+          );
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleSigningIn = false);
+    }
+  }
+
+  Future<void> _handleFileRestore() async {
+    setState(() => _isRestoringFile = true);
+    final s = ref.read(appStringsProvider);
+    try {
+      final result = await BackupRestoreService.pickAndRestoreBackupFile(ref);
+      if (!mounted) return;
+      if (result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.surfaceElevated,
+            content: Text(
+              s.backupImportSuccessSummary(
+                  result.watchlistCount, result.historyCount),
+              style: GoogleFonts.inter(color: Colors.white),
+            ),
+          ),
+        );
+        // Automatically enter main home screen directly
+        context.go('/');
+      } else if (result.errorMessage != null &&
+          !result.errorMessage!.contains('dibatalkan')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.surfaceElevated,
+            content: Text(result.errorMessage ?? s.backupImportFailed,
+                style: GoogleFonts.inter(color: Colors.white)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRestoringFile = false);
+    }
+  }
+
   @override
   void dispose() {
     _marqueeController.dispose();
@@ -107,8 +185,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final posterZoneHeight = size.height * 0.54;
-    final brandingZoneHeight = size.height * 0.48;
+    final posterZoneHeight = size.height * 0.44;
+    final brandingZoneHeight = size.height * 0.56;
 
     const double cardWidth = 115.0;
     const double cardHeight = 170.0;
@@ -213,7 +291,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               bottom: true,
               child: Center(
                 child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics: const BouncingScrollPhysics(),
                   child: AnimatedCrossFade(
                     duration: const Duration(milliseconds: 650),
                     firstCurve: Curves.easeInOutCubic,
@@ -369,21 +447,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       children: [
         Image.asset(
           'assets/images/logo_cineva.png',
-          height: 88,
+          height: 68,
           fit: BoxFit.contain,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         Text(
           s.splashSelectLanguage,
           textAlign: TextAlign.center,
           style: GoogleFonts.outfit(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.3,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
@@ -411,13 +489,194 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
+
+        // ── Option 1: Masuk dengan Google ──
         Container(
           width: double.infinity,
-          height: 50,
+          height: 48,
+          decoration: BoxDecoration(
+            color: const Color(0xFF16161C),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.12),
+              width: 1.0,
+            ),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _isGoogleSigningIn ? null : _handleGoogleSignIn,
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  children: [
+                    if (_isGoogleSigningIn)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
+                      )
+                    else
+                      const GoogleBrandIcon(size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.googleSignInTitle,
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            s.googleSignInSubtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 10.5,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      color: AppColors.textMuted,
+                      size: 13,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // ── Option 2: Pulihkan dari File Cadangan ──
+        Container(
+          width: double.infinity,
+          height: 48,
+          decoration: BoxDecoration(
+            color: const Color(0xFF16161C),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.12),
+              width: 1.0,
+            ),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _isRestoringFile ? null : _handleFileRestore,
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  children: [
+                    if (_isRestoringFile)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
+                      )
+                    else
+                      const Icon(
+                        Iconsax.import_1,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.onboardingRestoreFromFile,
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            s.onboardingRestoreFromFileDesc,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 10.5,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.folder_open_rounded,
+                      color: AppColors.textMuted,
+                      size: 16,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // ── Divider: "atau" / "or" ──
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 0.8,
+                color: Colors.white.withValues(alpha: 0.12),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                s.onboardingOrDivider,
+                style: GoogleFonts.inter(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                height: 0.8,
+                color: Colors.white.withValues(alpha: 0.12),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // ── Primary Action: Mulai Menonton (Tanpa Akun) ──
+        Container(
+          width: double.infinity,
+          height: 48,
           decoration: BoxDecoration(
             gradient: AppColors.primaryGradient,
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: ElevatedButton(
             onPressed: _onStartWatching,
@@ -425,7 +684,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               backgroundColor: Colors.transparent,
               shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
             child: Row(
@@ -434,28 +693,29 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 const Icon(
                   Icons.play_arrow_rounded,
                   color: Colors.black,
-                  size: 22,
+                  size: 20,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  s.splashStartWatching,
+                  s.onboardingContinueWithoutAccount,
                   style: GoogleFonts.outfit(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: Colors.black,
-                    letterSpacing: 0.3,
+                    letterSpacing: 0.2,
                   ),
                 ),
                 const SizedBox(width: 6),
                 const Icon(
                   Icons.arrow_forward_rounded,
                   color: Colors.black,
-                  size: 18,
+                  size: 17,
                 ),
               ],
             ),
           ),
         ),
+
         const SizedBox(height: 12),
         Text(
           'Made with ❤️ by Cineva Group',

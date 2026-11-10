@@ -1,5 +1,5 @@
 CINEVA - SOFTWARE LICENSE AND TERMS OF SERVICE
-Version: 1.1.6
+Version: 1.1.7
 Global Legal Agreement for Cineva Software Usage
 
 IMPORTANT NOTICE:

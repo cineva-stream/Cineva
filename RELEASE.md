@@ -1,71 +1,73 @@
-# Cineva v1.1.6 - Release Notes 🎬
+# Cineva v1.1.7 - Release Notes 🎬
 
-Pembaruan Cineva versi 1.1.6 menghadirkan penyempurnaan besar pada **Eksplorasi Katalog Beranda (Full Catalog Grid & Top 8-10 Carousel)** untuk kategori Film dan Serial TV, serta pembaruan masif pada fitur **"Pilih Sesuai Platform" (Choose by Platform)** dengan pemulihan ribuan judul film/serial TV dan dukungan **Paginasi & Infinite Scroll Berkelanjutan**.
+Pembaruan Cineva versi 1.1.7 menghadirkan fitur besar **Cadangan & Pemulihan Data (Backup & Restore)**, integrasi **Masuk & Sinkronisasi Cloud dengan Google (Sign in with Google & Firebase Realtime Database)**, perombakan antarmuka **Side Panel Streaming & Subtitle Setting Minimalis**, serta optimalisasi keamanan build **ProGuard & Obfuscation**.
 
 ---
 
 ## Ringkasan Fitur Baru & Peningkatan Utama
 
-### 1. Desain Ulang Filter Kategori Beranda: Full Grid Responsif & Top 8-10 Carousel
-* **Filter "Film" (Movies)**:
-  * **Top 8-10 Carousel Film Populer**: Bagian atas kini menyajikan 8 hingga 10 film terpopuler dengan transisi otomatis, cuplikan sinopsis, dan tombol tonton langsung.
-  * **Full Grid SELURUH Film**: Menghilangkan section-section horizontal yang membatasi konten, digantikan dengan tampilan grid poster responsif (rasio 2:3) yang memuat seluruh katalog film.
-  * **Infinite Scroll Berkelanjutan**: Film-film berikutnya akan termuat secara otomatis saat pengguna men-scroll ke bawah tanpa henti.
-* **Filter "Serial TV" (TV Shows)**:
-  * **Top 8-10 Carousel Serial TV Populer**: Menampilkan carousel khusus serial TV terpopuler lengkap dengan badge *POPULER TV* dan navigasi langsung ke episode serial TV.
-  * **Full Grid SELURUH Serial TV**: Menampilkan seluruh serial TV secara utuh dalam format poster grid responsif dengan dukungan *infinite scroll* berkelanjutan.
-* **Filter "Semua" (All)**:
-  * Tetap mempertahankan susunan dashboard beranda klasik yang kaya (Hero Trending Carousel, Continue Watching, Airing Calendar Banner, Top 10 Netflix-style, Film Populer, Serial TV Populer, Rating Tertinggi, dan Segera Tayang di Bioskop).
+### 1. Fitur Cadangan & Pemulihan Data Mandiri (Backup & Restore System)
+* **Ekspor Cadangan Lengkap Berkas `.cineva`**:
+  * Pengguna kini dapat mencadangkan seluruh data aplikasi ke dalam satu file terenkripsi ringan (`.cineva` / `.json`).
+  * Mencakup: **Daftar Watchlist**, **Riwayat Tontonan** (posisi menit pemutaran terakhir & status selesai tonton), **Pengaturan Subtitle** (ukuran font, latar belakang teks, bahasa default), **Kualitas Video Default**, **Preferensi Konten**, serta **Profil Pengguna** (Nama, Username, dan foto avatar galeri).
+* **Pemulihan Universal Tanpa Hambatan (*Universal File Picker*)**:
+  * Menggunakan pemilih berkas universal yang kompatibel penuh dengan berbagai penyimpanan perangkat (Folder Download, Memori Internal, Kartu SD, maupun Google Drive).
+  * Dilengkapi validasi tanda tangan (*magic signature verification*) untuk mendeteksi file rusak atau tidak valid secara aman tanpa risiko crash.
+* **Opsi Pemulihan Langsung di Layar Awal (*Splash Screen*)**:
+  * Pengguna yang baru menginstal ulang aplikasi dapat langsung memilih opsi **"Pulihkan dari File Cadangan"** tepat setelah memilih bahasa aplikasi, lalu langsung masuk ke beranda dengan seluruh data yang telah pulih utuh.
 
-### 2. Pembaruan Masif "Pilih Sesuai Platform" (Thousands of Titles & Infinite Scroll)
-* **Perbaikan TMDB Watch Provider ID (Fix 0/Sedikit Hasil)**:
-  * Memperbarui ID TMDB yang sebelumnya *obsolete* sehingga konten yang tampil kini berjumlah ribuan:
-    * **Max / HBO Max**: Diperbarui ke ID resmi `1899|1825` (menghadirkan 2.000+ film dan 1.800+ serial TV dari sebelumnya 0 hasil).
-    * **Paramount+**: Diperbarui ke multi-channel `582|2303|531` (menghadirkan 1.300+ film dan 800+ serial TV dari sebelumnya hanya 4 hasil).
-    * **Peacock**: Diperbarui ke `386|387` (menghadirkan 1.200+ film dan 1.000+ serial TV Peacock).
-    * **Amazon Prime Video**: Diperbarui ke `9|119` (menjangkau puluhan ribu judul).
-* **Paginasi & Infinite Scrolling Penuh**:
-  * Menghapus batasan lama yang hanya mengambil 1 halaman (20 item).
-  * Pengguna kini dapat men-scroll ke bawah untuk terus memuat halaman 2, 3, 4, dst. secara mulus dengan indikator pemuatan halus.
-* **Filter Chip Lengkap & Unified Grid (All, Movies, TV Shows)**:
-  * Memudahkan pengguna memilah katalog platform streaming yang dipilih apakah ingin melihat Semua dalam satu grid utuh (*unified stream*), hanya Film, atau hanya Serial TV.
+### 2. Masuk dengan Google & Sinkronisasi Cloud (Google Sign-In & Realtime Database)
+* **Sinkronisasi Multi-Perangkat Otomatis**:
+  * Menghubungkan akun ke Google memungkinkan seluruh riwayat tontonan, watchlist, dan pengaturan profil tersinkronisasi secara instan di berbagai perangkat tanpa perlu ekspor/impor manual.
+  * Menggunakan **Firebase Realtime Database** yang efisien, cepat, dan 100% bebas biaya (Spark Plan).
+* **Auto-Populate Data Akun Google Cerdas**:
+  * Saat masuk dengan Google, aplikasi secara otomatis mengisi **Nickname** dari nama profil Google (`displayName`), **Username** unik dari awalan email Google, serta mengunduh foto profil Google sebagai **Avatar** pengguna.
+* **Integrasi Fleksibel pada Layar Selamat Datang & Edit Profil**:
+  * Tersedia di layar awal (*Splash Screen*) untuk pengguna baru, serta di halaman **Edit Profil** bagi pengguna lama yang ingin menghubungkan akun Google kapan saja.
 
-### 3. Peningkatan Pengalaman Streaming Windows Desktop (Auto-Hide Cursor & Anti-Jitter)
-* **Kursor Mouse Auto-Hide Mengikuti Kontrol Player**:
-  * Kursor mouse otomatis disembunyikan saat panel kontrol pemutar video menghilang, memberikan pengalaman menonton bebas distraksi.
-* **Filter Getaran Akustik Meja (*Anti-Jitter Threshold 14px*)**:
-  * Meredam pergeseran mikro akibat dentuman bass/subwoofer kencang atau getaran meja, sehingga kontrol dan kursor tidak muncul secara tidak sengaja.
-* **Penyempurnaan Navigasi Multi-Tab & Lokalisasi Global**:
-  * Memperbaiki navigasi antar-tab dari halaman katalog platform streaming ke Pengaturan (*Settings*), Beranda, dsb.
-  * Lokalisasi dinamis badge tipe media (`MOVIE` dalam bahasa Inggris, `FILM` dalam bahasa Indonesia).
+### 3. Desain Ulang Antarmuka: Side Panel Streaming & Subtitle Minimalis
+* **Side Panel Streaming Video Latar Hitam Obsidian**:
+  * Latar belakang panel samping kanan pada pemutar video (saat streaming Film & Serial TV) kini berwarna hitam pekat (`#0D0D12` / `#000000`), menyatu sempurna dengan estetika gelap sinematik Cineva.
+* **Pengaturan Subtitle Bersih & Ringkas**:
+  * Menghilangkan kotak pratinjau teks redundan karena hasil pengaturan gaya teks sudah langsung terlihat secara *real-time* di layar pemutaran video.
+  * Tampilan kontrol ukuran font, bahasa subtitle, dan latar belakang menjadi jauh lebih ringkas, rapi, dan modern.
+* **Penyegaran Tombol Google & Pembersihan Pengaturan**:
+  * Tombol "Masuk dengan Google" di halaman Edit Profil kini berlatar belakang putih solid dengan teks hitam kontras tinggi dan ikon resmi Google (`google-icon.png`).
+  * Menu di Halaman Pengaturan disederhanakan khusus untuk Cadangkan & Pulihkan berkas file lokal.
 
-### 4. Penyempurnaan Penginstal Windows (Multilingual License Agreement & Tipografi Bersih)
-* **Dukungan Multibahasa Dinamis pada Setup**:
-  * Naskah Syarat dan Ketentuan (*License Agreement*) pada setup instalasi Inno Setup kini otomatis menyesuaikan bahasa instalasi yang dipilih pengguna (Bahasa Indonesia atau English).
-* **Format Bersih Tanpa Garis Pembatas**:
-  * Menghilangkan seluruh garis pembatas dekoratif, menyajikan dokumen legal dengan pemisah baris (*linebreak*) yang rapi dan ketebalan huruf judul (*bold typography*) yang nyaman dan mudah dipahami.
+### 4. Keamanan Build, ProGuard & Obfuscation
+* **Proteksi ProGuard Lengkap**:
+  * Menambahkan aturan proteksi refleksi (`-keep`) pada `proguard-rules.pro` untuk Firebase Core, Firebase Analytics, Firebase Auth, Firebase Realtime Database, dan Google Sign-In.
+  * Menjamin kestabilan 100% saat aplikasi dikompilasi dengan flag `--obfuscate`, `minifyEnabled true`, dan `shrinkResources true` tanpa risiko crash runtime.
+* **Perlindungan Kredensial**:
+  * Mengisolasi dan mengamankan berkas konfigurasi `google-services.json` dari repositori publik.
 
 ---
 
 ## Riwayat Versi Sebelumnya
 
+### Cineva v1.1.6
+* **Desain Ulang Filter Kategori Beranda**: Full Grid responsif dan Carousel Top 8-10 untuk Film dan Serial TV dengan *infinite scroll* berkelanjutan.
+* **Pembaruan Masif "Pilih Sesuai Platform"**: Pemulihan ribuan judul film/serial TV (Max/HBO, Paramount+, Peacock, Prime Video) dengan paginasi berkelanjutan.
+* **Kursor Mouse Auto-Hide Windows**: Auto-hide kursor mouse mengikuti kontrol player dengan filter anti-jitter getaran meja (14px).
+* **Penyempurnaan Penginstal Windows**: Dokumen lisensi multibahasa (ID/EN) dengan tipografi bersih.
+
 ### Cineva v1.1.5
-* **Sinkronisasi Data & Profil Multi-Perangkat via QR Code (Zero-Config Hybrid Mode)**: Onboarding otomatis Android TV dan dual-mode pairing nirkabel lintas jaringan Wi-Fi dan seluler.
+* **Sinkronisasi Data Multi-Perangkat via QR Code**: Onboarding otomatis Android TV dan dual-mode pairing nirkabel.
 * **Modal Changelog Berbasis GitHub Markdown (GFM)**: Parser resmi GitHub Markdown di dalam aplikasi.
-* **Pemisahan Build Khusus Android TV Super Ringan**: APK khusus 32-bit ARM berukuran hemat memori (~15-20 MB).
-* **Otomasi Tanda Tangan Digital Windows**: Authenticode SHA-256 untuk installer Windows.
+* **Pemisahan Build Khusus Android TV**: APK khusus 32-bit ARM berukuran hemat memori (~15-20 MB).
 
 ---
 
 ## Informasi Versi
 
-* **Versi Aplikasi**: 1.1.6
-* **Build**: 17
+* **Versi Aplikasi**: 1.1.7
+* **Build**: 18
 * **Target Sistem Operasi**: Android 5.0 (API 21) ke atas (Smartphone & Android TV / Google TV), Windows 10/11 (64-bit)
 * **Daftar Varian File Rilis**:
-  * `Cineva_setup_v1.1.6.exe` (Windows Desktop Installer Resmi)
-  * `Cineva_v1.1.6-android-tv.apk` (Khusus Android TV & Smart TV - **Rekomendasi TV**)
-  * `Cineva_v1.1.6-arm64-v8a.apk` (HP Android Modern 64-bit)
-  * `Cineva_v1.1.6-armeabi-v7a.apk` (HP Android Lawas 32-bit)
-  * `Cineva_v1.1.6-x86_64.apk` (Emulator PC & Android x86)
-  * `Cineva_v1.1.6.apk` (Universal / Semua CPU, Kompatibel Penuh)
+  * `Cineva_setup_v1.1.7.exe` (Windows Desktop Installer Resmi)
+  * `Cineva_v1.1.7-android-tv.apk` (Khusus Android TV & Smart TV - **Rekomendasi TV**)
+  * `Cineva_v1.1.7-arm64-v8a.apk` (HP Android Modern 64-bit)
+  * `Cineva_v1.1.7-armeabi-v7a.apk` (HP Android Lawas 32-bit)
+  * `Cineva_v1.1.7-x86_64.apk` (Emulator PC & Android x86)
+  * `Cineva_v1.1.7.apk` (Universal / Semua CPU, Kompatibel Penuh)

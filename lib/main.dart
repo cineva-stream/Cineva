@@ -8,13 +8,46 @@ import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
+import 'app/routes/app_router.dart';
 import 'app/theme/app_colors.dart';
 import 'core/constants/app_constants.dart';
 import 'core/platform/device_form_factor.dart';
 import 'core/platform/smooth_mouse_scroll.dart';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+
 Future<void> main() async {
   CinevaWidgetsBinding.ensureInitialized();
+
+  // Initialize Firebase & Analytics safely on supported platforms (Android / iOS)
+  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    try {
+      await Firebase.initializeApp();
+      final analytics = FirebaseAnalytics.instance;
+      await analytics.setAnalyticsCollectionEnabled(true);
+      await analytics.logAppOpen();
+
+      // Reliable GoRouter screen tracking immune to Dart AOT code obfuscation
+      String? lastTrackedScreen;
+      appRouter.routerDelegate.addListener(() {
+        try {
+          final location =
+              appRouter.routerDelegate.currentConfiguration.uri.toString();
+          if (location.isNotEmpty && location != lastTrackedScreen) {
+            lastTrackedScreen = location;
+            analytics.logScreenView(
+              screenName: location,
+              screenClass: location,
+            );
+          }
+        } catch (_) {}
+      });
+      debugPrint('[Firebase] Initialized successfully with Analytics.');
+    } catch (e) {
+      debugPrint('[Firebase] Initialization error: $e');
+    }
+  }
 
   // Prevent release mode blank screen on unhandled widget exceptions
   ErrorWidget.builder = (FlutterErrorDetails details) {
@@ -27,7 +60,11 @@ Future<void> main() async {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline_rounded, color: AppColors.primary, size: 48),
+              const Icon(
+                Icons.error_outline_rounded,
+                color: AppColors.primary,
+                size: 48,
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Terjadi Kesalahan Tampilan',
@@ -43,7 +80,10 @@ Future<void> main() async {
                 textAlign: TextAlign.center,
                 maxLines: 4,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -104,13 +144,15 @@ Future<void> main() async {
         ]);
         // Smartphone UI: edge-to-edge transparent bars
         await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-        SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.light,
-          systemNavigationBarColor: Colors.transparent,
-          systemNavigationBarIconBrightness: Brightness.light,
-          systemNavigationBarContrastEnforced: false,
-        ));
+        SystemChrome.setSystemUIOverlayStyle(
+          const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarIconBrightness: Brightness.light,
+            systemNavigationBarContrastEnforced: false,
+          ),
+        );
       }
     } catch (e) {
       debugPrint('[main] Non-fatal error configuring Android SystemChrome: $e');
@@ -137,11 +179,8 @@ Future<void> main() async {
 
   // Optimize image cache to eliminate GC pauses and memory spikes on 4GB RAM devices
   PaintingBinding.instance.imageCache.maximumSize = 100;
-  PaintingBinding.instance.imageCache.maximumSizeBytes = 60 * 1024 * 1024; // 60 MB
+  PaintingBinding.instance.imageCache.maximumSizeBytes =
+      60 * 1024 * 1024; // 60 MB
 
-  runApp(
-    const ProviderScope(
-      child: CinevaApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: CinevaApp()));
 }
