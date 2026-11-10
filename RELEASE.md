@@ -52,11 +52,6 @@ Pembaruan Cineva versi 1.1.7 menghadirkan fitur besar **Cadangan & Pemulihan Dat
 * **Kursor Mouse Auto-Hide Windows**: Auto-hide kursor mouse mengikuti kontrol player dengan filter anti-jitter getaran meja (14px).
 * **Penyempurnaan Penginstal Windows**: Dokumen lisensi multibahasa (ID/EN) dengan tipografi bersih.
 
-### Cineva v1.1.5
-* **Sinkronisasi Data Multi-Perangkat via QR Code**: Onboarding otomatis Android TV dan dual-mode pairing nirkabel.
-* **Modal Changelog Berbasis GitHub Markdown (GFM)**: Parser resmi GitHub Markdown di dalam aplikasi.
-* **Pemisahan Build Khusus Android TV**: APK khusus 32-bit ARM berukuran hemat memori (~15-20 MB).
-
 ---
 
 ## Informasi Versi

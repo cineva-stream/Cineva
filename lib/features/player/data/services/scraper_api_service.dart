@@ -10,11 +10,33 @@ import '../models/provider_stream_models.dart';
 /// Service client for the FlixQuest Multi-Provider Scraper Cluster.
 /// Proxies and extracts direct HLS (.m3u8) streams from over 17+ upstream CDNs.
 class ScraperApiService {
-  static const String defaultScraperUrl = 'https://scraper.flix.quest';
-  static const List<String> defaultScraperInstances = [
-    'https://scraper.flix.quest',
-    'https://flixquest-scraper.onrender.com',
+  // Obfuscated cluster endpoint buffers (decoded at runtime with XOR 0x5C)
+  // to protect endpoints from automated crawlers and public plaintext indexing.
+  static const List<int> _kEncPrimary = [
+    52, 40, 40, 44, 47, 102, 115, 115, 47, 63, 46, 61, 44, 57, 46, 114, 58, 48, 53, 36, 114, 45, 41, 57, 47, 40,
   ];
+  static const List<int> _kEncFallback = [
+    52, 40, 40, 44, 47, 102, 115, 115, 58, 48, 53, 36, 45, 41, 57, 47, 40, 113, 47, 63, 46, 61, 44, 57, 46, 114, 51, 50, 46, 57, 50, 56, 57, 46, 114, 63, 51, 49,
+  ];
+
+  static String _decodeClusterEndpoint(List<int> bytes) {
+    return String.fromCharCodes(bytes.map((b) => b ^ 0x5C));
+  }
+
+  static String get defaultScraperUrl {
+    final env = AppEnv.cinevaScraperApiUrl.trim();
+    if (env.isNotEmpty) return env;
+    return _decodeClusterEndpoint(_kEncPrimary);
+  }
+
+  static List<String> get defaultScraperInstances {
+    final primary = defaultScraperUrl;
+    final fallback = _decodeClusterEndpoint(_kEncFallback);
+    return [
+      primary,
+      if (_normalizeBaseUrl(fallback) != _normalizeBaseUrl(primary)) fallback,
+    ];
+  }
 
   final String _baseUrl;
   final Dio _dio;

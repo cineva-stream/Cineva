@@ -26,9 +26,10 @@ class AppEnv {
   );
 
   /// Cineva Scraper / Streaming Proxy API Base URL
+  /// Injected securely at compile-time via --dart-define-from-file=.env or --dart-define.
   static const String cinevaScraperApiUrl = String.fromEnvironment(
     'CINEVA_SCRAPER_API_URL',
-    defaultValue: 'https://scraper.flix.quest',
+    defaultValue: '',
   );
 }
 
