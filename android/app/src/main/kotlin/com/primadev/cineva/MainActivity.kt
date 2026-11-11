@@ -38,10 +38,11 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        // On Android TV or TV boxes (720p, 1080p, 4K), lock to landscape immediately
-        if (isTelevisionDevice()) {
+        // On Android TV, TV boxes (720p, 1080p, 4K), or Tablets (smallestScreenWidthDp >= 600),
+        // lock to landscape immediately upon launch
+        if (isTelevisionDevice() || isTabletDevice()) {
             try {
-                requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             } catch (t: Throwable) {
                 Log.w(TAG, "Non-fatal: Failed to set landscape orientation: ${t.message}")
             }
@@ -89,6 +90,14 @@ class MainActivity : FlutterActivity() {
         return false
     }
 
+    private fun isTabletDevice(): Boolean {
+        return try {
+            !isTelevisionDevice() && resources.configuration.smallestScreenWidthDp >= 600
+        } catch (t: Throwable) {
+            false
+        }
+    }
+
     override fun onStop() {
         super.onStop()
         try {
@@ -107,6 +116,9 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "isTelevision" -> {
                     result.success(isTelevisionDevice())
+                }
+                "isTablet" -> {
+                    result.success(isTabletDevice())
                 }
                 else -> result.notImplemented()
             }

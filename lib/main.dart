@@ -123,8 +123,14 @@ Future<void> main() async {
       const channel = MethodChannel('com.primadev.cineva/device');
       isTv = await channel.invokeMethod<bool>('isTelevision') ?? false;
       gIsTelevision = isTv;
+      if (!isTv) {
+        final isTab = await channel.invokeMethod<bool>('isTablet') ?? false;
+        if (isTab) {
+          gIsTablet = true;
+        }
+      }
     } catch (e) {
-      debugPrint('[main] Non-fatal error detecting TV: $e');
+      debugPrint('[main] Non-fatal error detecting TV/Tablet: $e');
     }
   }
 

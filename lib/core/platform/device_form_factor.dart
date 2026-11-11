@@ -197,8 +197,6 @@ Future<void> restoreSystemUiAndOrientations({bool? isTv}) async {
 
       if (isTab) {
         await SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown,
           DeviceOrientation.landscapeLeft,
           DeviceOrientation.landscapeRight,
         ]);
