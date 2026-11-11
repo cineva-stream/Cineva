@@ -296,6 +296,27 @@ begin
   RenderMarqueeFrame(False);
 end;
 
+procedure LayoutFinishedPage();
+begin
+  WizardForm.FinishedHeadingLabel.Left := ScaleX(28);
+  WizardForm.FinishedHeadingLabel.Top := ScaleY(16);
+  WizardForm.FinishedHeadingLabel.Width := WizardForm.OuterNotebook.Width - ScaleX(56);
+  WizardForm.FinishedHeadingLabel.Font.Size := 14;
+  WizardForm.FinishedHeadingLabel.StyleElements := WizardForm.FinishedHeadingLabel.StyleElements - [seFont];
+  WizardForm.FinishedHeadingLabel.Font.Color := CLR_AMBER_LIGHT;
+  WizardForm.FinishedHeadingLabel.AdjustHeight();
+
+  WizardForm.FinishedLabel.Left := ScaleX(28);
+  WizardForm.FinishedLabel.Top := WizardForm.FinishedHeadingLabel.Top + WizardForm.FinishedHeadingLabel.Height + ScaleY(12);
+  WizardForm.FinishedLabel.Width := WizardForm.OuterNotebook.Width - ScaleX(56);
+  WizardForm.FinishedLabel.AdjustHeight();
+
+  WizardForm.RunList.Left := ScaleX(28);
+  WizardForm.RunList.Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + ScaleY(18);
+  WizardForm.RunList.Width := WizardForm.OuterNotebook.Width - ScaleX(56);
+  WizardForm.RunList.Height := ScaleY(72);
+end;
+
 procedure UpdateStepIndicators(ActiveStep: Integer);
 var
   I: Integer;
@@ -510,20 +531,7 @@ begin
   MarqueeImg.Stretch := True;
 
   // ── 4. Tata Ulang Halaman Selesai (FinishedPage) Agar Selaras di Bawah Marquee ──
-  WizardForm.FinishedHeadingLabel.Left := ScaleX(28);
-  WizardForm.FinishedHeadingLabel.Top := ScaleY(16);
-  WizardForm.FinishedHeadingLabel.Width := WizardForm.OuterNotebook.Width - ScaleX(56);
-  WizardForm.FinishedHeadingLabel.Font.Size := 14;
-  WizardForm.FinishedHeadingLabel.StyleElements := WizardForm.FinishedHeadingLabel.StyleElements - [seFont];
-  WizardForm.FinishedHeadingLabel.Font.Color := CLR_AMBER_LIGHT;
-
-  WizardForm.FinishedLabel.Left := ScaleX(28);
-  WizardForm.FinishedLabel.Top := WizardForm.FinishedHeadingLabel.Top + WizardForm.FinishedHeadingLabel.Height + ScaleY(10);
-  WizardForm.FinishedLabel.Width := WizardForm.OuterNotebook.Width - ScaleX(56);
-
-  WizardForm.RunList.Left := ScaleX(28);
-  WizardForm.RunList.Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + ScaleY(16);
-  WizardForm.RunList.Width := WizardForm.OuterNotebook.Width - ScaleX(56);
+  LayoutFinishedPage();
 
   // ── 5. Label Branding Halus di Pojok Kiri Bawah Footer ──
   FooterBrandLbl := TNewStaticText.Create(WizardForm);
@@ -590,6 +598,7 @@ begin
         CurrentTitleText := CustomMessage('TitleFinished');
         CurrentSubText := CustomMessage('SubFinished');
         UpdateStepIndicators(4);
+        LayoutFinishedPage();
       end;
   end;
 
