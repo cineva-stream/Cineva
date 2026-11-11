@@ -13,7 +13,7 @@ import '../../data/hybrid_pairing_service.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/avatar_display.dart';
 
-/// 10-Foot UI presentation for Android TV and Windows Desktop.
+/// 10-Foot UI presentation for Android TV, Tablet, and Windows Desktop.
 ///
 /// Displays a high-contrast QR code for instant smartphone profile pairing,
 /// operating over both Local Wi-Fi and 4G/5G mobile cellular via Cloud Relay.
@@ -50,7 +50,10 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
   }
 
   Future<void> _startSession() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _isReceiving = false;
+    });
     try {
       final info = await _pairingService.startSession(
         onStatusChanged: (status) {
@@ -118,7 +121,11 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
   Widget build(BuildContext context) {
     final s = ref.watch(appStringsProvider);
     final size = MediaQuery.sizeOf(context);
-    final isCompact = size.width < 800;
+    final isLandscape = size.width > size.height;
+    // Keep side-by-side layout on 720p/1080p landscape TVs (e.g. 640x360, 853x480)
+    // and only stack vertically on portrait phones/tablets or very narrow windows.
+    final isCompact = size.width < 580 || (!isLandscape && size.width < 760);
+    final isShortScreen = size.height < 560;
 
     if (_isSuccess) {
       return _buildSuccessCelebration();
@@ -126,17 +133,20 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
 
     return Center(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 1100),
-        padding: EdgeInsets.symmetric(horizontal: isCompact ? 20 : 40, vertical: 24),
+        constraints: const BoxConstraints(maxWidth: 1120),
+        padding: EdgeInsets.symmetric(
+          horizontal: isCompact ? 20 : (isShortScreen ? 28 : 44),
+          vertical: isShortScreen ? 12 : 24,
+        ),
         child: isCompact
             ? SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildInstructionsColumn(s),
+                    _buildInstructionsColumn(s, isShortScreen: isShortScreen),
                     const SizedBox(height: 24),
-                    _buildQrCard(),
+                    _buildQrCard(isShortScreen: isShortScreen),
                   ],
                 ),
               )
@@ -147,15 +157,18 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                     flex: 6,
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
-                      child: _buildInstructionsColumn(s),
+                      child: _buildInstructionsColumn(
+                        s,
+                        isShortScreen: isShortScreen,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 48),
+                  SizedBox(width: isShortScreen ? 28 : 48),
                   Expanded(
                     flex: 5,
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
-                      child: _buildQrCard(),
+                      child: _buildQrCard(isShortScreen: isShortScreen),
                     ),
                   ),
                 ],
@@ -164,7 +177,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
     );
   }
 
-  Widget _buildInstructionsColumn(dynamic s) {
+  Widget _buildInstructionsColumn(dynamic s, {required bool isShortScreen}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -174,9 +187,9 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.15),
+                color: AppColors.primary.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: AppColors.primary.withValues(alpha: 0.4),
@@ -208,7 +221,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       color: AppColors.primaryLight,
-                      letterSpacing: 1.0,
+                      letterSpacing: 1.1,
                     ),
                   ),
                 ],
@@ -217,21 +230,23 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
           ],
         ),
 
-        const SizedBox(height: 14),
+        SizedBox(height: isShortScreen ? 10 : 14),
 
         // Title
         Text(
-          s.isIndonesian ? 'Tautkan Akun Cineva Anda' : 'Connect Your Cineva Account',
+          s.isIndonesian
+              ? 'Tautkan Akun Cineva Anda'
+              : 'Connect Your Cineva Account',
           style: GoogleFonts.outfit(
-            fontSize: 30,
+            fontSize: isShortScreen ? 24 : 32,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: AppColors.textPrimary,
             letterSpacing: -0.5,
             height: 1.15,
           ),
         ),
 
-        const SizedBox(height: 8),
+        SizedBox(height: isShortScreen ? 6 : 8),
 
         // Subtitle
         Text(
@@ -239,37 +254,52 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
               ? 'Pindai QR code ini melalui aplikasi Cineva di handphone Anda. Bekerja otomatis baik di Wi-Fi rumah maupun paket data seluler (4G/5G).'
               : 'Scan this QR code from your Cineva smartphone app. Works seamlessly over home Wi-Fi and mobile cellular (4G/5G).',
           style: GoogleFonts.inter(
-            fontSize: 13.5,
-            color: const Color(0xFFB0B0C4),
+            fontSize: isShortScreen ? 12.5 : 13.5,
+            color: AppColors.textSecondary,
             height: 1.5,
           ),
         ),
 
-        const SizedBox(height: 24),
+        SizedBox(height: isShortScreen ? 14 : 22),
 
         // 3-Step Guided Instructions
         _buildStepItem(
           number: '1',
           icon: Icons.phone_android_rounded,
-          title: s.isIndonesian ? 'Buka Cineva di Handphone' : 'Open Cineva on Smartphone',
-          desc: s.isIndonesian ? 'Gunakan aplikasi Cineva di smartphone Android Anda' : 'Launch the Cineva Android app',
+          title: s.isIndonesian
+              ? 'Buka Cineva di Handphone'
+              : 'Open Cineva on Smartphone',
+          desc: s.isIndonesian
+              ? 'Gunakan aplikasi Cineva di smartphone Android Anda'
+              : 'Launch the Cineva Android app',
+          isShortScreen: isShortScreen,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: isShortScreen ? 8 : 10),
         _buildStepItem(
           number: '2',
           icon: Iconsax.scan_barcode,
-          title: s.isIndonesian ? 'Pilih "Tautkan ke TV"' : 'Select "Connect to TV"',
-          desc: s.isIndonesian ? 'Masuk ke Pengaturan ➔ Tautkan ke Android TV / PC' : 'Go to Settings ➔ Connect to Android TV / PC',
+          title: s.isIndonesian
+              ? 'Pilih "Tautkan ke TV"'
+              : 'Select "Connect to TV"',
+          desc: s.isIndonesian
+              ? 'Masuk ke Pengaturan ➔ Tautkan ke Android TV / PC'
+              : 'Go to Settings ➔ Connect to Android TV / PC',
+          isShortScreen: isShortScreen,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: isShortScreen ? 8 : 10),
         _buildStepItem(
           number: '3',
           icon: Icons.qr_code_scanner_rounded,
-          title: s.isIndonesian ? 'Pindai QR Code di Samping' : 'Scan the QR Code Beside',
-          desc: s.isIndonesian ? 'Arahkan kamera ponsel Anda untuk sinkronisasi instan' : 'Aim your phone camera for instant transfer',
+          title: s.isIndonesian
+              ? 'Pindai QR Code di Samping'
+              : 'Scan the QR Code Beside',
+          desc: s.isIndonesian
+              ? 'Arahkan kamera ponsel Anda untuk sinkronisasi instan'
+              : 'Aim your phone camera for instant transfer',
+          isShortScreen: isShortScreen,
         ),
 
-        const SizedBox(height: 28),
+        SizedBox(height: isShortScreen ? 16 : 26),
 
         // Action Buttons (TV D-Pad & Mouse friendly)
         Wrap(
@@ -278,27 +308,37 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
           children: [
             TvFocusable(
               autofocus: true,
+              showFocusBorder: true,
               focusedScale: 1.05,
-              glowBlurRadius: 14,
+              glowBlurRadius: 16,
               borderRadius: BorderRadius.circular(12),
               onTap: _skipAsGuest,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: isShortScreen ? 10 : 12,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: AppColors.surfaceVariant,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: AppColors.borderFocused,
                     width: 1,
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.person_outline_rounded, color: Colors.white, size: 18),
+                    const Icon(
+                      Icons.person_outline_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Text(
-                      s.isIndonesian ? 'Masuk sebagai Tamu' : 'Continue as Guest',
+                      s.isIndonesian
+                          ? 'Masuk sebagai Tamu'
+                          : 'Continue as Guest',
                       style: GoogleFonts.inter(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -309,29 +349,39 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                 ),
               ),
             ),
-            if (widget.showManualOption && widget.onSwitchToManual != null) ...[
+            if (widget.showManualOption && widget.onSwitchToManual != null)
               TvFocusable(
+                showFocusBorder: true,
                 focusedScale: 1.05,
-                glowBlurRadius: 14,
+                glowBlurRadius: 16,
                 borderRadius: BorderRadius.circular(12),
                 onTap: widget.onSwitchToManual,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: isShortScreen ? 10 : 12,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.4),
+                      color: AppColors.primary.withValues(alpha: 0.45),
                       width: 1,
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.keyboard_outlined, color: AppColors.primary, size: 18),
+                      const Icon(
+                        Icons.keyboard_outlined,
+                        color: AppColors.primary,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Text(
-                        s.isIndonesian ? 'Setup Manual di PC' : 'Manual PC Setup',
+                        s.isIndonesian
+                            ? 'Setup Manual di PC'
+                            : 'Manual PC Setup',
                         style: GoogleFonts.inter(
                           color: AppColors.primaryLight,
                           fontWeight: FontWeight.w700,
@@ -342,7 +392,46 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                   ),
                 ),
               ),
-            ],
+            TvFocusable(
+              showFocusBorder: true,
+              focusedScale: 1.05,
+              glowBlurRadius: 14,
+              borderRadius: BorderRadius.circular(12),
+              onTap: _isLoading ? null : _startSession,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: isShortScreen ? 10 : 12,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.borderSubtle,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.refresh_rounded,
+                      color: AppColors.textSecondary,
+                      size: 17,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      s.isIndonesian ? 'Muat Ulang QR' : 'Refresh QR',
+                      style: GoogleFonts.inter(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ],
@@ -354,68 +443,92 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
     required IconData icon,
     required String title,
     required String desc,
+    required bool isShortScreen,
   }) {
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.2),
-              width: 1,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              number,
-              style: GoogleFonts.inter(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: isShortScreen ? 8 : 11,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.borderSubtle,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: isShortScreen ? 30 : 34,
+            height: isShortScreen ? 30 : 34,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.35),
+                width: 1,
               ),
             ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
+            child: Center(
+              child: Text(
+                number,
+                style: GoogleFonts.outfit(
+                  color: AppColors.primaryLight,
+                  fontWeight: FontWeight.w800,
                   fontSize: 13,
                 ),
               ),
-              Text(
-                desc,
-                style: GoogleFonts.inter(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: isShortScreen ? 12.5 : 13,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  desc,
+                  style: GoogleFonts.inter(
+                    color: AppColors.textSecondary,
+                    fontSize: isShortScreen ? 10.5 : 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            icon,
+            size: 18,
+            color: AppColors.textMuted,
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildQrCard() {
+  Widget _buildQrCard({required bool isShortScreen}) {
     final s = ref.watch(appStringsProvider);
-    if (_isLoading || _sessionInfo == null) {
+    final qrSize = isShortScreen ? 156.0 : 206.0;
+
+    if (_isLoading) {
       return Container(
-        height: 340,
+        height: isShortScreen ? 260 : 340,
         decoration: BoxDecoration(
-          color: const Color(0xFF14141E),
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          border: Border.all(color: AppColors.borderFocused),
         ),
         child: const Center(
           child: CircularProgressIndicator(color: AppColors.primary),
@@ -423,24 +536,82 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
       );
     }
 
+    if (_sessionInfo == null) {
+      return Container(
+        height: isShortScreen ? 260 : 340,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.borderFocused),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.wifi_off_rounded,
+              color: AppColors.primary,
+              size: 40,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              s.isIndonesian
+                  ? 'Gagal membuat sesi QR'
+                  : 'Failed to start QR session',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TvFocusable(
+              showFocusBorder: true,
+              borderRadius: BorderRadius.circular(10),
+              onTap: _startSession,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  s.isIndonesian ? 'Coba Lagi' : 'Retry',
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isShortScreen ? 18 : 26),
       decoration: BoxDecoration(
-        color: const Color(0xFF13131E),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.3),
+          color: AppColors.primary.withValues(alpha: 0.32),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.7),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.75),
+            blurRadius: 28,
+            offset: const Offset(0, 10),
           ),
           BoxShadow(
             color: AppColors.primary.withValues(alpha: 0.12),
-            blurRadius: 30,
+            blurRadius: 32,
             offset: const Offset(0, 0),
           ),
         ],
@@ -450,38 +621,41 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
         children: [
           // QR Image Frame
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isShortScreen ? 12 : 16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 10,
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 12,
                 ),
               ],
             ),
             child: QrImageView(
               data: _sessionInfo!.qrPayload,
               version: QrVersions.auto,
-              size: 210,
+              size: qrSize,
               backgroundColor: Colors.white,
               eyeStyle: const QrEyeStyle(
                 eyeShape: QrEyeShape.square,
-                color: Color(0xFF0F0F14),
+                color: AppColors.background,
               ),
               dataModuleStyle: const QrDataModuleStyle(
                 dataModuleShape: QrDataModuleShape.square,
-                color: Color(0xFF0F0F14),
+                color: AppColors.background,
               ),
               embeddedImage: const AssetImage('assets/images/cineva_icon.png'),
-              embeddedImageStyle: const QrEmbeddedImageStyle(
-                size: Size(38, 38),
+              embeddedImageStyle: QrEmbeddedImageStyle(
+                size: Size(
+                  isShortScreen ? 30 : 38,
+                  isShortScreen ? 30 : 38,
+                ),
               ),
             ),
           ),
 
-          const SizedBox(height: 18),
+          SizedBox(height: isShortScreen ? 12 : 18),
 
           // Listening Radar or Receiving Status
           Row(
@@ -521,30 +695,49 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                     ],
                   ),
                 )
-                    .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                    .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.3, 1.3), duration: 800.ms),
+                    .animate(
+                      onPlay: (controller) => controller.repeat(reverse: true),
+                    )
+                    .scale(
+                      begin: const Offset(0.8, 0.8),
+                      end: const Offset(1.3, 1.3),
+                      duration: 800.ms,
+                    ),
                 const SizedBox(width: 8),
-                Text(
-                  s.tvSyncWaitingScan,
-                  style: GoogleFonts.inter(
-                    color: AppColors.primaryLight,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
+                Flexible(
+                  child: Text(
+                    s.tvSyncWaitingScan,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      color: AppColors.primaryLight,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
             ],
           ),
 
-          const SizedBox(height: 8),
+          SizedBox(height: isShortScreen ? 8 : 12),
 
-          // Network & PIN Info
-          Text(
-            s.tvSyncAlternativeCode(_sessionInfo!.pinCode),
-            style: GoogleFonts.inter(
-              color: Colors.white.withValues(alpha: 0.6),
-              fontSize: 11,
-              letterSpacing: 0.5,
+          // Network & PIN Info Pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.borderSubtle),
+            ),
+            child: Text(
+              s.tvSyncAlternativeCode(_sessionInfo!.pinCode),
+              style: GoogleFonts.inter(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
         ],
@@ -559,7 +752,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
         constraints: const BoxConstraints(maxWidth: 480),
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
         decoration: BoxDecoration(
-          color: const Color(0xFF141420),
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(28),
           border: Border.all(
             color: AppColors.primary.withValues(alpha: 0.5),
@@ -583,23 +776,30 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
               showGlow: true,
               borderWidth: 3,
               borderColor: AppColors.primary,
-            )
-                .animate()
-                .scale(begin: const Offset(0.5, 0.5), end: const Offset(1, 1), duration: 400.ms, curve: Curves.easeOutBack),
+            ).animate().scale(
+                  begin: const Offset(0.5, 0.5),
+                  end: const Offset(1, 1),
+                  duration: 400.ms,
+                  curve: Curves.easeOutBack,
+                ),
 
             const SizedBox(height: 20),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 24),
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   s.tvSyncSuccessTitle,
                   style: GoogleFonts.outfit(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -616,10 +816,14 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
               ),
             ),
 
-            if ((_syncedWatchlistCount ?? 0) > 0 || (_syncedHistoryCount ?? 0) > 0) ...[
+            if ((_syncedWatchlistCount ?? 0) > 0 ||
+                (_syncedHistoryCount ?? 0) > 0) ...[
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -629,7 +833,10 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                   ),
                 ),
                 child: Text(
-                  s.tvSyncSummaryText(_syncedWatchlistCount ?? 0, _syncedHistoryCount ?? 0),
+                  s.tvSyncSummaryText(
+                    _syncedWatchlistCount ?? 0,
+                    _syncedHistoryCount ?? 0,
+                  ),
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
