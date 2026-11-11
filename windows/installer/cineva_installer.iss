@@ -1,5 +1,5 @@
 ; ==============================================================================
-; Inno Setup Script untuk Cineva Windows Installer
+; Inno Setup Script untuk Cineva Windows Installer (Full Custom Dark Cinema UI)
 ; Menghasilkan 1 file tunggal: Cineva_setup_v{versi}.exe
 ; ==============================================================================
 
@@ -13,7 +13,7 @@
 #define MyAppExeName "cineva.exe"
 
 [Setup]
-; Identifikasi unik aplikasi (GUID baru khusus untuk Cineva)
+; Identifikasi unik aplikasi (GUID khusus untuk Cineva)
 AppId={{5D8E6F34-87A2-4CFB-9B21-A9D4E76A3D19}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -26,6 +26,7 @@ AppUpdatesURL={#MyAppURL}
 ; Direktori default instalasi (mendukung per-user atau per-machine otomatis)
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
+DisableProgramGroupPage=yes
 AllowNoIcons=yes
 
 ; Syarat dan Ketentuan (Halaman LEGAL) sebelum instalasi dimulai
@@ -39,9 +40,11 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 OutputDir=..\..\build\installer
 OutputBaseFilename=Cineva_setup_v{#MyAppVersion}
 
-; Gaya Wizard modern & kompresi solid tingkat tinggi (LZMA2)
-WizardStyle=modern
-WizardSizePercent=100
+; Gaya Wizard Modern Dark Mode & Palet Obsidian (#0E0E14)
+WizardStyle=modern dark
+WizardBackColor=#0E0E14
+WizardBackColorDynamicDark=#0E0E14
+WizardSizePercent=115,110
 Compression=lzma2/max
 SolidCompression=yes
 
@@ -54,12 +57,15 @@ Name: "indonesian"; MessagesFile: "Indonesian.isl"; LicenseFile: "terms_and_cond
 Name: "english"; MessagesFile: "compiler:Default.isl"; LicenseFile: "terms_and_conditions_en.rtf"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
 
 [Files]
+; Aset Visual Header Animasi Poster & Logo Brand (hanya diekstrak ke {tmp} saat setup)
+Source: "marquee_strip.bmp"; Flags: dontcopy noencryption
+Source: "brand_logo.bmp"; Flags: dontcopy noencryption
+
 ; Seluruh berkas keluaran dari 'flutter build windows --release'
 Source: "..\..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Catatan: Jangan gunakan "Flags: ignoreversion" pada berkas sistem bersama
 
 [Icons]
 ; Pintasan di Start Menu
@@ -73,25 +79,455 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
 
 [CustomMessages]
+indonesian.Step1=1. Lisensi
+indonesian.Step2=2. Lokasi
+indonesian.Step3=3. Instalasi
+indonesian.Step4=4. Selesai
+indonesian.TagLicense=LANGKAH 01 / 04  •  PERJANJIAN LISENSI
+indonesian.TitleLicense=Syarat & Ketentuan Penggunaan
+indonesian.SubLicense=Harap tinjau dan setujui ketentuan layanan sebelum memasang Cineva di PC Anda.
+indonesian.TagDir=LANGKAH 02 / 04  •  KONFIGURASI INSTALASI
+indonesian.TitleDir=Pilih Lokasi & Opsi Pintasan
+indonesian.SubDir=Tentukan direktori penyimpanan aplikasi serta pintasan akses cepat Cineva.
+indonesian.TagReady=LANGKAH 02 / 04  •  KONFIRMASI AKHIR
+indonesian.TitleReady=Siap Memasang Cineva Stream
+indonesian.SubReady=Seluruh konfigurasi telah siap. Klik Pasang untuk memulai ekstraksi berkas.
+indonesian.TagInstalling=LANGKAH 03 / 04  •  MEMASANG CINEVA
+indonesian.TitleInstalling=Menyiapkan Pengalaman Sinematik Anda...
+indonesian.SubInstalling1=Streaming Film & Serial TV favorit dengan antarmuka Obsidian modern.
+indonesian.SubInstalling2=Dukungan penuh sinkronisasi instan antar HP, Tablet, PC & Android TV.
+indonesian.SubInstalling3=Pemutar video berkinerja tinggi dengan kustomisasi subtitle real-time.
+indonesian.TagFinished=LANGKAH 04 / 04  •  INSTALASI SELESAI
+indonesian.TitleFinished=Cineva Siap Digunakan!
+indonesian.SubFinished=Pemasangan berhasil diselesaikan. Selamat menikmati tayangan favorit Anda.
+indonesian.FooterTagline=CINEVA STREAM  •  PENGALAMAN BIOSKOP MODERN
+
 indonesian.UninstallTitle=Pelepasan Cineva
 indonesian.UninstallPrompt=Apakah Anda yakin ingin menghapus Cineva dan semua komponennya dari komputer Anda?
-indonesian.KeepMyData=Simpan data saya
-indonesian.BtnYes=&Ya
-indonesian.BtnNo=&Tidak
+indonesian.KeepMyData=Simpan data saya (Watchlist, Riwayat Tontonan & Pengaturan)
+indonesian.BtnYes=&Ya, Hapus
+indonesian.BtnNo=&Batal
+
+english.Step1=1. License
+english.Step2=2. Location
+english.Step3=3. Install
+english.Step4=4. Finish
+english.TagLicense=STEP 01 / 04  •  LICENSE AGREEMENT
+english.TitleLicense=Software Terms & Conditions
+english.SubLicense=Please review and accept the license agreement before installing Cineva on your PC.
+english.TagDir=STEP 02 / 04  •  INSTALLATION SETUP
+english.TitleDir=Choose Location & Shortcuts
+english.SubDir=Select the destination folder and desktop shortcut preferences for Cineva.
+english.TagReady=STEP 02 / 04  •  READY TO INSTALL
+english.TitleReady=Ready to Install Cineva Stream
+english.SubReady=All settings are configured. Click Install to begin extracting application files.
+english.TagInstalling=STEP 03 / 04  •  INSTALLING CINEVA
+english.TitleInstalling=Setting Up Your Cinema Experience...
+english.SubInstalling1=Stream movies & TV series in a sleek Obsidian & Cinema Amber interface.
+english.SubInstalling2=Seamless multi-device sync across Smartphone, Tablet, PC & Android TV.
+english.SubInstalling3=High-performance media engine with real-time subtitle customization.
+english.TagFinished=STEP 04 / 04  •  SETUP COMPLETE
+english.TitleFinished=Cineva is Ready to Stream!
+english.SubFinished=Installation completed successfully. Launch Cineva and start watching.
+english.FooterTagline=CINEVA STREAM  •  MODERN CINEMA EXPERIENCE
 
 english.UninstallTitle=Cineva Uninstall
 english.UninstallPrompt=Are you sure you want to completely remove Cineva and all of its components from your computer?
-english.KeepMyData=Keep my data
-english.BtnYes=&Yes
-english.BtnNo=&No
+english.KeepMyData=Keep my data (Watchlist, Watch History & Settings)
+english.BtnYes=&Yes, Remove
+english.BtnNo=&Cancel
 
 [Code]
+const
+  MARQUEE_VIEW_W = 700;
+  MARQUEE_VIEW_H = 160;
+  MARQUEE_TILE_W = 896;
+  MARQUEE_TIMER_ID = 777;
+  MARQUEE_INTERVAL_MS = 28;
+
+  // Palet Warna BGR (TColor: $BBGGRR)
+  CLR_OBSIDIAN_BG    = $0A0707; // #07070A
+  CLR_CHARCOAL_BODY  = $140E0E; // #0E0E14
+  CLR_CARD_SURFACE   = $1F1616; // #16161F
+  CLR_PILL_INACTIVE  = $221818; // #181822
+  CLR_PILL_DONE      = $0F2233; // #33220F (Dark Amber Tint)
+  CLR_AMBER_PRIMARY  = $0095FF; // #FF9500 (Cinema Amber)
+  CLR_AMBER_LIGHT    = $47B3FF; // #FFB347 (Warm Gold)
+  CLR_TEXT_WHITE     = $FAF8F8; // #F8F8FA
+  CLR_TEXT_SLATE     = $DCE4E4; // #E4E4DC
+  CLR_TEXT_MUTED     = $827878; // #787882
+
+function SetTimer(hWnd: HWND; nIDEvent, uElapse: UINT; lpTimerFunc: LongWord): UINT;
+  external 'SetTimer@user32.dll stdcall';
+function KillTimer(hWnd: HWND; uIDEvent: UINT): BOOL;
+  external 'KillTimer@user32.dll stdcall';
+function BitBlt(DestDC: THandle; X, Y, Width, Height: Integer; SrcDC: THandle; XSrc, YSrc: Integer; Rop: DWORD): BOOL;
+  external 'BitBlt@gdi32.dll stdcall';
+
 var
   KeepDataChecked: Boolean;
+
+  // Komponen Header & Animasi Poster Film
+  HeaderPanel: TPanel;
+  TopBrandBar: TPanel;
+  BrandLogoImg: TBitmapImage;
+  BrandTitleLbl: TNewStaticText;
+  BrandVerLbl: TNewStaticText;
+  StepPanels: array[1..4] of TPanel;
+  StepLabels: array[1..4] of TNewStaticText;
+
+  MarqueeImg: TBitmapImage;
+  StripBmp: TBitmap;
+  BufferBmp: TBitmap;
+  MarqueeOffsetX: Integer;
+  MarqueeTickCount: Integer;
+
+  CurrentTagText: String;
+  CurrentTitleText: String;
+  CurrentSubText: String;
+  CurrentWizardPageID: Integer;
+
+procedure RenderMarqueeFrame();
+var
+  SubTextToDraw: String;
+  CycleIdx: Integer;
+begin
+  if (StripBmp = nil) or (BufferBmp = nil) or (MarqueeImg = nil) then
+    Exit;
+
+  // Salin potongan poster film sebesar 700x160 dari StripBmp via GDI BitBlt (SRCCOPY = $00CC0020)
+  BitBlt(
+    BufferBmp.Canvas.Handle,
+    0,
+    0,
+    MARQUEE_VIEW_W,
+    MARQUEE_VIEW_H,
+    StripBmp.Canvas.Handle,
+    MarqueeOffsetX,
+    0,
+    $00CC0020
+  );
+
+  // Saat proses instalasi berjalan, rotasikan teks highlight fitur setiap ~3.5 detik
+  SubTextToDraw := CurrentSubText;
+  if CurrentWizardPageID = wpInstalling then
+  begin
+    CycleIdx := (MarqueeTickCount div 120) mod 3;
+    if CycleIdx = 0 then
+      SubTextToDraw := CustomMessage('SubInstalling1')
+    else if CycleIdx = 1 then
+      SubTextToDraw := CustomMessage('SubInstalling2')
+    else
+      SubTextToDraw := CustomMessage('SubInstalling3');
+  end;
+
+  BufferBmp.Canvas.Brush.Style := bsClear;
+  BufferBmp.Canvas.Font.Name := 'Segoe UI';
+
+  // 1. Label Kategori / Step Tag (Cinema Amber Bold)
+  BufferBmp.Canvas.Font.Size := 8;
+  BufferBmp.Canvas.Font.Style := [fsBold];
+  BufferBmp.Canvas.Font.Color := $000000;
+  BufferBmp.Canvas.TextOut(27, 65, CurrentTagText);
+  BufferBmp.Canvas.Font.Color := CLR_AMBER_PRIMARY;
+  BufferBmp.Canvas.TextOut(26, 64, CurrentTagText);
+
+  // 2. Judul Utama Halaman (Putih Tebal dengan Drop Shadow Halus)
+  BufferBmp.Canvas.Font.Size := 16;
+  BufferBmp.Canvas.Font.Style := [fsBold];
+  BufferBmp.Canvas.Font.Color := $000000;
+  BufferBmp.Canvas.TextOut(27, 85, CurrentTitleText);
+  BufferBmp.Canvas.Font.Color := CLR_TEXT_WHITE;
+  BufferBmp.Canvas.TextOut(26, 84, CurrentTitleText);
+
+  // 3. Subjudul Deskripsi Halaman (Slate Terang)
+  BufferBmp.Canvas.Font.Size := 9;
+  BufferBmp.Canvas.Font.Style := [];
+  BufferBmp.Canvas.Font.Color := $000000;
+  BufferBmp.Canvas.TextOut(27, 119, SubTextToDraw);
+  BufferBmp.Canvas.Font.Color := CLR_TEXT_SLATE;
+  BufferBmp.Canvas.TextOut(26, 118, SubTextToDraw);
+
+  MarqueeImg.Bitmap.Assign(BufferBmp);
+end;
+
+procedure OnMarqueeTimer(hWnd: HWND; uMsg: UINT; idEvent: UINT; dwTime: DWORD);
+begin
+  MarqueeOffsetX := (MarqueeOffsetX + 1) mod MARQUEE_TILE_W;
+  MarqueeTickCount := MarqueeTickCount + 1;
+  RenderMarqueeFrame();
+end;
+
+procedure UpdateStepIndicators(ActiveStep: Integer);
+var
+  I: Integer;
+  BaseCaption: String;
+begin
+  for I := 1 to 4 do
+  begin
+    if StepPanels[I] = nil then
+      Continue;
+
+    BaseCaption := CustomMessage('Step' + IntToStr(I));
+    StepLabels[I].StyleElements := StepLabels[I].StyleElements - [seFont];
+
+    if I = ActiveStep then
+    begin
+      StepPanels[I].Color := CLR_AMBER_PRIMARY;
+      StepLabels[I].Font.Color := CLR_OBSIDIAN_BG;
+      StepLabels[I].Font.Style := [fsBold];
+      StepLabels[I].Caption := BaseCaption;
+    end
+    else if I < ActiveStep then
+    begin
+      StepPanels[I].Color := CLR_PILL_DONE;
+      StepLabels[I].Font.Color := CLR_AMBER_LIGHT;
+      StepLabels[I].Font.Style := [fsBold];
+      StepLabels[I].Caption := '✓ ' + BaseCaption;
+    end
+    else
+    begin
+      StepPanels[I].Color := CLR_PILL_INACTIVE;
+      StepLabels[I].Font.Color := CLR_TEXT_MUTED;
+      StepLabels[I].Font.Style := [];
+      StepLabels[I].Caption := BaseCaption;
+    end;
+  end;
+end;
+
+procedure InitializeWizard();
+var
+  HeaderH, TopBarH, MarqueeH, DeltaH: Integer;
+  PillW, PillH, PillGap, RightEdge, I: Integer;
+  FooterBrandLbl: TNewStaticText;
+begin
+  // Ekstrak aset visual ke direktori sementara {tmp}
+  ExtractTemporaryFile('marquee_strip.bmp');
+  ExtractTemporaryFile('brand_logo.bmp');
+
+  TopBarH := ScaleY(42);
+  MarqueeH := ScaleY(144);
+  HeaderH := TopBarH + MarqueeH;
+  DeltaH := HeaderH - WizardForm.MainPanel.Height;
+
+  // Sembunyikan header putih/bawaan Inno Setup
+  WizardForm.MainPanel.Visible := False;
+  WizardForm.Bevel.Visible := False;
+  WizardForm.WizardBitmapImage.Visible := False;
+  WizardForm.WizardBitmapImage2.Visible := False;
+
+  // Perbesar tinggi jendela agar ruang halaman konten di bawah Marquee tetap lega
+  WizardForm.ClientHeight := WizardForm.ClientHeight + DeltaH;
+
+  // Geser area konten utama (OuterNotebook) tepat di bawah Marquee Header
+  WizardForm.OuterNotebook.Top := HeaderH;
+  WizardForm.OuterNotebook.Height := WizardForm.Bevel1.Top - HeaderH;
+  WizardForm.InnerNotebook.Top := ScaleY(12);
+  WizardForm.InnerNotebook.Height := WizardForm.OuterNotebook.Height - ScaleY(20);
+
+  // Warna latar belakang Obsidian & Charcoal
+  WizardForm.Color := CLR_CHARCOAL_BODY;
+  WizardForm.LicenseMemo.Color := CLR_CARD_SURFACE;
+  WizardForm.LicenseMemo.BorderStyle := bsNone;
+
+  // ── 1. Panel Induk Header (TopBrandBar + Poster Wall Marquee) ──
+  HeaderPanel := TPanel.Create(WizardForm);
+  HeaderPanel.Parent := WizardForm;
+  HeaderPanel.Left := 0;
+  HeaderPanel.Top := 0;
+  HeaderPanel.Width := WizardForm.ClientWidth;
+  HeaderPanel.Height := HeaderH;
+  HeaderPanel.BevelOuter := bvNone;
+  HeaderPanel.ParentBackground := False;
+  HeaderPanel.Color := CLR_OBSIDIAN_BG;
+
+  // ── 2. Top Brand & 4-Step Progress Bar ──
+  TopBrandBar := TPanel.Create(HeaderPanel);
+  TopBrandBar.Parent := HeaderPanel;
+  TopBrandBar.Left := 0;
+  TopBrandBar.Top := 0;
+  TopBrandBar.Width := HeaderPanel.Width;
+  TopBrandBar.Height := TopBarH;
+  TopBrandBar.BevelOuter := bvNone;
+  TopBrandBar.ParentBackground := False;
+  TopBrandBar.Color := CLR_OBSIDIAN_BG;
+
+  BrandLogoImg := TBitmapImage.Create(TopBrandBar);
+  BrandLogoImg.Parent := TopBrandBar;
+  BrandLogoImg.Left := ScaleX(20);
+  BrandLogoImg.Top := (TopBarH - ScaleY(24)) div 2;
+  BrandLogoImg.Width := ScaleX(24);
+  BrandLogoImg.Height := ScaleY(24);
+  BrandLogoImg.Stretch := True;
+  BrandLogoImg.Bitmap.LoadFromFile(ExpandConstant('{tmp}\brand_logo.bmp'));
+
+  BrandTitleLbl := TNewStaticText.Create(TopBrandBar);
+  BrandTitleLbl.Parent := TopBrandBar;
+  BrandTitleLbl.Left := BrandLogoImg.Left + BrandLogoImg.Width + ScaleX(9);
+  BrandTitleLbl.Top := (TopBarH - ScaleY(19)) div 2;
+  BrandTitleLbl.Caption := 'CINEVA';
+  BrandTitleLbl.Font.Name := 'Segoe UI';
+  BrandTitleLbl.Font.Size := 11;
+  BrandTitleLbl.Font.Style := [fsBold];
+  BrandTitleLbl.StyleElements := BrandTitleLbl.StyleElements - [seFont];
+  BrandTitleLbl.Font.Color := CLR_TEXT_WHITE;
+
+  BrandVerLbl := TNewStaticText.Create(TopBrandBar);
+  BrandVerLbl.Parent := TopBrandBar;
+  BrandVerLbl.Left := BrandTitleLbl.Left + BrandTitleLbl.Width + ScaleX(8);
+  BrandVerLbl.Top := (TopBarH - ScaleY(15)) div 2 + ScaleY(1);
+  BrandVerLbl.Caption := 'v{#MyAppVersion}';
+  BrandVerLbl.Font.Name := 'Segoe UI';
+  BrandVerLbl.Font.Size := 8;
+  BrandVerLbl.Font.Style := [fsBold];
+  BrandVerLbl.StyleElements := BrandVerLbl.StyleElements - [seFont];
+  BrandVerLbl.Font.Color := CLR_AMBER_PRIMARY;
+
+  // Buat 4 Indikator Langkah (Step Pills) di sisi kanan TopBrandBar
+  PillW := ScaleX(82);
+  PillH := ScaleY(24);
+  PillGap := ScaleX(6);
+  RightEdge := TopBrandBar.Width - ScaleX(20);
+
+  for I := 4 downto 1 do
+  begin
+    StepPanels[I] := TPanel.Create(TopBrandBar);
+    StepPanels[I].Parent := TopBrandBar;
+    StepPanels[I].Width := PillW;
+    StepPanels[I].Height := PillH;
+    StepPanels[I].Left := RightEdge - ((4 - I + 1) * PillW) - ((4 - I) * PillGap);
+    StepPanels[I].Top := (TopBarH - PillH) div 2;
+    StepPanels[I].BevelOuter := bvNone;
+    StepPanels[I].ParentBackground := False;
+    StepPanels[I].Color := CLR_PILL_INACTIVE;
+
+    StepLabels[I] := TNewStaticText.Create(StepPanels[I]);
+    StepLabels[I].Parent := StepPanels[I];
+    StepLabels[I].AutoSize := False;
+    StepLabels[I].Left := 0;
+    StepLabels[I].Top := ScaleY(4);
+    StepLabels[I].Width := PillW;
+    StepLabels[I].Height := PillH - ScaleY(4);
+    StepLabels[I].Alignment := taCenter;
+    StepLabels[I].Font.Name := 'Segoe UI';
+    StepLabels[I].Font.Size := 8;
+    StepLabels[I].Caption := CustomMessage('Step' + IntToStr(I));
+  end;
+
+  // ── 3. Animated Cinema Poster Wall Marquee ──
+  StripBmp := TBitmap.Create();
+  StripBmp.LoadFromFile(ExpandConstant('{tmp}\marquee_strip.bmp'));
+
+  BufferBmp := TBitmap.Create();
+  BufferBmp.Width := MARQUEE_VIEW_W;
+  BufferBmp.Height := MARQUEE_VIEW_H;
+
+  MarqueeImg := TBitmapImage.Create(HeaderPanel);
+  MarqueeImg.Parent := HeaderPanel;
+  MarqueeImg.Left := 0;
+  MarqueeImg.Top := TopBarH;
+  MarqueeImg.Width := HeaderPanel.Width;
+  MarqueeImg.Height := MarqueeH;
+  MarqueeImg.Stretch := True;
+
+  // ── 4. Tata Ulang Halaman Selesai (FinishedPage) Agar Selaras di Bawah Marquee ──
+  WizardForm.FinishedHeadingLabel.Left := ScaleX(28);
+  WizardForm.FinishedHeadingLabel.Top := ScaleY(16);
+  WizardForm.FinishedHeadingLabel.Width := WizardForm.OuterNotebook.Width - ScaleX(56);
+  WizardForm.FinishedHeadingLabel.Font.Size := 14;
+  WizardForm.FinishedHeadingLabel.StyleElements := WizardForm.FinishedHeadingLabel.StyleElements - [seFont];
+  WizardForm.FinishedHeadingLabel.Font.Color := CLR_AMBER_LIGHT;
+
+  WizardForm.FinishedLabel.Left := ScaleX(28);
+  WizardForm.FinishedLabel.Top := WizardForm.FinishedHeadingLabel.Top + WizardForm.FinishedHeadingLabel.Height + ScaleY(10);
+  WizardForm.FinishedLabel.Width := WizardForm.OuterNotebook.Width - ScaleX(56);
+
+  WizardForm.RunList.Left := ScaleX(28);
+  WizardForm.RunList.Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + ScaleY(16);
+  WizardForm.RunList.Width := WizardForm.OuterNotebook.Width - ScaleX(56);
+
+  // ── 5. Label Branding Halus di Pojok Kiri Bawah Footer ──
+  FooterBrandLbl := TNewStaticText.Create(WizardForm);
+  FooterBrandLbl.Parent := WizardForm;
+  FooterBrandLbl.Left := ScaleX(24);
+  FooterBrandLbl.Top := WizardForm.CancelButton.Top + (WizardForm.CancelButton.Height - ScaleY(14)) div 2;
+  FooterBrandLbl.Caption := CustomMessage('FooterTagline');
+  FooterBrandLbl.Font.Name := 'Segoe UI';
+  FooterBrandLbl.Font.Size := 8;
+  FooterBrandLbl.Font.Style := [fsBold];
+  FooterBrandLbl.StyleElements := FooterBrandLbl.StyleElements - [seFont];
+  FooterBrandLbl.Font.Color := CLR_TEXT_MUTED;
+
+  // Mulai animasi Cinema Poster Wall (~35 FPS)
+  MarqueeOffsetX := 0;
+  MarqueeTickCount := 0;
+  CurrentWizardPageID := wpLicense;
+  CurrentTagText := CustomMessage('TagLicense');
+  CurrentTitleText := CustomMessage('TitleLicense');
+  CurrentSubText := CustomMessage('SubLicense');
+  UpdateStepIndicators(1);
+  RenderMarqueeFrame();
+
+  SetTimer(WizardForm.Handle, MARQUEE_TIMER_ID, MARQUEE_INTERVAL_MS, CreateCallback(@OnMarqueeTimer));
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  CurrentWizardPageID := CurPageID;
+
+  case CurPageID of
+    wpWelcome, wpLicense:
+      begin
+        CurrentTagText := CustomMessage('TagLicense');
+        CurrentTitleText := CustomMessage('TitleLicense');
+        CurrentSubText := CustomMessage('SubLicense');
+        UpdateStepIndicators(1);
+      end;
+    wpSelectDir, wpSelectComponents, wpSelectProgramGroup, wpSelectTasks:
+      begin
+        CurrentTagText := CustomMessage('TagDir');
+        CurrentTitleText := CustomMessage('TitleDir');
+        CurrentSubText := CustomMessage('SubDir');
+        UpdateStepIndicators(2);
+      end;
+    wpReady:
+      begin
+        CurrentTagText := CustomMessage('TagReady');
+        CurrentTitleText := CustomMessage('TitleReady');
+        CurrentSubText := CustomMessage('SubReady');
+        UpdateStepIndicators(2);
+      end;
+    wpPreparing, wpInstalling:
+      begin
+        CurrentTagText := CustomMessage('TagInstalling');
+        CurrentTitleText := CustomMessage('TitleInstalling');
+        CurrentSubText := CustomMessage('SubInstalling1');
+        UpdateStepIndicators(3);
+      end;
+    wpInfoAfter, wpFinished:
+      begin
+        CurrentTagText := CustomMessage('TagFinished');
+        CurrentTitleText := CustomMessage('TitleFinished');
+        CurrentSubText := CustomMessage('SubFinished');
+        UpdateStepIndicators(4);
+      end;
+  end;
+
+  RenderMarqueeFrame();
+end;
+
+procedure DeinitializeSetup();
+begin
+  if (WizardForm <> nil) and (WizardForm.Handle <> 0) then
+    KillTimer(WizardForm.Handle, MARQUEE_TIMER_ID);
+end;
 
 function InitializeUninstall(): Boolean;
 var
   CustomForm: TSetupForm;
+  HeaderBar: TPanel;
+  AccentLine: TPanel;
+  HeaderTitleLbl: TNewStaticText;
   PromptLabel: TNewStaticText;
   KeepDataCheckBox: TNewCheckBox;
   YesButton: TNewButton;
@@ -107,45 +543,81 @@ begin
     Exit;
   end;
 
-  CustomForm := CreateCustomForm(ScaleX(440), ScaleY(190), False, True);
+  CustomForm := CreateCustomForm(ScaleX(460), ScaleY(215), False, True);
   try
     CustomForm.Caption := CustomMessage('UninstallTitle');
     CustomForm.Position := poScreenCenter;
+    CustomForm.Color := CLR_CHARCOAL_BODY;
+
+    HeaderBar := TPanel.Create(CustomForm);
+    HeaderBar.Parent := CustomForm;
+    HeaderBar.Left := 0;
+    HeaderBar.Top := 0;
+    HeaderBar.Width := CustomForm.ClientWidth;
+    HeaderBar.Height := ScaleY(42);
+    HeaderBar.BevelOuter := bvNone;
+    HeaderBar.ParentBackground := False;
+    HeaderBar.Color := CLR_OBSIDIAN_BG;
+
+    HeaderTitleLbl := TNewStaticText.Create(HeaderBar);
+    HeaderTitleLbl.Parent := HeaderBar;
+    HeaderTitleLbl.Left := ScaleX(24);
+    HeaderTitleLbl.Top := ScaleY(12);
+    HeaderTitleLbl.Caption := 'CINEVA  •  ' + UpperCase(CustomMessage('UninstallTitle'));
+    HeaderTitleLbl.Font.Name := 'Segoe UI';
+    HeaderTitleLbl.Font.Size := 9;
+    HeaderTitleLbl.Font.Style := [fsBold];
+    HeaderTitleLbl.StyleElements := HeaderTitleLbl.StyleElements - [seFont];
+    HeaderTitleLbl.Font.Color := CLR_AMBER_PRIMARY;
+
+    AccentLine := TPanel.Create(CustomForm);
+    AccentLine.Parent := CustomForm;
+    AccentLine.Left := 0;
+    AccentLine.Top := HeaderBar.Height;
+    AccentLine.Width := CustomForm.ClientWidth;
+    AccentLine.Height := ScaleY(2);
+    AccentLine.BevelOuter := bvNone;
+    AccentLine.ParentBackground := False;
+    AccentLine.Color := CLR_AMBER_PRIMARY;
 
     PromptLabel := TNewStaticText.Create(CustomForm);
     PromptLabel.Parent := CustomForm;
     PromptLabel.Left := ScaleX(24);
-    PromptLabel.Top := ScaleY(22);
+    PromptLabel.Top := ScaleY(58);
     PromptLabel.Width := CustomForm.ClientWidth - ScaleX(48);
-    PromptLabel.Height := ScaleY(55);
+    PromptLabel.Height := ScaleY(48);
     PromptLabel.WordWrap := True;
     PromptLabel.Caption := CustomMessage('UninstallPrompt');
+    PromptLabel.Font.Name := 'Segoe UI';
+    PromptLabel.Font.Size := 9;
+    PromptLabel.StyleElements := PromptLabel.StyleElements - [seFont];
+    PromptLabel.Font.Color := CLR_TEXT_WHITE;
 
     KeepDataCheckBox := TNewCheckBox.Create(CustomForm);
     KeepDataCheckBox.Parent := CustomForm;
     KeepDataCheckBox.Left := ScaleX(24);
-    KeepDataCheckBox.Top := ScaleY(90);
+    KeepDataCheckBox.Top := ScaleY(112);
     KeepDataCheckBox.Width := CustomForm.ClientWidth - ScaleX(48);
-    KeepDataCheckBox.Height := ScaleY(22);
+    KeepDataCheckBox.Height := ScaleY(24);
     KeepDataCheckBox.Caption := CustomMessage('KeepMyData');
     KeepDataCheckBox.Checked := False;
 
     YesButton := TNewButton.Create(CustomForm);
     YesButton.Parent := CustomForm;
-    YesButton.Left := CustomForm.ClientWidth - ScaleX(185);
-    YesButton.Top := CustomForm.ClientHeight - ScaleY(44);
-    YesButton.Width := ScaleX(75);
-    YesButton.Height := ScaleY(25);
+    YesButton.Left := CustomForm.ClientWidth - ScaleX(206);
+    YesButton.Top := CustomForm.ClientHeight - ScaleY(46);
+    YesButton.Width := ScaleX(86);
+    YesButton.Height := ScaleY(28);
     YesButton.Caption := CustomMessage('BtnYes');
     YesButton.ModalResult := mrOk;
     YesButton.Default := True;
 
     NoButton := TNewButton.Create(CustomForm);
     NoButton.Parent := CustomForm;
-    NoButton.Left := CustomForm.ClientWidth - ScaleX(98);
-    NoButton.Top := CustomForm.ClientHeight - ScaleY(44);
-    NoButton.Width := ScaleX(75);
-    NoButton.Height := ScaleY(25);
+    NoButton.Left := CustomForm.ClientWidth - ScaleX(110);
+    NoButton.Top := CustomForm.ClientHeight - ScaleY(46);
+    NoButton.Width := ScaleX(86);
+    NoButton.Height := ScaleY(28);
     NoButton.Caption := CustomMessage('BtnNo');
     NoButton.ModalResult := mrCancel;
     NoButton.Cancel := True;
@@ -239,4 +711,3 @@ begin
     end;
   end;
 end;
-

@@ -41,6 +41,10 @@ Pembaruan Cineva versi 1.1.8 menghadirkan **Relayout Responsif Modern untuk Tabl
 ### 4. Penyegaran Visual Obsidian & Crimson Cinema UI
 * Pembaruan palet warna gelap sinematik (`AppColors` & `AppTheme`), peningkatan kontras tipografi, kartu kaca (*glassmorphism*), serta penyempurnaan *Splash Screen* dan modal opsi unduhan agar tampil lebih tegas, rapi, dan modern di segala ukuran layar.
 
+### 5. Desain Ulang Setup Installer Windows (Dark Obsidian & Animasi Poster Film)
+* **Cinema Poster Wall Marquee (~35 FPS)**: Header beranimasi mulus menggunakan deretan poster film miring dengan gradasi hitam Obsidian dan aksen *Cinema Amber* (`#FF9500`).
+* **Modern Dark Step-by-Step Wizard**: Indikator progres 4 langkah interaktif (`1. Lisensi ➔ 2. Lokasi ➔ 3. Instalasi ➔ 4. Selesai`), tema gelap penuh (`WizardStyle=modern dark`), dokumen Syarat & Ketentuan bertema gelap, serta dialog *Uninstall* bergaya Obsidian.
+
 ---
 
 ## Riwayat Versi Sebelumnya
@@ -50,12 +54,6 @@ Pembaruan Cineva versi 1.1.8 menghadirkan **Relayout Responsif Modern untuk Tabl
 * **Masuk dengan Google & Sinkronisasi Cloud**: Integrasi Google Sign-In & Firebase Realtime Database untuk sinkronisasi multi-perangkat otomatis dan pengisian profil cerdas.
 * **Desain Ulang Side Panel Streaming & Subtitle Minimalis**: Panel samping hitam obsidian pada pemutar video dan pengaturan subtitle *real-time* yang ringkas.
 * **Keamanan Build, ProGuard & Obfuscation**: Aturan proteksi refleksi penuh pada `proguard-rules.pro` dan pengamanan endpoint runtime.
-
-### Cineva v1.1.6
-* **Desain Ulang Filter Kategori Beranda**: Full Grid responsif dan Carousel Top 8-10 untuk Film dan Serial TV dengan *infinite scroll* berkelanjutan.
-* **Pembaruan Masif "Pilih Sesuai Platform"**: Pemulihan ribuan judul film/serial TV (Max/HBO, Paramount+, Peacock, Prime Video) dengan paginasi berkelanjutan.
-* **Kursor Mouse Auto-Hide Windows**: Auto-hide kursor mouse mengikuti kontrol player dengan filter anti-jitter getaran meja (14px).
-* **Penyempurnaan Penginstal Windows**: Dokumen lisensi multibahasa (ID/EN) dengan tipografi bersih.
 
 ---
 

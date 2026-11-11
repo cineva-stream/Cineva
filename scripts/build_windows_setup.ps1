@@ -50,9 +50,10 @@ if (-not $isccPath) {
 }
 Write-Host "[2/4] Kompiler Inno Setup ditemukan di: $isccPath" -ForegroundColor Green
 
-# 2.5 Sinkronisasi Ikon Multi-Resolusi Windows (.ico) dari cineva_icon.png
-Write-Host "[-] Menghasilkan ikon native multi-resolusi Windows (BMP+PNG)..." -ForegroundColor Cyan
+# 2.5 Sinkronisasi Ikon Multi-Resolusi Windows (.ico) & Aset Visual Installer
+Write-Host "[-] Menghasilkan ikon native multi-resolusi Windows (BMP+PNG) & aset animasi poster..." -ForegroundColor Cyan
 python scripts\generate_windows_icon.py
+python scripts\generate_installer_assets.py
 
 # 3. Jalankan Flutter Build Windows Release
 Write-Host "[3/4] Melakukan kompilasi Flutter Windows Release..." -ForegroundColor Cyan
