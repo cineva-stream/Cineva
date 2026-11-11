@@ -6,6 +6,7 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../data/repositories/watch_history_repository.dart';
 import 'continue_watching_card.dart';
 
@@ -59,26 +60,31 @@ class ContinueWatchingSection extends ConsumerWidget {
                     ),
                   ],
                 ),
-                GestureDetector(
+                TvFocusable(
+                  focusedScale: 1.05,
+                  borderRadius: BorderRadius.circular(10),
                   onTap: () => context.push('/history'),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        s.homeSeeAll,
-                        style: GoogleFonts.inter(
-                          color: AppColors.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          s.homeSeeAll,
+                          style: GoogleFonts.inter(
+                            color: AppColors.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 2),
-                      const Icon(
-                        Icons.chevron_right_rounded,
-                        color: AppColors.primary,
-                        size: 16,
-                      ),
-                    ],
+                        const SizedBox(width: 2),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppColors.primary,
+                          size: 16,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -89,11 +95,11 @@ class ContinueWatchingSection extends ConsumerWidget {
 
           // ── Horizontal Cards Carousel ──
           SizedBox(
-            height: 165,
+            height: 175,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               itemCount: inProgressItems.length,
               itemBuilder: (context, index) {
                 return ContinueWatchingCard(item: inProgressItems[index]);

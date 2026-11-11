@@ -164,12 +164,17 @@ class MainShell extends ConsumerWidget {
                   Expanded(
                     child: Row(
                       children: [
-                        AdaptiveNavRail(
-                          currentIndex: _currentRailIndex(context),
-                          onDestinationSelected: (idx) => _onTapRail(context, ref, idx),
-                          isTv: isTv,
+                        if (!(isLiveTv && isLiveTvFullscreen))
+                          AdaptiveNavRail(
+                            currentIndex: _currentRailIndex(context),
+                            onDestinationSelected: (idx) => _onTapRail(context, ref, idx),
+                            isTv: isTv,
+                          ),
+                        Expanded(
+                          child: FocusTraversalGroup(
+                            child: child,
+                          ),
                         ),
-                        Expanded(child: child),
                       ],
                     ),
                   ),
@@ -194,22 +199,22 @@ class MainShell extends ConsumerWidget {
                           padding: EdgeInsets.only(bottom: bottomPadding),
                           decoration: BoxDecoration(
                             color: AppColors.background,
-                            border: Border(
+                            border: const Border(
                               top: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.08),
-                                width: 0.8,
+                                color: AppColors.borderSubtle,
+                                width: 1.0,
                               ),
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.35),
-                                blurRadius: 12,
-                                offset: const Offset(0, -2),
+                                color: Colors.black.withValues(alpha: 0.5),
+                                blurRadius: 16,
+                                offset: const Offset(0, -4),
                               ),
                             ],
                           ),
                           child: SizedBox(
-                            height: isCompact ? 56 : 60,
+                            height: isCompact ? 56 : 62,
                             child: Row(
                               children: [
                                 _NavTab(
@@ -298,12 +303,23 @@ class _NavTab extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              displayIcon,
-              size: isCompact ? 20 : 22,
-              color: isActive ? activeColor : inactiveColor,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.primary.withValues(alpha: 0.14)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                displayIcon,
+                size: isCompact ? 20 : 22,
+                color: isActive ? activeColor : inactiveColor,
+              ),
             ),
-            SizedBox(height: isCompact ? 3 : 4),
+            SizedBox(height: isCompact ? 1 : 2),
             Text(
               label,
               maxLines: 1,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/localization/app_strings.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../../settings/data/legal_content.dart';
 import '../../../settings/data/settings_service.dart';
 import '../providers/profile_provider.dart';
@@ -101,6 +103,19 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
     }
   }
 
+  void _scrollBy(double delta) {
+    if (!_scrollController.hasClients) return;
+    final target = (_scrollController.offset + delta).clamp(
+      0.0,
+      _scrollController.position.maxScrollExtent,
+    );
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final language = ref.watch(appLanguageProvider);
@@ -119,134 +134,163 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
       s.isIndonesian,
     );
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Colors.white,
-            size: 20,
-          ),
-          onPressed: () {
-            if (Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-            } else {
-              context.pushReplacement('/onboarding-profile');
+    return Focus(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent || event is KeyRepeatEvent) {
+          final key = event.logicalKey;
+          if (key == LogicalKeyboardKey.arrowDown ||
+              key == LogicalKeyboardKey.pageDown) {
+            if (!_hasScrolledToBottom) {
+              _scrollBy(280);
+              return KeyEventResult.handled;
             }
-          },
-          tooltip: s.isIndonesian ? 'Kembali' : 'Back',
-        ),
-        title: Text(
-          s.legalAgreementTitle,
-          style: GoogleFonts.outfit(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
+          } else if (key == LogicalKeyboardKey.arrowUp ||
+              key == LogicalKeyboardKey.pageUp) {
+            if (_scrollController.hasClients && _scrollController.offset > 0) {
+              _scrollBy(-280);
+              return KeyEventResult.handled;
+            }
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                context.pushReplacement('/onboarding-profile');
+              }
+            },
+            tooltip: s.isIndonesian ? 'Kembali' : 'Back',
           ),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(2.5),
-          child: Stack(
-            children: [
-              Container(
-                height: 2.5,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-              FractionallySizedBox(
-                widthFactor: _scrollProgress,
-                child: Container(
+          title: Text(
+            s.legalAgreementTitle,
+            style: GoogleFonts.outfit(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+            ),
+          ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(2.5),
+            child: Stack(
+              children: [
+                Container(
                   height: 2.5,
-                  decoration: const BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                  ),
+                  color: Colors.white.withValues(alpha: 0.08),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        controller: _scrollController,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Document 1: Terms & Conditions ──
-            _buildLegalDocumentView(termsDoc, s, 1, 3),
-
-            _buildDocumentDivider(),
-
-            // ── Document 2: Privacy Policy ──
-            _buildLegalDocumentView(privacyDoc, s, 2, 3),
-
-            _buildDocumentDivider(),
-
-            // ── Document 3: DMCA & Content Disclaimer ──
-            _buildLegalDocumentView(disclaimerDoc, s, 3, 3),
-
-            const SizedBox(height: 28),
-
-            // ── Confirmation Status Card ──
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              decoration: BoxDecoration(
-                color: _hasScrolledToBottom
-                    ? AppColors.primary.withValues(alpha: 0.12)
-                    : AppColors.surfaceVariant.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: _hasScrolledToBottom
-                      ? AppColors.primary.withValues(alpha: 0.45)
-                      : Colors.white.withValues(alpha: 0.08),
-                  width: _hasScrolledToBottom ? 1.2 : 0.8,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _hasScrolledToBottom
-                        ? Icons.check_circle_rounded
-                        : Icons.info_outline_rounded,
-                    color: _hasScrolledToBottom
-                        ? AppColors.primary
-                        : AppColors.textMuted,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _hasScrolledToBottom
-                          ? (s.isIndonesian
-                              ? 'Anda telah mencapai akhir dokumen. Silakan tekan tombol Setuju di bawah untuk melanjutkan.'
-                              : 'You have reached the end of the document. Tap Agree below to proceed.')
-                          : (s.isIndonesian
-                              ? 'Harap gulir ke bawah hingga selesai untuk menyetujui.'
-                              : 'Please scroll to the bottom to agree.'),
-                      style: GoogleFonts.inter(
-                        color: _hasScrolledToBottom
-                            ? Colors.white
-                            : AppColors.textMuted,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        height: 1.45,
-                      ),
+                FractionallySizedBox(
+                  widthFactor: _scrollProgress,
+                  child: Container(
+                    height: 2.5,
+                    decoration: const BoxDecoration(
+                      gradient: AppColors.primaryGradient,
                     ),
                   ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 840),
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── Document 1: Terms & Conditions ──
+                  _buildLegalDocumentView(termsDoc, s, 1, 3),
+
+                  _buildDocumentDivider(),
+
+                  // ── Document 2: Privacy Policy ──
+                  _buildLegalDocumentView(privacyDoc, s, 2, 3),
+
+                  _buildDocumentDivider(),
+
+                  // ── Document 3: DMCA & Content Disclaimer ──
+                  _buildLegalDocumentView(disclaimerDoc, s, 3, 3),
+
+                  const SizedBox(height: 28),
+
+                  // ── Confirmation Status Card ──
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _hasScrolledToBottom
+                          ? AppColors.primary.withValues(alpha: 0.12)
+                          : AppColors.surfaceVariant.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: _hasScrolledToBottom
+                            ? AppColors.primary.withValues(alpha: 0.45)
+                            : Colors.white.withValues(alpha: 0.08),
+                        width: _hasScrolledToBottom ? 1.2 : 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _hasScrolledToBottom
+                              ? Icons.check_circle_rounded
+                              : Icons.info_outline_rounded,
+                          color: _hasScrolledToBottom
+                              ? AppColors.primary
+                              : AppColors.textMuted,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _hasScrolledToBottom
+                                ? (s.isIndonesian
+                                      ? 'Anda telah mencapai akhir dokumen. Silakan tekan tombol Setuju di bawah untuk melanjutkan.'
+                                      : 'You have reached the end of the document. Tap Agree below to proceed.')
+                                : (s.isIndonesian
+                                      ? 'Harap gulir ke bawah hingga selesai untuk menyetujui.'
+                                      : 'Please scroll to the bottom to agree.'),
+                            style: GoogleFonts.inter(
+                              color: _hasScrolledToBottom
+                                  ? Colors.white
+                                  : AppColors.textMuted,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              height: 1.45,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 110),
                 ],
               ),
             ),
-
-            const SizedBox(height: 110),
-          ],
+          ),
         ),
+        bottomNavigationBar: _buildBottomActionBar(s),
       ),
-      bottomNavigationBar: _buildBottomActionBar(s),
     );
   }
 
@@ -321,10 +365,7 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
               bottomRight: Radius.circular(8),
             ),
             border: const Border(
-              left: BorderSide(
-                color: AppColors.primary,
-                width: 3.5,
-              ),
+              left: BorderSide(color: AppColors.primary, width: 3.5),
             ),
           ),
           child: Text(
@@ -549,135 +590,149 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Hint Row
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
+      child: Center(
+        heightFactor: 1.0,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 840),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Hint Row
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(
-                      _hasScrolledToBottom
-                          ? Icons.check_circle_rounded
-                          : Icons.arrow_downward_rounded,
-                      size: 14,
-                      color: _hasScrolledToBottom
-                          ? AppColors.primaryLight
-                          : AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _hasScrolledToBottom
-                          ? s.legalFullyRead
-                          : s.legalScrollHint,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: _hasScrolledToBottom
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                        color: _hasScrolledToBottom
-                            ? AppColors.primaryLight
-                            : AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-                if (!_hasScrolledToBottom)
-                  GestureDetector(
-                    onTap: _scrollToBottom,
-                    child: Row(
+                    Row(
                       children: [
+                        Icon(
+                          _hasScrolledToBottom
+                              ? Icons.check_circle_rounded
+                              : Icons.arrow_downward_rounded,
+                          size: 14,
+                          color: _hasScrolledToBottom
+                              ? AppColors.primaryLight
+                              : AppColors.textMuted,
+                        ),
+                        const SizedBox(width: 6),
                         Text(
-                          s.legalScrollToBottom,
+                          _hasScrolledToBottom
+                              ? s.legalFullyRead
+                              : s.legalScrollHint,
                           style: GoogleFonts.inter(
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
+                            fontWeight: _hasScrolledToBottom
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                            color: _hasScrolledToBottom
+                                ? AppColors.primaryLight
+                                : AppColors.textMuted,
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.keyboard_double_arrow_down_rounded,
-                          size: 14,
-                          color: AppColors.primary,
                         ),
                       ],
                     ),
-                  ),
-              ],
-            ),
-          ),
-
-          // Main Action Button: Setuju / Agree
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: double.infinity,
-            height: 52,
-            decoration: BoxDecoration(
-              gradient: _hasScrolledToBottom ? AppColors.primaryGradient : null,
-              color: _hasScrolledToBottom
-                  ? null
-                  : AppColors.surfaceVariant.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(16),
-              border: _hasScrolledToBottom
-                  ? null
-                  : Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      width: 1,
-                    ),
-              boxShadow: _hasScrolledToBottom
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.45),
-                        blurRadius: 18,
-                        offset: const Offset(0, 5),
+                    if (!_hasScrolledToBottom)
+                      TvFocusable(
+                        onTap: _scrollToBottom,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                s.legalScrollToBottom,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.keyboard_double_arrow_down_rounded,
+                                size: 14,
+                                color: AppColors.primary,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ]
-                  : null,
-            ),
-            child: ElevatedButton(
-              onPressed: _hasScrolledToBottom ? _agreeAndProceed : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                disabledBackgroundColor: Colors.transparent,
-                disabledForegroundColor: AppColors.textMuted,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  ],
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    _hasScrolledToBottom
-                        ? Icons.check_circle_rounded
-                        : Icons.lock_outline_rounded,
-                    color:
-                        _hasScrolledToBottom ? Colors.black : AppColors.textMuted,
-                    size: 18,
+
+              // Main Action Button: Setuju / Agree (or Scroll to Bottom on first D-Pad press)
+              TvFocusable(
+                autofocus: true,
+                onTap: _hasScrolledToBottom
+                    ? _agreeAndProceed
+                    : _scrollToBottom,
+                borderRadius: BorderRadius.circular(16),
+                scaleOnFocus: 1.01,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: double.infinity,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: _hasScrolledToBottom
+                        ? AppColors.primaryGradient
+                        : null,
+                    color: _hasScrolledToBottom
+                        ? null
+                        : AppColors.surfaceVariant.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(16),
+                    border: _hasScrolledToBottom
+                        ? null
+                        : Border.all(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            width: 1,
+                          ),
+                    boxShadow: _hasScrolledToBottom
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.45),
+                              blurRadius: 18,
+                              offset: const Offset(0, 5),
+                            ),
+                          ]
+                        : null,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    s.legalAgreeButton,
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight:
-                          _hasScrolledToBottom ? FontWeight.w800 : FontWeight.w600,
-                      color:
-                          _hasScrolledToBottom ? Colors.black : AppColors.textMuted,
-                      letterSpacing: 0.3,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _hasScrolledToBottom
+                            ? Icons.check_circle_rounded
+                            : Icons.lock_outline_rounded,
+                        color: _hasScrolledToBottom
+                            ? Colors.black
+                            : AppColors.textMuted,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        s.legalAgreeButton,
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: _hasScrolledToBottom
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          color: _hasScrolledToBottom
+                              ? Colors.black
+                              : AppColors.textMuted,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

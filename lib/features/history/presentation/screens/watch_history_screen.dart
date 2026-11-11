@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +8,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/platform/device_form_factor.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../data/models/watch_history_item.dart';
 import '../../data/repositories/watch_history_repository.dart';
 
@@ -169,17 +170,58 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
 
             const SizedBox(height: 8),
 
-            // ── History List or Empty State ──
+            // ── History List/Grid or Empty State ──
             Expanded(
               child: filteredList.isEmpty
                   ? _buildEmptyState(s)
-                  : ListView.builder(
-                      physics: const BouncingScrollPhysics(),
-                      padding: EdgeInsets.fromLTRB(0, 8, 0, MediaQuery.of(context).padding.bottom + 84),
-                      itemCount: filteredList.length,
-                      itemBuilder: (context, index) {
-                        final item = filteredList[index];
-                        return _buildHistoryTile(item, s);
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final gridCols = adaptiveHorizontalCardGridColumns(
+                          constraints.maxWidth,
+                          isTv: gIsTv,
+                        );
+                        final bottomPad =
+                            MediaQuery.of(context).padding.bottom + 84;
+                        if (gridCols >= 2) {
+                          return GridView.builder(
+                            physics: const BouncingScrollPhysics(),
+                            padding: EdgeInsets.fromLTRB(
+                              20,
+                              8,
+                              20,
+                              bottomPad,
+                            ),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: gridCols,
+                                  mainAxisExtent: 108,
+                                  crossAxisSpacing: 14,
+                                  mainAxisSpacing: 12,
+                                ),
+                            itemCount: filteredList.length,
+                            itemBuilder: (context, index) {
+                              final item = filteredList[index];
+                              return _buildHistoryTile(
+                                item,
+                                s,
+                                isGridCard: true,
+                              );
+                            },
+                          );
+                        }
+                        return ListView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(0, 8, 0, bottomPad),
+                          itemCount: filteredList.length,
+                          itemBuilder: (context, index) {
+                            final item = filteredList[index];
+                            return _buildHistoryTile(
+                              item,
+                              s,
+                              isGridCard: false,
+                            );
+                          },
+                        );
                       },
                     ),
             ),
@@ -191,15 +233,18 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
 
   Widget _buildFilterChip(String key, String label) {
     final isSelected = _activeFilter == key;
-    return GestureDetector(
+    return TvFocusable(
       onTap: () => setState(() => _activeFilter = key),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.white.withValues(alpha: 0.08),
+            color: isSelected
+                ? AppColors.primary
+                : Colors.white.withValues(alpha: 0.08),
             width: 0.8,
           ),
         ),
@@ -215,47 +260,56 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
     );
   }
 
-  Widget _buildHistoryTile(WatchHistoryItem item, dynamic s) {
+  Widget _buildHistoryTile(
+    WatchHistoryItem item,
+    dynamic s, {
+    bool isGridCard = false,
+  }) {
     final imagePath = item.backdropPath ?? item.posterPath;
-    final imageUrl = imagePath != null ? 'https://image.tmdb.org/t/p/w780$imagePath' : null;
+    final imageUrl = imagePath != null
+        ? 'https://image.tmdb.org/t/p/w780$imagePath'
+        : null;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white.withValues(alpha: 0.08),
-            width: 0.8,
-          ),
+    return TvFocusable(
+      onTap: () async {
+        await context.push('/player', extra: {
+          'title': item.title,
+          'episodeTitle': item.episodeTitle,
+          'imdbId': item.imdbId,
+          'season': item.season,
+          'episode': item.episode,
+          'tmdbId': item.id,
+          'mediaType': item.mediaType,
+          'posterPath': item.posterPath,
+          'backdropPath': item.backdropPath,
+          'initialPositionMs': item.positionMs,
+          'magnetLink': '',
+        });
+        await restoreSystemUiAndOrientations(isTv: gIsTv);
+      },
+      borderRadius: BorderRadius.circular(isGridCard ? 14 : 0),
+      scaleOnFocus: isGridCard ? 1.02 : 1.0,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isGridCard
+              ? AppColors.surface.withValues(alpha: 0.75)
+              : Colors.transparent,
+          borderRadius: isGridCard ? BorderRadius.circular(14) : null,
+          border: isGridCard
+              ? Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  width: 1,
+                )
+              : Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    width: 0.8,
+                  ),
+                ),
         ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () async {
-            await context.push('/player', extra: {
-              'title': item.title,
-              'episodeTitle': item.episodeTitle,
-              'imdbId': item.imdbId,
-              'season': item.season,
-              'episode': item.episode,
-              'tmdbId': item.id,
-              'mediaType': item.mediaType,
-              'posterPath': item.posterPath,
-              'backdropPath': item.backdropPath,
-              'initialPositionMs': item.positionMs,
-              'magnetLink': '',
-            });
-            SystemChrome.setPreferredOrientations([
-              DeviceOrientation.portraitUp,
-              DeviceOrientation.portraitDown,
-            ]);
-            SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
                 // ── Thumbnail with Progress Bar ──
                 SizedBox(
                   width: 120,
@@ -396,9 +450,7 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
               ],
             ),
           ),
-        ),
-      ),
-    );
+        );
   }
 
   Widget _buildEmptyState(dynamic s) {

@@ -8,6 +8,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 
 class FranchiseCollectionBanner extends ConsumerWidget {
   final Map<String, dynamic> collection;
@@ -33,7 +34,9 @@ class FranchiseCollectionBanner extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 14),
-      child: GestureDetector(
+      child: TvFocusable(
+        borderRadius: BorderRadius.circular(16),
+        scaleOnFocus: 1.02,
         onTap: () => context.push(
           '/collection/$id',
           extra: {

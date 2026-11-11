@@ -4,8 +4,9 @@ import 'app_colors.dart';
 
 /// App-wide theme configuration for Cineva.
 ///
-/// Uses a dark cinematic theme with Google Fonts 'Inter' for body
-/// and 'Outfit' for headings.
+/// Uses a dark cinematic theme based on the 60-30-10 design system
+/// with Google Fonts 'Plus Jakarta Sans' for display/headings
+/// and 'Inter' for body and micro-copy.
 class AppTheme {
   AppTheme._();
 
@@ -31,53 +32,57 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.outfit(
+        titleTextStyle: GoogleFonts.plusJakartaSans(
           fontSize: 22,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
+          letterSpacing: -0.3,
         ),
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
 
       // ── Text ──
       textTheme: TextTheme(
-        // Display
-        displayLarge: GoogleFonts.outfit(
-          fontSize: 40,
+        // Display (Plus Jakarta Sans with modern negative tracking)
+        displayLarge: GoogleFonts.plusJakartaSans(
+          fontSize: 38,
           fontWeight: FontWeight.w800,
           color: AppColors.textPrimary,
-          letterSpacing: -1.0,
+          letterSpacing: -0.8,
         ),
-        displayMedium: GoogleFonts.outfit(
-          fontSize: 32,
+        displayMedium: GoogleFonts.plusJakartaSans(
+          fontSize: 30,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
           letterSpacing: -0.5,
         ),
-        displaySmall: GoogleFonts.outfit(
-          fontSize: 26,
+        displaySmall: GoogleFonts.plusJakartaSans(
+          fontSize: 24,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
+          letterSpacing: -0.3,
         ),
 
-        // Headlines
-        headlineLarge: GoogleFonts.outfit(
+        // Headlines (Plus Jakarta Sans)
+        headlineLarge: GoogleFonts.plusJakartaSans(
           fontSize: 22,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
+          letterSpacing: -0.2,
         ),
-        headlineMedium: GoogleFonts.outfit(
+        headlineMedium: GoogleFonts.plusJakartaSans(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
+          letterSpacing: -0.1,
         ),
-        headlineSmall: GoogleFonts.outfit(
+        headlineSmall: GoogleFonts.plusJakartaSans(
           fontSize: 16,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
 
-        // Titles
+        // Titles (Inter)
         titleLarge: GoogleFonts.inter(
           fontSize: 18,
           fontWeight: FontWeight.w600,
@@ -94,7 +99,7 @@ class AppTheme {
           color: AppColors.textSecondary,
         ),
 
-        // Body
+        // Body (Inter)
         bodyLarge: GoogleFonts.inter(
           fontSize: 16,
           fontWeight: FontWeight.w400,
@@ -114,12 +119,12 @@ class AppTheme {
           height: 1.4,
         ),
 
-        // Labels
+        // Labels (Inter)
         labelLarge: GoogleFonts.inter(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
-          letterSpacing: 0.5,
+          letterSpacing: 0.3,
         ),
         labelMedium: GoogleFonts.inter(
           fontSize: 12,
@@ -130,7 +135,7 @@ class AppTheme {
           fontSize: 10,
           fontWeight: FontWeight.w500,
           color: AppColors.textMuted,
-          letterSpacing: 0.5,
+          letterSpacing: 0.4,
         ),
       ),
 
@@ -140,18 +145,29 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.borderSubtle, width: 1.0),
         ),
         margin: EdgeInsets.zero,
       ),
 
       // ── Bottom Navigation ──
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.background,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textMuted,
         type: BottomNavigationBarType.fixed,
         elevation: 0,
         showUnselectedLabels: true,
+      ),
+
+      // ── Bottom Sheet ──
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.background,
+        modalBackgroundColor: AppColors.background,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
       ),
 
       // ── Elevated Buttons ──
@@ -162,11 +178,12 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+          textStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.2,
           ),
         ),
       ),
@@ -178,10 +195,10 @@ class AppTheme {
           side: const BorderSide(color: AppColors.primary, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: GoogleFonts.inter(
-            fontSize: 16,
+          textStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -198,11 +215,11 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -213,14 +230,14 @@ class AppTheme {
       // ── Chips ──
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surfaceVariant,
-        selectedColor: AppColors.primary.withValues(alpha: 0.2),
+        selectedColor: AppColors.primary.withValues(alpha: 0.15),
         disabledColor: AppColors.surfaceVariant,
         labelStyle: GoogleFonts.inter(
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w500,
           color: AppColors.textSecondary,
         ),
-        side: BorderSide.none,
+        side: const BorderSide(color: AppColors.borderSubtle, width: 1),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),

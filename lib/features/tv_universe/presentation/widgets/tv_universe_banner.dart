@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../data/tv_universe_registry.dart';
 
 class TvUniverseBanner extends ConsumerWidget {
@@ -33,7 +34,9 @@ class TvUniverseBanner extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      child: GestureDetector(
+      child: TvFocusable(
+        borderRadius: BorderRadius.circular(16),
+        scaleOnFocus: 1.02,
         onTap: () => context.push(
           '/tv-universe/${universe.id}',
           extra: {

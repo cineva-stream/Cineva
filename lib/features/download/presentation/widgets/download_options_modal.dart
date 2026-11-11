@@ -61,7 +61,7 @@ class DownloadOptionsModal extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       useRootNavigator: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.background,
       barrierColor: Colors.black.withValues(alpha: 0.8),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -83,7 +83,8 @@ class DownloadOptionsModal extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<DownloadOptionsModal> createState() => _DownloadOptionsModalState();
+  ConsumerState<DownloadOptionsModal> createState() =>
+      _DownloadOptionsModalState();
 }
 
 class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
@@ -155,10 +156,18 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
     final isMovie = widget.mediaType == 'movie';
 
     final videoFileName = isMovie
-        ? DownloadFileNamer.formatMovieFileName(widget.title, widget.releaseYear)
+        ? DownloadFileNamer.formatMovieFileName(
+            widget.title,
+            widget.releaseYear,
+          )
         : DownloadFileNamer.formatTvFileName(
-            widget.title, widget.season ?? 1, widget.episode ?? 1);
-    final subtitleFileName = DownloadFileNamer.formatSubtitleFileName(videoFileName);
+            widget.title,
+            widget.season ?? 1,
+            widget.episode ?? 1,
+          );
+    final subtitleFileName = DownloadFileNamer.formatSubtitleFileName(
+      videoFileName,
+    );
 
     final selectedOption = _resolutions.firstWhere(
       (r) => r.label == _selectedResolution,
@@ -219,7 +228,10 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                         width: 48,
                         height: 72,
                         color: AppColors.surfaceVariant,
-                        child: const Icon(Icons.movie, color: AppColors.textMuted),
+                        child: const Icon(
+                          Icons.movie,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
                   ),
@@ -255,15 +267,22 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2.5,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.surfaceElevated,
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 _currentPage == 0
-                                    ? (s.isIndonesian ? 'Langkah 1/2: Resolusi' : 'Step 1/2: Resolution')
-                                    : (s.isIndonesian ? 'Langkah 2/2: Subtitle' : 'Step 2/2: Subtitle'),
+                                    ? (s.isIndonesian
+                                          ? 'Langkah 1/2: Resolusi'
+                                          : 'Step 1/2: Resolution')
+                                    : (s.isIndonesian
+                                          ? 'Langkah 2/2: Subtitle'
+                                          : 'Step 2/2: Subtitle'),
                                 style: GoogleFonts.inter(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
@@ -280,7 +299,9 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                                   width: _currentPage == 0 ? 16 : 6,
                                   height: 6,
                                   decoration: BoxDecoration(
-                                    color: _currentPage == 0 ? AppColors.primary : Colors.white24,
+                                    color: _currentPage == 0
+                                        ? AppColors.primary
+                                        : Colors.white24,
                                     borderRadius: BorderRadius.circular(3),
                                   ),
                                 ),
@@ -290,7 +311,9 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                                   width: _currentPage == 1 ? 16 : 6,
                                   height: 6,
                                   decoration: BoxDecoration(
-                                    color: _currentPage == 1 ? AppColors.primary : Colors.white24,
+                                    color: _currentPage == 1
+                                        ? AppColors.primary
+                                        : Colors.white24,
                                     borderRadius: BorderRadius.circular(3),
                                   ),
                                 ),
@@ -318,7 +341,14 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                   _buildResolutionStep(context, selectedOption, s),
 
                   // PAGE 2: Subtitle Preference & Auto-Translation
-                  _buildSubtitleStep(context, selectedOption, videoFileName, subtitleFileName, bottomInset, s),
+                  _buildSubtitleStep(
+                    context,
+                    selectedOption,
+                    videoFileName,
+                    subtitleFileName,
+                    bottomInset,
+                    s,
+                  ),
                 ],
               ),
             ),
@@ -329,7 +359,11 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
   }
 
   /// Step 1: Video resolution & file size selection
-  Widget _buildResolutionStep(BuildContext context, ResolutionOption selectedOption, AppStrings s) {
+  Widget _buildResolutionStep(
+    BuildContext context,
+    ResolutionOption selectedOption,
+    AppStrings s,
+  ) {
     return Column(
       children: [
         Expanded(
@@ -341,7 +375,11 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.hd_rounded, color: AppColors.primary, size: 20),
+                    const Icon(
+                      Icons.hd_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       s.downloadModalSelectResolution,
@@ -356,7 +394,10 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                 const SizedBox(height: 4),
                 Text(
                   s.downloadModalSelectResolutionDesc,
-                  style: GoogleFonts.inter(fontSize: 11.5, color: AppColors.textMuted),
+                  style: GoogleFonts.inter(
+                    fontSize: 11.5,
+                    color: AppColors.textMuted,
+                  ),
                 ),
                 const SizedBox(height: 14),
 
@@ -378,23 +419,35 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                         const SizedBox(width: 12),
                         Text(
                           s.downloadModalConnecting,
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
                   )
                 else if (_resolutions.isEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 24,
+                    ),
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceVariant.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.06),
+                      ),
                     ),
                     child: Column(
                       children: [
-                        const Icon(Icons.cloud_off_rounded, color: AppColors.textMuted, size: 36),
+                        const Icon(
+                          Icons.cloud_off_rounded,
+                          color: AppColors.textMuted,
+                          size: 36,
+                        ),
                         const SizedBox(height: 10),
                         Text(
                           s.isIndonesian
@@ -422,23 +475,33 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? AppColors.primary.withValues(alpha: 0.12)
                                 : AppColors.surfaceVariant,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.surfaceElevated,
                               width: isSelected ? 1.5 : 1.0,
                             ),
                           ),
                           child: Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.surfaceElevated,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -446,7 +509,9 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                                   style: GoogleFonts.inter(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w800,
-                                    color: isSelected ? Colors.black : Colors.white,
+                                    color: isSelected
+                                        ? Colors.black
+                                        : Colors.white,
                                   ),
                                 ),
                               ),
@@ -459,8 +524,12 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                                       res.title,
                                       style: GoogleFonts.inter(
                                         fontSize: 13,
-                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                        color: isSelected ? AppColors.primary : Colors.white,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : Colors.white,
                                       ),
                                     ),
                                     Text(
@@ -478,7 +547,9 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                                 style: GoogleFonts.outfit(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
-                                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -487,7 +558,9 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                                     ? Icons.check_circle_rounded
                                     : Icons.circle_outlined,
                                 size: 20,
-                                color: isSelected ? AppColors.primary : AppColors.textMuted,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.textMuted,
                               ),
                             ],
                           ),
@@ -502,7 +575,12 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
 
         // Action Button: Lanjut ke Subtitle
         Container(
-          padding: EdgeInsets.fromLTRB(20, 12, 20, 14 + MediaQuery.of(context).padding.bottom),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            14 + MediaQuery.of(context).padding.bottom,
+          ),
           decoration: BoxDecoration(
             color: AppColors.surface,
             border: Border(
@@ -512,14 +590,19 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: (_isLoadingResolutions || _resolutions.isEmpty || selectedOption.streamUrl.isEmpty)
+              onPressed:
+                  (_isLoadingResolutions ||
+                      _resolutions.isEmpty ||
+                      selectedOption.streamUrl.isEmpty)
                   ? null
                   : _nextPage,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -572,7 +655,11 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                           color: AppColors.surfaceElevated,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 18),
+                        child: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -589,8 +676,14 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                             ),
                           ),
                           Text(
-                            s.downloadModalSelectedQuality(selectedOption.label, selectedOption.formattedSize),
-                            style: GoogleFonts.inter(fontSize: 11, color: AppColors.primary),
+                            s.downloadModalSelectedQuality(
+                              selectedOption.label,
+                              selectedOption.formattedSize,
+                            ),
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ],
                       ),
@@ -625,14 +718,20 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                   decoration: BoxDecoration(
                     color: AppColors.surfaceElevated.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.06),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.folder_outlined, color: AppColors.textSecondary, size: 16),
+                          const Icon(
+                            Icons.folder_outlined,
+                            color: AppColors.textSecondary,
+                            size: 16,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             s.downloadModalStorageLocation,
@@ -688,7 +787,9 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
 
                 Navigator.of(context, rootNavigator: true).pop();
 
-                await ref.read(downloadManagerProvider.notifier).startDownload(
+                await ref
+                    .read(downloadManagerProvider.notifier)
+                    .startDownload(
                       tmdbId: widget.tmdbId,
                       mediaType: widget.mediaType,
                       title: widget.title,
@@ -719,7 +820,11 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                     ),
                     content: Row(
                       children: [
-                        const Icon(Icons.download_rounded, color: AppColors.primary, size: 20),
+                        const Icon(
+                          Icons.download_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
@@ -756,7 +861,9 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
           ),
@@ -801,14 +908,19 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                         title,
                         style: GoogleFonts.inter(
                           fontSize: 13,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                           color: isSelected ? AppColors.primary : Colors.white,
                         ),
                       ),
                       if (badge != null) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(4),

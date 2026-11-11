@@ -16,12 +16,14 @@ class TvFocusable extends StatefulWidget {
   final FocusNode? focusNode;
   final bool autofocus;
   final double focusedScale;
+  final double? scaleOnFocus;
   final Color? glowColor;
   final double glowBlurRadius;
   final double glowSpreadRadius;
   final BorderRadius? borderRadius;
   final EdgeInsetsGeometry padding;
   final ValueChanged<bool>? onFocusChange;
+  final bool showFocusBorder;
 
   const TvFocusable({
     super.key,
@@ -30,13 +32,15 @@ class TvFocusable extends StatefulWidget {
     this.onLongPress,
     this.focusNode,
     this.autofocus = false,
-    this.focusedScale = 1.11, // User preference: 1.11x magnification
+    this.focusedScale = 1.06,
+    this.scaleOnFocus,
     this.glowColor,
     this.glowBlurRadius = 16.0,
     this.glowSpreadRadius = 1.0,
     this.borderRadius,
     this.padding = EdgeInsets.zero,
     this.onFocusChange,
+    this.showFocusBorder = true,
   });
 
   @override
@@ -85,13 +89,17 @@ class _TvFocusableState extends State<TvFocusable> {
       widget.onFocusChange?.call(hasFocus);
 
       if (hasFocus) {
-        // Auto-center in viewport when focused via D-Pad remote or keyboard
-        Scrollable.ensureVisible(
-          context,
-          alignment: 0.5,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOutCubic,
-        );
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          try {
+            Scrollable.ensureVisible(
+              context,
+              alignment: 0.45,
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
+            );
+          } catch (_) {}
+        });
       }
     }
   }
@@ -101,10 +109,13 @@ class _TvFocusableState extends State<TvFocusable> {
       final key = event.logicalKey;
       if (key == LogicalKeyboardKey.select ||
           key == LogicalKeyboardKey.enter ||
+          key == LogicalKeyboardKey.numpadEnter ||
           key == LogicalKeyboardKey.space ||
           key == LogicalKeyboardKey.gameButtonA) {
-        widget.onTap?.call();
-        return KeyEventResult.handled;
+        if (widget.onTap != null) {
+          widget.onTap!.call();
+          return KeyEventResult.handled;
+        }
       }
     }
     return KeyEventResult.ignored;
@@ -119,9 +130,12 @@ class _TvFocusableState extends State<TvFocusable> {
     return Focus(
       focusNode: _focusNode,
       autofocus: widget.autofocus,
+      canRequestFocus: widget.onTap != null || widget.onLongPress != null,
       onKeyEvent: _handleKeyEvent,
       child: MouseRegion(
-        cursor: widget.onTap != null ? SystemMouseCursors.click : MouseCursor.defer,
+        cursor: widget.onTap != null
+            ? SystemMouseCursors.click
+            : MouseCursor.defer,
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
         child: GestureDetector(
@@ -133,9 +147,11 @@ class _TvFocusableState extends State<TvFocusable> {
             child: TweenAnimationBuilder<double>(
               tween: Tween<double>(
                 begin: 1.0,
-                end: isHighlighted ? widget.focusedScale : 1.0,
+                end: isHighlighted
+                    ? (widget.scaleOnFocus ?? widget.focusedScale)
+                    : 1.0,
               ),
-              duration: const Duration(milliseconds: 220),
+              duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,
               builder: (context, scale, child) {
                 return Transform.scale(
@@ -145,30 +161,51 @@ class _TvFocusableState extends State<TvFocusable> {
                     alignment: Alignment.center,
                     clipBehavior: Clip.none,
                     children: [
-                      // Atmospheric smooth ambient glow layer behind the poster (no border)
+                      // Atmospheric smooth ambient glow layer behind the item
                       if (isHighlighted)
                         Positioned.fill(
-                          child: AnimatedOpacity(
-                            opacity: isHighlighted ? 1.0 : 0.0,
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOutCubic,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: radius,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: effectiveGlowColor.withValues(alpha: 0.32),
-                                    blurRadius: widget.glowBlurRadius,
-                                    spreadRadius: widget.glowSpreadRadius,
-                                    offset: Offset.zero,
-                                  ),
-                                ],
+                          child: IgnorePointer(
+                            child: AnimatedOpacity(
+                              opacity: isHighlighted ? 1.0 : 0.0,
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeOutCubic,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: radius,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: effectiveGlowColor.withValues(
+                                        alpha: _isFocused ? 0.38 : 0.25,
+                                      ),
+                                      blurRadius: widget.glowBlurRadius,
+                                      spreadRadius: widget.glowSpreadRadius,
+                                      offset: Offset.zero,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
                       // Child content
                       widget.child,
+                      // Crisp D-Pad focus ring on TV / Keyboard focus
+                      if (_isFocused && widget.showFocusBorder)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: radius,
+                                border: Border.all(
+                                  color: effectiveGlowColor.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                  width: 2.0,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 );

@@ -523,7 +523,7 @@ class _AiringCalendarBannerState extends ConsumerState<AiringCalendarBanner> {
     );
   }
 
-  /// Classic full-width horizontal banner for mobile portrait
+  /// Classic full-width horizontal banner for mobile portrait & portrait tablet
   Widget _buildHorizontalBanner(
     BuildContext context,
     dynamic s,
@@ -531,7 +531,9 @@ class _AiringCalendarBannerState extends ConsumerState<AiringCalendarBanner> {
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: GestureDetector(
+      child: TvFocusable(
+        focusedScale: 1.02,
+        borderRadius: BorderRadius.circular(18),
         onTap: () => context.push('/calendar'),
         child: Container(
           height: 108,

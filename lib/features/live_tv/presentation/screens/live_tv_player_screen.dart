@@ -14,6 +14,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/localization/app_strings.dart';
+import '../../../../core/platform/device_form_factor.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../data/datasources/live_tv_channels_data.dart';
 import '../../domain/entities/live_tv_channel.dart';
 import '../providers/live_tv_providers.dart';
@@ -274,11 +276,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
       _isLandscapeChannelDrawerOpen = false;
     });
     ref.read(liveTvFullscreenProvider.notifier).state = false;
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    restoreSystemUiAndOrientations(isTv: gIsTv);
     _startHideTimer();
   }
 
@@ -302,11 +300,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
     }
     ref.read(liveTvIsPlayingProvider.notifier).state = false;
     ref.read(liveTvFullscreenProvider.notifier).state = false;
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    restoreSystemUiAndOrientations(isTv: gIsTv);
     if (context.canPop()) {
       context.pop();
     } else {
@@ -317,11 +311,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
   @override
   void deactivate() {
     if (_isFullscreen) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
+      restoreSystemUiAndOrientations(isTv: gIsTv);
     }
     ref.read(liveTvIsPlayingProvider.notifier).state = false;
     ref.read(liveTvFullscreenProvider.notifier).state = false;
@@ -333,11 +323,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
     _hideControlsTimer?.cancel();
     _player?.dispose();
     _searchController.dispose();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    restoreSystemUiAndOrientations(isTv: gIsTv);
     Future.microtask(() {
       try {
         ref.read(liveTvIsPlayingProvider.notifier).state = false;
@@ -350,6 +336,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(appStringsProvider);
+    final isTv = ref.watch(isTvProvider);
     final selectedCategory = ref.watch(liveTvCategoryProvider);
     final channels = ref.watch(filteredLiveTvChannelsProvider);
     final favoritesNotifier = ref.read(liveTvFavoritesProvider.notifier);
@@ -378,91 +365,226 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
           _exitFullscreen();
         }
       },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: MouseRegion(
-          cursor: _isCursorVisible
-              ? SystemMouseCursors.basic
-              : SystemMouseCursors.none,
-          onHover: _onMouseHover,
-          onEnter: _onMouseEnter,
-          onExit: _onMouseExit,
-          child: _isFullscreen
-              ? _buildFullscreenPlayer(s, isFav, favoritesNotifier, favorites)
-              : SafeArea(
-                  bottom: false,
-                  child: Column(
-                    children: [
-                      // ── 1. Top 16:9 Video Player ──
-                      _buildTopPlayer(s, _currentChannel),
+      child: Focus(
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (_isFullscreen && !_controlsVisible && !_isLandscapeChannelDrawerOpen) {
+            final key = event.logicalKey;
+            if (key == LogicalKeyboardKey.select ||
+                key == LogicalKeyboardKey.enter ||
+                key == LogicalKeyboardKey.numpadEnter ||
+                key == LogicalKeyboardKey.arrowUp ||
+                key == LogicalKeyboardKey.arrowDown ||
+                key == LogicalKeyboardKey.arrowLeft ||
+                key == LogicalKeyboardKey.arrowRight) {
+              _toggleControls();
+              return KeyEventResult.handled;
+            }
+          } else if (_controlsVisible) {
+            _startHideTimer();
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: MouseRegion(
+            cursor: _isCursorVisible
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.none,
+            onHover: _onMouseHover,
+            onEnter: _onMouseEnter,
+            onExit: _onMouseExit,
+            child: _isFullscreen
+                ? _buildFullscreenPlayer(s, isFav, favoritesNotifier, favorites)
+                : SafeArea(
+                    bottom: false,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final availableWidth = constraints.maxWidth;
+                        final availableHeight = constraints.maxHeight;
+                        final useSplitView =
+                            (availableWidth >= 800 || isTv) && availableHeight >= 380;
 
-                      // ── 2. Scrollable Channel Info & Other Channels Switcher ──
-                      Expanded(
-                        child: CustomScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          slivers: [
-                            // Active Channel Info Header
-                            SliverToBoxAdapter(
-                              child: _buildActiveChannelHeader(
-                                s,
-                                isFav,
-                                favoritesNotifier,
-                                _currentChannel,
-                              ),
-                            ),
-
-                            // Search Bar
-                            SliverToBoxAdapter(child: _buildSearchBar(s)),
-
-                            // Category Filter Chips
-                            SliverToBoxAdapter(
-                              child: _buildCategoryChips(
-                                s,
-                                categories,
-                                selectedCategory,
-                              ),
-                            ),
-
-                            const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-                            // Channel List Items
-                            if (channels.isEmpty)
-                              SliverFillRemaining(
-                                hasScrollBody: false,
-                                child: Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.tv_off_rounded,
-                                        size: 44,
-                                        color: AppColors.textMuted,
+                        if (useSplitView) {
+                          final rightPaneWidth =
+                              (availableWidth * 0.36).clamp(320.0, 420.0);
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // ── Left Pane: Video Player + Active Channel Header ──
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        color: Colors.black,
+                                        alignment: Alignment.center,
+                                        child: _buildTopPlayer(s, _currentChannel),
                                       ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        s.liveTvNoChannels,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                    ],
+                                    ),
+                                    _buildActiveChannelHeader(
+                                      s,
+                                      isFav,
+                                      favoritesNotifier,
+                                      _currentChannel,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // ── Right Pane: Search, Category Filter & Live Channel List ──
+                              Container(
+                                width: rightPaneWidth,
+                                decoration: BoxDecoration(
+                                  color: AppColors.background,
+                                  border: Border(
+                                    left: BorderSide(
+                                      color: Colors.white.withValues(alpha: 0.08),
+                                      width: 0.8,
+                                    ),
                                   ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    _buildSearchBar(s),
+                                    _buildCategoryChips(
+                                      s,
+                                      categories,
+                                      selectedCategory,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Expanded(
+                                      child: CustomScrollView(
+                                        physics: const BouncingScrollPhysics(),
+                                        slivers: [
+                                          if (channels.isEmpty)
+                                            SliverFillRemaining(
+                                              hasScrollBody: false,
+                                              child: Center(
+                                                child: Column(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.tv_off_rounded,
+                                                      size: 44,
+                                                      color: AppColors.textMuted,
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    Text(
+                                                      s.liveTvNoChannels,
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 13,
+                                                        color: AppColors.textMuted,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            )
+                                          else
+                                            _buildChannelList(
+                                              s,
+                                              channels,
+                                              favorites,
+                                              bottomPadding,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+
+                        return Column(
+                          children: [
+                            // ── 1. Top 16:9 Video Player ──
+                            if (availableWidth >= 600)
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxHeight: (availableHeight * 0.44).clamp(200.0, 420.0),
+                                ),
+                                child: Container(
+                                  width: double.infinity,
+                                  color: Colors.black,
+                                  alignment: Alignment.center,
+                                  child: _buildTopPlayer(s, _currentChannel),
                                 ),
                               )
                             else
-                              _buildChannelList(
-                                s,
-                                channels,
-                                favorites,
-                                bottomPadding,
+                              _buildTopPlayer(s, _currentChannel),
+
+                            // ── 2. Scrollable Channel Info & Other Channels Switcher ──
+                            Expanded(
+                              child: CustomScrollView(
+                                physics: const BouncingScrollPhysics(),
+                                slivers: [
+                                  // Active Channel Info Header
+                                  SliverToBoxAdapter(
+                                    child: _buildActiveChannelHeader(
+                                      s,
+                                      isFav,
+                                      favoritesNotifier,
+                                      _currentChannel,
+                                    ),
+                                  ),
+
+                                  // Search Bar
+                                  SliverToBoxAdapter(child: _buildSearchBar(s)),
+
+                                  // Category Filter Chips
+                                  SliverToBoxAdapter(
+                                    child: _buildCategoryChips(
+                                      s,
+                                      categories,
+                                      selectedCategory,
+                                    ),
+                                  ),
+
+                                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+                                  // Channel List Items
+                                  if (channels.isEmpty)
+                                    SliverFillRemaining(
+                                      hasScrollBody: false,
+                                      child: Center(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.tv_off_rounded,
+                                              size: 44,
+                                              color: AppColors.textMuted,
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              s.liveTvNoChannels,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 13,
+                                                color: AppColors.textMuted,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    _buildChannelList(
+                                      s,
+                                      channels,
+                                      favorites,
+                                      bottomPadding,
+                                    ),
+                                ],
                               ),
+                            ),
                           ],
-                        ),
-                      ),
-                    ],
+                        );
+                      },
+                    ),
                   ),
-                ),
+          ),
         ),
       ),
     );
@@ -612,21 +734,22 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                             const SizedBox(width: 8),
 
                             // Square Fullscreen Button
-                            Material(
-                              color: Colors.white.withValues(alpha: 0.15),
+                            TvFocusable(
+                              onTap: _enterFullscreen,
                               borderRadius: BorderRadius.circular(8),
-                              child: InkWell(
-                                onTap: _enterFullscreen,
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  width: 34,
-                                  height: 34,
-                                  alignment: Alignment.center,
-                                  child: const Icon(
-                                    Icons.fullscreen_rounded,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
+                              scaleOnFocus: 1.08,
+                              child: Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.fullscreen_rounded,
+                                  color: Colors.white,
+                                  size: 20,
                                 ),
                               ),
                             ),
@@ -643,8 +766,10 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             // Aspect Ratio Pill
-                            GestureDetector(
+                            TvFocusable(
                               onTap: _toggleVideoFit,
+                              borderRadius: BorderRadius.circular(6),
+                              scaleOnFocus: 1.05,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
@@ -684,8 +809,10 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                             ),
 
                             // Reload Button
-                            GestureDetector(
+                            TvFocusable(
                               onTap: _reloadStream,
+                              borderRadius: BorderRadius.circular(6),
+                              scaleOnFocus: 1.08,
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
@@ -970,7 +1097,7 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
     String selectedCategory,
   ) {
     return SizedBox(
-      height: 36,
+      height: 38,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
@@ -980,32 +1107,34 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
         itemBuilder: (context, index) {
           final cat = categories[index];
           final isSelected = cat == selectedCategory;
-          return FilterChip(
-            selected: isSelected,
-            label: Text(
-              s.liveTvCategoryLabel(cat),
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? Colors.black : Colors.white70,
-              ),
-            ),
-            backgroundColor: AppColors.surface,
-            selectedColor: AppColors.primary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-              side: BorderSide(
-                color: isSelected
-                    ? AppColors.primary
-                    : Colors.white.withValues(alpha: 0.08),
-                width: 0.8,
-              ),
-            ),
-            showCheckmark: false,
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-            onSelected: (_) {
+          return TvFocusable(
+            onTap: () {
               ref.read(liveTvCategoryProvider.notifier).state = cat;
             },
+            borderRadius: BorderRadius.circular(18),
+            scaleOnFocus: 1.04,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primary : AppColors.surface,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.primary
+                      : Colors.white.withValues(alpha: 0.08),
+                  width: 0.8,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                s.liveTvCategoryLabel(cat),
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? Colors.black : Colors.white70,
+                ),
+              ),
+            ),
           );
         },
       ),
@@ -1040,129 +1169,126 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
     bool isPlaying,
     bool isFavorite,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isPlaying
-            ? AppColors.primary.withValues(alpha: 0.10)
-            : Colors.transparent,
-        border: Border(
-          bottom: BorderSide(
-            color: isPlaying
-                ? AppColors.primary.withValues(alpha: 0.4)
-                : Colors.white.withValues(alpha: 0.08),
-            width: 0.8,
-          ),
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            _playChannel(channel);
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                // Channel Logo (Clean, no background box)
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: channel.logoUrl != null && channel.logoUrl!.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: channel.logoUrl!,
-                          httpHeaders: const {
-                            'User-Agent':
-                                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                          },
-                          fit: BoxFit.contain,
-                          errorWidget: (_, _, _) => Icon(
-                            Icons.tv_rounded,
-                            color: isPlaying
-                                ? AppColors.primary
-                                : Colors.white70,
-                            size: 20,
-                          ),
-                        )
-                      : Icon(
-                          Icons.tv_rounded,
-                          color: isPlaying ? AppColors.primary : Colors.white70,
-                          size: 20,
-                        ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              channel.name,
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: isPlaying
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                                color: isPlaying
-                                    ? AppColors.primary
-                                    : Colors.white,
-                              ),
-                            ),
-                          ),
-                          if (isPlaying)
-                            Container(
-                              margin: const EdgeInsets.only(left: 6),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                s.liveTvNowPlaying.toUpperCase(),
-                                style: GoogleFonts.inter(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        s.liveTvCategoryLabel(channel.category),
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (isFavorite)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4),
-                    child: Icon(
-                      Icons.favorite_rounded,
-                      color: Colors.redAccent,
-                      size: 16,
-                    ),
-                  ),
-                Icon(
-                  isPlaying
-                      ? Icons.pause_circle_filled_rounded
-                      : Icons.play_circle_fill_rounded,
-                  color: isPlaying ? AppColors.primary : Colors.white60,
-                  size: 26,
-                ),
-              ],
+    return TvFocusable(
+      onTap: () {
+        _playChannel(channel);
+      },
+      borderRadius: BorderRadius.circular(8),
+      scaleOnFocus: 1.01,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isPlaying
+              ? AppColors.primary.withValues(alpha: 0.10)
+              : Colors.transparent,
+          border: Border(
+            bottom: BorderSide(
+              color: isPlaying
+                  ? AppColors.primary.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.08),
+              width: 0.8,
             ),
           ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            // Channel Logo (Clean, no background box)
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: channel.logoUrl != null && channel.logoUrl!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: channel.logoUrl!,
+                      httpHeaders: const {
+                        'User-Agent':
+                            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                      },
+                      fit: BoxFit.contain,
+                      errorWidget: (_, _, _) => Icon(
+                        Icons.tv_rounded,
+                        color: isPlaying
+                            ? AppColors.primary
+                            : Colors.white70,
+                        size: 20,
+                      ),
+                    )
+                  : Icon(
+                      Icons.tv_rounded,
+                      color: isPlaying ? AppColors.primary : Colors.white70,
+                      size: 20,
+                    ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          channel.name,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: isPlaying
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isPlaying
+                                ? AppColors.primary
+                                : Colors.white,
+                          ),
+                        ),
+                      ),
+                      if (isPlaying)
+                        Container(
+                          margin: const EdgeInsets.only(left: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            s.liveTvNowPlaying.toUpperCase(),
+                            style: GoogleFonts.inter(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    s.liveTvCategoryLabel(channel.category),
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isFavorite)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4),
+                child: Icon(
+                  Icons.favorite_rounded,
+                  color: Colors.redAccent,
+                  size: 16,
+                ),
+              ),
+            Icon(
+              isPlaying
+                  ? Icons.pause_circle_filled_rounded
+                  : Icons.play_circle_fill_rounded,
+              color: isPlaying ? AppColors.primary : Colors.white60,
+              size: 26,
+            ),
+          ],
         ),
       ),
     );
@@ -1307,23 +1433,20 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                                     right: 16,
                                     child: Row(
                                       children: [
-                                        Material(
-                                          color: Colors.black45,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          child: InkWell(
-                                            onTap: _exitFullscreen,
-                                            borderRadius: BorderRadius.circular(
-                                              8,
+                                        TvFocusable(
+                                          onTap: _exitFullscreen,
+                                          borderRadius: BorderRadius.circular(8),
+                                          scaleOnFocus: 1.08,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black45,
+                                              borderRadius: BorderRadius.circular(8),
                                             ),
-                                            child: Container(
-                                              padding: const EdgeInsets.all(6),
-                                              child: const Icon(
-                                                Icons.fullscreen_exit_rounded,
-                                                color: Colors.white,
-                                                size: 22,
-                                              ),
+                                            child: const Icon(
+                                              Icons.fullscreen_exit_rounded,
+                                              color: Colors.white,
+                                              size: 22,
                                             ),
                                           ),
                                         ),
@@ -1356,8 +1479,10 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                                         ),
 
                                         // Aspect Ratio
-                                        GestureDetector(
+                                        TvFocusable(
                                           onTap: _toggleVideoFit,
+                                          borderRadius: BorderRadius.circular(8),
+                                          scaleOnFocus: 1.05,
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 10,
@@ -1389,54 +1514,48 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                                         const SizedBox(width: 8),
 
                                         // Reload Button
-                                        Material(
-                                          color: Colors.black45,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          child: InkWell(
-                                            onTap: _reloadStream,
-                                            borderRadius: BorderRadius.circular(
-                                              8,
+                                        TvFocusable(
+                                          onTap: _reloadStream,
+                                          borderRadius: BorderRadius.circular(8),
+                                          scaleOnFocus: 1.08,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black45,
+                                              borderRadius: BorderRadius.circular(8),
                                             ),
-                                            child: Container(
-                                              padding: const EdgeInsets.all(6),
-                                              child: const Icon(
-                                                Icons.refresh_rounded,
-                                                color: Colors.white,
-                                                size: 20,
-                                              ),
+                                            child: const Icon(
+                                              Icons.refresh_rounded,
+                                              color: Colors.white,
+                                              size: 20,
                                             ),
                                           ),
                                         ),
                                         const SizedBox(width: 8),
 
                                         // Favorite Button
-                                        Material(
-                                          color: Colors.black45,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          child: InkWell(
-                                            onTap: () => favoritesNotifier
-                                                .toggleFavorite(
-                                                  _currentChannel.id,
-                                                ),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            child: Container(
-                                              padding: const EdgeInsets.all(6),
-                                              child: Icon(
-                                                isFav
-                                                    ? Icons.favorite_rounded
-                                                    : Icons
-                                                          .favorite_border_rounded,
-                                                color: isFav
-                                                    ? Colors.redAccent
-                                                    : Colors.white,
-                                                size: 20,
+                                        TvFocusable(
+                                          onTap: () => favoritesNotifier
+                                              .toggleFavorite(
+                                                _currentChannel.id,
                                               ),
+                                          borderRadius: BorderRadius.circular(8),
+                                          scaleOnFocus: 1.08,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black45,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Icon(
+                                              isFav
+                                                  ? Icons.favorite_rounded
+                                                  : Icons
+                                                        .favorite_border_rounded,
+                                              color: isFav
+                                                  ? Colors.redAccent
+                                                  : Colors.white,
+                                              size: 20,
                                             ),
                                           ),
                                         ),
@@ -1448,46 +1567,55 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                                   Positioned(
                                     bottom: 16,
                                     right: 16,
-                                    child: ElevatedButton.icon(
-                                      onPressed: _toggleLandscapeChannelDrawer,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            _isLandscapeChannelDrawerOpen
-                                            ? AppColors.primary
-                                            : Colors.black54,
-                                        foregroundColor:
-                                            _isLandscapeChannelDrawerOpen
-                                            ? Colors.black
-                                            : Colors.white,
-                                        side: BorderSide(
-                                          color: _isLandscapeChannelDrawerOpen
-                                              ? AppColors.primary
-                                              : Colors.white24,
-                                          width: 0.8,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
+                                    child: TvFocusable(
+                                      onTap: _toggleLandscapeChannelDrawer,
+                                      borderRadius: BorderRadius.circular(8),
+                                      scaleOnFocus: 1.05,
+                                      child: Focus(
+                                        canRequestFocus: false,
+                                        descendantsAreFocusable: false,
+                                        child: ElevatedButton.icon(
+                                          onPressed: _toggleLandscapeChannelDrawer,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                _isLandscapeChannelDrawerOpen
+                                                ? AppColors.primary
+                                                : Colors.black54,
+                                            foregroundColor:
+                                                _isLandscapeChannelDrawerOpen
+                                                ? Colors.black
+                                                : Colors.white,
+                                            side: BorderSide(
+                                              color: _isLandscapeChannelDrawerOpen
+                                                  ? AppColors.primary
+                                                  : Colors.white24,
+                                              width: 0.8,
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 8,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(
+                                                8,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                      icon: Icon(
-                                        _isLandscapeChannelDrawerOpen
-                                            ? Icons.chevron_right_rounded
-                                            : Icons.list_rounded,
-                                        size: 18,
-                                      ),
-                                      label: Text(
-                                        _isLandscapeChannelDrawerOpen
-                                            ? s.liveTvClose
-                                            : s.liveTvSwitchChannel,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
+                                          icon: Icon(
+                                            _isLandscapeChannelDrawerOpen
+                                                ? Icons.chevron_right_rounded
+                                                : Icons.list_rounded,
+                                            size: 18,
+                                          ),
+                                          label: Text(
+                                            _isLandscapeChannelDrawerOpen
+                                                ? s.liveTvClose
+                                                : s.liveTvSwitchChannel,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1624,12 +1752,14 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                 itemBuilder: (context, index) {
                   final cat = categories[index];
                   final isSelected = cat == _landscapeSelectedCategory;
-                  return GestureDetector(
+                  return TvFocusable(
                     onTap: () {
                       setState(() {
                         _landscapeSelectedCategory = cat;
                       });
                     },
+                    borderRadius: BorderRadius.circular(16),
+                    scaleOnFocus: 1.04,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(
@@ -1698,124 +1828,121 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
                         final ch = displayedChannels[index];
                         final isPlaying = ch.id == _currentChannel.id;
 
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: isPlaying
-                                ? AppColors.primary.withValues(alpha: 0.12)
-                                : Colors.transparent,
-                            border: Border(
-                              bottom: BorderSide(
-                                color: isPlaying
-                                    ? AppColors.primary.withValues(alpha: 0.4)
-                                    : Colors.white.withValues(alpha: 0.08),
-                                width: 0.8,
+                        return TvFocusable(
+                          onTap: () {
+                            _playChannel(ch);
+                          },
+                          borderRadius: BorderRadius.circular(6),
+                          scaleOnFocus: 1.01,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isPlaying
+                                  ? AppColors.primary.withValues(alpha: 0.12)
+                                  : Colors.transparent,
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: isPlaying
+                                      ? AppColors.primary.withValues(alpha: 0.4)
+                                      : Colors.white.withValues(alpha: 0.08),
+                                  width: 0.8,
+                                ),
                               ),
                             ),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                _playChannel(ch);
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              children: [
+                                // Channel Logo (Clean, no background box)
+                                SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child:
+                                      ch.logoUrl != null &&
+                                          ch.logoUrl!.isNotEmpty
+                                      ? CachedNetworkImage(
+                                          imageUrl: ch.logoUrl!,
+                                          httpHeaders: const {
+                                            'User-Agent':
+                                                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                                          },
+                                          fit: BoxFit.contain,
+                                          errorWidget: (_, _, _) => Icon(
+                                            Icons.tv_rounded,
+                                            color: isPlaying
+                                                ? AppColors.primary
+                                                : Colors.white70,
+                                            size: 18,
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.tv_rounded,
+                                          color: isPlaying
+                                              ? AppColors.primary
+                                              : Colors.white70,
+                                          size: 18,
+                                        ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    // Channel Logo (Clean, no background box)
-                                    SizedBox(
-                                      width: 32,
-                                      height: 32,
-                                      child:
-                                          ch.logoUrl != null &&
-                                              ch.logoUrl!.isNotEmpty
-                                          ? CachedNetworkImage(
-                                              imageUrl: ch.logoUrl!,
-                                              httpHeaders: const {
-                                                'User-Agent':
-                                                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                                              },
-                                              fit: BoxFit.contain,
-                                              errorWidget: (_, _, _) => Icon(
-                                                Icons.tv_rounded,
-                                                color: isPlaying
-                                                    ? AppColors.primary
-                                                    : Colors.white70,
-                                                size: 18,
-                                              ),
-                                            )
-                                          : Icon(
-                                              Icons.tv_rounded,
-                                              color: isPlaying
-                                                  ? AppColors.primary
-                                                  : Colors.white70,
-                                              size: 18,
-                                            ),
-                                    ),
-                                    const SizedBox(width: 10),
+                                const SizedBox(width: 10),
 
-                                    // Channel Name & Category
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            ch.name,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: GoogleFonts.outfit(
-                                              fontSize: 12,
-                                              fontWeight: isPlaying
-                                                  ? FontWeight.w700
-                                                  : FontWeight.w500,
-                                              color: isPlaying
-                                                  ? AppColors.primary
-                                                  : Colors.white,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            s.liveTvCategoryLabel(ch.category),
-                                            style: GoogleFonts.inter(
-                                              fontSize: 10,
-                                              color: AppColors.textMuted,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    // Playing Indicator Badge
-                                    if (isPlaying)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 5,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary,
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          s.liveTvNowPlaying.toUpperCase(),
-                                          style: GoogleFonts.inter(
-                                            fontSize: 7.5,
-                                            fontWeight: FontWeight.w800,
-                                            color: Colors.black,
-                                            letterSpacing: 0.5,
-                                          ),
+                                // Channel Name & Category
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        ch.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 12,
+                                          fontWeight: isPlaying
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                          color: isPlaying
+                                              ? AppColors.primary
+                                              : Colors.white,
                                         ),
                                       ),
-                                  ],
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        s.liveTvCategoryLabel(ch.category),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 10,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
+
+                                // Playing Indicator Badge
+                                if (isPlaying)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(
+                                        4,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      s.liveTvNowPlaying.toUpperCase(),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 7.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.black,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         );

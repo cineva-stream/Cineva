@@ -8,6 +8,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/platform/device_form_factor.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../data/watchlist_repository.dart';
 
 /// Watchlist screen displaying saved movies and TV series from Hive.
@@ -47,11 +49,17 @@ class WatchlistScreen extends ConsumerWidget {
                     tooltip: 'Kembali',
                   ),
                   const SizedBox(width: 4),
-                  Text(s.watchlistTitle, style: Theme.of(context).textTheme.displaySmall),
+                  Text(
+                    s.watchlistTitle,
+                    style: Theme.of(context).textTheme.displaySmall,
+                  ),
                   const SizedBox(width: 8),
                   if (items.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
@@ -72,7 +80,9 @@ class WatchlistScreen extends ConsumerWidget {
 
             // ── Content ──
             Expanded(
-              child: items.isEmpty ? const _EmptyState() : _WatchlistGrid(items: items),
+              child: items.isEmpty
+                  ? const _EmptyState()
+                  : _WatchlistGrid(items: items),
             ),
           ],
         ),
@@ -101,7 +111,11 @@ class _EmptyState extends ConsumerWidget {
                 color: AppColors.surfaceVariant.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.bookmark_border_rounded, size: 48, color: AppColors.textMuted),
+              child: const Icon(
+                Icons.bookmark_border_rounded,
+                size: 48,
+                color: AppColors.textMuted,
+              ),
             ),
             const SizedBox(height: 24),
             Text(
@@ -124,8 +138,13 @@ class _EmptyState extends ConsumerWidget {
               icon: const Icon(Icons.search_rounded, size: 18),
               label: Text(s.watchlistExploreButton),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
           ],
@@ -135,155 +154,253 @@ class _EmptyState extends ConsumerWidget {
   }
 }
 
-/// Full-width list of watchlist items with subtle divider borders (no card container).
+/// Adaptive list/grid of watchlist items for Mobile, Tablet, Windows, and Android TV.
 class _WatchlistGrid extends ConsumerWidget {
   final List<WatchlistItem> items;
   const _WatchlistGrid({required this.items});
+
+  void _removeItem(
+    BuildContext context,
+    WidgetRef ref,
+    WatchlistItem item,
+    dynamic s,
+  ) {
+    ref.read(watchlistProvider.notifier).remove(item.id, item.type);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(s.watchlistRemoved(item.title)),
+        backgroundColor: AppColors.surfaceVariant,
+        action: SnackBarAction(
+          label: s.watchlistUndo,
+          textColor: AppColors.primary,
+          onPressed: () {
+            ref.read(watchlistProvider.notifier).toggle(item);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWatchlistItemCard(
+    BuildContext context,
+    WidgetRef ref,
+    WatchlistItem item,
+    dynamic s, {
+    required bool isGridCard,
+    required int index,
+  }) {
+    final content = TvFocusable(
+      onTap: () {
+        final route = item.type == 'tv'
+            ? '/tv/${item.id}'
+            : '/movie/${item.id}';
+        context.push(route);
+      },
+      borderRadius: BorderRadius.circular(isGridCard ? 14 : 0),
+      scaleOnFocus: isGridCard ? 1.02 : 1.0,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isGridCard
+              ? AppColors.surface.withValues(alpha: 0.75)
+              : Colors.transparent,
+          borderRadius: isGridCard ? BorderRadius.circular(14) : null,
+          border: isGridCard
+              ? Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  width: 1,
+                )
+              : Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    width: 0.8,
+                  ),
+                ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            // Poster
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: item.posterPath != null
+                  ? CachedNetworkImage(
+                      imageUrl: ApiConstants.imageUrl(item.posterPath!),
+                      width: 65,
+                      height: 95,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      width: 65,
+                      height: 95,
+                      color: AppColors.surfaceElevated,
+                      child: const Icon(
+                        Iconsax.video_play,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 14),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: item.type == 'tv'
+                              ? AppColors.info.withValues(alpha: 0.15)
+                              : AppColors.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          item.type == 'tv'
+                              ? 'TV Series'
+                              : (s.isIndonesian ? 'Film' : 'Movie'),
+                          style: TextStyle(
+                            color: item.type == 'tv'
+                                ? AppColors.info
+                                : AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Icon(
+                        Iconsax.star_1,
+                        size: 14,
+                        color: AppColors.star,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        item.voteAverage.toStringAsFixed(1),
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    s.watchlistAddedDate(_formatDate(item.addedAt)),
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Explicit Delete Button for TV / Windows / Tablet + Mobile convenience
+            IconButton(
+              onPressed: () => _removeItem(context, ref, item, s),
+              icon: const Icon(
+                Iconsax.trash,
+                size: 18,
+                color: AppColors.textMuted,
+              ),
+              tooltip: 'Hapus',
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(delay: (40 * (index % 12)).ms).slideX(begin: 0.03, end: 0);
+
+    if (isGridCard) {
+      return content;
+    }
+
+    return Dismissible(
+      key: ValueKey('${item.type}_${item.id}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        decoration: BoxDecoration(
+          color: AppColors.error.withValues(alpha: 0.25),
+          border: Border(
+            bottom: BorderSide(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 0.8,
+            ),
+          ),
+        ),
+        child: const Icon(Iconsax.trash, color: AppColors.error, size: 22),
+      ),
+      onDismissed: (_) => _removeItem(context, ref, item, s),
+      child: content,
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
     final bottomPadding = MediaQuery.of(context).padding.bottom + 100;
 
-    return ListView.builder(
-      padding: EdgeInsets.fromLTRB(0, 0, 0, bottomPadding),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return Dismissible(
-          key: ValueKey('${item.type}_${item.id}'),
-          direction: DismissDirection.endToStart,
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 24),
-            decoration: BoxDecoration(
-              color: AppColors.error.withValues(alpha: 0.25),
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  width: 0.8,
-                ),
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final gridCols = adaptiveHorizontalCardGridColumns(
+          constraints.maxWidth,
+          isTv: gIsTv,
+        );
+
+        if (gridCols >= 2) {
+          return GridView.builder(
+            padding: EdgeInsets.fromLTRB(20, 4, 20, bottomPadding),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: gridCols,
+              mainAxisExtent: 122,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 12,
             ),
-            child: const Icon(Iconsax.trash, color: AppColors.error, size: 22),
-          ),
-          onDismissed: (_) {
-            ref.read(watchlistProvider.notifier).remove(item.id, item.type);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(s.watchlistRemoved(item.title)),
-                backgroundColor: AppColors.surfaceVariant,
-                action: SnackBarAction(
-                  label: s.watchlistUndo,
-                  textColor: AppColors.primary,
-                  onPressed: () {
-                    ref.read(watchlistProvider.notifier).toggle(item);
-                  },
-                ),
-              ),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              return _buildWatchlistItemCard(
+                context,
+                ref,
+                items[index],
+                s,
+                isGridCard: true,
+                index: index,
+              );
+            },
+          );
+        }
+
+        return ListView.builder(
+          padding: EdgeInsets.fromLTRB(0, 0, 0, bottomPadding),
+          itemCount: items.length,
+          itemBuilder: (context, index) {
+            return _buildWatchlistItemCard(
+              context,
+              ref,
+              items[index],
+              s,
+              isGridCard: false,
+              index: index,
             );
           },
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  width: 0.8,
-                ),
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  final route = item.type == 'tv' ? '/tv/${item.id}' : '/movie/${item.id}';
-                  context.push(route);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      // Poster
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: item.posterPath != null
-                            ? CachedNetworkImage(
-                                imageUrl: ApiConstants.imageUrl(item.posterPath!),
-                                width: 65,
-                                height: 95,
-                                fit: BoxFit.cover,
-                              )
-                            : Container(
-                                width: 65,
-                                height: 95,
-                                color: AppColors.surfaceElevated,
-                                child: const Icon(Iconsax.video_play, color: AppColors.textMuted),
-                              ),
-                      ),
-                      const SizedBox(width: 14),
-
-                      // Info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: item.type == 'tv'
-                                        ? AppColors.info.withValues(alpha: 0.15)
-                                        : AppColors.primary.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    item.type == 'tv' ? 'TV Series' : (s.isIndonesian ? 'Film' : 'Movie'),
-                                    style: TextStyle(
-                                      color: item.type == 'tv' ? AppColors.info : AppColors.primary,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                const Icon(Iconsax.star_1, size: 14, color: AppColors.star),
-                                const SizedBox(width: 4),
-                                Text(
-                                  item.voteAverage.toStringAsFixed(1),
-                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              s.watchlistAddedDate(_formatDate(item.addedAt)),
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Arrow
-                      const Icon(Iconsax.arrow_right_3, size: 18, color: AppColors.textMuted),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.05, end: 0),
         );
       },
     );

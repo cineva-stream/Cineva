@@ -32,8 +32,8 @@ Future<void> main() async {
       String? lastTrackedScreen;
       appRouter.routerDelegate.addListener(() {
         try {
-          final location =
-              appRouter.routerDelegate.currentConfiguration.uri.toString();
+          final location = appRouter.routerDelegate.currentConfiguration.uri
+              .toString();
           if (location.isNotEmpty && location != lastTrackedScreen) {
             lastTrackedScreen = location;
             analytics.logScreenView(
@@ -130,20 +130,19 @@ Future<void> main() async {
 
   if (!kIsWeb && Platform.isAndroid) {
     try {
-      if (isTv) {
-        await SystemChrome.setPreferredOrientations([
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ]);
-        // Android TV 10-Foot UI: immersive sticky mode prevents system UI overlay crashes
-        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      } else {
-        await SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown,
-        ]);
-        // Smartphone UI: edge-to-edge transparent bars
-        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      // Detect tablet screen size (shortest logical side >= 600dp)
+      final views = PlatformDispatcher.instance.views;
+      if (views.isNotEmpty) {
+        final view = views.first;
+        final dpr = view.devicePixelRatio > 0 ? view.devicePixelRatio : 1.0;
+        final shortestSide = view.physicalSize.shortestSide / dpr;
+        if (shortestSide >= 600 && !isTv) {
+          gIsTablet = true;
+        }
+      }
+
+      await restoreSystemUiAndOrientations(isTv: isTv);
+      if (!isTv) {
         SystemChrome.setSystemUIOverlayStyle(
           const SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,

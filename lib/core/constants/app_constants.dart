@@ -3,7 +3,7 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = 'Cineva Stream';
-  static const String appVersion = '1.1.7';
+  static const String appVersion = '1.1.8';
   static const String appTagline = 'Stream Freely';
 
   // ── Durations ──

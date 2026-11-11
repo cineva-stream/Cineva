@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
@@ -23,22 +22,29 @@ import '../../../../core/platform/device_form_factor.dart';
 
 // ── TV Detail Provider ──
 
-final tvDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((ref, tvId) async {
+final tvDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((
+  ref,
+  tvId,
+) async {
   final lang = ref.watch(appLanguageProvider);
   final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
   final dio = DioClient.createTmdbClient();
-  final response = await dio.get('/tv/$tvId', queryParameters: {
-    'language': tmdbLang,
-    'append_to_response': 'credits,external_ids,similar,videos',
-  });
+  final response = await dio.get(
+    '/tv/$tvId',
+    queryParameters: {
+      'language': tmdbLang,
+      'append_to_response': 'credits,external_ids,similar,videos',
+    },
+  );
   final data = Map<String, dynamic>.from(response.data as Map);
   final overview = (data['overview'] as String? ?? '').trim();
   if (overview.isEmpty) {
     try {
       final fallbackLang = tmdbLang == 'id-ID' ? 'en-US' : 'id-ID';
-      final fbResponse = await dio.get('/tv/$tvId', queryParameters: {
-        'language': fallbackLang,
-      });
+      final fbResponse = await dio.get(
+        '/tv/$tvId',
+        queryParameters: {'language': fallbackLang},
+      );
       final fbOverview = (fbResponse.data['overview'] as String? ?? '').trim();
       if (fbOverview.isNotEmpty) {
         data['overview'] = fbOverview;
@@ -50,9 +56,10 @@ final tvDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((ref, 
   final rawVideos = (data['videos']?['results'] as List<dynamic>?) ?? [];
   if (rawVideos.isEmpty && tmdbLang != 'en-US') {
     try {
-      final vResponse = await dio.get('/tv/$tvId/videos', queryParameters: {
-        'language': 'en-US',
-      });
+      final vResponse = await dio.get(
+        '/tv/$tvId/videos',
+        queryParameters: {'language': 'en-US'},
+      );
       data['videos'] = vResponse.data;
     } catch (_) {}
   }
@@ -62,30 +69,36 @@ final tvDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((ref, 
 
 // ── TV Season Episodes Provider ──
 
-final tvSeasonEpisodesProvider = FutureProvider.family<List<Map<String, dynamic>>, ({int tvId, int seasonNumber})>((ref, arg) async {
-  final lang = ref.watch(appLanguageProvider);
-  final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
-  final dio = DioClient.createTmdbClient();
-  try {
-    final response = await dio.get('/tv/${arg.tvId}/season/${arg.seasonNumber}', queryParameters: {
-      'language': tmdbLang,
+final tvSeasonEpisodesProvider =
+    FutureProvider.family<
+      List<Map<String, dynamic>>,
+      ({int tvId, int seasonNumber})
+    >((ref, arg) async {
+      final lang = ref.watch(appLanguageProvider);
+      final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
+      final dio = DioClient.createTmdbClient();
+      try {
+        final response = await dio.get(
+          '/tv/${arg.tvId}/season/${arg.seasonNumber}',
+          queryParameters: {'language': tmdbLang},
+        );
+        final episodes = response.data['episodes'] as List<dynamic>? ?? [];
+        return episodes.cast<Map<String, dynamic>>();
+      } catch (e) {
+        // Fallback to alternate language
+        try {
+          final fallbackLang = tmdbLang == 'id-ID' ? 'en-US' : 'id-ID';
+          final response = await dio.get(
+            '/tv/${arg.tvId}/season/${arg.seasonNumber}',
+            queryParameters: {'language': fallbackLang},
+          );
+          final episodes = response.data['episodes'] as List<dynamic>? ?? [];
+          return episodes.cast<Map<String, dynamic>>();
+        } catch (_) {
+          return [];
+        }
+      }
     });
-    final episodes = response.data['episodes'] as List<dynamic>? ?? [];
-    return episodes.cast<Map<String, dynamic>>();
-  } catch (e) {
-    // Fallback to alternate language
-    try {
-      final fallbackLang = tmdbLang == 'id-ID' ? 'en-US' : 'id-ID';
-      final response = await dio.get('/tv/${arg.tvId}/season/${arg.seasonNumber}', queryParameters: {
-        'language': fallbackLang,
-      });
-      final episodes = response.data['episodes'] as List<dynamic>? ?? [];
-      return episodes.cast<Map<String, dynamic>>();
-    } catch (_) {
-      return [];
-    }
-  }
-});
 
 /// TV series detail screen with seasons, episodes selector, and cast.
 class TvDetailScreen extends ConsumerWidget {
@@ -115,9 +128,16 @@ class TvDetailScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
+                const Icon(
+                  Iconsax.warning_2,
+                  size: 48,
+                  color: AppColors.textMuted,
+                ),
                 const SizedBox(height: 16),
-                Text(s.detailFailed, style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  s.detailFailed,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => ref.invalidate(tvDetailProvider(tvId)),
@@ -148,7 +168,9 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
     super.initState();
     final seasons = widget.data['seasons'] as List<dynamic>? ?? [];
     // Default to the first regular season (season_number >= 1) or first available
-    final regular = seasons.where((s) => (s['season_number'] as int? ?? 0) >= 1).firstOrNull;
+    final regular = seasons
+        .where((s) => (s['season_number'] as int? ?? 0) >= 1)
+        .firstOrNull;
     if (regular != null) {
       _selectedSeasonNumber = regular['season_number'] as int? ?? 1;
     } else if (seasons.isNotEmpty) {
@@ -166,21 +188,28 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
     final posterPath = data['poster_path'] as String?;
     final voteAverage = (data['vote_average'] as num?)?.toDouble() ?? 0.0;
     final firstAirDate = data['first_air_date'] as String? ?? '';
-    final genres = (data['genres'] as List<dynamic>?)?.map((g) => g['name'] as String).toList() ?? [];
+    final genres =
+        (data['genres'] as List<dynamic>?)
+            ?.map((g) => g['name'] as String)
+            .toList() ??
+        [];
     final tagline = data['tagline'] as String? ?? '';
     final seasons = (data['seasons'] as List<dynamic>?) ?? [];
     final numberOfSeasons = data['number_of_seasons'] as int? ?? 0;
     final numberOfEpisodes = data['number_of_episodes'] as int? ?? 0;
-    final castList = (data['credits']?['cast'] as List<dynamic>?)?.take(10).toList() ?? [];
+    final castList =
+        (data['credits']?['cast'] as List<dynamic>?)?.take(10).toList() ?? [];
     final imdbId = data['external_ids']?['imdb_id'] as String?;
     final tvId = data['id'] as int? ?? 0;
     final trailer = TrailerVideoModel.findBestTrailer(data['videos']);
 
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final isWide = isWideScreenLayout(context, isTv: ref.watch(isTvProvider));
+    final isTv = ref.watch(isTvProvider);
+    final isWide = isWideScreenLayout(context, isTv: isTv);
+    final useDesktopHero = (isWide && screenWidth >= 800) || isTv;
     final isCompact = screenWidth < 360;
 
-    if (isWide) {
+    if (useDesktopHero) {
       return _buildDesktopLayout(
         context,
         ref: ref,
@@ -240,24 +269,23 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
     required String? backdropPath,
     required String overview,
   }) async {
-    await context.push('/player', extra: {
-      'title': name,
-      'episodeTitle': episodeTitle,
-      'imdbId': imdbId,
-      'season': season,
-      'episode': episode,
-      'tmdbId': tvId,
-      'mediaType': 'tv',
-      'posterPath': posterPath,
-      'backdropPath': backdropPath,
-      'overview': overview,
-      'magnetLink': '',
-    });
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await context.push(
+      '/player',
+      extra: {
+        'title': name,
+        'episodeTitle': episodeTitle,
+        'imdbId': imdbId,
+        'season': season,
+        'episode': episode,
+        'tmdbId': tvId,
+        'mediaType': 'tv',
+        'posterPath': posterPath,
+        'backdropPath': backdropPath,
+        'overview': overview,
+        'magnetLink': '',
+      },
+    );
+    await restoreSystemUiAndOrientations(isTv: gIsTv);
   }
 
   Widget _buildDesktopLayout(
@@ -281,7 +309,9 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
     required int tvId,
     required TrailerVideoModel? trailer,
   }) {
-    final firstAirYear = firstAirDate.length >= 4 ? firstAirDate.substring(0, 4) : '';
+    final firstAirYear = firstAirDate.length >= 4
+        ? firstAirDate.substring(0, 4)
+        : '';
 
     return CustomScrollView(
       slivers: [
@@ -358,7 +388,8 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                   child: TvFocusable(
                     focusedScale: 1.1,
                     borderRadius: BorderRadius.circular(24),
-                    onTap: () => context.canPop() ? context.pop() : context.go('/'),
+                    onTap: () =>
+                        context.canPop() ? context.pop() : context.go('/'),
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -369,7 +400,11 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                           width: 1,
                         ),
                       ),
-                      child: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                   ),
                 ),
@@ -385,35 +420,38 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          // Large Floating Poster Card
-                          TvFocusable(
-                            focusedScale: 1.03,
-                            glowBlurRadius: 18,
-                            borderRadius: BorderRadius.circular(18),
-                            child: Container(
-                              width: 210,
-                              height: 315,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(18),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.7),
-                                    blurRadius: 26,
-                                    offset: const Offset(0, 10),
+                          // Large Floating Poster Card (non-interactive)
+                          Container(
+                            width: 210,
+                            height: 315,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.7),
+                                  blurRadius: 28,
+                                  offset: const Offset(0, 10),
+                                ),
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.15,
                                   ),
-                                ],
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  width: 1.2,
+                                  blurRadius: 36,
+                                  offset: const Offset(0, 4),
                                 ),
+                              ],
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                width: 1.2,
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(18),
-                                child: CachedNetworkImage(
-                                  imageUrl: ApiConstants.imageUrl(posterPath),
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
-                                ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: CachedNetworkImage(
+                                imageUrl: ApiConstants.imageUrl(posterPath),
+                                fit: BoxFit.cover,
+                                placeholder: (_, _) =>
+                                    Container(color: AppColors.surfaceVariant),
                               ),
                             ),
                           ),
@@ -429,12 +467,12 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                 // Title
                                 Text(
                                   name,
-                                  style: GoogleFonts.outfit(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 34,
-                                    fontWeight: FontWeight.w900,
+                                    fontWeight: FontWeight.w800,
                                     color: Colors.white,
                                     height: 1.15,
-                                    letterSpacing: -0.4,
+                                    letterSpacing: -0.6,
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -458,19 +496,30 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                 Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: AppColors.star.withValues(alpha: 0.18),
+                                        color: AppColors.star.withValues(
+                                          alpha: 0.18,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: AppColors.star.withValues(alpha: 0.4),
+                                          color: AppColors.star.withValues(
+                                            alpha: 0.4,
+                                          ),
                                           width: 0.8,
                                         ),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Icon(Icons.star_rounded, color: AppColors.star, size: 16),
+                                          const Icon(
+                                            Icons.star_rounded,
+                                            color: AppColors.star,
+                                            size: 16,
+                                          ),
                                           const SizedBox(width: 4),
                                           Text(
                                             voteAverage.toStringAsFixed(1),
@@ -480,45 +529,91 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                               color: Colors.white,
                                             ),
                                           ),
-                                          const Text(' / 10', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                                          const Text(
+                                            ' / 10',
+                                            style: TextStyle(
+                                              color: AppColors.textMuted,
+                                              fontSize: 11,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
                                     const SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.1),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.1,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
-                                        s.detailSeasonEpisodes(numberOfSeasons, numberOfEpisodes),
-                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                                        s.detailSeasonEpisodes(
+                                          numberOfSeasons,
+                                          numberOfEpisodes,
+                                        ),
+                                        style: const TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                     if (firstAirYear.isNotEmpty) ...[
                                       const SizedBox(width: 8),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: Text(
                                           firstAirYear,
-                                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                                          style: const TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ),
                                     ],
                                     const SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.8),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 4,
                                       ),
-                                      child: const Text('4K UHD', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        '4K UHD',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -533,13 +628,28 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                     children: genres
                                         .map(
                                           (g) => Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.surfaceVariant.withValues(alpha: 0.7),
-                                              borderRadius: BorderRadius.circular(16),
-                                              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 4,
                                             ),
-                                            child: Text(g, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.surfaceVariant
+                                                  .withValues(alpha: 0.7),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              border: Border.all(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.1,
+                                                ),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              g,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
                                           ),
                                         )
                                         .toList(),
@@ -547,18 +657,24 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
 
                                 const SizedBox(height: 18),
 
-                                // Action Buttons Row (Widescreen fixed widths)
-                                Row(
+                                // Action Buttons Row (Widescreen wrap for safety)
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 10,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
                                     // Watch Now
                                     TvFocusable(
+                                      autofocus: true,
                                       focusedScale: 1.04,
-                                      glowBlurRadius: 12,
-                                      borderRadius: BorderRadius.circular(12),
+                                      glowBlurRadius: 16,
+                                      glowColor: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(14),
                                       onTap: () => _playTvEpisode(
                                         context,
                                         name: name,
-                                        episodeTitle: 'Season $_selectedSeasonNumber Episode 1',
+                                        episodeTitle:
+                                            'Season $_selectedSeasonNumber Episode 1',
                                         imdbId: imdbId,
                                         season: _selectedSeasonNumber,
                                         episode: 1,
@@ -568,14 +684,20 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                         overview: overview,
                                       ),
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                          vertical: 14,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: AppColors.primary,
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: AppColors.primary.withValues(alpha: 0.35),
-                                              blurRadius: 12,
+                                              color: AppColors.primary
+                                                  .withValues(alpha: 0.4),
+                                              blurRadius: 18,
                                               offset: const Offset(0, 4),
                                             ),
                                           ],
@@ -583,23 +705,31 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 24),
+                                            const Icon(
+                                              Icons.play_arrow_rounded,
+                                              color: Colors.black,
+                                              size: 24,
+                                            ),
                                             const SizedBox(width: 8),
                                             Text(
-                                              s.detailWatchTv(_selectedSeasonNumber, 1),
-                                              style: GoogleFonts.inter(
-                                                color: Colors.black,
-                                                fontWeight: FontWeight.w800,
-                                                fontSize: 14,
+                                              s.detailWatchTv(
+                                                _selectedSeasonNumber,
+                                                1,
                                               ),
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    color: Colors.black,
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: 14,
+                                                    letterSpacing: 0.2,
+                                                  ),
                                             ),
                                           ],
                                         ),
                                       ),
                                     ),
 
-                                    if (trailer != null) ...[
-                                      const SizedBox(width: 12),
+                                    if (trailer != null)
                                       TvFocusable(
                                         focusedScale: 1.04,
                                         borderRadius: BorderRadius.circular(12),
@@ -611,7 +741,8 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                             onWatchNow: () => _playTvEpisode(
                                               context,
                                               name: name,
-                                              episodeTitle: 'Season $_selectedSeasonNumber Episode 1',
+                                              episodeTitle:
+                                                  'Season $_selectedSeasonNumber Episode 1',
                                               imdbId: imdbId,
                                               season: _selectedSeasonNumber,
                                               episode: 1,
@@ -623,37 +754,59 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                           );
                                         },
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 18,
+                                            vertical: 13,
+                                          ),
                                           decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 1),
+                                            color: Colors.white.withValues(
+                                              alpha: 0.12,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.redAccent
+                                                  .withValues(alpha: 0.5),
+                                              width: 1,
+                                            ),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              const Icon(Icons.smart_display_rounded, color: Colors.redAccent, size: 20),
+                                              const Icon(
+                                                Icons.smart_display_rounded,
+                                                color: Colors.redAccent,
+                                                size: 20,
+                                              ),
                                               const SizedBox(width: 8),
                                               Text(
                                                 s.trailerTitle,
-                                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
                                               ),
                                             ],
                                           ),
                                         ),
                                       ),
-                                    ],
 
-                                    const SizedBox(width: 12),
                                     // Watchlist Button
                                     Consumer(
                                       builder: (context, ref, _) {
                                         final isInWatchlist = ref.watch(
-                                          isInWatchlistProvider((id: tvId, type: 'tv')),
+                                          isInWatchlistProvider((
+                                            id: tvId,
+                                            type: 'tv',
+                                          )),
                                         );
                                         return TvFocusable(
                                           focusedScale: 1.04,
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           onTap: () async {
                                             final item = WatchlistItem(
                                               id: tvId,
@@ -663,28 +816,53 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                               type: 'tv',
                                               addedAt: DateTime.now(),
                                             );
-                                            final added = await ref.read(watchlistProvider.notifier).toggle(item);
+                                            final added = await ref
+                                                .read(
+                                                  watchlistProvider.notifier,
+                                                )
+                                                .toggle(item);
                                             if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
                                                 SnackBar(
-                                                  content: Text(added ? s.detailAddedToWatchlist : s.detailRemovedFromWatchlist),
-                                                  backgroundColor: AppColors.surfaceVariant,
-                                                  duration: const Duration(seconds: 2),
+                                                  content: Text(
+                                                    added
+                                                        ? s.detailAddedToWatchlist
+                                                        : s.detailRemovedFromWatchlist,
+                                                  ),
+                                                  backgroundColor:
+                                                      AppColors.surfaceVariant,
+                                                  duration: const Duration(
+                                                    seconds: 2,
+                                                  ),
                                                 ),
                                               );
                                             }
                                           },
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 18,
+                                              vertical: 13,
+                                            ),
                                             decoration: BoxDecoration(
                                               color: isInWatchlist
-                                                  ? AppColors.primary.withValues(alpha: 0.15)
-                                                  : Colors.white.withValues(alpha: 0.12),
-                                              borderRadius: BorderRadius.circular(12),
+                                                  ? AppColors.primary
+                                                        .withValues(alpha: 0.15)
+                                                  : Colors.white.withValues(
+                                                      alpha: 0.12,
+                                                    ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                               border: Border.all(
                                                 color: isInWatchlist
-                                                    ? AppColors.primary.withValues(alpha: 0.6)
-                                                    : Colors.white.withValues(alpha: 0.2),
+                                                    ? AppColors.primary
+                                                          .withValues(
+                                                            alpha: 0.6,
+                                                          )
+                                                    : Colors.white.withValues(
+                                                        alpha: 0.2,
+                                                      ),
                                                 width: 1,
                                               ),
                                             ),
@@ -692,15 +870,22 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(
-                                                  isInWatchlist ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                                                  color: isInWatchlist ? AppColors.primary : Colors.white,
+                                                  isInWatchlist
+                                                      ? Icons.bookmark_rounded
+                                                      : Icons
+                                                            .bookmark_border_rounded,
+                                                  color: isInWatchlist
+                                                      ? AppColors.primary
+                                                      : Colors.white,
                                                   size: 20,
                                                 ),
                                                 const SizedBox(width: 8),
                                                 Text(
                                                   'Watchlist',
                                                   style: GoogleFonts.inter(
-                                                    color: isInWatchlist ? AppColors.primary : Colors.white,
+                                                    color: isInWatchlist
+                                                        ? AppColors.primary
+                                                        : Colors.white,
                                                     fontWeight: FontWeight.w600,
                                                     fontSize: 13,
                                                   ),
@@ -712,7 +897,6 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                       },
                                     ),
 
-                                    const SizedBox(width: 12),
                                     // Download Button
                                     TvFocusable(
                                       focusedScale: 1.04,
@@ -731,20 +915,40 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                         );
                                       },
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 18,
+                                          vertical: 13,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                            width: 1,
+                                          ),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            const Icon(Icons.download_rounded, color: Colors.white, size: 20),
+                                            const Icon(
+                                              Icons.download_rounded,
+                                              color: Colors.white,
+                                              size: 20,
+                                            ),
                                             const SizedBox(width: 8),
                                             Text(
                                               s.navDownloads,
-                                              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                                              style: GoogleFonts.inter(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -771,18 +975,33 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1300),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 36,
+                  vertical: 24,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Synopsis
-                    Text(s.detailSynopsis, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                    Text(
+                      s.detailSynopsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 900),
                       child: Text(
                         overview.isNotEmpty ? overview : s.detailNoSynopsis,
-                        style: GoogleFonts.inter(fontSize: 15, height: 1.6, color: AppColors.textSecondary),
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          height: 1.6,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
 
@@ -797,7 +1016,15 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                     const SizedBox(height: 28),
 
                     // Season Selector
-                    Text('Episode', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                    Text(
+                      'Episode',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     if (seasons.isNotEmpty)
                       SizedBox(
@@ -808,8 +1035,11 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                           separatorBuilder: (_, _) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {
                             final seasonItem = seasons[index];
-                            final sNum = seasonItem['season_number'] as int? ?? (index + 1);
-                            final sTitle = seasonItem['name'] as String? ?? 'Season $sNum';
+                            final sNum =
+                                seasonItem['season_number'] as int? ??
+                                (index + 1);
+                            final sTitle =
+                                seasonItem['name'] as String? ?? 'Season $sNum';
                             final isSelected = sNum == _selectedSeasonNumber;
 
                             return TvFocusable(
@@ -819,20 +1049,31 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                 setState(() => _selectedSeasonNumber = sNum);
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.surfaceVariant,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.surfaceElevated,
                                   ),
                                 ),
                                 child: Center(
                                   child: Text(
                                     sTitle,
                                     style: TextStyle(
-                                      color: isSelected ? Colors.black : Colors.white,
-                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                      color: isSelected
+                                          ? Colors.black
+                                          : Colors.white,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
                                       fontSize: 13,
                                     ),
                                   ),
@@ -848,16 +1089,20 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                     // Widescreen 2-Column Episode Cards Grid
                     Consumer(
                       builder: (context, ref, _) {
-                        final epAsync = ref.watch(tvSeasonEpisodesProvider((
-                          tvId: tvId,
-                          seasonNumber: _selectedSeasonNumber,
-                        )));
+                        final epAsync = ref.watch(
+                          tvSeasonEpisodesProvider((
+                            tvId: tvId,
+                            seasonNumber: _selectedSeasonNumber,
+                          )),
+                        );
 
                         return epAsync.when(
                           loading: () => const Center(
                             child: Padding(
                               padding: EdgeInsets.symmetric(vertical: 32),
-                              child: CircularProgressIndicator(color: AppColors.primary),
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary,
+                              ),
                             ),
                           ),
                           error: (err, _) => Container(
@@ -868,19 +1113,27 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                             ),
                             child: Row(
                               children: [
-                                const Icon(Iconsax.info_circle, color: AppColors.textMuted),
+                                const Icon(
+                                  Iconsax.info_circle,
+                                  color: AppColors.textMuted,
+                                ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     s.detailEpisodesUnavailable,
-                                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                                 TextButton(
-                                  onPressed: () => ref.invalidate(tvSeasonEpisodesProvider((
-                                    tvId: tvId,
-                                    seasonNumber: _selectedSeasonNumber,
-                                  ))),
+                                  onPressed: () => ref.invalidate(
+                                    tvSeasonEpisodesProvider((
+                                      tvId: tvId,
+                                      seasonNumber: _selectedSeasonNumber,
+                                    )),
+                                  ),
                                   child: Text(s.detailRetry),
                                 ),
                               ],
@@ -896,25 +1149,37 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Text(
-                                  s.detailNoEpisodesInSeason(_selectedSeasonNumber),
-                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                                  s.detailNoEpisodesInSeason(
+                                    _selectedSeasonNumber,
+                                  ),
+                                  style: const TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               );
                             }
 
                             return LayoutBuilder(
                               builder: (context, constraints) {
-                                final cardWidth = (constraints.maxWidth - 20) / 2;
+                                final cardWidth =
+                                    (constraints.maxWidth - 20) / 2;
                                 return Wrap(
                                   spacing: 20,
                                   runSpacing: 16,
                                   children: episodes.map((ep) {
-                                    final epNum = ep['episode_number'] as int? ?? 1;
-                                    final epName = ep['name'] as String? ?? 'Episode $epNum';
+                                    final epNum =
+                                        ep['episode_number'] as int? ?? 1;
+                                    final epName =
+                                        ep['name'] as String? ??
+                                        'Episode $epNum';
                                     final epStill = ep['still_path'] as String?;
-                                    final epOverview = (ep['overview'] as String? ?? '').trim();
+                                    final epOverview =
+                                        (ep['overview'] as String? ?? '')
+                                            .trim();
                                     final epRuntime = ep['runtime'] as int?;
-                                    final epAirDate = ep['air_date'] as String? ?? '';
+                                    final epAirDate =
+                                        ep['air_date'] as String? ?? '';
 
                                     return SizedBox(
                                       width: cardWidth,
@@ -925,55 +1190,93 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                         onTap: () => _playTvEpisode(
                                           context,
                                           name: name,
-                                          episodeTitle: 'S$_selectedSeasonNumber:E$epNum $epName',
+                                          episodeTitle:
+                                              'S$_selectedSeasonNumber:E$epNum $epName',
                                           imdbId: imdbId,
                                           season: _selectedSeasonNumber,
                                           episode: epNum,
                                           tvId: tvId,
                                           posterPath: posterPath,
                                           backdropPath: epStill ?? backdropPath,
-                                          overview: epOverview.isNotEmpty ? epOverview : overview,
+                                          overview: epOverview.isNotEmpty
+                                              ? epOverview
+                                              : overview,
                                         ),
                                         child: Container(
                                           decoration: BoxDecoration(
-                                            color: AppColors.surfaceVariant.withValues(alpha: 0.55),
-                                            borderRadius: BorderRadius.circular(14),
+                                            color: AppColors.surfaceVariant
+                                                .withValues(alpha: 0.55),
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
                                             border: Border.all(
-                                              color: Colors.white.withValues(alpha: 0.08),
+                                              color: Colors.white.withValues(
+                                                alpha: 0.08,
+                                              ),
                                               width: 1,
                                             ),
                                           ),
                                           padding: const EdgeInsets.all(10),
                                           child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               // Episode Still Thumbnail
                                               ClipRRect(
-                                                borderRadius: BorderRadius.circular(10),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
                                                 child: Stack(
                                                   alignment: Alignment.center,
                                                   children: [
                                                     CachedNetworkImage(
-                                                      imageUrl: ApiConstants.imageUrl(epStill, size: ApiConstants.backdropSmall),
+                                                      imageUrl:
+                                                          ApiConstants.imageUrl(
+                                                            epStill,
+                                                            size: ApiConstants
+                                                                .backdropSmall,
+                                                          ),
                                                       width: 140,
                                                       height: 80,
                                                       fit: BoxFit.cover,
-                                                      placeholder: (_, _) => Container(width: 140, height: 80, color: AppColors.surfaceElevated),
-                                                      errorWidget: (_, _, _) => Container(
-                                                        width: 140,
-                                                        height: 80,
-                                                        color: AppColors.surfaceElevated,
-                                                        child: const Icon(Icons.movie_outlined, color: AppColors.textMuted, size: 28),
-                                                      ),
+                                                      placeholder: (_, _) =>
+                                                          Container(
+                                                            width: 140,
+                                                            height: 80,
+                                                            color: AppColors
+                                                                .surfaceElevated,
+                                                          ),
+                                                      errorWidget: (_, _, _) =>
+                                                          Container(
+                                                            width: 140,
+                                                            height: 80,
+                                                            color: AppColors
+                                                                .surfaceElevated,
+                                                            child: const Icon(
+                                                              Icons
+                                                                  .movie_outlined,
+                                                              color: AppColors
+                                                                  .textMuted,
+                                                              size: 28,
+                                                            ),
+                                                          ),
                                                     ),
                                                     Container(
                                                       width: 34,
                                                       height: 34,
                                                       decoration: BoxDecoration(
-                                                        color: Colors.black.withValues(alpha: 0.65),
+                                                        color: Colors.black
+                                                            .withValues(
+                                                              alpha: 0.65,
+                                                            ),
                                                         shape: BoxShape.circle,
                                                       ),
-                                                      child: const Icon(Icons.play_arrow_rounded, color: AppColors.primary, size: 22),
+                                                      child: const Icon(
+                                                        Icons
+                                                            .play_arrow_rounded,
+                                                        color:
+                                                            AppColors.primary,
+                                                        size: 22,
+                                                      ),
                                                     ),
                                                   ],
                                                 ),
@@ -982,42 +1285,72 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                               // Episode Info
                                               Expanded(
                                                 child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
                                                       'E$epNum • $epName',
                                                       maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                       style: GoogleFonts.inter(
                                                         color: Colors.white,
-                                                        fontWeight: FontWeight.w700,
+                                                        fontWeight:
+                                                            FontWeight.w700,
                                                         fontSize: 13,
                                                       ),
                                                     ),
                                                     const SizedBox(height: 4),
                                                     Row(
                                                       children: [
-                                                        if (epRuntime != null && epRuntime > 0) ...[
+                                                        if (epRuntime != null &&
+                                                            epRuntime > 0) ...[
                                                           Text(
                                                             '${epRuntime}m',
-                                                            style: const TextStyle(color: AppColors.primaryLight, fontSize: 11, fontWeight: FontWeight.w600),
+                                                            style: const TextStyle(
+                                                              color: AppColors
+                                                                  .primaryLight,
+                                                              fontSize: 11,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                            ),
                                                           ),
-                                                          const Text('  •  ', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                                                          const Text(
+                                                            '  •  ',
+                                                            style: TextStyle(
+                                                              color: AppColors
+                                                                  .textMuted,
+                                                              fontSize: 10,
+                                                            ),
+                                                          ),
                                                         ],
-                                                        if (epAirDate.isNotEmpty)
+                                                        if (epAirDate
+                                                            .isNotEmpty)
                                                           Text(
                                                             epAirDate,
-                                                            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                                            style: const TextStyle(
+                                                              color: AppColors
+                                                                  .textMuted,
+                                                              fontSize: 11,
+                                                            ),
                                                           ),
                                                       ],
                                                     ),
-                                                    if (epOverview.isNotEmpty) ...[
+                                                    if (epOverview
+                                                        .isNotEmpty) ...[
                                                       const SizedBox(height: 6),
                                                       Text(
                                                         epOverview,
                                                         maxLines: 2,
-                                                        overflow: TextOverflow.ellipsis,
-                                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, height: 1.3),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style: const TextStyle(
+                                                          color: AppColors
+                                                              .textSecondary,
+                                                          fontSize: 11,
+                                                          height: 1.3,
+                                                        ),
                                                       ),
                                                     ],
                                                   ],
@@ -1040,10 +1373,18 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                     // Cast Section
                     if (castList.isNotEmpty) ...[
                       const SizedBox(height: 32),
-                      Text(s.detailCast, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                      Text(
+                        s.detailCast,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
                       const SizedBox(height: 14),
                       SizedBox(
-                        height: 140,
+                        height: 152,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: castList.length,
@@ -1052,33 +1393,67 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                             final cast = castList[index];
                             final profilePath = cast['profile_path'] as String?;
                             final castId = cast['id'] as int?;
-                            return GestureDetector(
+                            return TvFocusable(
+                              borderRadius: BorderRadius.circular(12),
+                              scaleOnFocus: 1.06,
                               onTap: () {
                                 if (castId != null) {
-                                  context.push('/person/$castId', extra: cast['name'] as String?);
+                                  context.push(
+                                    '/person/$castId',
+                                    extra: cast['name'] as String?,
+                                  );
                                 }
                               },
-                              child: SizedBox(
-                                width: 88,
-                                child: Column(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 36,
-                                      backgroundColor: AppColors.surfaceVariant,
-                                      backgroundImage: profilePath != null
-                                          ? CachedNetworkImageProvider(
-                                              ApiConstants.imageUrl(profilePath, size: ApiConstants.posterSmall))
-                                          : null,
-                                      child: profilePath == null ? const Icon(Icons.person, color: AppColors.textMuted) : null,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(cast['name'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: SizedBox(
+                                  width: 88,
+                                  child: Column(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 36,
+                                        backgroundColor:
+                                            AppColors.surfaceVariant,
+                                        backgroundImage: profilePath != null
+                                            ? CachedNetworkImageProvider(
+                                                ApiConstants.imageUrl(
+                                                  profilePath,
+                                                  size:
+                                                      ApiConstants.posterSmall,
+                                                ),
+                                              )
+                                            : null,
+                                        child: profilePath == null
+                                            ? const Icon(
+                                                Icons.person,
+                                                color: AppColors.textMuted,
+                                              )
+                                            : null,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        cast['name'] ?? '',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.center,
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                                    Text(cast['character'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                      Text(
+                                        cast['character'] ?? '',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.center,
-                                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                                  ],
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             );
@@ -1125,7 +1500,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
 
     return CustomScrollView(
       slivers: [
-        // ── Hero Backdrop ──
+        // ── Hero Backdrop with Cinematic Gradient ──
         SliverAppBar(
           expandedHeight: isCompact ? 240 : 280,
           pinned: true,
@@ -1138,7 +1513,11 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                 color: Colors.black.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+              child: const Icon(
+                Icons.arrow_back,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ),
           flexibleSpace: FlexibleSpaceBar(
@@ -1147,9 +1526,13 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
               children: [
                 if (backdropPath != null)
                   CachedNetworkImage(
-                    imageUrl: ApiConstants.imageUrl(backdropPath, size: ApiConstants.backdropLarge),
+                    imageUrl: ApiConstants.imageUrl(
+                      backdropPath,
+                      size: ApiConstants.backdropLarge,
+                    ),
                     fit: BoxFit.cover,
                   ),
+                // Seamless gradient fade to pure black background
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -1157,10 +1540,11 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        AppColors.background.withValues(alpha: 0.5),
+                        Colors.transparent,
+                        AppColors.background.withValues(alpha: 0.65),
                         AppColors.background,
                       ],
-                      stops: const [0.0, 0.6, 1.0],
+                      stops: const [0.0, 0.35, 0.72, 1.0],
                     ),
                   ),
                 ),
@@ -1175,18 +1559,39 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Poster + Info ──
+                // ── Poster + Info Row with Elevated Shadow ──
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: CachedNetworkImage(
-                        imageUrl: ApiConstants.imageUrl(posterPath),
-                        width: posterWidth,
-                        height: posterHeight,
-                        fit: BoxFit.cover,
-                        placeholder: (_, _) => Container(width: posterWidth, height: posterHeight, color: AppColors.surfaceVariant),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.65),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: CachedNetworkImage(
+                          imageUrl: ApiConstants.imageUrl(posterPath),
+                          width: posterWidth,
+                          height: posterHeight,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => Container(
+                            width: posterWidth,
+                            height: posterHeight,
+                            color: AppColors.surfaceVariant,
+                          ),
+                        ),
                       ),
                     ).animate().fadeIn().slideY(begin: 0.1),
                     const SizedBox(width: 14),
@@ -1196,36 +1601,69 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                         children: [
                           Text(
                             name,
-                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                              fontSize: isCompact ? 21 : 24,
-                            ),
+                            style: Theme.of(context).textTheme.headlineLarge
+                                ?.copyWith(
+                                  fontSize: isCompact ? 21 : 24,
+                                  letterSpacing: -0.3,
+                                ),
                             maxLines: 3,
                           ),
                           if (tagline.isNotEmpty) ...[
                             const SizedBox(height: 4),
-                            Text(tagline, style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontStyle: FontStyle.italic, color: AppColors.primary,
-                            )),
+                            Text(
+                              tagline,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    fontStyle: FontStyle.italic,
+                                    color: AppColors.primary,
+                                  ),
+                            ),
                           ],
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              const Icon(Icons.star, color: AppColors.star, size: 18),
+                              const Icon(
+                                Icons.star,
+                                color: AppColors.star,
+                                size: 18,
+                              ),
                               const SizedBox(width: 4),
-                              Text(voteAverage.toStringAsFixed(1),
-                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                              const Text(' / 10', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                              Text(
+                                voteAverage.toStringAsFixed(1),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const Text(
+                                ' / 10',
+                                style: TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            s.detailSeasonEpisodes(numberOfSeasons, numberOfEpisodes),
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                            s.detailSeasonEpisodes(
+                              numberOfSeasons,
+                              numberOfEpisodes,
+                            ),
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                            ),
                           ),
                           if (firstAirDate.length >= 4) ...[
                             const SizedBox(height: 4),
-                            Text(firstAirDate.substring(0, 4),
-                                style: const TextStyle(color: AppColors.textMuted, fontSize: 14)),
+                            Text(
+                              firstAirDate.substring(0, 4),
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 14,
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -1238,16 +1676,30 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                 // ── Genres ──
                 if (genres.isNotEmpty)
                   Wrap(
-                    spacing: 8, runSpacing: 6,
-                    children: genres.map((g) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.surfaceElevated),
-                      ),
-                      child: Text(g, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    )).toList(),
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: genres
+                        .map(
+                          (g) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceVariant,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.borderSubtle),
+                            ),
+                            child: Text(
+                              g,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
 
                 const SizedBox(height: 20),
@@ -1257,36 +1709,43 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () async {
-                          await context.push('/player', extra: {
-                            'title': name,
-                            'episodeTitle': 'Season $_selectedSeasonNumber Episode 1',
-                            'imdbId': imdbId,
-                            'season': _selectedSeasonNumber,
-                            'episode': 1,
-                            'tmdbId': tvId,
-                            'mediaType': 'tv',
-                            'posterPath': posterPath,
-                            'backdropPath': backdropPath,
-                            'overview': overview,
-                            'magnetLink': '',
-                          });
-                          SystemChrome.setPreferredOrientations([
-                            DeviceOrientation.portraitUp,
-                            DeviceOrientation.portraitDown,
-                          ]);
-                          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-                        },
-                        icon: const Icon(Icons.play_arrow_rounded, size: 28),
+                        onPressed: () => _playTvEpisode(
+                          context,
+                          name: name,
+                          episodeTitle:
+                              'Season $_selectedSeasonNumber Episode 1',
+                          imdbId: imdbId,
+                          season: _selectedSeasonNumber,
+                          episode: 1,
+                          tvId: tvId,
+                          posterPath: posterPath,
+                          backdropPath: backdropPath,
+                          overview: overview,
+                        ),
+                        icon: const Icon(
+                          Icons.play_arrow_rounded,
+                          size: 28,
+                          color: Colors.black,
+                        ),
                         label: Text(
                           s.detailWatchTv(_selectedSeasonNumber, 1),
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black,
+                            letterSpacing: 0.2,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          elevation: 6,
+                          shadowColor: AppColors.primary.withValues(alpha: 0.4),
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
                     ),
@@ -1300,26 +1759,19 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                               context,
                               trailer: trailer,
                               title: name,
-                              onWatchNow: () async {
-                                await context.push('/player', extra: {
-                                  'title': name,
-                                  'episodeTitle': 'Season $_selectedSeasonNumber Episode 1',
-                                  'imdbId': imdbId,
-                                  'season': _selectedSeasonNumber,
-                                  'episode': 1,
-                                  'tmdbId': tvId,
-                                  'mediaType': 'tv',
-                                  'posterPath': posterPath,
-                                  'backdropPath': backdropPath,
-                                  'overview': overview,
-                                  'magnetLink': '',
-                                });
-                                SystemChrome.setPreferredOrientations([
-                                  DeviceOrientation.portraitUp,
-                                  DeviceOrientation.portraitDown,
-                                ]);
-                                SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-                              },
+                              onWatchNow: () => _playTvEpisode(
+                                context,
+                                name: name,
+                                episodeTitle:
+                                    'Season $_selectedSeasonNumber Episode 1',
+                                imdbId: imdbId,
+                                season: _selectedSeasonNumber,
+                                episode: 1,
+                                tvId: tvId,
+                                posterPath: posterPath,
+                                backdropPath: backdropPath,
+                                overview: overview,
+                              ),
                             );
                           },
                           borderRadius: BorderRadius.circular(14),
@@ -1327,7 +1779,9 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                             width: 56,
                             height: 56,
                             decoration: BoxDecoration(
-                              color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+                              color: AppColors.surfaceVariant.withValues(
+                                alpha: 0.6,
+                              ),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                 color: Colors.redAccent.withValues(alpha: 0.6),
@@ -1352,7 +1806,9 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                           isInWatchlistProvider((id: mediaId, type: 'tv')),
                         );
                         return Tooltip(
-                          message: isInWatchlist ? s.detailWatchlistRemoveTooltip : s.detailWatchlistAddTooltip,
+                          message: isInWatchlist
+                              ? s.detailWatchlistRemoveTooltip
+                              : s.detailWatchlistAddTooltip,
                           child: InkWell(
                             onTap: () async {
                               final item = WatchlistItem(
@@ -1363,11 +1819,17 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                 type: 'tv',
                                 addedAt: DateTime.now(),
                               );
-                              final added = await ref.read(watchlistProvider.notifier).toggle(item);
+                              final added = await ref
+                                  .read(watchlistProvider.notifier)
+                                  .toggle(item);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(added ? s.detailAddedToWatchlist : s.detailRemovedFromWatchlist),
+                                    content: Text(
+                                      added
+                                          ? s.detailAddedToWatchlist
+                                          : s.detailRemovedFromWatchlist,
+                                    ),
                                     backgroundColor: AppColors.surfaceVariant,
                                     duration: const Duration(seconds: 2),
                                   ),
@@ -1380,7 +1842,9 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                               width: 56,
                               height: 56,
                               decoration: BoxDecoration(
-                                color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+                                color: AppColors.surfaceVariant.withValues(
+                                  alpha: 0.6,
+                                ),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
                                   color: isInWatchlist
@@ -1391,11 +1855,16 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                               ),
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 250),
-                                transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                                transitionBuilder: (child, anim) =>
+                                    ScaleTransition(scale: anim, child: child),
                                 child: Icon(
-                                  isInWatchlist ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                  isInWatchlist
+                                      ? Icons.bookmark_rounded
+                                      : Icons.bookmark_border_rounded,
                                   key: ValueKey(isInWatchlist),
-                                  color: isInWatchlist ? AppColors.primary : Colors.white,
+                                  color: isInWatchlist
+                                      ? AppColors.primary
+                                      : Colors.white,
                                   size: 26,
                                 ),
                               ),
@@ -1410,11 +1879,16 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                 const SizedBox(height: 24),
 
                 // ── Synopsis ──
-                Text(s.detailSynopsis, style: Theme.of(context).textTheme.headlineMedium),
+                Text(
+                  s.detailSynopsis,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   overview.isNotEmpty ? overview : s.detailNoSynopsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(height: 1.6),
                 ),
 
                 // ── TV Universe / Watch Order Hub ──
@@ -1431,14 +1905,25 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Iconsax.video_play, color: AppColors.primary, size: 22),
+                        const Icon(
+                          Iconsax.video_play,
+                          color: AppColors.primary,
+                          size: 22,
+                        ),
                         const SizedBox(width: 8),
-                        Text(s.detailSelectEpisode, style: Theme.of(context).textTheme.headlineMedium),
+                        Text(
+                          s.detailSelectEpisode,
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
                       ],
                     ),
                     Text(
                       '${s.detailSeason} $_selectedSeasonNumber',
-                      style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -1464,20 +1949,31 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                           },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.surfaceVariant,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.surfaceElevated,
                               ),
                             ),
                             child: Center(
                               child: Text(
                                 sTitle,
                                 style: TextStyle(
-                                  color: isSelected ? Colors.black : Colors.white,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected
+                                      ? Colors.black
+                                      : Colors.white,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
                                   fontSize: 13,
                                 ),
                               ),
@@ -1493,16 +1989,20 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                 // Episodes List for Selected Season
                 Consumer(
                   builder: (context, ref, _) {
-                    final epAsync = ref.watch(tvSeasonEpisodesProvider((
-                      tvId: tvId,
-                      seasonNumber: _selectedSeasonNumber,
-                    )));
+                    final epAsync = ref.watch(
+                      tvSeasonEpisodesProvider((
+                        tvId: tvId,
+                        seasonNumber: _selectedSeasonNumber,
+                      )),
+                    );
 
                     return epAsync.when(
                       loading: () => const Center(
                         child: Padding(
                           padding: EdgeInsets.symmetric(vertical: 24),
-                          child: CircularProgressIndicator(color: AppColors.primary),
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                       error: (err, _) => Container(
@@ -1513,19 +2013,27 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Iconsax.info_circle, color: AppColors.textMuted),
+                            const Icon(
+                              Iconsax.info_circle,
+                              color: AppColors.textMuted,
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 s.detailEpisodesUnavailable,
-                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
                             TextButton(
-                              onPressed: () => ref.invalidate(tvSeasonEpisodesProvider((
-                                tvId: tvId,
-                                seasonNumber: _selectedSeasonNumber,
-                              ))),
+                              onPressed: () => ref.invalidate(
+                                tvSeasonEpisodesProvider((
+                                  tvId: tvId,
+                                  seasonNumber: _selectedSeasonNumber,
+                                )),
+                              ),
                               child: Text(s.detailRetry),
                             ),
                           ],
@@ -1542,7 +2050,10 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                             ),
                             child: Text(
                               s.detailNoEpisodesInSeason(_selectedSeasonNumber),
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 13,
+                              ),
                             ),
                           );
                         }
@@ -1558,37 +2069,41 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                           ),
                           itemBuilder: (context, epIdx) {
                             final ep = episodes[epIdx];
-                            final epNum = ep['episode_number'] as int? ?? (epIdx + 1);
-                            final epName = ep['name'] as String? ?? 'Episode $epNum';
+                            final epNum =
+                                ep['episode_number'] as int? ?? (epIdx + 1);
+                            final epName =
+                                ep['name'] as String? ?? 'Episode $epNum';
                             final epStill = ep['still_path'] as String?;
-                            final epOverview = (ep['overview'] as String? ?? '').trim();
+                            final epOverview = (ep['overview'] as String? ?? '')
+                                .trim();
                             final epRuntime = ep['runtime'] as int?;
                             final epAirDate = ep['air_date'] as String? ?? '';
 
-                            return InkWell(
+                            return TvFocusable(
                               borderRadius: BorderRadius.circular(8),
-                              onTap: () async {
-                                await context.push('/player', extra: {
-                                  'title': name,
-                                  'episodeTitle': 'S$_selectedSeasonNumber:E$epNum $epName',
-                                  'imdbId': imdbId,
-                                  'season': _selectedSeasonNumber,
-                                  'episode': epNum,
-                                  'tmdbId': tvId,
-                                  'mediaType': 'tv',
-                                  'posterPath': posterPath,
-                                  'backdropPath': (ep['still_path'] as String?) ?? backdropPath,
-                                  'overview': epOverview.isNotEmpty ? epOverview : overview,
-                                  'magnetLink': '',
-                                });
-                                SystemChrome.setPreferredOrientations([
-                                  DeviceOrientation.portraitUp,
-                                  DeviceOrientation.portraitDown,
-                                ]);
-                                SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-                              },
+                              scaleOnFocus: 1.01,
+                              onTap: () => _playTvEpisode(
+                                context,
+                                name: name,
+                                episodeTitle:
+                                    'S$_selectedSeasonNumber:E$epNum $epName',
+                                imdbId: imdbId,
+                                season: _selectedSeasonNumber,
+                                episode: epNum,
+                                tvId: tvId,
+                                posterPath: posterPath,
+                                backdropPath:
+                                    (ep['still_path'] as String?) ??
+                                    backdropPath,
+                                overview: epOverview.isNotEmpty
+                                    ? epOverview
+                                    : overview,
+                              ),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 4,
+                                ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -1598,7 +2113,10 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                       child: Stack(
                                         children: [
                                           CachedNetworkImage(
-                                            imageUrl: ApiConstants.imageUrl(epStill, size: ApiConstants.backdropSmall),
+                                            imageUrl: ApiConstants.imageUrl(
+                                              epStill,
+                                              size: ApiConstants.backdropSmall,
+                                            ),
                                             width: 116,
                                             height: 74,
                                             fit: BoxFit.cover,
@@ -1611,7 +2129,11 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                               width: 116,
                                               height: 74,
                                               color: AppColors.surface,
-                                              child: const Icon(Icons.tv_rounded, color: AppColors.textMuted, size: 24),
+                                              child: const Icon(
+                                                Icons.tv_rounded,
+                                                color: AppColors.textMuted,
+                                                size: 24,
+                                              ),
                                             ),
                                           ),
                                           Positioned.fill(
@@ -1622,7 +2144,9 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                                   end: Alignment.bottomCenter,
                                                   colors: [
                                                     Colors.transparent,
-                                                    Colors.black.withValues(alpha: 0.65),
+                                                    Colors.black.withValues(
+                                                      alpha: 0.65,
+                                                    ),
                                                   ],
                                                 ),
                                               ),
@@ -1632,12 +2156,20 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                             bottom: 4,
                                             left: 6,
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 5,
+                                                    vertical: 2,
+                                                  ),
                                               decoration: BoxDecoration(
-                                                color: Colors.black.withValues(alpha: 0.8),
-                                                borderRadius: BorderRadius.circular(4),
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.8,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
                                                 border: Border.all(
-                                                  color: AppColors.primary.withValues(alpha: 0.5),
+                                                  color: AppColors.primary
+                                                      .withValues(alpha: 0.5),
                                                   width: 0.6,
                                                 ),
                                               ),
@@ -1660,7 +2192,8 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                     // Episode Details & Synopsis
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             '$epNum. $epName',
@@ -1675,17 +2208,33 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                           const SizedBox(height: 3),
                                           Row(
                                             children: [
-                                              if (epRuntime != null && epRuntime > 0)
+                                              if (epRuntime != null &&
+                                                  epRuntime > 0)
                                                 Text(
                                                   '$epRuntime ${s.isIndonesian ? 'mnt' : 'min'}',
-                                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                                                  style: const TextStyle(
+                                                    color:
+                                                        AppColors.textSecondary,
+                                                    fontSize: 11,
+                                                  ),
                                                 ),
-                                              if (epRuntime != null && epRuntime > 0 && epAirDate.isNotEmpty)
-                                                const Text(' • ', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                                              if (epRuntime != null &&
+                                                  epRuntime > 0 &&
+                                                  epAirDate.isNotEmpty)
+                                                const Text(
+                                                  ' • ',
+                                                  style: TextStyle(
+                                                    color: AppColors.textMuted,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
                                               if (epAirDate.isNotEmpty)
                                                 Text(
                                                   epAirDate,
-                                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                                  style: const TextStyle(
+                                                    color: AppColors.textMuted,
+                                                    fontSize: 11,
+                                                  ),
                                                 ),
                                             ],
                                           ),
@@ -1694,7 +2243,9 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                             Text(
                                               epOverview,
                                               style: TextStyle(
-                                                color: Colors.white.withValues(alpha: 0.65),
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.65,
+                                                ),
                                                 fontSize: 12,
                                                 height: 1.35,
                                               ),
@@ -1710,12 +2261,16 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
 
                                     // Episode Action Buttons: Download & Play
                                     Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         IconButton(
                                           visualDensity: VisualDensity.compact,
                                           padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                          constraints: const BoxConstraints(
+                                            minWidth: 32,
+                                            minHeight: 32,
+                                          ),
                                           onPressed: () {
                                             DownloadOptionsModal.show(
                                               context,
@@ -1736,16 +2291,21 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                             size: 20,
                                             color: AppColors.primary,
                                           ),
-                                          tooltip: s.detailDownloadEpisode(epNum),
+                                          tooltip: s.detailDownloadEpisode(
+                                            epNum,
+                                          ),
                                         ),
                                         const SizedBox(height: 4),
                                         Container(
                                           padding: const EdgeInsets.all(6),
                                           decoration: BoxDecoration(
-                                            color: AppColors.primary.withValues(alpha: 0.15),
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.15,
+                                            ),
                                             shape: BoxShape.circle,
                                             border: Border.all(
-                                              color: AppColors.primary.withValues(alpha: 0.4),
+                                              color: AppColors.primary
+                                                  .withValues(alpha: 0.4),
                                               width: 0.8,
                                             ),
                                           ),
@@ -1771,10 +2331,13 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                 // ── Cast ──
                 if (castList.isNotEmpty) ...[
                   const SizedBox(height: 28),
-                  Text(s.detailCast, style: Theme.of(context).textTheme.headlineMedium),
+                  Text(
+                    s.detailCast,
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
                   const SizedBox(height: 12),
                   SizedBox(
-                    height: 130,
+                    height: 142,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: castList.length,
@@ -1783,33 +2346,64 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                         final cast = castList[index];
                         final profilePath = cast['profile_path'] as String?;
                         final castId = cast['id'] as int?;
-                        return GestureDetector(
+                        return TvFocusable(
+                          borderRadius: BorderRadius.circular(12),
+                          scaleOnFocus: 1.06,
                           onTap: () {
                             if (castId != null) {
-                              context.push('/person/$castId', extra: cast['name'] as String?);
+                              context.push(
+                                '/person/$castId',
+                                extra: cast['name'] as String?,
+                              );
                             }
                           },
-                          child: SizedBox(
-                            width: 80,
-                            child: Column(
-                              children: [
-                                CircleAvatar(
-                                  radius: 35,
-                                  backgroundColor: AppColors.surfaceVariant,
-                                  backgroundImage: profilePath != null
-                                      ? CachedNetworkImageProvider(
-                                          ApiConstants.imageUrl(profilePath, size: ApiConstants.posterSmall))
-                                      : null,
-                                  child: profilePath == null ? const Icon(Icons.person, color: AppColors.textMuted) : null,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(cast['name'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: SizedBox(
+                              width: 80,
+                              child: Column(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 35,
+                                    backgroundColor: AppColors.surfaceVariant,
+                                    backgroundImage: profilePath != null
+                                        ? CachedNetworkImageProvider(
+                                            ApiConstants.imageUrl(
+                                              profilePath,
+                                              size: ApiConstants.posterSmall,
+                                            ),
+                                          )
+                                        : null,
+                                    child: profilePath == null
+                                        ? const Icon(
+                                            Icons.person,
+                                            color: AppColors.textMuted,
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    cast['name'] ?? '',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(fontSize: 11, color: AppColors.textPrimary)),
-                                Text(cast['character'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  Text(
+                                    cast['character'] ?? '',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                              ],
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );

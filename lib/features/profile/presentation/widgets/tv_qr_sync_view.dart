@@ -277,6 +277,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
           runSpacing: 10,
           children: [
             TvFocusable(
+              autofocus: true,
               focusedScale: 1.05,
               glowBlurRadius: 14,
               borderRadius: BorderRadius.circular(12),

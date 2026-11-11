@@ -11,6 +11,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/platform/device_form_factor.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../domain/models/avatar_catalog.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/avatar_display.dart';
@@ -361,13 +362,14 @@ class _OnboardingProfileScreenState
                       final isSelected = _selectedAvatarId == preset.id;
                       return Padding(
                         padding: const EdgeInsets.only(right: 12),
-                        child: GestureDetector(
+                        child: TvFocusable(
                           onTap: () {
                             setState(() {
                               _selectedAvatarId = preset.id;
                               _customAvatarPath = null;
                             });
                           },
+                          borderRadius: BorderRadius.circular(36),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 250),
                             padding: const EdgeInsets.all(3),

@@ -20,6 +20,8 @@ import '../../../home/presentation/providers/home_providers.dart';
 import '../providers/search_history_provider.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/localization/app_strings.dart';
+import '../../../../core/platform/device_form_factor.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../domain/entities/streaming_platform.dart';
 
 // ── Search Providers ──
@@ -42,7 +44,9 @@ final searchTvResultsProvider = FutureProvider<List<TvSeries>>((ref) async {
   final query = ref.watch(searchQueryProvider);
   if (query.isEmpty) return [];
   final pref = ref.watch(contentPreferenceProvider);
-  final tvShows = await ref.watch(movieRepositoryProvider).searchTvSeries(query);
+  final tvShows = await ref
+      .watch(movieRepositoryProvider)
+      .searchTvSeries(query);
   if (pref == ContentPreference.all) return tvShows;
 
   final matches = tvShows.where((t) => pref.matchesTv(t)).toList();
@@ -95,7 +99,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   void _selectQuery(String q) {
     _controller.text = q;
-    _controller.selection = TextSelection.fromPosition(TextPosition(offset: q.length));
+    _controller.selection = TextSelection.fromPosition(
+      TextPosition(offset: q.length),
+    );
     ref.read(searchQueryProvider.notifier).state = q;
     ref.read(searchHistoryProvider.notifier).addQuery(q);
   }
@@ -141,7 +147,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   ),
                   if (pref != ContentPreference.all)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
@@ -188,10 +197,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 style: const TextStyle(color: AppColors.textPrimary),
                 decoration: InputDecoration(
                   hintText: s.searchHint,
-                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: AppColors.textMuted,
+                  ),
                   suffixIcon: query.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Iconsax.close_circle, color: AppColors.textMuted, size: 20),
+                          icon: const Icon(
+                            Iconsax.close_circle,
+                            color: AppColors.textMuted,
+                            size: 20,
+                          ),
                           onPressed: () {
                             _controller.clear();
                             ref.read(searchQueryProvider.notifier).state = '';
@@ -214,14 +230,20 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     final isSelected = activeGenre.id == genre.id;
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: GestureDetector(
+                      child: TvFocusable(
                         onTap: () {
-                          ref.read(selectedSearchGenreProvider.notifier).state = genre;
+                          ref.read(selectedSearchGenreProvider.notifier).state =
+                              genre;
                         },
+                        borderRadius: BorderRadius.circular(16),
+                        scaleOnFocus: 1.04,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           curve: Curves.easeOutCubic,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? AppColors.primary.withValues(alpha: 0.18)
@@ -236,7 +258,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             boxShadow: isSelected
                                 ? [
                                     BoxShadow(
-                                      color: AppColors.primary.withValues(alpha: 0.25),
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.25,
+                                      ),
                                       blurRadius: 8,
                                       offset: const Offset(0, 2),
                                     ),
@@ -250,7 +274,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 Icon(
                                   genre.icon,
                                   size: 13,
-                                  color: isSelected ? AppColors.primary : AppColors.textMuted,
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.textMuted,
                                 ),
                                 const SizedBox(width: 5),
                               ],
@@ -258,8 +284,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 genre.label,
                                 style: GoogleFonts.inter(
                                   fontSize: 11.5,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected ? AppColors.primaryLight : AppColors.textSecondary,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? AppColors.primaryLight
+                                      : AppColors.textSecondary,
                                 ),
                               ),
                             ],
@@ -285,19 +315,22 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       _FilterChip(
                         label: s.searchTabAll,
                         isSelected: tabIndex == 0,
-                        onTap: () => ref.read(searchTabProvider.notifier).state = 0,
+                        onTap: () =>
+                            ref.read(searchTabProvider.notifier).state = 0,
                       ),
                       const SizedBox(width: 8),
                       _FilterChip(
                         label: s.searchTabMovies,
                         isSelected: tabIndex == 1,
-                        onTap: () => ref.read(searchTabProvider.notifier).state = 1,
+                        onTap: () =>
+                            ref.read(searchTabProvider.notifier).state = 1,
                       ),
                       const SizedBox(width: 8),
                       _FilterChip(
                         label: s.searchTabTv,
                         isSelected: tabIndex == 2,
-                        onTap: () => ref.read(searchTabProvider.notifier).state = 2,
+                        onTap: () =>
+                            ref.read(searchTabProvider.notifier).state = 2,
                       ),
                     ],
                   ),
@@ -311,54 +344,59 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             Expanded(
               child: query.isEmpty
                   ? (activeGenre.id == 'all'
-                      ? _SearchDiscoveryView(onSelectQuery: _selectQuery)
-                      : _GenreExplorerView(activeGenre: activeGenre))
+                        ? _SearchDiscoveryView(onSelectQuery: _selectQuery)
+                        : _GenreExplorerView(activeGenre: activeGenre))
                   : tabIndex == 0
-                      ? _buildAllResults(
-                          movieResults: movieResults,
-                          tvResults: tvResults,
-                          activeGenre: activeGenre,
-                          query: query,
-                          s: s,
-                          ref: ref,
-                        )
-                      : tabIndex == 1
-                          ? movieResults.when(
-                              data: (movies) {
-                                final filtered = activeGenre.id == 'all'
-                                    ? movies
-                                    : movies.where((m) => activeGenre.matchesMovie(m)).toList();
-                                if (filtered.isEmpty) {
-                                  return AppErrorWidget.empty(
-                                    message: s.searchNoMovies(query),
-                                  );
-                                }
-                                return _MovieGrid(movies: filtered);
-                              },
-                              loading: () => const _SearchLoadingGrid(),
-                              error: (e, _) => AppErrorWidget(
-                                message: s.searchFailed,
-                                onRetry: () => ref.invalidate(searchMovieResultsProvider),
-                              ),
-                            )
-                          : tvResults.when(
-                              data: (tvShows) {
-                                final filtered = activeGenre.id == 'all'
-                                    ? tvShows
-                                    : tvShows.where((t) => activeGenre.matchesTv(t)).toList();
-                                if (filtered.isEmpty) {
-                                  return AppErrorWidget.empty(
-                                    message: s.searchNoTv(query),
-                                  );
-                                }
-                                return _TvGrid(tvShows: filtered);
-                              },
-                              loading: () => const _SearchLoadingGrid(),
-                              error: (e, _) => AppErrorWidget(
-                                message: s.searchFailed,
-                                onRetry: () => ref.invalidate(searchTvResultsProvider),
-                              ),
-                            ),
+                  ? _buildAllResults(
+                      movieResults: movieResults,
+                      tvResults: tvResults,
+                      activeGenre: activeGenre,
+                      query: query,
+                      s: s,
+                      ref: ref,
+                    )
+                  : tabIndex == 1
+                  ? movieResults.when(
+                      data: (movies) {
+                        final filtered = activeGenre.id == 'all'
+                            ? movies
+                            : movies
+                                  .where((m) => activeGenre.matchesMovie(m))
+                                  .toList();
+                        if (filtered.isEmpty) {
+                          return AppErrorWidget.empty(
+                            message: s.searchNoMovies(query),
+                          );
+                        }
+                        return _MovieGrid(movies: filtered);
+                      },
+                      loading: () => const _SearchLoadingGrid(),
+                      error: (e, _) => AppErrorWidget(
+                        message: s.searchFailed,
+                        onRetry: () =>
+                            ref.invalidate(searchMovieResultsProvider),
+                      ),
+                    )
+                  : tvResults.when(
+                      data: (tvShows) {
+                        final filtered = activeGenre.id == 'all'
+                            ? tvShows
+                            : tvShows
+                                  .where((t) => activeGenre.matchesTv(t))
+                                  .toList();
+                        if (filtered.isEmpty) {
+                          return AppErrorWidget.empty(
+                            message: s.searchNoTv(query),
+                          );
+                        }
+                        return _TvGrid(tvShows: filtered);
+                      },
+                      loading: () => const _SearchLoadingGrid(),
+                      error: (e, _) => AppErrorWidget(
+                        message: s.searchFailed,
+                        onRetry: () => ref.invalidate(searchTvResultsProvider),
+                      ),
+                    ),
             ),
           ],
         ),
@@ -398,15 +436,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         : tvShows.where((t) => activeGenre.matchesTv(t)).toList();
 
     if (filteredMovies.isEmpty && filteredTv.isEmpty) {
-      return AppErrorWidget.empty(
-        message: s.searchNoResults(query),
-      );
+      return AppErrorWidget.empty(message: s.searchNoResults(query));
     }
 
-    return _AllSearchResultsView(
-      movies: filteredMovies,
-      tvShows: filteredTv,
-    );
+    return _AllSearchResultsView(movies: filteredMovies, tvShows: filteredTv);
   }
 }
 
@@ -415,12 +448,18 @@ class _FilterChip extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _FilterChip({required this.label, required this.isSelected, required this.onTap});
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return TvFocusable(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      scaleOnFocus: 1.04,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -458,70 +497,96 @@ class _SearchDiscoveryView extends ConsumerWidget {
     final popularMovies = ref.watch(popularMoviesProvider);
     final popularTv = ref.watch(popularTvProvider);
 
-    return ListView(
-      physics: const BouncingScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.of(context).padding.bottom + 84),
-      children: [
-        // ── 1. RIWAYAT PENCARIAN ──
-        if (history.isNotEmpty) ...[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final isWide = availableWidth >= 680;
+
+        return ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(
+            isWide ? 24 : 16,
+            4,
+            isWide ? 24 : 16,
+            MediaQuery.of(context).padding.bottom + 84,
+          ),
+          children: [
+            // ── 1. RIWAYAT PENCARIAN ──
+            if (history.isNotEmpty) ...[
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(Iconsax.clock, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 6),
-                  Text(
-                    s.searchHistory,
-                    style: GoogleFonts.outfit(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                  Row(
+                    children: [
+                      const Icon(
+                        Iconsax.clock,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        s.searchHistory,
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  TvFocusable(
+                    onTap: () =>
+                        ref.read(searchHistoryProvider.notifier).clearHistory(),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 6,
+                      ),
+                      child: Text(
+                        s.searchClearAll,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-              GestureDetector(
-                onTap: () => ref.read(searchHistoryProvider.notifier).clearHistory(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                  child: Text(
-                    s.searchClearAll,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: history.map((q) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    width: 0.8,
-                  ),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: history.map((q) {
+                  return TvFocusable(
                     onTap: () => onSelectQuery(q),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    onLongPress: () =>
+                        ref.read(searchHistoryProvider.notifier).removeQuery(q),
+                    borderRadius: BorderRadius.circular(20),
+                    scaleOnFocus: 1.04,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          width: 0.8,
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 7,
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Iconsax.clock, size: 12, color: AppColors.textMuted),
+                          const Icon(
+                            Iconsax.clock,
+                            size: 12,
+                            color: AppColors.textMuted,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             q,
@@ -533,335 +598,419 @@ class _SearchDiscoveryView extends ConsumerWidget {
                           ),
                           const SizedBox(width: 6),
                           GestureDetector(
-                            onTap: () => ref.read(searchHistoryProvider.notifier).removeQuery(q),
-                            child: const Icon(Icons.close_rounded, size: 14, color: AppColors.textMuted),
+                            onTap: () => ref
+                                .read(searchHistoryProvider.notifier)
+                                .removeQuery(q),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              size: 14,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 24),
-        ],
-
-        // ── 2. PILIH SESUAI PLATFORM ──
-        Row(
-          children: [
-            const Icon(Icons.subscriptions_rounded, size: 17, color: AppColors.primary),
-            const SizedBox(width: 6),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  s.searchPlatforms,
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  s.searchPlatformsSub,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  for (int i = 0; i < 4; i++)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 10),
-                      child: _buildPlatformChip(
-                        context,
-                        StreamingPlatform.supportedPlatforms[i],
-                      ),
-                    ),
-                ],
+                  );
+                }).toList(),
               ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  for (int i = 4; i < 8; i++)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 10),
-                      child: _buildPlatformChip(
-                        context,
-                        StreamingPlatform.supportedPlatforms[i],
-                      ),
-                    ),
-                ],
-              ),
+              const SizedBox(height: 24),
             ],
-          ),
-        ),
 
-        const SizedBox(height: 26),
-
-        // ── 3. SERING DICARI (MOVIES & TV SERIES) ──
-        Row(
-          children: [
-            const Icon(Iconsax.trend_up, size: 17, color: AppColors.primary),
-            const SizedBox(width: 6),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            // ── 2. PILIH SESUAI PLATFORM ──
+            Row(
               children: [
-                Text(
-                  s.searchTopSearched,
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+                const Icon(
+                  Icons.subscriptions_rounded,
+                  size: 17,
+                  color: AppColors.primary,
                 ),
-                Text(
-                  s.searchTopSearchedSub,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
+                const SizedBox(width: 6),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.searchPlatforms,
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      s.searchPlatformsSub,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-        const SizedBox(height: 12),
+            const SizedBox(height: 12),
+            if (isWide)
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: StreamingPlatform.supportedPlatforms
+                    .map((p) => _buildPlatformChip(context, p))
+                    .toList(),
+              )
+            else
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        for (int i = 0; i < 4; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: _buildPlatformChip(
+                              context,
+                              StreamingPlatform.supportedPlatforms[i],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        for (int i = 4; i < 8; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: _buildPlatformChip(
+                              context,
+                              StreamingPlatform.supportedPlatforms[i],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
 
-        // Top searched items combined
-        Builder(
-          builder: (context) {
-            final movies = popularMovies.valueOrNull ?? [];
-            final tvs = popularTv.valueOrNull ?? [];
+            const SizedBox(height: 26),
 
-            if (popularMovies.isLoading && popularTv.isLoading) {
-              return Column(
-                children: List.generate(
-                  4,
-                  (index) => Container(
-                    height: 68,
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.08),
-                          width: 0.8,
+            // ── 3. SERING DICARI (MOVIES & TV SERIES) ──
+            Row(
+              children: [
+                const Icon(
+                  Iconsax.trend_up,
+                  size: 17,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 6),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.searchTopSearched,
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      s.searchTopSearchedSub,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Top searched items combined
+            Builder(
+              builder: (context) {
+                final movies = popularMovies.valueOrNull ?? [];
+                final tvs = popularTv.valueOrNull ?? [];
+
+                if (popularMovies.isLoading && popularTv.isLoading) {
+                  return Column(
+                    children: List.generate(
+                      4,
+                      (index) => Container(
+                        height: 68,
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              width: 0.8,
+                            ),
+                          ),
                         ),
                       ),
                     ),
+                  );
+                }
+
+                final items = <_TopSearchItem>[];
+                const maxItems = 5;
+                for (int i = 0; i < maxItems; i++) {
+                  if (i < movies.length) {
+                    final m = movies[i];
+                    items.add(
+                      _TopSearchItem(
+                        id: m.id,
+                        title: m.title,
+                        posterPath: m.posterPath,
+                        backdropPath: m.backdropPath,
+                        rating: m.voteAverage,
+                        year: m.year,
+                        type: 'movie',
+                      ),
+                    );
+                  }
+                  if (i < tvs.length) {
+                    final t = tvs[i];
+                    items.add(
+                      _TopSearchItem(
+                        id: t.id,
+                        title: t.name,
+                        posterPath: t.posterPath,
+                        backdropPath: t.backdropPath,
+                        rating: t.voteAverage,
+                        year: t.year,
+                        type: 'tv',
+                      ),
+                    );
+                  }
+                }
+
+                if (items.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                if (isWide) {
+                  final gridCols = availableWidth >= 1200 ? 3 : 2;
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: gridCols,
+                      mainAxisExtent: 76,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 10,
+                    ),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) => _buildTopSearchTile(
+                      context,
+                      item: items[index],
+                      index: index,
+                      s: s,
+                      isCardStyle: true,
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: items.asMap().entries.map((entry) {
+                    return _buildTopSearchTile(
+                      context,
+                      item: entry.value,
+                      index: entry.key,
+                      s: s,
+                      isCardStyle: false,
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTopSearchTile(
+    BuildContext context, {
+    required _TopSearchItem item,
+    required int index,
+    required AppStrings s,
+    required bool isCardStyle,
+  }) {
+    final isTop3 = index < 3;
+    final isMovie = item.type == 'movie';
+    final imageUrl = ApiConstants.imageUrl(
+      item.backdropPath ?? item.posterPath,
+      size: ApiConstants.backdropSmall,
+    );
+
+    return TvFocusable(
+      onTap: () {
+        if (isMovie) {
+          context.push('/movie/${item.id}');
+        } else {
+          context.push('/tv/${item.id}');
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      scaleOnFocus: 1.02,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          vertical: 12,
+          horizontal: isCardStyle ? 12 : 4,
+        ),
+        decoration: BoxDecoration(
+          color: isCardStyle
+              ? AppColors.surface.withValues(alpha: 0.7)
+              : Colors.transparent,
+          borderRadius: isCardStyle ? BorderRadius.circular(12) : null,
+          border: isCardStyle
+              ? Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  width: 0.8,
+                )
+              : Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    width: 0.8,
                   ),
                 ),
-              );
-            }
+        ),
+        child: Row(
+          children: [
+            // Rank Number Badge
+            SizedBox(
+              width: 24,
+              child: Text(
+                '${index + 1}',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  color: isTop3 ? AppColors.primary : AppColors.textMuted,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
 
-            final items = <_TopSearchItem>[];
-            const maxItems = 5;
-            for (int i = 0; i < maxItems; i++) {
-              if (i < movies.length) {
-                final m = movies[i];
-                items.add(_TopSearchItem(
-                  id: m.id,
-                  title: m.title,
-                  posterPath: m.posterPath,
-                  backdropPath: m.backdropPath,
-                  rating: m.voteAverage,
-                  year: m.year,
-                  type: 'movie',
-                ));
-              }
-              if (i < tvs.length) {
-                final t = tvs[i];
-                items.add(_TopSearchItem(
-                  id: t.id,
-                  title: t.name,
-                  posterPath: t.posterPath,
-                  backdropPath: t.backdropPath,
-                  rating: t.voteAverage,
-                  year: t.year,
-                  type: 'tv',
-                ));
-              }
-            }
+            // Thumbnail
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: 85,
+                height: 50,
+                memCacheWidth: 200,
+                fit: BoxFit.cover,
+                placeholder: (_, _) =>
+                    Container(color: AppColors.surfaceVariant),
+                errorWidget: (_, _, _) => Container(
+                  color: AppColors.surfaceVariant,
+                  width: 85,
+                  height: 50,
+                  child: Icon(
+                    isMovie ? Icons.movie_rounded : Icons.tv_rounded,
+                    color: AppColors.textMuted,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
 
-            if (items.isEmpty) {
-              return const SizedBox.shrink();
-            }
-
-            return Column(
-              children: items.asMap().entries.map((entry) {
-                final index = entry.key;
-                final item = entry.value;
-                final isTop3 = index < 3;
-                final isMovie = item.type == 'movie';
-                final imageUrl = ApiConstants.imageUrl(
-                  item.backdropPath ?? item.posterPath,
-                  size: ApiConstants.backdropSmall,
-                );
-
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        width: 0.8,
-                      ),
+            // Title & Metadata
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        if (isMovie) {
-                          context.push('/movie/${item.id}');
-                        } else {
-                          context.push('/tv/${item.id}');
-                        }
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Row(
-                          children: [
-                            // Rank Number Badge (smooth text, no background)
-                            SizedBox(
-                              width: 24,
-                              child: Text(
-                                '${index + 1}',
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.outfit(
-                                  color: isTop3 ? AppColors.primary : AppColors.textMuted,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-
-                            // Thumbnail
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: CachedNetworkImage(
-                                imageUrl: imageUrl,
-                                width: 85,
-                                height: 50,
-                                memCacheWidth: 200,
-                                fit: BoxFit.cover,
-                                placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
-                                errorWidget: (_, _, _) => Container(
-                                  color: AppColors.surfaceVariant,
-                                  width: 85,
-                                  height: 50,
-                                  child: Icon(
-                                    isMovie ? Icons.movie_rounded : Icons.tv_rounded,
-                                    color: AppColors.textMuted,
-                                    size: 18,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-
-                            // Title & Metadata
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.outfit(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: isMovie
-                                              ? AppColors.primary.withValues(alpha: 0.15)
-                                              : Colors.blue.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          isMovie ? s.searchBadgeMovie : s.searchBadgeTv,
-                                          style: GoogleFonts.inter(
-                                            color: isMovie ? AppColors.primaryLight : Colors.blue.shade300,
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 0.4,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      if (item.year.isNotEmpty) ...[
-                                        Text(
-                                          item.year,
-                                          style: GoogleFonts.inter(
-                                            color: AppColors.textMuted,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                      ],
-                                      const Icon(Icons.star_rounded, size: 12, color: AppColors.star),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        item.rating.toStringAsFixed(1),
-                                        style: GoogleFonts.inter(
-                                          color: AppColors.textMuted,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Quick Play / Arrow Action
-                            const Padding(
-                              padding: EdgeInsets.only(right: 4),
-                              child: Icon(
-                                Iconsax.play_cricle,
-                                color: AppColors.primary,
-                                size: 24,
-                              ),
-                            ),
-                          ],
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isMovie
+                              ? AppColors.primary.withValues(alpha: 0.15)
+                              : Colors.blue.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          isMovie ? s.searchBadgeMovie : s.searchBadgeTv,
+                          style: GoogleFonts.inter(
+                            color: isMovie
+                                ? AppColors.primaryLight
+                                : Colors.blue.shade300,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      if (item.year.isNotEmpty) ...[
+                        Text(
+                          item.year,
+                          style: GoogleFonts.inter(
+                            color: AppColors.textMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 12,
+                        color: AppColors.star,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        item.rating.toStringAsFixed(1),
+                        style: GoogleFonts.inter(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              }).toList(),
-            );
-          },
+                ],
+              ),
+            ),
+
+            // Quick Play / Arrow Action
+            const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: Icon(
+                Iconsax.play_cricle,
+                color: AppColors.primary,
+                size: 24,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildPlatformChip(BuildContext context, StreamingPlatform platform) {
-    return GestureDetector(
+    return TvFocusable(
       onTap: () => context.push('/platform/${platform.id}'),
+      borderRadius: BorderRadius.circular(14),
+      scaleOnFocus: 1.05,
       child: Container(
         width: 104,
         height: 50,
@@ -881,11 +1030,8 @@ class _SearchDiscoveryView extends ConsumerWidget {
           child: Image.asset(
             platform.logoAsset,
             fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => Icon(
-              platform.icon,
-              color: platform.brandColor,
-              size: 24,
-            ),
+            errorBuilder: (_, _, _) =>
+                Icon(platform.icon, color: platform.brandColor, size: 24),
           ),
         ),
       ),
@@ -920,26 +1066,47 @@ class _MovieGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pref = ref.watch(contentPreferenceProvider);
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final crossAxisCount = screenWidth < 340 ? 2 : 3;
-    final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
+    final isTv = ref.watch(isTvProvider);
 
-    return GridView.builder(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 84),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: childAspectRatio,
-        crossAxisSpacing: screenWidth < 360 ? 8 : 10,
-        mainAxisSpacing: screenWidth < 360 ? 8 : 10,
-      ),
-      itemCount: movies.length,
-      itemBuilder: (context, index) {
-        final movie = movies[index];
-        final isPreferred = pref != ContentPreference.all && pref.matchesMovie(movie);
-        return _MovieSearchCard(
-          movie: movie,
-          isPreferred: isPreferred,
-          index: index,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final crossAxisCount = adaptivePosterGridColumns(
+          availableWidth,
+          isTv: isTv,
+        );
+        final childAspectRatio = adaptivePosterGridAspectRatio(
+          availableWidth,
+          isTv: isTv,
+        );
+        final spacing = availableWidth >= 600
+            ? 14.0
+            : (availableWidth < 360 ? 8.0 : 10.0);
+
+        return GridView.builder(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            8,
+            16,
+            MediaQuery.of(context).padding.bottom + 84,
+          ),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: childAspectRatio,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+          ),
+          itemCount: movies.length,
+          itemBuilder: (context, index) {
+            final movie = movies[index];
+            final isPreferred =
+                pref != ContentPreference.all && pref.matchesMovie(movie);
+            return _MovieSearchCard(
+              movie: movie,
+              isPreferred: isPreferred,
+              index: index,
+            );
+          },
         );
       },
     );
@@ -961,7 +1128,7 @@ class _MovieSearchCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final pref = ref.watch(contentPreferenceProvider);
 
-    return GestureDetector(
+    return TvFocusable(
       onTap: () {
         final currentQuery = ref.read(searchQueryProvider).trim();
         if (currentQuery.isNotEmpty) {
@@ -969,6 +1136,8 @@ class _MovieSearchCard extends ConsumerWidget {
         }
         context.push('/movie/${movie.id}');
       },
+      borderRadius: BorderRadius.circular(12),
+      scaleOnFocus: 1.04,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -989,10 +1158,14 @@ class _MovieSearchCard extends ConsumerWidget {
                       imageUrl: ApiConstants.imageUrl(movie.posterPath),
                       fit: BoxFit.cover,
                       width: double.infinity,
-                      placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
+                      placeholder: (_, _) =>
+                          Container(color: AppColors.surfaceVariant),
                       errorWidget: (_, _, _) => Container(
                         color: AppColors.surfaceVariant,
-                        child: const Icon(Icons.movie, color: AppColors.textMuted),
+                        child: const Icon(
+                          Icons.movie,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
                     if (isPreferred)
@@ -1000,7 +1173,10 @@ class _MovieSearchCard extends ConsumerWidget {
                         top: 6,
                         left: 6,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary,
                             borderRadius: BorderRadius.circular(5),
@@ -1032,7 +1208,11 @@ class _MovieSearchCard extends ConsumerWidget {
             movie.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
           ),
           Row(
             children: [
@@ -1040,13 +1220,19 @@ class _MovieSearchCard extends ConsumerWidget {
               const SizedBox(width: 3),
               Text(
                 movie.voteAverage.toStringAsFixed(1),
-                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
               ),
               if (movie.year.isNotEmpty) ...[
                 const SizedBox(width: 6),
                 Text(
                   movie.year,
-                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ],
             ],
@@ -1064,26 +1250,47 @@ class _TvGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pref = ref.watch(contentPreferenceProvider);
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final crossAxisCount = screenWidth < 340 ? 2 : 3;
-    final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
+    final isTv = ref.watch(isTvProvider);
 
-    return GridView.builder(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 84),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: childAspectRatio,
-        crossAxisSpacing: screenWidth < 360 ? 8 : 10,
-        mainAxisSpacing: screenWidth < 360 ? 8 : 10,
-      ),
-      itemCount: tvShows.length,
-      itemBuilder: (context, index) {
-        final tv = tvShows[index];
-        final isPreferred = pref != ContentPreference.all && pref.matchesTv(tv);
-        return _TvSearchCard(
-          tv: tv,
-          isPreferred: isPreferred,
-          index: index,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final crossAxisCount = adaptivePosterGridColumns(
+          availableWidth,
+          isTv: isTv,
+        );
+        final childAspectRatio = adaptivePosterGridAspectRatio(
+          availableWidth,
+          isTv: isTv,
+        );
+        final spacing = availableWidth >= 600
+            ? 14.0
+            : (availableWidth < 360 ? 8.0 : 10.0);
+
+        return GridView.builder(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            8,
+            16,
+            MediaQuery.of(context).padding.bottom + 84,
+          ),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: childAspectRatio,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+          ),
+          itemCount: tvShows.length,
+          itemBuilder: (context, index) {
+            final tv = tvShows[index];
+            final isPreferred =
+                pref != ContentPreference.all && pref.matchesTv(tv);
+            return _TvSearchCard(
+              tv: tv,
+              isPreferred: isPreferred,
+              index: index,
+            );
+          },
         );
       },
     );
@@ -1105,7 +1312,7 @@ class _TvSearchCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final pref = ref.watch(contentPreferenceProvider);
 
-    return GestureDetector(
+    return TvFocusable(
       onTap: () {
         final currentQuery = ref.read(searchQueryProvider).trim();
         if (currentQuery.isNotEmpty) {
@@ -1113,6 +1320,8 @@ class _TvSearchCard extends ConsumerWidget {
         }
         context.push('/tv/${tv.id}');
       },
+      borderRadius: BorderRadius.circular(12),
+      scaleOnFocus: 1.04,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1133,7 +1342,8 @@ class _TvSearchCard extends ConsumerWidget {
                       imageUrl: ApiConstants.imageUrl(tv.posterPath),
                       fit: BoxFit.cover,
                       width: double.infinity,
-                      placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
+                      placeholder: (_, _) =>
+                          Container(color: AppColors.surfaceVariant),
                       errorWidget: (_, _, _) => Container(
                         color: AppColors.surfaceVariant,
                         child: const Icon(Icons.tv, color: AppColors.textMuted),
@@ -1144,7 +1354,10 @@ class _TvSearchCard extends ConsumerWidget {
                         top: 6,
                         left: 6,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary,
                             borderRadius: BorderRadius.circular(5),
@@ -1176,7 +1389,11 @@ class _TvSearchCard extends ConsumerWidget {
             tv.name,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
           ),
           Row(
             children: [
@@ -1184,13 +1401,19 @@ class _TvSearchCard extends ConsumerWidget {
               const SizedBox(width: 3),
               Text(
                 tv.voteAverage.toStringAsFixed(1),
-                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
               ),
               if (tv.year.isNotEmpty) ...[
                 const SizedBox(width: 6),
                 Text(
                   tv.year,
-                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ],
             ],
@@ -1206,193 +1429,233 @@ class _AllSearchResultsView extends ConsumerWidget {
   final List<Movie> movies;
   final List<TvSeries> tvShows;
 
-  const _AllSearchResultsView({
-    required this.movies,
-    required this.tvShows,
-  });
+  const _AllSearchResultsView({required this.movies, required this.tvShows});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
     final pref = ref.watch(contentPreferenceProvider);
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final crossAxisCount = screenWidth < 340 ? 2 : 3;
-    final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
-    final spacing = screenWidth < 360 ? 8.0 : 10.0;
+    final isTv = ref.watch(isTvProvider);
     final bottomPadding = MediaQuery.of(context).padding.bottom + 84;
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        // ── 1. Movies Section ──
-        if (movies.isNotEmpty) ...[
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.movie_rounded, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 6),
-                  Text(
-                    s.searchTabMovies,
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${movies.length}',
-                      style: const TextStyle(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final crossAxisCount = adaptivePosterGridColumns(
+          availableWidth,
+          isTv: isTv,
+        );
+        final childAspectRatio = adaptivePosterGridAspectRatio(
+          availableWidth,
+          isTv: isTv,
+        );
+        final spacing = availableWidth >= 600
+            ? 14.0
+            : (availableWidth < 360 ? 8.0 : 10.0);
+
+        return CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // ── 1. Movies Section ──
+            if (movies.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.movie_rounded,
+                        size: 16,
                         color: AppColors.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                childAspectRatio: childAspectRatio,
-                crossAxisSpacing: spacing,
-                mainAxisSpacing: spacing,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final movie = movies[index];
-                  final isPreferred = pref != ContentPreference.all && pref.matchesMovie(movie);
-                  return _MovieSearchCard(
-                    movie: movie,
-                    isPreferred: isPreferred,
-                    index: index,
-                  );
-                },
-                childCount: movies.length,
-              ),
-            ),
-          ),
-        ],
-
-        // ── Section Divider ──
-        if (movies.isNotEmpty && tvShows.isNotEmpty)
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Divider(
-                color: Colors.white10,
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-              ),
-            ),
-          ),
-
-        // ── 2. TV Shows Section ──
-        if (tvShows.isNotEmpty) ...[
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.tv_rounded, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 6),
-                  Text(
-                    s.searchTabTv,
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${tvShows.length}',
-                      style: TextStyle(
-                        color: Colors.blue.shade300,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                      const SizedBox(width: 6),
+                      Text(
+                        s.searchTabMovies,
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${movies.length}',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                childAspectRatio: childAspectRatio,
-                crossAxisSpacing: spacing,
-                mainAxisSpacing: spacing,
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    childAspectRatio: childAspectRatio,
+                    crossAxisSpacing: spacing,
+                    mainAxisSpacing: spacing,
+                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final movie = movies[index];
+                    final isPreferred =
+                        pref != ContentPreference.all &&
+                        pref.matchesMovie(movie);
+                    return _MovieSearchCard(
+                      movie: movie,
+                      isPreferred: isPreferred,
+                      index: index,
+                    );
+                  }, childCount: movies.length),
+                ),
               ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final tv = tvShows[index];
-                  final isPreferred = pref != ContentPreference.all && pref.matchesTv(tv);
-                  return _TvSearchCard(
-                    tv: tv,
-                    isPreferred: isPreferred,
-                    index: index,
-                  );
-                },
-                childCount: tvShows.length,
-              ),
-            ),
-          ),
-        ],
+            ],
 
-        SliverToBoxAdapter(
-          child: SizedBox(height: bottomPadding),
-        ),
-      ],
+            // ── Section Divider ──
+            if (movies.isNotEmpty && tvShows.isNotEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Divider(
+                    color: Colors.white10,
+                    height: 1,
+                    indent: 16,
+                    endIndent: 16,
+                  ),
+                ),
+              ),
+
+            // ── 2. TV Shows Section ──
+            if (tvShows.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.tv_rounded,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        s.searchTabTv,
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${tvShows.length}',
+                          style: TextStyle(
+                            color: Colors.blue.shade300,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    childAspectRatio: childAspectRatio,
+                    crossAxisSpacing: spacing,
+                    mainAxisSpacing: spacing,
+                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final tv = tvShows[index];
+                    final isPreferred =
+                        pref != ContentPreference.all && pref.matchesTv(tv);
+                    return _TvSearchCard(
+                      tv: tv,
+                      isPreferred: isPreferred,
+                      index: index,
+                    );
+                  }, childCount: tvShows.length),
+                ),
+              ),
+            ],
+
+            SliverToBoxAdapter(child: SizedBox(height: bottomPadding)),
+          ],
+        );
+      },
     );
   }
 }
 
-class _SearchLoadingGrid extends StatelessWidget {
+class _SearchLoadingGrid extends ConsumerWidget {
   const _SearchLoadingGrid();
 
   @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final crossAxisCount = screenWidth < 340 ? 2 : 3;
-    final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isTv = ref.watch(isTvProvider);
 
-    return GridView.builder(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 84),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: childAspectRatio,
-        crossAxisSpacing: screenWidth < 360 ? 8 : 10,
-        mainAxisSpacing: screenWidth < 360 ? 8 : 10,
-      ),
-      itemCount: 9,
-      itemBuilder: (_, _) => const ShimmerLoading(
-        width: double.infinity,
-        height: double.infinity,
-        borderRadius: 12,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final crossAxisCount = adaptivePosterGridColumns(
+          availableWidth,
+          isTv: isTv,
+        );
+        final childAspectRatio = adaptivePosterGridAspectRatio(
+          availableWidth,
+          isTv: isTv,
+        );
+        final spacing = availableWidth >= 600
+            ? 14.0
+            : (availableWidth < 360 ? 8.0 : 10.0);
+
+        return GridView.builder(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            8,
+            16,
+            MediaQuery.of(context).padding.bottom + 84,
+          ),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: childAspectRatio,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+          ),
+          itemCount: crossAxisCount * 3,
+          itemBuilder: (_, _) => const ShimmerLoading(
+            width: double.infinity,
+            height: double.infinity,
+            borderRadius: 12,
+          ),
+        );
+      },
     );
   }
 }
@@ -1456,7 +1719,9 @@ class _GenreExplorerViewState extends ConsumerState<_GenreExplorerView> {
 
                     if (filtered.isEmpty) {
                       return AppErrorWidget.empty(
-                        message: s.searchNoGenreMovies(widget.activeGenre.label),
+                        message: s.searchNoGenreMovies(
+                          widget.activeGenre.label,
+                        ),
                       );
                     }
                     return _MovieGrid(movies: filtered);

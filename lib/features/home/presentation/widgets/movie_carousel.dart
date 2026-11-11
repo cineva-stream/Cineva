@@ -36,6 +36,7 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
   late final PageController _pageController;
   int _currentPage = 0;
   Timer? _autoSlideTimer;
+  bool _isFocusInside = false;
 
   @override
   void initState() {
@@ -46,8 +47,9 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
 
   void _startAutoSlide() {
     _autoSlideTimer?.cancel();
+    if (_isFocusInside) return;
     _autoSlideTimer = Timer.periodic(const Duration(seconds: 6), (_) {
-      if (!mounted || !_pageController.hasClients) return;
+      if (!mounted || !_pageController.hasClients || _isFocusInside) return;
       final count = widget.movies.take(10).length;
       if (count <= 1) return;
       final nextPage = (_currentPage + 1) % count;
@@ -57,6 +59,15 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
         curve: Curves.easeInOutCubic,
       );
     });
+  }
+
+  void _onFocusChanged(bool hasFocus) {
+    _isFocusInside = hasFocus;
+    if (hasFocus) {
+      _autoSlideTimer?.cancel();
+    } else {
+      _startAutoSlide();
+    }
   }
 
   void _goToPrevious(int count) {
@@ -98,7 +109,7 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
     final isWide = isWideScreenLayout(context, isTv: isTv);
     final isCompact = screenWidth < 360 || screenHeight < 700;
     final carouselHeight = isWide
-        ? (screenHeight < 650 ? 400.0 : 490.0)
+        ? (screenWidth < 920 ? 390.0 : (screenHeight < 650 ? 400.0 : 490.0))
         : (isCompact ? 375.0 : 430.0);
 
     return Column(
@@ -238,10 +249,10 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: AppColors.primary.withValues(alpha: 0.22),
+                                            color: AppColors.primary.withValues(alpha: 0.18),
                                             borderRadius: BorderRadius.circular(8),
                                             border: Border.all(
-                                              color: AppColors.primary.withValues(alpha: 0.6),
+                                              color: AppColors.primary.withValues(alpha: 0.5),
                                               width: 1,
                                             ),
                                           ),
@@ -256,7 +267,7 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                                     ? 'POPULER TV #${index + 1}'
                                                     : 'TRENDING #${index + 1}',
                                                 style: GoogleFonts.inter(
-                                                  color: AppColors.primaryLight,
+                                                  color: Colors.white,
                                                   fontSize: 11,
                                                   fontWeight: FontWeight.w700,
                                                   letterSpacing: 0.5,
@@ -314,12 +325,12 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                       movie.title,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.outfit(
+                                      style: GoogleFonts.plusJakartaSans(
                                         fontSize: isWide ? 38 : (isCompact ? 21 : 26),
-                                        fontWeight: FontWeight.w900,
+                                        fontWeight: FontWeight.w800,
                                         color: Colors.white,
                                         height: 1.12,
-                                        letterSpacing: -0.4,
+                                        letterSpacing: -0.6,
                                         shadows: [
                                           Shadow(
                                             color: Colors.black.withValues(alpha: 0.85),
@@ -407,18 +418,20 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                         children: [
                                           TvFocusable(
                                             focusedScale: 1.05,
-                                            glowBlurRadius: 14,
+                                            glowBlurRadius: 16,
+                                            glowColor: AppColors.primary,
                                             borderRadius: BorderRadius.circular(14),
+                                            onFocusChange: _onFocusChanged,
                                             onTap: () => context.push(movie.mediaType == 'tv' ? '/tv/${movie.id}' : '/movie/${movie.id}'),
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
                                               decoration: BoxDecoration(
                                                 color: AppColors.primary,
                                                 borderRadius: BorderRadius.circular(14),
                                                 boxShadow: [
                                                   BoxShadow(
-                                                    color: AppColors.primary.withValues(alpha: 0.35),
-                                                    blurRadius: 12,
+                                                    color: AppColors.primary.withValues(alpha: 0.4),
+                                                    blurRadius: 16,
                                                     offset: const Offset(0, 4),
                                                   ),
                                                 ],
@@ -426,14 +439,19 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 24),
+                                                  const Icon(
+                                                    Icons.play_arrow_rounded,
+                                                    color: Colors.black,
+                                                    size: 24,
+                                                  ),
                                                   const SizedBox(width: 8),
                                                   Text(
                                                     s.homeWatchNow,
-                                                    style: GoogleFonts.inter(
+                                                    style: GoogleFonts.plusJakartaSans(
                                                       color: Colors.black,
                                                       fontWeight: FontWeight.w800,
                                                       fontSize: 14,
+                                                      letterSpacing: 0.2,
                                                     ),
                                                   ),
                                                 ],
@@ -445,6 +463,7 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                             focusedScale: 1.05,
                                             glowBlurRadius: 10,
                                             borderRadius: BorderRadius.circular(14),
+                                            onFocusChange: _onFocusChanged,
                                             onTap: () => context.push(movie.mediaType == 'tv' ? '/tv/${movie.id}' : '/movie/${movie.id}'),
                                             child: Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
@@ -483,25 +502,29 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                             flex: 6,
                                             child: ElevatedButton.icon(
                                               onPressed: () => context.push(movie.mediaType == 'tv' ? '/tv/${movie.id}' : '/movie/${movie.id}'),
-                                              icon: Icon(Icons.play_arrow_rounded, color: Colors.black, size: isCompact ? 20 : 24),
+                                              icon: Icon(
+                                                Icons.play_arrow_rounded,
+                                                color: Colors.black,
+                                                size: isCompact ? 20 : 24,
+                                              ),
                                               label: Text(
                                                 s.homeWatchNow,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: GoogleFonts.inter(
+                                                style: GoogleFonts.plusJakartaSans(
                                                   color: Colors.black,
-                                                  fontWeight: FontWeight.w700,
+                                                  fontWeight: FontWeight.w800,
                                                   fontSize: isCompact ? 12 : 14,
+                                                  letterSpacing: 0.2,
                                                 ),
                                               ),
                                               style: ElevatedButton.styleFrom(
                                                 backgroundColor: AppColors.primary,
-                                                foregroundColor: Colors.black,
                                                 padding: EdgeInsets.symmetric(vertical: isCompact ? 10 : 12),
                                                 elevation: 6,
                                                 shadowColor: AppColors.primary.withValues(alpha: 0.4),
                                                 shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderRadius: BorderRadius.circular(14),
                                                 ),
                                               ),
                                             ),
@@ -610,21 +633,23 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
         ),
 
         // Page Indicator Capsule
-        const SizedBox(height: 14),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            movies.length,
-            (index) => AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: _currentPage == index ? 22 : 6,
-              height: 4,
-              decoration: BoxDecoration(
-                color: _currentPage == index
-                    ? AppColors.primary
-                    : AppColors.textMuted.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(2),
+        Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              movies.length,
+              (index) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: _currentPage == index ? 22 : 6,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: _currentPage == index
+                      ? AppColors.primary
+                      : AppColors.textMuted.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
           ),

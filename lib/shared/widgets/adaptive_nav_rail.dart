@@ -76,9 +76,7 @@ class _AdaptiveNavRailState extends ConsumerState<AdaptiveNavRail> {
 
     return Container(
       width: width,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-      ),
+      decoration: const BoxDecoration(color: AppColors.surface),
       child: Stack(
         children: [
           // Subtle 1px right border overlay that does not shift horizontal centering
@@ -87,9 +85,7 @@ class _AdaptiveNavRailState extends ConsumerState<AdaptiveNavRail> {
             bottom: 0,
             right: 0,
             width: 1.0,
-            child: Container(
-              color: Colors.white.withValues(alpha: 0.06),
-            ),
+            child: Container(color: Colors.white.withValues(alpha: 0.06)),
           ),
           // Content centered across the full width of the rail
           SafeArea(
@@ -120,20 +116,27 @@ class _AdaptiveNavRailState extends ConsumerState<AdaptiveNavRail> {
                       child: FocusTraversalGroup(
                         policy: OrderedTraversalPolicy(),
                         child: SingleChildScrollView(
-                          physics: const NeverScrollableScrollPhysics(),
+                          physics: const BouncingScrollPhysics(),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              for (int index = 0; index < destinations.length; index++) ...[
+                              for (
+                                int index = 0;
+                                index < destinations.length;
+                                index++
+                              ) ...[
                                 if (index > 0) const SizedBox(height: 8),
                                 Builder(
                                   builder: (context) {
                                     final item = destinations[index];
-                                    final isSelected = widget.currentIndex == index;
+                                    final isSelected =
+                                        widget.currentIndex == index;
 
                                     return FocusTraversalOrder(
-                                      order: NumericFocusOrder(index.toDouble()),
+                                      order: NumericFocusOrder(
+                                        index.toDouble(),
+                                      ),
                                       child: Center(
                                         child: SizedBox(
                                           width: itemWidth,
@@ -142,36 +145,61 @@ class _AdaptiveNavRailState extends ConsumerState<AdaptiveNavRail> {
                                             focusedScale: 1.04,
                                             glowBlurRadius: 10,
                                             glowSpreadRadius: 0,
-                                            borderRadius: BorderRadius.circular(14),
-                                            onTap: () => widget.onDestinationSelected(index),
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                            onTap: () => widget
+                                                .onDestinationSelected(index),
                                             child: AnimatedContainer(
-                                              duration: const Duration(milliseconds: 200),
+                                              duration: const Duration(
+                                                milliseconds: 200,
+                                              ),
                                               curve: Curves.easeOutCubic,
                                               width: itemWidth,
-                                              padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 9,
+                                                    horizontal: 4,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: isSelected
-                                                    ? AppColors.primary.withValues(alpha: 0.16)
+                                                    ? AppColors.primary
+                                                          .withValues(
+                                                            alpha: 0.16,
+                                                          )
                                                     : Colors.transparent,
-                                                borderRadius: BorderRadius.circular(14),
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
                                                 border: isSelected
                                                     ? Border.all(
-                                                        color: AppColors.primary.withValues(alpha: 0.35),
+                                                        color: AppColors.primary
+                                                            .withValues(
+                                                              alpha: 0.35,
+                                                            ),
                                                         width: 1.0,
                                                       )
-                                                    : Border.all(color: Colors.transparent, width: 1.0),
+                                                    : Border.all(
+                                                        color:
+                                                            Colors.transparent,
+                                                        width: 1.0,
+                                                      ),
                                               ),
                                               child: Column(
                                                 mainAxisSize: MainAxisSize.min,
-                                                crossAxisAlignment: CrossAxisAlignment.center,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.center,
                                                 children: [
                                                   Center(
                                                     child: Icon(
-                                                      isSelected ? item.activeIcon : item.icon,
+                                                      isSelected
+                                                          ? item.activeIcon
+                                                          : item.icon,
                                                       color: isSelected
                                                           ? AppColors.primary
                                                           : AppColors.textMuted,
-                                                      size: widget.isTv ? 25 : 22,
+                                                      size: widget.isTv
+                                                          ? 25
+                                                          : 22,
                                                     ),
                                                   ),
                                                   const SizedBox(height: 4),
@@ -180,12 +208,21 @@ class _AdaptiveNavRailState extends ConsumerState<AdaptiveNavRail> {
                                                     child: Text(
                                                       item.label,
                                                       maxLines: 1,
-                                                      textAlign: TextAlign.center,
-                                                      overflow: TextOverflow.ellipsis,
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                       style: GoogleFonts.inter(
-                                                        fontSize: widget.isTv ? 11.0 : 10.0,
-                                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                                        color: isSelected ? AppColors.primary : AppColors.textMuted,
+                                                        fontSize: widget.isTv
+                                                            ? 11.0
+                                                            : 10.0,
+                                                        fontWeight: isSelected
+                                                            ? FontWeight.w700
+                                                            : FontWeight.w500,
+                                                        color: isSelected
+                                                            ? AppColors.primary
+                                                            : AppColors
+                                                                  .textMuted,
                                                         letterSpacing: 0.1,
                                                       ),
                                                     ),

@@ -40,6 +40,8 @@ import '../widgets/custom_subtitle_overlay.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/platform/device_form_factor.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 
 enum _PlayerLoadingStep {
   searching,
@@ -454,7 +456,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   children: [
                     // Option 1: Belum / Not Yet -> Continue Watching
                     Expanded(
-                      child: InkWell(
+                      child: TvFocusable(
                         onTap: () => Navigator.of(ctx).pop(false),
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
@@ -478,7 +480,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     const SizedBox(width: 12),
                     // Option 2: Sudah / Done -> Completed
                     Expanded(
-                      child: InkWell(
+                      child: TvFocusable(
+                        autofocus: true,
                         onTap: () => Navigator.of(ctx).pop(true),
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
@@ -561,12 +564,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       debugPrint('[PlayerScreen] Error clearing webview on exit: $e');
     }
 
-    // 3. Immediately restore portrait orientation BEFORE popping
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // 3. Immediately restore form-factor orientation BEFORE popping
+    await restoreSystemUiAndOrientations(isTv: gIsTv);
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -621,12 +620,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     _player.dispose();
 
-    // Re-assert portrait mode as safety net
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // Re-assert form-factor orientation as safety net
+    restoreSystemUiAndOrientations(isTv: gIsTv);
     super.dispose();
   }
 
@@ -4798,64 +4793,61 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     required VoidCallback onTap,
     Widget? trailing,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        splashColor: AppColors.primary.withValues(alpha: 0.12),
-        highlightColor: Colors.white.withValues(alpha: 0.04),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: Colors.white12, width: 0.8),
+    return TvFocusable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      scaleOnFocus: 1.0,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: Colors.white12, width: 0.8),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: AppColors.primary, size: 17),
             ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: AppColors.primary, size: 17),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.outfit(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              trailing ??
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Colors.white38,
-                    size: 20,
                   ),
-            ],
-          ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            trailing ??
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.white38,
+                  size: 20,
+                ),
+          ],
         ),
       ),
     );
@@ -5947,25 +5939,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     Color? activeColor,
     Color? inactiveColor,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        margin: const EdgeInsets.only(left: 8),
-        decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.primary
-              : Colors.black.withValues(alpha: 0.5),
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: Icon(
-            icon,
-            size: 19,
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: TvFocusable(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
             color: isActive
-                ? (activeColor ?? Colors.black)
-                : (inactiveColor ?? Colors.white),
+                ? AppColors.primary
+                : Colors.black.withValues(alpha: 0.5),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              size: 19,
+              color: isActive
+                  ? (activeColor ?? Colors.black)
+                  : (inactiveColor ?? Colors.white),
+            ),
           ),
         ),
       ),
@@ -5977,9 +5972,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          IconButton(
-            onPressed: _handleExit,
-            icon: Container(
+          TvFocusable(
+            onTap: _handleExit,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.5),
@@ -6022,8 +6018,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       ),
                       if (!_useNativePlayer) ...[
                         const SizedBox(width: 8),
-                        GestureDetector(
+                        TvFocusable(
                           onTap: _playNextEpisode,
+                          borderRadius: BorderRadius.circular(4),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 7,
@@ -6140,34 +6137,60 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         onKeyEvent: (node, event) {
           if (event is KeyDownEvent) {
             final key = event.logicalKey;
-            if (key == LogicalKeyboardKey.select ||
-                key == LogicalKeyboardKey.enter ||
-                key == LogicalKeyboardKey.space ||
-                key == LogicalKeyboardKey.gameButtonA) {
-              _togglePlayPause();
-              return KeyEventResult.handled;
-            } else if (key == LogicalKeyboardKey.arrowLeft) {
-              _seekRelative(-10);
-              return KeyEventResult.handled;
-            } else if (key == LogicalKeyboardKey.arrowRight) {
-              _seekRelative(10);
-              return KeyEventResult.handled;
-            } else if (key == LogicalKeyboardKey.arrowUp) {
-              _setVolume((_volume + 10.0).clamp(0.0, 150.0));
-              return KeyEventResult.handled;
-            } else if (key == LogicalKeyboardKey.arrowDown) {
-              _setVolume((_volume - 10.0).clamp(0.0, 150.0));
-              return KeyEventResult.handled;
-            } else if (key == LogicalKeyboardKey.keyM) {
-              _setVolume(_volume > 0 ? 0.0 : 100.0);
-              return KeyEventResult.handled;
-            } else if (key == LogicalKeyboardKey.escape) {
+            if (key == LogicalKeyboardKey.escape) {
               if (_isSidePanelOpen) {
-                _closeSidePanel();
+                if (_sidePanelPage != _SidePanelPage.main) {
+                  _navigateToSidePanelPage(_SidePanelPage.main);
+                } else {
+                  _closeSidePanel();
+                }
               } else {
                 _handleExit();
               }
               return KeyEventResult.handled;
+            }
+            if (key == LogicalKeyboardKey.keyM) {
+              _setVolume(_volume > 0 ? 0.0 : 100.0);
+              return KeyEventResult.handled;
+            }
+            if (key == LogicalKeyboardKey.space) {
+              _togglePlayPause();
+              return KeyEventResult.handled;
+            }
+
+            // When the side panel, mini popup, loading overlay, or error state is active,
+            // let standard D-Pad focus traversal handle arrow and select keys.
+            if (_isSidePanelOpen ||
+                _activePopup != _PlayerMiniPopup.none ||
+                _streamNotFound ||
+                _isLoading) {
+              return KeyEventResult.ignored;
+            }
+
+            // When controls are hidden, use Left/Right for quick 10s seek,
+            // and Select/Enter/Up/Down to reveal the player controls overlay.
+            if (!_showControls) {
+              if (key == LogicalKeyboardKey.arrowLeft) {
+                _seekRelative(-10);
+                return KeyEventResult.handled;
+              } else if (key == LogicalKeyboardKey.arrowRight) {
+                _seekRelative(10);
+                return KeyEventResult.handled;
+              } else if (key == LogicalKeyboardKey.select ||
+                  key == LogicalKeyboardKey.enter ||
+                  key == LogicalKeyboardKey.numpadEnter ||
+                  key == LogicalKeyboardKey.gameButtonA ||
+                  key == LogicalKeyboardKey.arrowUp ||
+                  key == LogicalKeyboardKey.arrowDown) {
+                setState(() => _showControls = true);
+                _resetControlsTimer();
+                return KeyEventResult.handled;
+              }
+            } else {
+              // Controls are visible: keep the auto-hide timer alive on D-Pad interaction
+              // and allow normal focus traversal across Top Bar, Center, and Bottom Bar controls.
+              _resetControlsTimer();
+              return KeyEventResult.ignored;
             }
           }
           return KeyEventResult.ignored;
@@ -6459,202 +6482,223 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             AnimatedOpacity(
                               opacity: _showControls ? 1.0 : 0.0,
                               duration: const Duration(milliseconds: 200),
-                              child: IgnorePointer(
-                                ignoring: !_showControls,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.black.withValues(alpha: 0.85),
-                                        Colors.transparent,
-                                        Colors.transparent,
-                                        Colors.black.withValues(alpha: 0.85),
-                                      ],
-                                      stops: const [0.0, 0.25, 0.7, 1.0],
+                              child: ExcludeFocus(
+                                excluding: !_showControls,
+                                child: IgnorePointer(
+                                  ignoring: !_showControls,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.black.withValues(alpha: 0.85),
+                                          Colors.transparent,
+                                          Colors.transparent,
+                                          Colors.black.withValues(alpha: 0.85),
+                                        ],
+                                        stops: const [0.0, 0.25, 0.7, 1.0],
+                                      ),
                                     ),
-                                  ),
-                                  child: SafeArea(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        // ── Top Navigation & Quality Bar ──
-                                        _buildTopBar(s),
+                                    child: SafeArea(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          // ── Top Navigation & Quality Bar ──
+                                          _buildTopBar(s),
 
-                                        // ── Center Controls (Play/Pause, Replay 10, Forward 10) ──
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            IconButton(
-                                              onPressed: () =>
-                                                  _seekRelative(-10),
-                                              icon: const Icon(
-                                                Icons.replay_10_rounded,
-                                                color: Colors.white,
-                                                size: 44,
+                                          // ── Center Controls (Play/Pause, Replay 10, Forward 10) ──
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              TvFocusable(
+                                                onTap: () => _seekRelative(-10),
+                                                borderRadius:
+                                                    BorderRadius.circular(28),
+                                                child: const Padding(
+                                                  padding: EdgeInsets.all(8),
+                                                  child: Icon(
+                                                    Icons.replay_10_rounded,
+                                                    color: Colors.white,
+                                                    size: 44,
+                                                  ),
+                                                ),
                                               ),
+                                              const SizedBox(width: 36),
+                                              TvFocusable(
+                                                onTap: _isBuffering
+                                                    ? null
+                                                    : _togglePlayPause,
+                                                borderRadius:
+                                                    BorderRadius.circular(36),
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 8,
+                                                      ),
+                                                  child: _isBuffering
+                                                      ? const SizedBox(
+                                                          width: 54,
+                                                          height: 54,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                color: AppColors
+                                                                    .primary,
+                                                                strokeWidth: 3.5,
+                                                              ),
+                                                        )
+                                                      : Icon(
+                                                          _isPlaying
+                                                              ? Icons
+                                                                    .pause_rounded
+                                                              : Icons
+                                                                    .play_arrow_rounded,
+                                                          color:
+                                                              AppColors.primary,
+                                                          size: 58,
+                                                        ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 36),
+                                              TvFocusable(
+                                                onTap: () => _seekRelative(10),
+                                                borderRadius:
+                                                    BorderRadius.circular(28),
+                                                child: const Padding(
+                                                  padding: EdgeInsets.all(8),
+                                                  child: Icon(
+                                                    Icons.forward_10_rounded,
+                                                    color: Colors.white,
+                                                    size: 44,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+
+                                          // ── Bottom Timeline Scrubber ──
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              24,
+                                              0,
+                                              24,
+                                              12,
                                             ),
-                                            const SizedBox(width: 36),
-                                            GestureDetector(
-                                              onTap: _isBuffering
-                                                  ? null
-                                                  : _togglePlayPause,
-                                              behavior: HitTestBehavior.opaque,
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 16,
-                                                      vertical: 8,
+                                            child: ValueListenableBuilder<Duration>(
+                                              valueListenable: _positionNotifier,
+                                              builder: (ctx, pos, _) {
+                                                return Row(
+                                                  children: [
+                                                    Text(
+                                                      _formatDuration(pos),
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
                                                     ),
-                                                child: _isBuffering
-                                                    ? const SizedBox(
-                                                        width: 54,
-                                                        height: 54,
-                                                        child:
-                                                            CircularProgressIndicator(
-                                                              color: AppColors
-                                                                  .primary,
-                                                              strokeWidth: 3.5,
+                                                    Expanded(
+                                                      child: SliderTheme(
+                                                        data:
+                                                            SliderTheme.of(
+                                                              context,
+                                                            ).copyWith(
+                                                              trackHeight: 3.5,
+                                                              thumbShape:
+                                                                  const RoundSliderThumbShape(
+                                                                    enabledThumbRadius:
+                                                                        6,
+                                                                  ),
+                                                              overlayShape:
+                                                                  const RoundSliderOverlayShape(
+                                                                    overlayRadius:
+                                                                        14,
+                                                                  ),
+                                                              activeTrackColor:
+                                                                  AppColors
+                                                                      .primary,
+                                                              inactiveTrackColor:
+                                                                  Colors.white24,
+                                                              thumbColor:
+                                                                  AppColors
+                                                                      .primary,
                                                             ),
-                                                      )
-                                                    : Icon(
-                                                        _isPlaying
-                                                            ? Icons
-                                                                  .pause_rounded
-                                                            : Icons
-                                                                  .play_arrow_rounded,
-                                                        color:
-                                                            AppColors.primary,
-                                                        size: 58,
+                                                        child: Slider(
+                                                          value:
+                                                              _duration
+                                                                      .inSeconds >
+                                                                  0
+                                                              ? pos.inSeconds
+                                                                    .toDouble()
+                                                                    .clamp(
+                                                                      0.0,
+                                                                      _duration
+                                                                          .inSeconds
+                                                                          .toDouble(),
+                                                                    )
+                                                              : 0.0,
+                                                          min: 0.0,
+                                                          max:
+                                                              _duration
+                                                                      .inSeconds >
+                                                                  0
+                                                              ? _duration
+                                                                    .inSeconds
+                                                                    .toDouble()
+                                                              : 1.0,
+                                                          onChanged: (v) =>
+                                                              _seekTo(v),
+                                                        ),
                                                       ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 36),
-                                            IconButton(
-                                              onPressed: () =>
-                                                  _seekRelative(10),
-                                              icon: const Icon(
-                                                Icons.forward_10_rounded,
-                                                color: Colors.white,
-                                                size: 44,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-
-                                        // ── Bottom Timeline Scrubber ──
-                                        Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                            24,
-                                            0,
-                                            24,
-                                            12,
-                                          ),
-                                          child: ValueListenableBuilder<Duration>(
-                                            valueListenable: _positionNotifier,
-                                            builder: (ctx, pos, _) {
-                                              return Row(
-                                                children: [
-                                                  Text(
-                                                    _formatDuration(pos),
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.w600,
                                                     ),
-                                                  ),
-                                                  Expanded(
-                                                    child: SliderTheme(
-                                                      data:
-                                                          SliderTheme.of(
-                                                            context,
-                                                          ).copyWith(
-                                                            trackHeight: 3.5,
-                                                            thumbShape:
-                                                                const RoundSliderThumbShape(
-                                                                  enabledThumbRadius:
-                                                                      6,
-                                                                ),
-                                                            overlayShape:
-                                                                const RoundSliderOverlayShape(
-                                                                  overlayRadius:
-                                                                      14,
-                                                                ),
-                                                            activeTrackColor:
-                                                                AppColors
-                                                                    .primary,
-                                                            inactiveTrackColor:
-                                                                Colors.white24,
-                                                            thumbColor:
-                                                                AppColors
-                                                                    .primary,
+                                                    Text(
+                                                      _formatDuration(_duration),
+                                                      style: const TextStyle(
+                                                        color: AppColors
+                                                            .textSecondary,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 14),
+                                                    // Fit mode toggle (cover / contain / fill)
+                                                    TvFocusable(
+                                                      onTap: _toggleFitMode,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            20,
                                                           ),
-                                                      child: Slider(
-                                                        value:
-                                                            _duration
-                                                                    .inSeconds >
-                                                                0
-                                                            ? pos.inSeconds
-                                                                  .toDouble()
-                                                                  .clamp(
-                                                                    0.0,
-                                                                    _duration
-                                                                        .inSeconds
-                                                                        .toDouble(),
-                                                                  )
-                                                            : 0.0,
-                                                        min: 0.0,
-                                                        max:
-                                                            _duration
-                                                                    .inSeconds >
-                                                                0
-                                                            ? _duration
-                                                                  .inSeconds
-                                                                  .toDouble()
-                                                            : 1.0,
-                                                        onChanged: (v) =>
-                                                            _seekTo(v),
+                                                      child: Padding(
+                                                        padding:
+                                                            const EdgeInsets.all(
+                                                              8,
+                                                            ),
+                                                        child: Icon(
+                                                          _fitMode ==
+                                                                  BoxFit.cover
+                                                              ? Icons
+                                                                    .fullscreen_rounded
+                                                              : Icons
+                                                                    .aspect_ratio_rounded,
+                                                          color:
+                                                              _fitMode ==
+                                                                  BoxFit.cover
+                                                              ? AppColors.primary
+                                                              : Colors.white70,
+                                                          size: 22,
+                                                        ),
                                                       ),
                                                     ),
-                                                  ),
-                                                  Text(
-                                                    _formatDuration(_duration),
-                                                    style: const TextStyle(
-                                                      color: AppColors
-                                                          .textSecondary,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 14),
-                                                  // Fit mode toggle (cover / contain / fill)
-                                                  IconButton(
-                                                    onPressed: _toggleFitMode,
-                                                    tooltip:
-                                                        'Aspect Ratio & Notch Mode',
-                                                    icon: Icon(
-                                                      _fitMode == BoxFit.cover
-                                                          ? Icons
-                                                                .fullscreen_rounded
-                                                          : Icons
-                                                                .aspect_ratio_rounded,
-                                                      color:
-                                                          _fitMode ==
-                                                              BoxFit.cover
-                                                          ? AppColors.primary
-                                                          : Colors.white70,
-                                                      size: 22,
-                                                    ),
-                                                  ),
-                                                ],
-                                              );
-                                            },
+                                                  ],
+                                                );
+                                              },
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -6732,14 +6776,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     curve: Curves.easeInOutCubic,
                     width: _isSidePanelOpen ? drawerWidth : 0.0,
                     height: totalHeight,
-                    child: ClipRect(
-                      child: OverflowBox(
-                        minWidth: drawerWidth,
-                        maxWidth: drawerWidth,
-                        minHeight: totalHeight,
-                        maxHeight: totalHeight,
-                        alignment: Alignment.topRight,
-                        child: _buildSidePanel(s, drawerWidth, totalHeight),
+                    child: ExcludeFocus(
+                      excluding: !_isSidePanelOpen,
+                      child: IgnorePointer(
+                        ignoring: !_isSidePanelOpen,
+                        child: ClipRect(
+                          child: OverflowBox(
+                            minWidth: drawerWidth,
+                            maxWidth: drawerWidth,
+                            minHeight: totalHeight,
+                            maxHeight: totalHeight,
+                            alignment: Alignment.topRight,
+                            child: _buildSidePanel(s, drawerWidth, totalHeight),
+                          ),
+                        ),
                       ),
                     ),
                   ),

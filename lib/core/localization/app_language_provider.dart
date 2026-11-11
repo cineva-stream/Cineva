@@ -17,15 +17,15 @@ class AppLanguageNotifier extends StateNotifier<AppLanguage> {
     }
   }
 
-  /// Changes application language and persists to Hive storage.
+  /// Changes application language immediately and persists to Hive storage.
   Future<void> setLanguage(AppLanguage language) async {
     if (state == language) return;
+    state = language;
     try {
       await SettingsService.setAppLanguage(language.code);
     } catch (_) {
       // Allow in-memory state change even if storage is unavailable (e.g. in tests)
     }
-    state = language;
   }
 }
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
@@ -132,10 +131,12 @@ class _DetailContent extends ConsumerWidget {
     final similarList = (data['similar']?['results'] as List<dynamic>?)?.take(10).toList() ?? [];
 
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final isWide = isWideScreenLayout(context, isTv: ref.watch(isTvProvider));
+    final isTv = ref.watch(isTvProvider);
+    final isWide = isWideScreenLayout(context, isTv: isTv);
+    final useDesktopHero = (isWide && screenWidth >= 800) || isTv;
     final isCompact = screenWidth < 360;
 
-    if (isWide) {
+    if (useDesktopHero) {
       return _buildDesktopLayout(
         context,
         ref: ref,
@@ -198,11 +199,7 @@ class _DetailContent extends ConsumerWidget {
       'overview': overview,
       'magnetLink': '',
     });
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await restoreSystemUiAndOrientations(isTv: gIsTv);
   }
 
   Widget _buildDesktopLayout(
@@ -330,35 +327,35 @@ class _DetailContent extends ConsumerWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          // Large Floating Poster Card
-                          TvFocusable(
-                            focusedScale: 1.03,
-                            glowBlurRadius: 18,
-                            borderRadius: BorderRadius.circular(18),
-                            child: Container(
-                              width: 210,
-                              height: 315,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(18),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.7),
-                                    blurRadius: 26,
-                                    offset: const Offset(0, 10),
-                                  ),
-                                ],
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  width: 1.2,
+                          // Large Floating Poster Card (non-interactive)
+                          Container(
+                            width: 210,
+                            height: 315,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.7),
+                                  blurRadius: 28,
+                                  offset: const Offset(0, 10),
                                 ),
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.15),
+                                  blurRadius: 36,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                width: 1.2,
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(18),
-                                child: CachedNetworkImage(
-                                  imageUrl: ApiConstants.imageUrl(posterPath),
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
-                                ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: CachedNetworkImage(
+                                imageUrl: ApiConstants.imageUrl(posterPath),
+                                fit: BoxFit.cover,
+                                placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
                               ),
                             ),
                           ),
@@ -374,12 +371,12 @@ class _DetailContent extends ConsumerWidget {
                                 // Title
                                 Text(
                                   title,
-                                  style: GoogleFonts.outfit(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 34,
-                                    fontWeight: FontWeight.w900,
+                                    fontWeight: FontWeight.w800,
                                     color: Colors.white,
                                     height: 1.15,
-                                    letterSpacing: -0.4,
+                                    letterSpacing: -0.6,
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -494,24 +491,29 @@ class _DetailContent extends ConsumerWidget {
 
                                 const SizedBox(height: 18),
 
-                                // Action Buttons Row (Widescreen fixed widths)
-                                Row(
+                                // Action Buttons Row (Widescreen wrap for safety)
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 10,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
                                     // Watch Now
                                     TvFocusable(
+                                      autofocus: true,
                                       focusedScale: 1.04,
-                                      glowBlurRadius: 12,
-                                      borderRadius: BorderRadius.circular(12),
+                                      glowBlurRadius: 16,
+                                      glowColor: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(14),
                                       onTap: () => _playMovie(context, title: title, imdbId: imdbId, data: data, overview: overview),
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                                         decoration: BoxDecoration(
                                           color: AppColors.primary,
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(14),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: AppColors.primary.withValues(alpha: 0.35),
-                                              blurRadius: 12,
+                                              color: AppColors.primary.withValues(alpha: 0.4),
+                                              blurRadius: 18,
                                               offset: const Offset(0, 4),
                                             ),
                                           ],
@@ -519,14 +521,19 @@ class _DetailContent extends ConsumerWidget {
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 24),
+                                            const Icon(
+                                              Icons.play_arrow_rounded,
+                                              color: Colors.black,
+                                              size: 24,
+                                            ),
                                             const SizedBox(width: 8),
                                             Text(
                                               s.detailWatchNow,
-                                              style: GoogleFonts.inter(
+                                              style: GoogleFonts.plusJakartaSans(
                                                 color: Colors.black,
                                                 fontWeight: FontWeight.w800,
                                                 fontSize: 14,
+                                                letterSpacing: 0.2,
                                               ),
                                             ),
                                           ],
@@ -534,8 +541,7 @@ class _DetailContent extends ConsumerWidget {
                                       ),
                                     ),
 
-                                    if (trailer != null) ...[
-                                      const SizedBox(width: 12),
+                                    if (trailer != null)
                                       TvFocusable(
                                         focusedScale: 1.04,
                                         borderRadius: BorderRadius.circular(12),
@@ -567,9 +573,7 @@ class _DetailContent extends ConsumerWidget {
                                           ),
                                         ),
                                       ),
-                                    ],
 
-                                    const SizedBox(width: 12),
                                     // Watchlist Button
                                     Consumer(
                                       builder: (context, ref, _) {
@@ -637,7 +641,6 @@ class _DetailContent extends ConsumerWidget {
                                       },
                                     ),
 
-                                    const SizedBox(width: 12),
                                     // Download Button
                                     TvFocusable(
                                       focusedScale: 1.04,
@@ -701,7 +704,15 @@ class _DetailContent extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Synopsis
-                    Text(s.detailSynopsis, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                    Text(
+                      s.detailSynopsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 900),
@@ -724,10 +735,18 @@ class _DetailContent extends ConsumerWidget {
                     // Cast Section
                     if (castList.isNotEmpty) ...[
                       const SizedBox(height: 28),
-                      Text(s.detailCast, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                      Text(
+                        s.detailCast,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
                       const SizedBox(height: 14),
                       SizedBox(
-                        height: 140,
+                        height: 152,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: castList.length,
@@ -736,42 +755,47 @@ class _DetailContent extends ConsumerWidget {
                             final cast = castList[index];
                             final profilePath = cast['profile_path'] as String?;
                             final castId = cast['id'] as int?;
-                            return GestureDetector(
+                            return TvFocusable(
+                              borderRadius: BorderRadius.circular(12),
+                              scaleOnFocus: 1.06,
                               onTap: () {
                                 if (castId != null) {
                                   context.push('/person/$castId', extra: cast['name'] as String?);
                                 }
                               },
-                              child: SizedBox(
-                                width: 88,
-                                child: Column(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 36,
-                                      backgroundColor: AppColors.surfaceVariant,
-                                      backgroundImage: profilePath != null
-                                          ? CachedNetworkImageProvider(
-                                              ApiConstants.imageUrl(profilePath, size: ApiConstants.posterSmall),
-                                            )
-                                          : null,
-                                      child: profilePath == null ? const Icon(Icons.person, color: AppColors.textMuted) : null,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      cast['name'] ?? '',
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                                    ),
-                                    Text(
-                                      cast['character'] ?? '',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                                    ),
-                                  ],
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: SizedBox(
+                                  width: 88,
+                                  child: Column(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 36,
+                                        backgroundColor: AppColors.surfaceVariant,
+                                        backgroundImage: profilePath != null
+                                            ? CachedNetworkImageProvider(
+                                                ApiConstants.imageUrl(profilePath, size: ApiConstants.posterSmall),
+                                              )
+                                            : null,
+                                        child: profilePath == null ? const Icon(Icons.person, color: AppColors.textMuted) : null,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        cast['name'] ?? '',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                      ),
+                                      Text(
+                                        cast['character'] ?? '',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             );
@@ -783,7 +807,15 @@ class _DetailContent extends ConsumerWidget {
                     // Similar Movies
                     if (similarList.isNotEmpty) ...[
                       const SizedBox(height: 28),
-                      Text(s.detailSimilarMovies, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                      Text(
+                        s.detailSimilarMovies,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
                       const SizedBox(height: 14),
                       SizedBox(
                         height: 220,
@@ -875,7 +907,7 @@ class _DetailContent extends ConsumerWidget {
 
     return CustomScrollView(
       slivers: [
-        // ── Hero Backdrop ──
+        // ── Hero Backdrop with Cinematic Gradient ──
         SliverAppBar(
           expandedHeight: isCompact ? 250 : 300,
           pinned: true,
@@ -900,6 +932,7 @@ class _DetailContent extends ConsumerWidget {
                     imageUrl: ApiConstants.imageUrl(backdropPath, size: ApiConstants.backdropLarge),
                     fit: BoxFit.cover,
                   ),
+                // Seamless gradient fade to pure black background
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -907,10 +940,11 @@ class _DetailContent extends ConsumerWidget {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        AppColors.background.withValues(alpha: 0.5),
+                        Colors.transparent,
+                        AppColors.background.withValues(alpha: 0.65),
                         AppColors.background,
                       ],
-                      stops: const [0.0, 0.6, 1.0],
+                      stops: const [0.0, 0.35, 0.72, 1.0],
                     ),
                   ),
                 ),
@@ -925,21 +959,39 @@ class _DetailContent extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Poster + Info Row ──
+                // ── Poster + Info Row with Elevated Shadow ──
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Poster
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: CachedNetworkImage(
-                        imageUrl: ApiConstants.imageUrl(posterPath),
-                        width: posterWidth,
-                        height: posterHeight,
-                        fit: BoxFit.cover,
-                        placeholder: (_, _) => Container(
-                          width: posterWidth, height: posterHeight,
-                          color: AppColors.surfaceVariant,
+                    // Poster with subtle ambient glow & shadow
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.65),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: CachedNetworkImage(
+                          imageUrl: ApiConstants.imageUrl(posterPath),
+                          width: posterWidth,
+                          height: posterHeight,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => Container(
+                            width: posterWidth,
+                            height: posterHeight,
+                            color: AppColors.surfaceVariant,
+                          ),
                         ),
                       ),
                     ).animate().fadeIn().slideY(begin: 0.1, end: 0),
@@ -954,6 +1006,7 @@ class _DetailContent extends ConsumerWidget {
                             title,
                             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                               fontSize: isCompact ? 21 : 24,
+                              letterSpacing: -0.3,
                             ),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
@@ -1023,7 +1076,7 @@ class _DetailContent extends ConsumerWidget {
                             decoration: BoxDecoration(
                               color: AppColors.surfaceVariant,
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: AppColors.surfaceElevated),
+                              border: Border.all(color: AppColors.borderSubtle),
                             ),
                             child: Text(g, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                           ),
@@ -1038,29 +1091,33 @@ class _DetailContent extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () async {
-                          // Navigate to player with magnet resolution
-                          await context.push('/player', extra: {
-                            'title': title,
-                            'imdbId': imdbId,
-                            'tmdbId': data['id'] as int?,
-                            'mediaType': 'movie',
-                            'posterPath': data['poster_path'] as String?,
-                            'backdropPath': data['backdrop_path'] as String?,
-                            'overview': overview,
-                            'magnetLink': '', // Will be resolved in player screen
-                          });
-                          SystemChrome.setPreferredOrientations([
-                            DeviceOrientation.portraitUp,
-                            DeviceOrientation.portraitDown,
-                          ]);
-                          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-                        },
-                        icon: const Icon(Icons.play_arrow_rounded, size: 28),
-                        label: Text(s.detailWatchNow, style: const TextStyle(fontSize: 16)),
+                        onPressed: () => _playMovie(
+                          context,
+                          title: title,
+                          imdbId: imdbId,
+                          data: data,
+                          overview: overview,
+                        ),
+                        icon: const Icon(
+                          Icons.play_arrow_rounded,
+                          size: 28,
+                          color: Colors.black,
+                        ),
+                        label: Text(
+                          s.detailWatchNow,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          elevation: 6,
+                          shadowColor: AppColors.primary.withValues(alpha: 0.4),
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
                       ),
                     ),
@@ -1074,23 +1131,13 @@ class _DetailContent extends ConsumerWidget {
                               context,
                               trailer: trailer,
                               title: title,
-                              onWatchNow: () async {
-                                await context.push('/player', extra: {
-                                  'title': title,
-                                  'imdbId': imdbId,
-                                  'tmdbId': data['id'] as int?,
-                                  'mediaType': 'movie',
-                                  'posterPath': data['poster_path'] as String?,
-                                  'backdropPath': data['backdrop_path'] as String?,
-                                  'overview': overview,
-                                  'magnetLink': '',
-                                });
-                                SystemChrome.setPreferredOrientations([
-                                  DeviceOrientation.portraitUp,
-                                  DeviceOrientation.portraitDown,
-                                ]);
-                                SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-                              },
+                              onWatchNow: () => _playMovie(
+                                context,
+                                title: title,
+                                imdbId: imdbId,
+                                data: data,
+                                overview: overview,
+                              ),
                             );
                           },
                           borderRadius: BorderRadius.circular(14),
@@ -1239,7 +1286,7 @@ class _DetailContent extends ConsumerWidget {
                   Text(s.detailCast, style: Theme.of(context).textTheme.headlineMedium),
                   const SizedBox(height: 12),
                   SizedBox(
-                    height: 130,
+                    height: 142,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: castList.length,
@@ -1248,44 +1295,49 @@ class _DetailContent extends ConsumerWidget {
                         final cast = castList[index];
                         final profilePath = cast['profile_path'] as String?;
                         final castId = cast['id'] as int?;
-                        return GestureDetector(
+                        return TvFocusable(
+                          borderRadius: BorderRadius.circular(12),
+                          scaleOnFocus: 1.06,
                           onTap: () {
                             if (castId != null) {
                               context.push('/person/$castId', extra: cast['name'] as String?);
                             }
                           },
-                          child: SizedBox(
-                            width: 80,
-                            child: Column(
-                              children: [
-                                CircleAvatar(
-                                  radius: 35,
-                                  backgroundColor: AppColors.surfaceVariant,
-                                  backgroundImage: profilePath != null
-                                      ? CachedNetworkImageProvider(
-                                          ApiConstants.imageUrl(profilePath, size: ApiConstants.posterSmall),
-                                        )
-                                      : null,
-                                  child: profilePath == null
-                                      ? const Icon(Icons.person, color: AppColors.textMuted)
-                                      : null,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  cast['name'] ?? '',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 11, color: AppColors.textPrimary),
-                                ),
-                                Text(
-                                  cast['character'] ?? '',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
-                                ),
-                              ],
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: SizedBox(
+                              width: 80,
+                              child: Column(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 35,
+                                    backgroundColor: AppColors.surfaceVariant,
+                                    backgroundImage: profilePath != null
+                                        ? CachedNetworkImageProvider(
+                                            ApiConstants.imageUrl(profilePath, size: ApiConstants.posterSmall),
+                                          )
+                                        : null,
+                                    child: profilePath == null
+                                        ? const Icon(Icons.person, color: AppColors.textMuted)
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    cast['name'] ?? '',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textPrimary),
+                                  ),
+                                  Text(
+                                    cast['character'] ?? '',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );
@@ -1300,7 +1352,7 @@ class _DetailContent extends ConsumerWidget {
                   Text(s.detailSimilarMovies, style: Theme.of(context).textTheme.headlineMedium),
                   const SizedBox(height: 12),
                   SizedBox(
-                    height: 200,
+                    height: 205,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: similarList.length,
@@ -1311,7 +1363,9 @@ class _DetailContent extends ConsumerWidget {
                         final sPoster = similar['poster_path'] as String?;
                         final sTitle = similar['title'] as String? ?? '';
                         final sRating = (similar['vote_average'] as num?)?.toDouble() ?? 0.0;
-                        return GestureDetector(
+                        return TvFocusable(
+                          borderRadius: BorderRadius.circular(12),
+                          scaleOnFocus: 1.05,
                           onTap: () => context.push('/movie/$sId'),
                           child: SizedBox(
                             width: 130,

@@ -11,6 +11,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../data/tv_universe_registry.dart';
 import '../../domain/entities/tv_universe.dart';
 import '../../../detail/presentation/screens/tv_detail_screen.dart';
@@ -192,106 +193,156 @@ class TvUniverseScreen extends ConsumerWidget {
 
           // ── Universe Information Header ──
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.5),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Text(
-                          s.tvUniverseWatchOrder.toUpperCase(),
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        s.tvUniverseCountSeries(universe.entries.length),
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1100),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    universe.name,
-                    style: GoogleFonts.outfit(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  if (universe.description.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      universe.description,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Iconsax.sort,
-                        size: 18,
-                        color: AppColors.primary,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.5),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              s.tvUniverseWatchOrder.toUpperCase(),
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            s.tvUniverseCountSeries(universe.entries.length),
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(height: 8),
                       Text(
-                        s.tvUniverseChronologicalOrder,
+                        universe.name,
                         style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
                         ),
                       ),
+                      if (universe.description.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          universe.description,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          const Icon(
+                            Iconsax.sort,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            s.tvUniverseChronologicalOrder,
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                ],
+                ),
               ),
             ),
           ),
 
           // ── Chronological Entries List ──
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverList.separated(
-              itemCount: universe.entries.length,
-              separatorBuilder: (_, _) => Divider(
-                color: Colors.white.withValues(alpha: 0.08),
-                height: 1,
-                thickness: 0.8,
+          SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1100),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isTwoCol = constraints.maxWidth >= 760;
+                      if (isTwoCol) {
+                        return GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisExtent: 138,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 12,
+                              ),
+                          itemCount: universe.entries.length,
+                          itemBuilder: (context, index) {
+                            final entry = universe.entries[index];
+                            return _TvUniverseEntryItem(
+                              entry: entry,
+                              s: s,
+                              index: index,
+                              isCardStyle: true,
+                            );
+                          },
+                        );
+                      }
+                      return ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: universe.entries.length,
+                        separatorBuilder: (_, _) => Divider(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          height: 1,
+                          thickness: 0.8,
+                        ),
+                        itemBuilder: (context, index) {
+                          final entry = universe.entries[index];
+                          return _TvUniverseEntryItem(
+                            entry: entry,
+                            s: s,
+                            index: index,
+                            isCardStyle: false,
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
               ),
-              itemBuilder: (context, index) {
-                final entry = universe.entries[index];
-                return _TvUniverseEntryItem(entry: entry, s: s, index: index);
-              },
             ),
           ),
 
@@ -306,11 +357,13 @@ class _TvUniverseEntryItem extends ConsumerWidget {
   final TvUniverseEntry entry;
   final AppStrings s;
   final int index;
+  final bool isCardStyle;
 
   const _TvUniverseEntryItem({
     required this.entry,
     required this.s,
     required this.index,
+    this.isCardStyle = false,
   });
 
   Color _typeBadgeColor(TvUniverseEntryType type) {
@@ -337,11 +390,25 @@ class _TvUniverseEntryItem extends ConsumerWidget {
         ? entry.posterPath
         : dynamicDetail?['poster_path'] as String?;
 
-    return InkWell(
-          borderRadius: BorderRadius.circular(10),
+    return TvFocusable(
+          borderRadius: BorderRadius.circular(12),
+          scaleOnFocus: 1.02,
           onTap: () => context.push('/tv/${entry.tmdbTvId}'),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 2),
+          child: Container(
+            decoration: isCardStyle
+                ? BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      width: 0.8,
+                    ),
+                  )
+                : null,
+            padding: EdgeInsets.symmetric(
+              vertical: 14,
+              horizontal: isCardStyle ? 12 : 4,
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

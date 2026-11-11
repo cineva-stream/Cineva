@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/platform/device_form_factor.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../data/datasources/live_tv_channels_data.dart';
 import '../../domain/entities/live_tv_channel.dart';
 import '../providers/live_tv_providers.dart';
@@ -61,10 +63,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
     final favoritesNotifier = ref.read(liveTvFavoritesProvider.notifier);
     final bottomPadding = MediaQuery.of(context).padding.bottom + 80;
 
-    final categories = [
-      ...LiveTvChannelsData.categories,
-      'Favorit',
-    ];
+    final categories = [...LiveTvChannelsData.categories, 'Favorit'];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -138,7 +137,9 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
                 ),
                 child: TextField(
                   controller: _searchController,
@@ -159,11 +160,17 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                     ),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear_rounded,
-                                color: AppColors.textMuted, size: 16),
+                            icon: const Icon(
+                              Icons.clear_rounded,
+                              color: AppColors.textMuted,
+                              size: 16,
+                            ),
                             onPressed: () {
                               _searchController.clear();
-                              ref.read(liveTvSearchQueryProvider.notifier).state = '';
+                              ref
+                                      .read(liveTvSearchQueryProvider.notifier)
+                                      .state =
+                                  '';
                               setState(() {});
                             },
                           )
@@ -177,7 +184,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
 
             // ── Category Filter Chips ──
             SizedBox(
-              height: 38,
+              height: 40,
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 scrollDirection: Axis.horizontal,
@@ -187,32 +194,41 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                 itemBuilder: (context, index) {
                   final cat = categories[index];
                   final isSelected = cat == selectedCategory;
-                  return FilterChip(
-                    selected: isSelected,
-                    label: Text(
-                      s.liveTvCategoryLabel(cat),
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSelected ? Colors.black : Colors.white70,
-                      ),
-                    ),
-                    backgroundColor: AppColors.surface,
-                    selectedColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      side: BorderSide(
-                        color: isSelected
-                            ? AppColors.primary
-                            : Colors.white.withValues(alpha: 0.08),
-                        width: 0.8,
-                      ),
-                    ),
-                    showCheckmark: false,
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-                    onSelected: (_) {
+                  return TvFocusable(
+                    onTap: () {
                       ref.read(liveTvCategoryProvider.notifier).state = cat;
                     },
+                    borderRadius: BorderRadius.circular(18),
+                    scaleOnFocus: 1.04,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.surface,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : Colors.white.withValues(alpha: 0.08),
+                          width: 0.8,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        s.liveTvCategoryLabel(cat),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: isSelected ? Colors.black : Colors.white70,
+                        ),
+                      ),
+                    ),
                   );
                 },
               ),
@@ -227,8 +243,11 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.tv_off_rounded,
-                              size: 48, color: AppColors.textMuted),
+                          const Icon(
+                            Icons.tv_off_rounded,
+                            size: 48,
+                            color: AppColors.textMuted,
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             s.liveTvNoChannels,
@@ -240,139 +259,208 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      physics: const BouncingScrollPhysics(),
-                      padding: EdgeInsets.fromLTRB(0, 4, 0, bottomPadding),
-                      itemCount: channels.length,
-                      itemBuilder: (context, index) {
-                        final channel = channels[index];
-                        final isFavorite = favorites.contains(channel.id);
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            border: Border(
-                              bottom: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.08),
-                                width: 0.8,
-                              ),
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isTv = ref.watch(isTvProvider);
+                        final availableWidth = constraints.maxWidth;
+                        final gridCols = adaptiveHorizontalCardGridColumns(
+                          availableWidth,
+                          isTv: isTv,
+                        );
+
+                        if (gridCols >= 2) {
+                          return GridView.builder(
+                            physics: const BouncingScrollPhysics(),
+                            padding: EdgeInsets.fromLTRB(
+                              16,
+                              6,
+                              16,
+                              bottomPadding,
                             ),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () => _onChannelSelected(channel),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                child: Row(
-                                  children: [
-                                    // Logo (clean, without container background)
-                                    SizedBox(
-                                      width: 44,
-                                      height: 44,
-                                      child: channel.logoUrl != null && channel.logoUrl!.isNotEmpty
-                                          ? CachedNetworkImage(
-                                              imageUrl: channel.logoUrl!,
-                                              httpHeaders: const {
-                                                'User-Agent':
-                                                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                                              },
-                                              fit: BoxFit.contain,
-                                              errorWidget: (_, _, _) => const Icon(
-                                                Icons.tv_rounded,
-                                                color: Colors.white70,
-                                                size: 24,
-                                              ),
-                                            )
-                                          : const Icon(
-                                              Icons.tv_rounded,
-                                              color: Colors.white70,
-                                              size: 24,
-                                            ),
-                                    ),
-                                    const SizedBox(width: 14),
-
-                                    // Name and Category
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            channel.name,
-                                            style: GoogleFonts.outfit(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            s.liveTvCategoryLabel(channel.category),
-                                            style: GoogleFonts.inter(
-                                              fontSize: 12,
-                                              color: AppColors.textMuted,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    // Favorite Button
-                                    IconButton(
-                                      onPressed: () {
-                                        favoritesNotifier.toggleFavorite(channel.id);
-                                      },
-                                      icon: Icon(
-                                        isFavorite
-                                            ? Icons.favorite_rounded
-                                            : Icons.favorite_border_rounded,
-                                        color: isFavorite ? Colors.redAccent : Colors.white54,
-                                        size: 20,
-                                      ),
-                                      tooltip: isFavorite
-                                          ? s.liveTvRemoveFavorite
-                                          : s.liveTvAddFavorite,
-                                    ),
-
-                                    // Play icon pill
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: AppColors.primary.withValues(alpha: 0.4),
-                                          width: 0.8,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.play_arrow_rounded,
-                                            color: AppColors.primary,
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            s.isIndonesian ? 'Tonton' : 'Watch',
-                                            style: GoogleFonts.outfit(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.primary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: gridCols,
+                                  mainAxisExtent: 82,
+                                  crossAxisSpacing: 14,
+                                  mainAxisSpacing: 12,
                                 ),
-                              ),
-                            ),
-                          ),
+                            itemCount: channels.length,
+                            itemBuilder: (context, index) {
+                              final channel = channels[index];
+                              final isFavorite = favorites.contains(channel.id);
+                              return _buildChannelItem(
+                                channel: channel,
+                                isFavorite: isFavorite,
+                                favoritesNotifier: favoritesNotifier,
+                                s: s,
+                                isCardStyle: true,
+                              );
+                            },
+                          );
+                        }
+
+                        return ListView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(0, 4, 0, bottomPadding),
+                          itemCount: channels.length,
+                          itemBuilder: (context, index) {
+                            final channel = channels[index];
+                            final isFavorite = favorites.contains(channel.id);
+                            return _buildChannelItem(
+                              channel: channel,
+                              isFavorite: isFavorite,
+                              favoritesNotifier: favoritesNotifier,
+                              s: s,
+                              isCardStyle: false,
+                            );
+                          },
                         );
                       },
                     ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChannelItem({
+    required LiveTvChannel channel,
+    required bool isFavorite,
+    required dynamic favoritesNotifier,
+    required dynamic s,
+    required bool isCardStyle,
+  }) {
+    return TvFocusable(
+      onTap: () => _onChannelSelected(channel),
+      onLongPress: () => favoritesNotifier.toggleFavorite(channel.id),
+      borderRadius: BorderRadius.circular(isCardStyle ? 14 : 8),
+      scaleOnFocus: 1.02,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isCardStyle ? AppColors.surface : Colors.transparent,
+          borderRadius: isCardStyle ? BorderRadius.circular(14) : null,
+          border: isCardStyle
+              ? Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  width: 0.8,
+                )
+              : Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    width: 0.8,
+                  ),
+                ),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: isCardStyle ? 14 : 16,
+          vertical: 12,
+        ),
+        child: Row(
+          children: [
+            // Logo
+            SizedBox(
+              width: 44,
+              height: 44,
+              child: channel.logoUrl != null && channel.logoUrl!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: channel.logoUrl!,
+                      httpHeaders: const {
+                        'User-Agent':
+                            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                      },
+                      fit: BoxFit.contain,
+                      errorWidget: (_, _, _) => const Icon(
+                        Icons.tv_rounded,
+                        color: Colors.white70,
+                        size: 24,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.tv_rounded,
+                      color: Colors.white70,
+                      size: 24,
+                    ),
+            ),
+            const SizedBox(width: 14),
+
+            // Name and Category
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    channel.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    s.liveTvCategoryLabel(channel.category),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Favorite Button
+            IconButton(
+              onPressed: () {
+                favoritesNotifier.toggleFavorite(channel.id);
+              },
+              icon: Icon(
+                isFavorite
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+                color: isFavorite ? Colors.redAccent : Colors.white54,
+                size: 20,
+              ),
+              tooltip: isFavorite
+                  ? s.liveTvRemoveFavorite
+                  : s.liveTvAddFavorite,
+            ),
+
+            // Play icon pill
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.4),
+                  width: 0.8,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.play_arrow_rounded,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    s.isIndonesian ? 'Tonton' : 'Watch',
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

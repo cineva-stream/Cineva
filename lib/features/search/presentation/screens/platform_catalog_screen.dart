@@ -8,8 +8,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/platform/device_form_factor.dart';
 import '../../../../shared/widgets/app_error_widget.dart';
 import '../../../../shared/widgets/shimmer_loading.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../../home/domain/entities/movie.dart';
 import '../../../home/domain/entities/tv_series.dart';
 import '../../domain/entities/streaming_platform.dart';
@@ -29,14 +31,11 @@ class PlatformCatalogScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
+    final isTv = ref.watch(isTvProvider);
     final activeTab = ref.watch(platformTabProvider);
     final moviesState = ref.watch(paginatedPlatformMoviesProvider(platform.watchProviderQuery));
     final tvState = ref.watch(paginatedPlatformTvProvider(platform.watchProviderQuery));
 
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final crossAxisCount = screenWidth < 340 ? 2 : 3;
-    final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
-    final spacing = screenWidth < 360 ? 10.0 : 12.0;
     final bottomPadding = MediaQuery.of(context).padding.bottom + 84;
 
     return PopScope(
@@ -60,7 +59,7 @@ class PlatformCatalogScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                 child: Row(
                   children: [
-                    GestureDetector(
+                    TvFocusable(
                       onTap: () {
                         if (context.canPop()) {
                           context.pop();
@@ -68,154 +67,167 @@ class PlatformCatalogScreen extends ConsumerWidget {
                           context.go('/search');
                         }
                       },
+                      borderRadius: BorderRadius.circular(20),
+                      scaleOnFocus: 1.08,
                       child: Container(
-                      width: 40,
-                      height: 40,
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant.withValues(alpha: 0.8),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Container(
+                      width: 42,
+                      height: 42,
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant.withValues(alpha: 0.8),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_rounded,
                         color: Colors.white,
-                        size: 20,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Image.asset(
+                        platform.logoAsset,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => Icon(
+                          platform.icon,
+                          color: platform.brandColor,
+                          size: 20,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Container(
-                    width: 42,
-                    height: 42,
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Image.asset(
-                      platform.logoAsset,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => Icon(
-                        platform.icon,
-                        color: platform.brandColor,
-                        size: 20,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            platform.name,
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          Text(
+                            platform.tagline,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          platform.name,
-                          style: GoogleFonts.outfit(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        Text(
-                          platform.tagline,
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: AppColors.textMuted,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ── 2. Filter Chips: All, Movies, TV Shows ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                child: Row(
-                  children: [
-                    _CatalogFilterChip(
-                      label: s.searchTabAll,
-                      isSelected: activeTab == 0,
-                      activeColor: platform.brandColor,
-                      onTap: () => ref.read(platformTabProvider.notifier).state = 0,
-                    ),
-                    const SizedBox(width: 8),
-                    _CatalogFilterChip(
-                      label: s.searchTabMovies,
-                      isSelected: activeTab == 1,
-                      activeColor: platform.brandColor,
-                      onTap: () => ref.read(platformTabProvider.notifier).state = 1,
-                    ),
-                    const SizedBox(width: 8),
-                    _CatalogFilterChip(
-                      label: s.searchTabTv,
-                      isSelected: activeTab == 2,
-                      activeColor: platform.brandColor,
-                      onTap: () => ref.read(platformTabProvider.notifier).state = 2,
                     ),
                   ],
                 ),
               ),
-            ),
 
-            const SizedBox(height: 12),
+              // ── 2. Filter Chips: All, Movies, TV Shows ──
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      _CatalogFilterChip(
+                        label: s.searchTabAll,
+                        isSelected: activeTab == 0,
+                        activeColor: platform.brandColor,
+                        onTap: () => ref.read(platformTabProvider.notifier).state = 0,
+                      ),
+                      const SizedBox(width: 8),
+                      _CatalogFilterChip(
+                        label: s.searchTabMovies,
+                        isSelected: activeTab == 1,
+                        activeColor: platform.brandColor,
+                        onTap: () => ref.read(platformTabProvider.notifier).state = 1,
+                      ),
+                      const SizedBox(width: 8),
+                      _CatalogFilterChip(
+                        label: s.searchTabTv,
+                        isSelected: activeTab == 2,
+                        activeColor: platform.brandColor,
+                        onTap: () => ref.read(platformTabProvider.notifier).state = 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
-            // ── 3. Catalog Content ──
-            Expanded(
-              child: activeTab == 0
-                  ? _buildAllGrid(
-                      moviesState: moviesState,
-                      tvState: tvState,
-                      crossAxisCount: crossAxisCount,
-                      childAspectRatio: childAspectRatio,
-                      spacing: spacing,
-                      bottomPadding: bottomPadding,
-                      s: s,
-                      ref: ref,
-                    )
-                  : activeTab == 1
-                      ? _buildMoviesGrid(
-                          moviesState: moviesState,
-                          crossAxisCount: crossAxisCount,
-                          childAspectRatio: childAspectRatio,
-                          spacing: spacing,
-                          bottomPadding: bottomPadding,
-                          s: s,
-                          ref: ref,
-                        )
-                      : _buildTvGrid(
-                          tvState: tvState,
-                          crossAxisCount: crossAxisCount,
-                          childAspectRatio: childAspectRatio,
-                          spacing: spacing,
-                          bottomPadding: bottomPadding,
-                          s: s,
-                          ref: ref,
-                        ),
-            ),
-          ],
+              const SizedBox(height: 12),
+
+              // ── 3. Catalog Content ──
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final availableWidth = constraints.maxWidth;
+                    final crossAxisCount = adaptivePosterGridColumns(availableWidth, isTv: isTv);
+                    final childAspectRatio = adaptivePosterGridAspectRatio(availableWidth, isTv: isTv);
+                    final spacing = availableWidth >= 600 ? 14.0 : (availableWidth < 360 ? 10.0 : 12.0);
+
+                    if (activeTab == 0) {
+                      return _buildAllGrid(
+                        moviesState: moviesState,
+                        tvState: tvState,
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: childAspectRatio,
+                        spacing: spacing,
+                        bottomPadding: bottomPadding,
+                        s: s,
+                        ref: ref,
+                      );
+                    } else if (activeTab == 1) {
+                      return _buildMoviesGrid(
+                        moviesState: moviesState,
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: childAspectRatio,
+                        spacing: spacing,
+                        bottomPadding: bottomPadding,
+                        s: s,
+                        ref: ref,
+                      );
+                    } else {
+                      return _buildTvGrid(
+                        tvState: tvState,
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: childAspectRatio,
+                        spacing: spacing,
+                        bottomPadding: bottomPadding,
+                        s: s,
+                        ref: ref,
+                      );
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildAllGrid({
     required PaginatedPlatformState<Movie> moviesState,
@@ -469,8 +481,10 @@ class _CatalogFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return TvFocusable(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      scaleOnFocus: 1.04,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
@@ -513,8 +527,10 @@ class _PlatformMovieCard extends ConsumerWidget {
     final s = ref.watch(appStringsProvider);
     final isTv = movie.mediaType == 'tv';
 
-    return GestureDetector(
+    return TvFocusable(
       onTap: () => context.push(isTv ? '/tv/${movie.id}' : '/movie/${movie.id}'),
+      borderRadius: BorderRadius.circular(10),
+      scaleOnFocus: 1.04,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -634,8 +650,10 @@ class _PlatformTvCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return TvFocusable(
       onTap: () => context.push('/tv/${tv.id}'),
+      borderRadius: BorderRadius.circular(10),
+      scaleOnFocus: 1.04,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -712,30 +730,36 @@ class _PlatformTvCard extends StatelessWidget {
   }
 }
 
-class _CatalogShimmerGrid extends StatelessWidget {
+class _CatalogShimmerGrid extends ConsumerWidget {
   const _CatalogShimmerGrid();
 
   @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final crossAxisCount = screenWidth < 340 ? 2 : 3;
-    final childAspectRatio = screenWidth < 360 ? 0.52 : 0.55;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isTv = ref.watch(isTvProvider);
 
-    return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: childAspectRatio,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-      ),
-      itemCount: 9,
-      itemBuilder: (context, index) => const ShimmerLoading(
-        width: double.infinity,
-        height: double.infinity,
-        borderRadius: 10,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        final crossAxisCount = adaptivePosterGridColumns(availableWidth, isTv: isTv);
+        final childAspectRatio = adaptivePosterGridAspectRatio(availableWidth, isTv: isTv);
+
+        return GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: childAspectRatio,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemCount: crossAxisCount * 3,
+          itemBuilder: (context, index) => const ShimmerLoading(
+            width: double.infinity,
+            height: double.infinity,
+            borderRadius: 10,
+          ),
+        );
+      },
     );
   }
 }

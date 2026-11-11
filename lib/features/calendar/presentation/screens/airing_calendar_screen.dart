@@ -10,6 +10,8 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/platform/device_form_factor.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../../watchlist/data/watchlist_repository.dart';
 import '../../data/models/airing_show_model.dart';
 import '../../data/models/upcoming_media_model.dart';
@@ -331,11 +333,12 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                         date.month == _today.month &&
                         date.day == _today.day;
 
-                    return GestureDetector(
+                    return TvFocusable(
                       onTap: () {
                         ref.read(selectedCalendarDateProvider.notifier).state =
                             date;
                       },
+                      borderRadius: BorderRadius.circular(16),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
                         curve: Curves.easeOutCubic,
@@ -507,24 +510,59 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                       );
                     }
 
-                    return ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: shows.length,
-                      separatorBuilder: (_, _) => Divider(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        height: 1,
-                        thickness: 0.8,
-                      ),
-                      itemBuilder: (context, index) {
-                        final show = shows[index];
-                        return _AiringShowListItem(
-                          show: show,
-                          index: index,
-                          s: s,
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final gridCols = adaptiveHorizontalCardGridColumns(
+                          constraints.maxWidth,
+                          isTv: gIsTv,
+                        );
+                        if (gridCols >= 2) {
+                          return GridView.builder(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 8,
+                            ),
+                            physics: const BouncingScrollPhysics(),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: gridCols,
+                                  mainAxisExtent: 132,
+                                  crossAxisSpacing: 14,
+                                  mainAxisSpacing: 12,
+                                ),
+                            itemCount: shows.length,
+                            itemBuilder: (context, index) {
+                              final show = shows[index];
+                              return _AiringShowListItem(
+                                show: show,
+                                index: index,
+                                s: s,
+                                isGridCard: true,
+                              );
+                            },
+                          );
+                        }
+                        return ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: shows.length,
+                          separatorBuilder: (_, _) => Divider(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            height: 1,
+                            thickness: 0.8,
+                          ),
+                          itemBuilder: (context, index) {
+                            final show = shows[index];
+                            return _AiringShowListItem(
+                              show: show,
+                              index: index,
+                              s: s,
+                              isGridCard: false,
+                            );
+                          },
                         );
                       },
                     );
@@ -580,13 +618,14 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       final isAllSelected = selectedUpcomingDate == null;
-                      return GestureDetector(
+                      return TvFocusable(
                         onTap: () {
                           ref
                                   .read(selectedUpcomingDateProvider.notifier)
                                   .state =
                               null;
                         },
+                        borderRadius: BorderRadius.circular(16),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
                           curve: Curves.easeOutCubic,
@@ -653,11 +692,12 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                         date.month == _today.month &&
                         date.day == _today.day;
 
-                    return GestureDetector(
+                    return TvFocusable(
                       onTap: () {
                         ref.read(selectedUpcomingDateProvider.notifier).state =
                             date;
                       },
+                      borderRadius: BorderRadius.circular(16),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
                         curve: Curves.easeOutCubic,
@@ -847,24 +887,59 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                       );
                     }
 
-                    return ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: items.length,
-                      separatorBuilder: (_, _) => Divider(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        height: 1,
-                        thickness: 0.8,
-                      ),
-                      itemBuilder: (context, index) {
-                        final media = items[index];
-                        return _UpcomingMediaListItem(
-                          media: media,
-                          index: index,
-                          s: s,
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final gridCols = adaptiveHorizontalCardGridColumns(
+                          constraints.maxWidth,
+                          isTv: gIsTv,
+                        );
+                        if (gridCols >= 2) {
+                          return GridView.builder(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 8,
+                            ),
+                            physics: const BouncingScrollPhysics(),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: gridCols,
+                                  mainAxisExtent: 132,
+                                  crossAxisSpacing: 14,
+                                  mainAxisSpacing: 12,
+                                ),
+                            itemCount: items.length,
+                            itemBuilder: (context, index) {
+                              final media = items[index];
+                              return _UpcomingMediaListItem(
+                                media: media,
+                                index: index,
+                                s: s,
+                                isGridCard: true,
+                              );
+                            },
+                          );
+                        }
+                        return ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: items.length,
+                          separatorBuilder: (_, _) => Divider(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            height: 1,
+                            thickness: 0.8,
+                          ),
+                          itemBuilder: (context, index) {
+                            final media = items[index];
+                            return _UpcomingMediaListItem(
+                              media: media,
+                              index: index,
+                              s: s,
+                              isGridCard: false,
+                            );
+                          },
                         );
                       },
                     );
@@ -920,10 +995,12 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
     required String label,
     required bool isActive,
   }) {
-    return GestureDetector(
+    return TvFocusable(
       onTap: () {
         ref.read(calendarActiveTabProvider.notifier).state = index;
       },
+      borderRadius: BorderRadius.circular(11),
+      scaleOnFocus: 1.01,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
@@ -962,10 +1039,11 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
     required String label,
     required bool isSelected,
   }) {
-    return GestureDetector(
+    return TvFocusable(
       onTap: () {
         ref.read(selectedCalendarCategoryProvider.notifier).state = id;
       },
+      borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
@@ -999,10 +1077,11 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
     required String label,
     required bool isSelected,
   }) {
-    return GestureDetector(
+    return TvFocusable(
       onTap: () {
         ref.read(upcomingCategoryFilterProvider.notifier).state = id;
       },
+      borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
@@ -1034,20 +1113,35 @@ class _AiringShowListItem extends StatelessWidget {
   final AiringShowModel show;
   final int index;
   final AppStrings s;
+  final bool isGridCard;
 
   const _AiringShowListItem({
     required this.show,
     required this.index,
     required this.s,
+    this.isGridCard = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-          borderRadius: BorderRadius.circular(10),
+    return TvFocusable(
+          borderRadius: BorderRadius.circular(isGridCard ? 14 : 10),
+          scaleOnFocus: isGridCard ? 1.02 : 1.01,
           onTap: () => context.push('/tv/${show.id}'),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              vertical: 12,
+              horizontal: isGridCard ? 14 : 2,
+            ),
+            decoration: isGridCard
+                ? BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  )
+                : null,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1196,19 +1290,22 @@ class _UpcomingMediaListItem extends ConsumerWidget {
   final UpcomingMediaModel media;
   final int index;
   final AppStrings s;
+  final bool isGridCard;
 
   const _UpcomingMediaListItem({
     required this.media,
     required this.index,
     required this.s,
+    this.isGridCard = false,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isMovie = media.mediaType == 'movie';
 
-    return InkWell(
-          borderRadius: BorderRadius.circular(10),
+    return TvFocusable(
+          borderRadius: BorderRadius.circular(isGridCard ? 14 : 10),
+          scaleOnFocus: isGridCard ? 1.02 : 1.01,
           onTap: () {
             if (isMovie) {
               context.push('/movie/${media.id}');
@@ -1216,8 +1313,20 @@ class _UpcomingMediaListItem extends ConsumerWidget {
               context.push('/tv/${media.id}');
             }
           },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              vertical: 12,
+              horizontal: isGridCard ? 14 : 2,
+            ),
+            decoration: isGridCard
+                ? BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  )
+                : null,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

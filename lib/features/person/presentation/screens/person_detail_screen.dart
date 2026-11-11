@@ -10,6 +10,8 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/platform/device_form_factor.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../data/models/person_detail_model.dart';
 import '../providers/person_providers.dart';
 
@@ -262,18 +264,22 @@ class _PersonDetailScreenState extends ConsumerState<PersonDetailScreen> {
                       ),
                       if (person.biography.length > 200) ...[
                         const SizedBox(height: 8),
-                        GestureDetector(
+                        TvFocusable(
+                          borderRadius: BorderRadius.circular(8),
                           onTap: () {
                             setState(() {
                               _isBioExpanded = !_isBioExpanded;
                             });
                           },
-                          child: Text(
-                            _isBioExpanded ? s.personReadLess : s.personReadMore,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                            child: Text(
+                              _isBioExpanded ? s.personReadLess : s.personReadMore,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ),
                         ),
@@ -366,9 +372,15 @@ class _PersonDetailScreenState extends ConsumerState<PersonDetailScreen> {
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 0.52,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: adaptivePosterGridColumns(
+                  MediaQuery.sizeOf(context).width,
+                  isTv: ref.watch(isTvProvider),
+                ),
+                childAspectRatio: adaptivePosterGridAspectRatio(
+                  MediaQuery.sizeOf(context).width,
+                  isTv: ref.watch(isTvProvider),
+                ),
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 14,
               ),
@@ -423,8 +435,10 @@ class _PersonDetailScreenState extends ConsumerState<PersonDetailScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return TvFocusable(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      scaleOnFocus: 1.04,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
@@ -457,7 +471,9 @@ class _FilmographyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return TvFocusable(
+      borderRadius: BorderRadius.circular(12),
+      scaleOnFocus: 1.04,
       onTap: () {
         if (credit.mediaType == 'tv') {
           context.push('/tv/${credit.id}');

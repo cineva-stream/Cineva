@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/platform/device_form_factor.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../data/models/watch_history_item.dart';
 import '../../data/repositories/watch_history_repository.dart';
 
@@ -33,7 +34,9 @@ class ContinueWatchingCard extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // ── Thumbnail Container with Play Overlay & Progress Bar ──
-          GestureDetector(
+          TvFocusable(
+            focusedScale: 1.04,
+            borderRadius: BorderRadius.circular(14),
             onTap: () async {
               await context.push('/player', extra: {
                 'title': item.title,
@@ -48,11 +51,10 @@ class ContinueWatchingCard extends ConsumerWidget {
                 'initialPositionMs': item.positionMs,
                 'magnetLink': '',
               });
-              SystemChrome.setPreferredOrientations([
-                DeviceOrientation.portraitUp,
-                DeviceOrientation.portraitDown,
-              ]);
-              SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+              await restoreSystemUiAndOrientations(isTv: ref.read(isTvProvider));
+            },
+            onLongPress: () {
+              ref.read(watchHistoryProvider.notifier).removeItem(item.key);
             },
             child: Container(
               height: 125,

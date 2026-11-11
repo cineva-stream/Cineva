@@ -13,6 +13,7 @@ import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/platform/device_form_factor.dart';
 import '../../../../shared/widgets/modern_flag_badge.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../../backup/data/backup_restore_service.dart';
 import '../../../home/presentation/providers/home_providers.dart';
 import '../../data/settings_service.dart';
@@ -117,6 +118,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 560),
       backgroundColor: AppColors.surface,
       barrierColor: Colors.black.withValues(alpha: 0.75),
       shape: const RoundedRectangleBorder(
@@ -405,6 +407,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 560),
       backgroundColor: AppColors.surface,
       barrierColor: Colors.black.withValues(alpha: 0.75),
       shape: const RoundedRectangleBorder(
@@ -857,122 +860,153 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final currentAppLang = ref.watch(appLanguageProvider);
     final currentSubLang = SubtitleLanguageCatalog.findByCode(_defaultSubtitleLang);
 
+    final isWide = MediaQuery.sizeOf(context).width >= 700;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(0, 16, 0, MediaQuery.of(context).padding.bottom + 76),
-          children: [
-            // Page Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Container(
-                    width: 3.5,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    s.settingsTitle,
-                    style: GoogleFonts.outfit(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 920),
+            child: ListView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                0,
+                16,
+                0,
+                MediaQuery.of(context).padding.bottom + 76,
               ),
-            ),
+              children: [
+                // Page Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 3.5,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        s.settingsTitle,
+                        style: GoogleFonts.outfit(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-            const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-            // ── Full-Width User Profile Header with Smooth Border ──
-            Consumer(
-              builder: (context, ref, _) {
-                final profile = ref.watch(userProfileProvider);
-                return Material(
-                  color: AppColors.background,
-                  child: InkWell(
-                    onTap: () => context.push('/edit-profile'),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        border: Border(
-                          top: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.08),
-                            width: 0.8,
+                // ── User Profile Header ──
+                Consumer(
+                  builder: (context, ref, _) {
+                    final profile = ref.watch(userProfileProvider);
+                    return Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isWide ? 20 : 0,
+                      ),
+                      child: TvFocusable(
+                        onTap: () => context.push('/edit-profile'),
+                        borderRadius: BorderRadius.circular(isWide ? 16 : 0),
+                        scaleOnFocus: 1.01,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
                           ),
-                          bottom: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.08),
-                            width: 0.8,
+                          decoration: BoxDecoration(
+                            color: isWide
+                                ? AppColors.surface.withValues(alpha: 0.65)
+                                : AppColors.background,
+                            borderRadius: isWide
+                                ? BorderRadius.circular(16)
+                                : null,
+                            border: isWide
+                                ? Border.all(
+                                    color: Colors.white.withValues(alpha: 0.08),
+                                    width: 1,
+                                  )
+                                : Border(
+                                    top: BorderSide(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                      width: 0.8,
+                                    ),
+                                    bottom: BorderSide(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              AvatarDisplay(
+                                avatarId: profile.avatarId,
+                                customAvatarPath: profile.customAvatarPath,
+                                size: 54,
+                                showGlow: false,
+                                borderWidth: 1.5,
+                                borderColor: AppColors.primary,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      profile.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                        letterSpacing: -0.2,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      '@${profile.username}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                color: AppColors.textMuted,
+                                size: 16,
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          AvatarDisplay(
-                            avatarId: profile.avatarId,
-                            customAvatarPath: profile.customAvatarPath,
-                            size: 54,
-                            showGlow: false,
-                            borderWidth: 1.5,
-                            borderColor: AppColors.primary,
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  profile.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  '@${profile.username}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            color: AppColors.textMuted,
-                            size: 16,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+                    );
+                  },
+                ),
 
             // ── Mobile-Only: Tautkan ke Android TV / PC QR Scanner Banner ──
             Consumer(
@@ -1327,7 +1361,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildSectionHeader(String title, IconData icon) {
@@ -1352,20 +1388,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildSettingsCard(List<Widget> children) {
+    final isWide = MediaQuery.sizeOf(context).width >= 700;
     return Container(
       width: double.infinity,
+      margin: EdgeInsets.symmetric(horizontal: isWide ? 20 : 0),
       decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border(
-          top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.08),
-            width: 0.8,
-          ),
-          bottom: BorderSide(
-            color: Colors.white.withValues(alpha: 0.08),
-            width: 0.8,
-          ),
-        ),
+        color: isWide
+            ? AppColors.surface.withValues(alpha: 0.65)
+            : AppColors.background,
+        borderRadius: isWide ? BorderRadius.circular(16) : null,
+        border: isWide
+            ? Border.all(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 1,
+              )
+            : Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  width: 0.8,
+                ),
+                bottom: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  width: 0.8,
+                ),
+              ),
       ),
       child: Column(
         children: children,
@@ -1403,8 +1449,10 @@ class _SettingsTileItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return TvFocusable(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      scaleOnFocus: 1.0,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Row(
@@ -1455,9 +1503,17 @@ class _SettingsTileItem extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textMuted),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 16,
+                color: AppColors.textMuted,
+              ),
             ] else
-              const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textMuted),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 16,
+                color: AppColors.textMuted,
+              ),
           ],
         ),
       ),
@@ -1482,51 +1538,56 @@ class _SettingsToggleItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(9),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(12),
+    return TvFocusable(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(12),
+      scaleOnFocus: 1.0,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, size: 19, color: AppColors.primaryLight),
             ),
-            child: Icon(icon, size: 19, color: AppColors.primaryLight),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textMuted,
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.textMuted,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeTrackColor: AppColors.primary,
-            activeThumbColor: Colors.black,
-            inactiveTrackColor: AppColors.surfaceVariant,
-          ),
-        ],
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeTrackColor: AppColors.primary,
+              activeThumbColor: Colors.black,
+              inactiveTrackColor: AppColors.surfaceVariant,
+            ),
+          ],
+        ),
       ),
     );
   }

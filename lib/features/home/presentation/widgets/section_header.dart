@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 
 /// Top-tier streaming section header with accent bar, icon, title, and action button.
 class SectionHeader extends ConsumerWidget {
@@ -55,7 +56,7 @@ class SectionHeader extends ConsumerWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
@@ -70,11 +71,12 @@ class SectionHeader extends ConsumerWidget {
 
           // "Lihat Semua ›" action
           if (onSeeAll != null)
-            GestureDetector(
+            TvFocusable(
+              focusedScale: 1.05,
+              borderRadius: BorderRadius.circular(10),
               onTap: onSeeAll,
-              behavior: HitTestBehavior.opaque,
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

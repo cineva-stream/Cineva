@@ -1,50 +1,55 @@
-# Cineva v1.1.7 - Release Notes 🎬
+# Cineva v1.1.8 - Release Notes 🎬
 
-Pembaruan Cineva versi 1.1.7 menghadirkan fitur besar **Cadangan & Pemulihan Data (Backup & Restore)**, integrasi **Masuk & Sinkronisasi Cloud dengan Google (Sign in with Google & Firebase Realtime Database)**, perombakan antarmuka **Side Panel Streaming & Subtitle Setting Minimalis**, serta optimalisasi keamanan build **ProGuard & Obfuscation**.
+Pembaruan Cineva versi 1.1.8 menghadirkan **Relayout Responsif Modern untuk Tablet, Windows Desktop & Android TV**, perombakan **Desain Antarmuka Sinematik (Obsidian & Crimson Cinema UI)** di seluruh halaman, serta **Perbaikan Total Navigasi Remote D-Pad & Orientasi Layar** pada perangkat Android TV dan Tablet.
 
 ---
 
 ## Ringkasan Fitur Baru & Peningkatan Utama
 
-### 1. Fitur Cadangan & Pemulihan Data Mandiri (Backup & Restore System)
-* **Ekspor Cadangan Lengkap Berkas `.cineva`**:
-  * Pengguna kini dapat mencadangkan seluruh data aplikasi ke dalam satu file terenkripsi ringan (`.cineva` / `.json`).
-  * Mencakup: **Daftar Watchlist**, **Riwayat Tontonan** (posisi menit pemutaran terakhir & status selesai tonton), **Pengaturan Subtitle** (ukuran font, latar belakang teks, bahasa default), **Kualitas Video Default**, **Preferensi Konten**, serta **Profil Pengguna** (Nama, Username, dan foto avatar galeri).
-* **Pemulihan Universal Tanpa Hambatan (*Universal File Picker*)**:
-  * Menggunakan pemilih berkas universal yang kompatibel penuh dengan berbagai penyimpanan perangkat (Folder Download, Memori Internal, Kartu SD, maupun Google Drive).
-  * Dilengkapi validasi tanda tangan (*magic signature verification*) untuk mendeteksi file rusak atau tidak valid secara aman tanpa risiko crash.
-* **Opsi Pemulihan Langsung di Layar Awal (*Splash Screen*)**:
-  * Pengguna yang baru menginstal ulang aplikasi dapat langsung memilih opsi **"Pulihkan dari File Cadangan"** tepat setelah memilih bahasa aplikasi, lalu langsung masuk ke beranda dengan seluruh data yang telah pulih utuh.
+### 1. Relayout Responsif Modern untuk Tablet, Windows Desktop & Android TV
+* **Mesin Deteksi Form-Factor & Grid Adaptif (`device_form_factor.dart`)**:
+  * Deteksi cerdas untuk **Smartphone**, **Tablet** (`shortestSide >= 600px`), **Windows Desktop**, serta **Android TV** (mendukung penuh resolusi TV 720p dan 1080p/4K).
+  * Perhitungan kolom grid poster otomatis (`adaptivePosterGridColumns`) dan grid kartu horizontal (`adaptiveHorizontalCardGridColumns`) dari 3 hingga 8 kolom sesuai lebar layar perangkat.
+* **Navigasi Samping Widescreen (`AdaptiveNavRail` & `MainShell`)**:
+  * Perangkat Tablet, Windows, dan Android TV kini secara konsisten menggunakan bilah navigasi samping (*Side Navigation Rail*) yang modern dengan indikator kapsul menyala, menggantikan bilah bawah smartphone agar ruang pandang horizontal lebih maksimal.
+* **Tata Letak Multi-Kolom & Widescreen di Seluruh Halaman**:
+  * **Beranda (Home)**: Banner Hero sinematik proporsional, kartu *Lanjutkan Menonton* lebih lebar di layar besar (`240px`), serta pemilih genre responsif.
+  * **Pencarian & Katalog Platform**: Kartu *Hero Top Result* bersebelahan dengan daftar hasil, *Trending Bento Grid* adaptif, dan grid platform streaming 3–6 kolom.
+  * **Live TV & Split-View Player**: Panel daftar saluran di sisi kiri (`340px–380px`) berdampingan dengan pemutar video langsung dan EPG di sisi kanan untuk Tablet, Windows, dan Android TV.
+  * **Detail Film, Serial TV, Koleksi Franchise & TV Universe**: *Split Hero Banner* untuk layar lebar, grid daftar episode **2–3 kolom** pada layar widescreen/TV untuk meminimalkan *scrolling* vertikal, serta grid *Seasons* dan *Cast* yang proporsional.
+  * **Watchlist, Riwayat Tontonan, Unduhan & Kalender Tayang**: Transformasi dari daftar satu kolom memanjang menjadi grid multi-kolom (2–3 kolom di Tablet/Windows/TV) lengkap dengan pembatas lebar proporsional (`maxWidth`) pada halaman Pengaturan, Edit Profil, dan Syarat & Ketentuan.
 
-### 2. Masuk dengan Google & Sinkronisasi Cloud (Google Sign-In & Realtime Database)
-* **Sinkronisasi Multi-Perangkat Otomatis**:
-  * Menghubungkan akun ke Google memungkinkan seluruh riwayat tontonan, watchlist, dan pengaturan profil tersinkronisasi secara instan di berbagai perangkat tanpa perlu ekspor/impor manual.
-  * Menggunakan **Firebase Realtime Database** yang efisien, cepat, dan 100% bebas biaya (Spark Plan).
-* **Auto-Populate Data Akun Google Cerdas**:
-  * Saat masuk dengan Google, aplikasi secara otomatis mengisi **Nickname** dari nama profil Google (`displayName`), **Username** unik dari awalan email Google, serta mengunduh foto profil Google sebagai **Avatar** pengguna.
-* **Integrasi Fleksibel pada Layar Selamat Datang & Edit Profil**:
-  * Tersedia di layar awal (*Splash Screen*) untuk pengguna baru, serta di halaman **Edit Profil** bagi pengguna lama yang ingin menghubungkan akun Google kapan saja.
+### 2. Perbaikan Total Kontroler D-Pad Android TV & Keyboard Navigasi
+* **Engine Fokus `TvFocusable` Generasi Baru**:
+  * Dilengkapi *focus ring* (`showFocusBorder`) bertepi `AppColors.primary` (`2px`), animasi skala halus, dukungan penuh tombol `Select`, `Enter`, `NumpadEnter`, `GameButtonA`, dan `Space`, serta *auto-scroll* aman (`Scrollable.ensureVisible`) saat item menerima fokus D-Pad.
+* **Perbaikan Bug Fokus Terjebak di Pemutar Video (`PlayerScreen`)**:
+  * Memperbaiki *handler* tombol D-Pad pada `PlayerScreen` yang sebelumnya mencegat seluruh arah panah untuk *seek* meskipun kontrol sedang tampil atau panel samping terbuka.
+  * Kini saat kontrol video terlihat, Side Panel (Episode/Server/Subtitle) terbuka, *Mini Popup* tampil, atau *Error Overlay* muncul, tombol panah D-Pad dan `Enter` berpindah antar tombol secara normal.
+  * Menambahkan `ExcludeFocus` saat kontrol video tersembunyi agar fokus D-Pad tidak lari ke tombol transparan di belakang layar.
+* **Dukungan D-Pad Menyeluruh di Halaman yang Sebelumnya Terkunci**:
+  * **Pencarian (`SearchScreen`)**: Fokus D-Pad penuh pada bilah cari, tombol hapus, chip riwayat pencarian, *Quick Categories*, kartu platform streaming, hingga kartu hasil pencarian.
+  * **Detail Film & Serial TV**: Seluruh tombol aksi (*Play*, *Download*, *Trailer*, *Watchlist*), chip *Season*, kartu *Episode*, kartu *Cast*, serta banner *Franchise/Universe* kini dapat dinavigasi dengan D-Pad.
+  * **Watchlist, Riwayat, Unduhan & Kalender Tayang**: Kartu item, tab filter, tanggal kalender, serta tombol hapus/aksi kini sepenuhnya mendukung fokus D-Pad & keyboard.
+  * **Syarat & Ketentuan (`LegalAgreementScreen`)**: Menambahkan *scroll* dokumen menggunakan D-Pad Atas/Bawah serta pembungkus `TvFocusable` pada tombol *Scroll ke Bawah* dan *Setuju & Lanjutkan*.
+  * **Dialog Konfirmasi Keluar (`ExitConfirmationBottomSheet`)**: Ditampilkan sebagai dialog tengah (*centered modal*) pada Tablet/Windows/TV dengan tombol *Batal* (autofocus) dan *Keluar* yang dapat dipilih via remote TV.
 
-### 3. Desain Ulang Antarmuka: Side Panel Streaming & Subtitle Minimalis
-* **Side Panel Streaming Video Latar Hitam Obsidian**:
-  * Latar belakang panel samping kanan pada pemutar video (saat streaming Film & Serial TV) kini berwarna hitam pekat (`#0D0D12` / `#000000`), menyatu sempurna dengan estetika gelap sinematik Cineva.
-* **Pengaturan Subtitle Bersih & Ringkas**:
-  * Menghilangkan kotak pratinjau teks redundan karena hasil pengaturan gaya teks sudah langsung terlihat secara *real-time* di layar pemutaran video.
-  * Tampilan kontrol ukuran font, bahasa subtitle, dan latar belakang menjadi jauh lebih ringkas, rapi, dan modern.
-* **Penyegaran Tombol Google & Pembersihan Pengaturan**:
-  * Tombol "Masuk dengan Google" di halaman Edit Profil kini berlatar belakang putih solid dengan teks hitam kontras tinggi dan ikon resmi Google (`google-icon.png`).
-  * Menu di Halaman Pengaturan disederhanakan khusus untuk Cadangkan & Pulihkan berkas file lokal.
+### 3. Perbaikan Bug Orientasi Layar (Tablet & Android TV)
+* **Eliminasi Penguncian Paksa ke Portrait (`portraitUp`)**:
+  * Memperbaiki bug di mana keluar dari pemutar video (`PlayerScreen` & `LiveTvPlayerScreen`) mengunci layar kembali ke mode `portraitUp` yang merusak tampilan di Tablet landscape dan Android TV.
+  * Menghadirkan fungsi terpusat `restoreSystemUiAndOrientations` yang mengembalikan orientasi sesuai form-factor perangkat (bebas rotasi untuk Tablet, landscape untuk TV, dan portrait untuk Smartphone).
 
-### 4. Keamanan Build, ProGuard & Obfuscation
-* **Proteksi ProGuard Lengkap**:
-  * Menambahkan aturan proteksi refleksi (`-keep`) pada `proguard-rules.pro` untuk Firebase Core, Firebase Analytics, Firebase Auth, Firebase Realtime Database, dan Google Sign-In.
-  * Menjamin kestabilan 100% saat aplikasi dikompilasi dengan flag `--obfuscate`, `minifyEnabled true`, dan `shrinkResources true` tanpa risiko crash runtime.
-* **Perlindungan Kredensial**:
-  * Mengisolasi dan mengamankan berkas konfigurasi `google-services.json` dari repositori publik.
+### 4. Penyegaran Visual Obsidian & Crimson Cinema UI
+* Pembaruan palet warna gelap sinematik (`AppColors` & `AppTheme`), peningkatan kontras tipografi, kartu kaca (*glassmorphism*), serta penyempurnaan *Splash Screen* dan modal opsi unduhan agar tampil lebih tegas, rapi, dan modern di segala ukuran layar.
 
 ---
 
 ## Riwayat Versi Sebelumnya
+
+### Cineva v1.1.7
+* **Fitur Cadangan & Pemulihan Data Mandiri (Backup & Restore System)**: Ekspor & impor seluruh data aplikasi ke dalam berkas `.cineva` beserta opsi pemulihan langsung di layar awal (*Splash Screen*).
+* **Masuk dengan Google & Sinkronisasi Cloud**: Integrasi Google Sign-In & Firebase Realtime Database untuk sinkronisasi multi-perangkat otomatis dan pengisian profil cerdas.
+* **Desain Ulang Side Panel Streaming & Subtitle Minimalis**: Panel samping hitam obsidian pada pemutar video dan pengaturan subtitle *real-time* yang ringkas.
+* **Keamanan Build, ProGuard & Obfuscation**: Aturan proteksi refleksi penuh pada `proguard-rules.pro` dan pengamanan endpoint runtime.
 
 ### Cineva v1.1.6
 * **Desain Ulang Filter Kategori Beranda**: Full Grid responsif dan Carousel Top 8-10 untuk Film dan Serial TV dengan *infinite scroll* berkelanjutan.
@@ -56,13 +61,13 @@ Pembaruan Cineva versi 1.1.7 menghadirkan fitur besar **Cadangan & Pemulihan Dat
 
 ## Informasi Versi
 
-* **Versi Aplikasi**: 1.1.7
-* **Build**: 18
-* **Target Sistem Operasi**: Android 5.0 (API 21) ke atas (Smartphone & Android TV / Google TV), Windows 10/11 (64-bit)
+* **Versi Aplikasi**: 1.1.8
+* **Build**: 19
+* **Target Sistem Operasi**: Android 5.0 (API 21) ke atas (Smartphone, Tablet & Android TV / Google TV), Windows 10/11 (64-bit)
 * **Daftar Varian File Rilis**:
-  * `Cineva_setup_v1.1.7.exe` (Windows Desktop Installer Resmi)
-  * `Cineva_v1.1.7-android-tv.apk` (Khusus Android TV & Smart TV - **Rekomendasi TV**)
-  * `Cineva_v1.1.7-arm64-v8a.apk` (HP Android Modern 64-bit)
-  * `Cineva_v1.1.7-armeabi-v7a.apk` (HP Android Lawas 32-bit)
-  * `Cineva_v1.1.7-x86_64.apk` (Emulator PC & Android x86)
-  * `Cineva_v1.1.7.apk` (Universal / Semua CPU, Kompatibel Penuh)
+  * `Cineva_setup_v1.1.8.exe` (Windows Desktop Installer Resmi)
+  * `Cineva_v1.1.8-android-tv.apk` (Khusus Android TV & Smart TV - **Rekomendasi TV**)
+  * `Cineva_v1.1.8-arm64-v8a.apk` (HP & Tablet Android Modern 64-bit)
+  * `Cineva_v1.1.8-armeabi-v7a.apk` (HP & Tablet Android Lawas 32-bit)
+  * `Cineva_v1.1.8-x86_64.apk` (Emulator PC & Android x86)
+  * `Cineva_v1.1.8.apk` (Universal / Semua CPU, Kompatibel Penuh)

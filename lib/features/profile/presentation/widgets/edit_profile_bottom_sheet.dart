@@ -147,7 +147,7 @@ class _EditProfileBottomSheetState
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.background,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.1),
@@ -179,7 +179,7 @@ class _EditProfileBottomSheetState
               children: [
                 Text(
                   s.profileEditTitle,
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,

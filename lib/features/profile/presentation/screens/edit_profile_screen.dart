@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/widgets/google_brand_icon.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../backup/presentation/providers/backup_providers.dart';
@@ -256,13 +257,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       final isSelected = _selectedAvatarId == preset.id;
                       return Padding(
                         padding: const EdgeInsets.only(right: 12),
-                        child: GestureDetector(
+                        child: TvFocusable(
                           onTap: () {
                             setState(() {
                               _selectedAvatarId = preset.id;
                               _customAvatarPath = null;
                             });
                           },
+                          borderRadius: BorderRadius.circular(36),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.all(2.5),

@@ -1,40 +1,49 @@
 import 'package:flutter/material.dart';
 
-/// Color palette for Cineva — cinematic dark theme.
+/// Refined Color Palette for Cineva based on the 60-30-10 Design Rule.
 ///
-/// Deep Obsidian base with Cinema Amber accents and crisp white highlights
-/// matching the launcher icon for an elite streaming experience.
+/// Hierarchy:
+/// - 60% Dominant Base: Pure OLED Pitch Black & Deep Obsidian canvas.
+/// - 30% Secondary Structure: Charcoal Glass surfaces, frosted card containers, and squircle borders.
+/// - 10% Focal Accent: Cinema Amber Gold and Adaptive Media-driven Vibrant Accents.
 class AppColors {
   AppColors._();
 
-  // ── Primary Palette (Cinema Amber / Warm Orange) ──
-  static const Color primary = Color(0xFFFF9500);       // Cinema Amber Orange
+  // ── 10% Focal Accent (Cinema Amber & Golden Ember) ──
+  static const Color primary = Color(0xFFFF9500);       // Cinema Amber
   static const Color primaryDark = Color(0xFFE67E00);
   static const Color primaryLight = Color(0xFFFFB347);
+  static const Color primaryVibrant = Color(0xFFFF8000);
 
-  // ── Accent / Secondary (Warm Gold / Ember) ──
   static const Color accent = Color(0xFFFFB800);         // Warm Gold
   static const Color accentDark = Color(0xFFCC9300);
   static const Color accentLight = Color(0xFFFFD466);
 
-  // ── Background (Pure Smooth Black OLED) ──
-  static const Color background = Color(0xFF000000);     // Pure Smooth Black
-  static const Color surface = Color(0xFF121217);        // Charcoal Obsidian
-  static const Color surfaceVariant = Color(0xFF181820); // Card Backgrounds
-  static const Color surfaceElevated = Color(0xFF22222E);// Elevated Modals / Popups
+  // ── 60% Dominant Base Canvas (Pure OLED Black) ──
+  static const Color background = Color(0xFF000000);     // Pure OLED Black
+  static const Color canvas = Color(0xFF07070A);         // Deep Space Obsidian
 
-  // ── Text ──
-  static const Color textPrimary = Color(0xFFF5F5F7);
-  static const Color textSecondary = Color(0xFFA1A1AA);
-  static const Color textMuted = Color(0xFF71717A);
+  // ── 30% Secondary Structured Surfaces (Glass & Cards) ──
+  static const Color surface = Color(0xFF121217);        // Charcoal Slate
+  static const Color surfaceVariant = Color(0xFF161622); // Card Surfaces
+  static const Color surfaceElevated = Color(0xFF1F1F2E);// Modals & Dialogs
+  static const Color surfaceGlass = Color(0xD9161622);   // Frosted Glassmorphism
 
-  // ── Semantic ──
+  // ── Borders & Outlines ──
+  static const Color borderSubtle = Color(0x14FFFFFF);   // 8% White Border
+  static const Color borderFocused = Color(0x33FFFFFF);  // 20% White Border
+  static const Color borderGlow = Color(0x40FF9500);     // 25% Amber Border
+
+  // ── Text Hierarchy ──
+  static const Color textPrimary = Color(0xFFF8F8FA);    // High contrast crisp white
+  static const Color textSecondary = Color(0xFFA1A1AA);  // Slate grey
+  static const Color textMuted = Color(0xFF71717A);      // Muted caption grey
+
+  // ── Semantic & Functional ──
   static const Color error = Color(0xFFFF453A);
   static const Color success = Color(0xFF30D158);
   static const Color warning = Color(0xFFFFD60A);
   static const Color info = Color(0xFF0A84FF);
-
-  // ── Rating Star ──
   static const Color star = Color(0xFFFFC107);
 
   // ── Gradients ──
@@ -45,7 +54,7 @@ class AppColors {
   );
 
   static const LinearGradient cardGradient = LinearGradient(
-    colors: [Color(0xFF16161E), Color(0xFF1F1F2B)],
+    colors: [Color(0xFF151520), Color(0xFF1A1A28)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
@@ -57,8 +66,36 @@ class AppColors {
     stops: [0.0, 0.65, 1.0],
   );
 
-  // ── Shimmer ──
-  static const Color shimmerBase = Color(0xFF181820);
-  static const Color shimmerHighlight = Color(0xFF282834);
-}
+  // ── Dynamic Ambient Mesh Gradients ──
+  /// Builds a smooth ambient mesh gradient that softly bleeds media color into pure black.
+  static LinearGradient ambientMesh(Color tintColor, {double opacity = 0.28}) {
+    return LinearGradient(
+      colors: [
+        tintColor.withValues(alpha: opacity),
+        tintColor.withValues(alpha: opacity * 0.4),
+        Colors.transparent,
+      ],
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      stops: const [0.0, 0.45, 1.0],
+    );
+  }
 
+  /// Builds a soft radial glow centered on hero media.
+  static RadialGradient ambientRadial(Color tintColor, {double opacity = 0.35}) {
+    return RadialGradient(
+      center: const Alignment(0.0, -0.2),
+      radius: 0.95,
+      colors: [
+        tintColor.withValues(alpha: opacity),
+        tintColor.withValues(alpha: opacity * 0.3),
+        Colors.transparent,
+      ],
+      stops: const [0.0, 0.5, 1.0],
+    );
+  }
+
+  // ── Shimmer Effects ──
+  static const Color shimmerBase = Color(0xFF151520);
+  static const Color shimmerHighlight = Color(0xFF262638);
+}

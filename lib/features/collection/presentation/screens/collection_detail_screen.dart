@@ -11,6 +11,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../data/models/movie_collection_model.dart';
 import '../providers/collection_providers.dart';
 
@@ -198,104 +199,147 @@ class CollectionDetailScreen extends ConsumerWidget {
 
         // ── Franchise Details Header ──
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1100),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.5),
-                          width: 0.8,
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.5),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            s.collectionPartOf.toUpperCase(),
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        s.collectionPartOf.toUpperCase(),
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
-                          letterSpacing: 0.8,
+                        const SizedBox(width: 8),
+                        Text(
+                          s.collectionCountMovies(collection.parts.length),
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 8),
                     Text(
-                      s.collectionCountMovies(collection.parts.length),
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  collection.name,
-                  style: GoogleFonts.outfit(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                if (collection.overview.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    collection.overview,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    const Icon(Iconsax.sort, size: 18, color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    Text(
-                      s.collectionTimeline,
+                      collection.name,
                       style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary,
                       ),
                     ),
+                    if (collection.overview.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        collection.overview,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        const Icon(Iconsax.sort, size: 18, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          s.collectionTimeline,
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                   ],
                 ),
-                const SizedBox(height: 12),
-              ],
+              ),
             ),
           ),
         ),
 
         // ── Chronological Parts Timeline ──
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverList.separated(
-            itemCount: collection.parts.length,
-            separatorBuilder: (_, _) => Divider(
-              color: Colors.white.withValues(alpha: 0.08),
-              height: 1,
-              thickness: 0.8,
+        SliverToBoxAdapter(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1100),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isTwoCol = constraints.maxWidth >= 760;
+                    if (isTwoCol) {
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisExtent: 128,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 12,
+                        ),
+                        itemCount: collection.parts.length,
+                        itemBuilder: (context, index) {
+                          final part = collection.parts[index];
+                          return _CollectionPartListItem(
+                            part: part,
+                            partNumber: index + 1,
+                            totalParts: collection.parts.length,
+                            s: s,
+                            isCardStyle: true,
+                          );
+                        },
+                      );
+                    }
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: collection.parts.length,
+                      separatorBuilder: (_, _) => Divider(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        height: 1,
+                        thickness: 0.8,
+                      ),
+                      itemBuilder: (context, index) {
+                        final part = collection.parts[index];
+                        return _CollectionPartListItem(
+                          part: part,
+                          partNumber: index + 1,
+                          totalParts: collection.parts.length,
+                          s: s,
+                          isCardStyle: false,
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
             ),
-            itemBuilder: (context, index) {
-              final part = collection.parts[index];
-              return _CollectionPartListItem(
-                part: part,
-                partNumber: index + 1,
-                totalParts: collection.parts.length,
-                s: s,
-              );
-            },
           ),
         ),
 
@@ -310,21 +354,37 @@ class _CollectionPartListItem extends StatelessWidget {
   final int partNumber;
   final int totalParts;
   final AppStrings s;
+  final bool isCardStyle;
 
   const _CollectionPartListItem({
     required this.part,
     required this.partNumber,
     required this.totalParts,
     required this.s,
+    this.isCardStyle = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
+    return TvFocusable(
+      borderRadius: BorderRadius.circular(12),
+      scaleOnFocus: 1.02,
       onTap: () => context.push('/movie/${part.id}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
+      child: Container(
+        decoration: isCardStyle
+            ? BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  width: 0.8,
+                ),
+              )
+            : null,
+        padding: EdgeInsets.symmetric(
+          vertical: 12,
+          horizontal: isCardStyle ? 12 : 4,
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

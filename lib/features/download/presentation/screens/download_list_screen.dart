@@ -12,6 +12,8 @@ import '../providers/download_provider.dart';
 import '../../data/repositories/download_repository.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/platform/device_form_factor.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 
 /// Screen displaying movies and TV series currently downloading and finished.
 /// Supports YouTube-style in-app offline playback and Season-based TV Series management.
@@ -167,14 +169,36 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      physics: const BouncingScrollPhysics(),
-      itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return _InProgressCard(item: item);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final gridCols = adaptiveHorizontalCardGridColumns(
+          constraints.maxWidth,
+          isTv: gIsTv,
+        );
+        if (gridCols >= 2) {
+          return GridView.builder(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            physics: const BouncingScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: gridCols,
+              mainAxisExtent: 130,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: items.length,
+            itemBuilder: (context, index) => _InProgressCard(item: items[index]),
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          physics: const BouncingScrollPhysics(),
+          itemCount: items.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final item = items[index];
+            return _InProgressCard(item: item);
+          },
+        );
       },
     );
   }
@@ -233,62 +257,101 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
           ),
         ),
 
-        // Scrollable List of Completed Media
+        // Scrollable List/Grid of Completed Media
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-            physics: const BouncingScrollPhysics(),
-            children: [
-              // 1. Movie Section (if filter is 0 or 1)
-              if ((_completedFilter == 0 || _completedFilter == 1) && movies.isNotEmpty) ...[
-                if (_completedFilter == 0) ...[
-                  _buildSectionHeader(
-                    s.isIndonesian ? 'Film Offline' : 'Offline Movies',
-                    s.isIndonesian ? '${movies.length} Film' : '${movies.length} Movies',
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                ...movies.map((movie) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _CompletedMovieCard(item: movie),
-                    )),
-                if (_completedFilter == 0 && tvSeriesMap.isNotEmpty) const SizedBox(height: 12),
-              ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final gridCols = adaptiveHorizontalCardGridColumns(
+                constraints.maxWidth,
+                isTv: gIsTv,
+              );
+              return ListView(
+                padding: EdgeInsets.fromLTRB(
+                  gridCols >= 2 ? 20 : 16,
+                  4,
+                  gridCols >= 2 ? 20 : 16,
+                  24,
+                ),
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  // 1. Movie Section (if filter is 0 or 1)
+                  if ((_completedFilter == 0 || _completedFilter == 1) &&
+                      movies.isNotEmpty) ...[
+                    if (_completedFilter == 0) ...[
+                      _buildSectionHeader(
+                        s.isIndonesian ? 'Film Offline' : 'Offline Movies',
+                        s.isIndonesian
+                            ? '${movies.length} Film'
+                            : '${movies.length} Movies',
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    if (gridCols >= 2)
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: gridCols,
+                          mainAxisExtent: 120,
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 12,
+                        ),
+                        itemCount: movies.length,
+                        itemBuilder: (context, idx) =>
+                            _CompletedMovieCard(item: movies[idx]),
+                      )
+                    else
+                      ...movies.map(
+                        (movie) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _CompletedMovieCard(item: movie),
+                        ),
+                      ),
+                    if (_completedFilter == 0 && tvSeriesMap.isNotEmpty)
+                      const SizedBox(height: 16),
+                  ],
 
-              // 2. TV Series Section (if filter is 0 or 2)
-              if ((_completedFilter == 0 || _completedFilter == 2) && tvSeriesMap.isNotEmpty) ...[
-                if (_completedFilter == 0) ...[
-                  _buildSectionHeader(
-                    s.isIndonesian ? 'Serial TV Offline' : 'Offline TV Series',
-                    s.isIndonesian ? '${tvSeriesMap.length} Judul' : '${tvSeriesMap.length} Series',
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                ...tvSeriesMap.entries.map((entry) {
-                  final seriesKey = entry.key;
-                  final episodes = entry.value;
-                  final isExpanded = _expandedSeries.contains(seriesKey);
+                  // 2. TV Series Section (if filter is 0 or 2)
+                  if ((_completedFilter == 0 || _completedFilter == 2) &&
+                      tvSeriesMap.isNotEmpty) ...[
+                    if (_completedFilter == 0) ...[
+                      _buildSectionHeader(
+                        s.isIndonesian
+                            ? 'Serial TV Offline'
+                            : 'Offline TV Series',
+                        s.isIndonesian
+                            ? '${tvSeriesMap.length} Judul'
+                            : '${tvSeriesMap.length} Series',
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    ...tvSeriesMap.entries.map((entry) {
+                      final seriesKey = entry.key;
+                      final episodes = entry.value;
+                      final isExpanded = _expandedSeries.contains(seriesKey);
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _TvSeriesSeasonCard(
-                      seriesKey: seriesKey,
-                      episodes: episodes,
-                      isExpanded: isExpanded,
-                      onToggleExpand: () {
-                        setState(() {
-                          if (isExpanded) {
-                            _expandedSeries.remove(seriesKey);
-                          } else {
-                            _expandedSeries.add(seriesKey);
-                          }
-                        });
-                      },
-                    ),
-                  );
-                }),
-              ],
-            ],
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _TvSeriesSeasonCard(
+                          seriesKey: seriesKey,
+                          episodes: episodes,
+                          isExpanded: isExpanded,
+                          onToggleExpand: () {
+                            setState(() {
+                              if (isExpanded) {
+                                _expandedSeries.remove(seriesKey);
+                              } else {
+                                _expandedSeries.add(seriesKey);
+                              }
+                            });
+                          },
+                        ),
+                      );
+                    }),
+                  ],
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -301,7 +364,7 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return InkWell(
+    return TvFocusable(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
@@ -330,7 +393,9 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.black.withValues(alpha: 0.15) : AppColors.surfaceElevated,
+                  color: isSelected
+                      ? Colors.black.withValues(alpha: 0.15)
+                      : AppColors.surfaceElevated,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -438,10 +503,10 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return TvFocusable(
       onTap: onTap,
-      splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      scaleOnFocus: 1.0,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
@@ -649,27 +714,30 @@ class _CompletedMovieCard extends ConsumerWidget {
     final s = ref.watch(appStringsProvider);
     final notifier = ref.read(downloadManagerProvider.notifier);
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceElevated),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Thumbnail with Play overlay
-          InkWell(
-            borderRadius: BorderRadius.circular(10),
-            onTap: () => _playOffline(context),
-            child: ClipRRect(
+    return TvFocusable(
+      onTap: () => _playOffline(context),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.surfaceElevated),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Thumbnail with Play overlay
+            ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   CachedNetworkImage(
-                    imageUrl: ApiConstants.imageUrl(item.posterPath, size: ApiConstants.posterSmall),
+                    imageUrl: ApiConstants.imageUrl(
+                      item.posterPath,
+                      size: ApiConstants.posterSmall,
+                    ),
                     width: 64,
                     height: 92,
                     fit: BoxFit.cover,
@@ -677,7 +745,10 @@ class _CompletedMovieCard extends ConsumerWidget {
                       width: 64,
                       height: 92,
                       color: AppColors.surface,
-                      child: const Icon(Icons.movie, color: AppColors.textMuted),
+                      child: const Icon(
+                        Icons.movie,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ),
                   Container(
@@ -691,116 +762,143 @@ class _CompletedMovieCard extends ConsumerWidget {
                       color: AppColors.primary,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 20),
+                    child: const Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.black,
+                      size: 20,
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(width: 14),
+            const SizedBox(width: 14),
 
-          // Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  item.releaseYear.isNotEmpty ? 'Film • ${item.releaseYear}' : 'Film',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceElevated,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        item.resolution,
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
+            // Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: GoogleFonts.outfit(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceElevated,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        item.formattedTotalSize,
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 9,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    item.releaseYear.isNotEmpty
+                        ? 'Film • ${item.releaseYear}'
+                        : 'Film',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
                     ),
-                    if (item.subtitlePath != null)
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.15),
+                          color: AppColors.surfaceElevated,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Iconsax.subtitle, size: 10, color: AppColors.primary),
-                            const SizedBox(width: 3),
-                            Text(
-                              'SUB ID',
-                              style: GoogleFonts.jetBrainsMono(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          item.resolution,
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                  ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceElevated,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          item.formattedTotalSize,
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 9,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      if (item.subtitlePath != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Iconsax.subtitle,
+                                size: 10,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                'SUB ID',
+                                style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Actions: Play & Delete
+            Column(
+              children: [
+                IconButton(
+                  onPressed: () => _playOffline(context),
+                  icon: const Icon(
+                    Icons.play_circle_fill_rounded,
+                    color: AppColors.primary,
+                    size: 28,
+                  ),
+                  tooltip: s.isIndonesian ? 'Putar' : 'Play',
+                ),
+                IconButton(
+                  onPressed: () => _showDeleteDialog(context, notifier, s),
+                  icon: const Icon(
+                    Iconsax.trash,
+                    size: 18,
+                    color: AppColors.textMuted,
+                  ),
+                  tooltip: s.dialogDelete,
                 ),
               ],
             ),
-          ),
-
-          // Actions: Play & Delete
-          Column(
-            children: [
-              IconButton(
-                onPressed: () => _playOffline(context),
-                icon: const Icon(Icons.play_circle_fill_rounded, color: AppColors.primary, size: 28),
-                tooltip: s.isIndonesian ? 'Putar' : 'Play',
-              ),
-              IconButton(
-                onPressed: () => _showDeleteDialog(context, notifier, s),
-                icon: const Icon(Iconsax.trash, size: 18, color: AppColors.textMuted),
-                tooltip: s.dialogDelete,
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -909,9 +1007,10 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
       child: Column(
         children: [
           // Header Card (Tap to Expand/Collapse)
-          InkWell(
+          TvFocusable(
             onTap: onToggleExpand,
             borderRadius: BorderRadius.circular(16),
+            scaleOnFocus: 1.01,
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -1140,15 +1239,35 @@ class _EpisodeCard extends ConsumerWidget {
     final s = ref.watch(appStringsProvider);
     final notifier = ref.read(downloadManagerProvider.notifier);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.surfaceElevated.withValues(alpha: 0.7)),
-      ),
-      child: Row(
-        children: [
+    return TvFocusable(
+      onTap: () {
+        context.push('/player', extra: {
+          'title': item.title,
+          'episodeTitle': item.episodeTitle,
+          'mediaType': item.mediaType,
+          'season': item.seasonNumber,
+          'episode': item.episodeNumber,
+          'tmdbId': item.tmdbId,
+          'posterPath': item.posterPath,
+          'backdropPath': item.backdropPath,
+          'localVideoPath': item.videoPath,
+          'localSubtitlePath': item.subtitlePath,
+          'magnetLink': '',
+        });
+      },
+      borderRadius: BorderRadius.circular(10),
+      scaleOnFocus: 1.01,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: AppColors.surfaceElevated.withValues(alpha: 0.7),
+          ),
+        ),
+        child: Row(
+          children: [
           // Episode Badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1273,6 +1392,7 @@ class _EpisodeCard extends ConsumerWidget {
             },
           ),
         ],
+      ),
       ),
     );
   }
