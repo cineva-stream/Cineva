@@ -27,6 +27,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
+DisableWelcomePage=yes
 AllowNoIcons=yes
 
 ; Syarat dan Ketentuan (Halaman LEGAL) sebelum instalasi dimulai
@@ -44,7 +45,7 @@ OutputBaseFilename=Cineva_setup_v{#MyAppVersion}
 WizardStyle=modern dark
 WizardBackColor=#0E0E14
 WizardBackColorDynamicDark=#0E0E14
-WizardSizePercent=115,110
+WizardSizePercent=115,115
 Compression=lzma2/max
 SolidCompression=yes
 
@@ -85,7 +86,7 @@ indonesian.Step3=3. Instalasi
 indonesian.Step4=4. Selesai
 indonesian.TagLicense=LANGKAH 01 / 04  •  PERJANJIAN LISENSI
 indonesian.TitleLicense=Syarat & Ketentuan Penggunaan
-indonesian.SubLicense=Harap tinjau dan setujui ketentuan layanan sebelum memasang Cineva di PC Anda.
+indonesian.SubLicense=Silakan baca dokumen di bawah, lalu pilih "Saya menyetujui" untuk melanjutkan.
 indonesian.TagDir=LANGKAH 02 / 04  •  KONFIGURASI INSTALASI
 indonesian.TitleDir=Pilih Lokasi & Opsi Pintasan
 indonesian.SubDir=Tentukan direktori penyimpanan aplikasi serta pintasan akses cepat Cineva.
@@ -114,7 +115,7 @@ english.Step3=3. Install
 english.Step4=4. Finish
 english.TagLicense=STEP 01 / 04  •  LICENSE AGREEMENT
 english.TitleLicense=Software Terms & Conditions
-english.SubLicense=Please review and accept the license agreement before installing Cineva on your PC.
+english.SubLicense=Please read the agreement below and select "I accept the agreement" to continue.
 english.TagDir=STEP 02 / 04  •  INSTALLATION SETUP
 english.TitleDir=Choose Location & Shortcuts
 english.SubDir=Select the destination folder and desktop shortcut preferences for Cineva.
@@ -143,26 +144,34 @@ const
   MARQUEE_VIEW_H = 160;
   MARQUEE_TILE_W = 896;
   MARQUEE_TIMER_ID = 777;
-  MARQUEE_INTERVAL_MS = 28;
+  MARQUEE_INTERVAL_MS = 33;
 
   // Palet Warna BGR (TColor: $BBGGRR)
   CLR_OBSIDIAN_BG    = $0A0707; // #07070A
   CLR_CHARCOAL_BODY  = $140E0E; // #0E0E14
-  CLR_CARD_SURFACE   = $1F1616; // #16161F
-  CLR_PILL_INACTIVE  = $221818; // #181822
-  CLR_PILL_DONE      = $0F2233; // #33220F (Dark Amber Tint)
+  CLR_CARD_SURFACE   = $201616; // #161620
+  CLR_PILL_INACTIVE  = $261C1C; // #1C1C26
+  CLR_PILL_DONE      = $12283D; // #3D2812 (Dark Amber Tint)
   CLR_AMBER_PRIMARY  = $0095FF; // #FF9500 (Cinema Amber)
   CLR_AMBER_LIGHT    = $47B3FF; // #FFB347 (Warm Gold)
   CLR_TEXT_WHITE     = $FAF8F8; // #F8F8FA
   CLR_TEXT_SLATE     = $DCE4E4; // #E4E4DC
-  CLR_TEXT_MUTED     = $827878; // #787882
+  CLR_TEXT_MUTED     = $9E9494; // #94949E
 
 function SetTimer(hWnd: HWND; nIDEvent, uElapse: UINT; lpTimerFunc: LongWord): UINT;
   external 'SetTimer@user32.dll stdcall';
 function KillTimer(hWnd: HWND; uIDEvent: UINT): BOOL;
   external 'KillTimer@user32.dll stdcall';
+function GetDC(hWnd: HWND): THandle;
+  external 'GetDC@user32.dll stdcall';
+function ReleaseDC(hWnd: HWND; hDC: THandle): Integer;
+  external 'ReleaseDC@user32.dll stdcall';
 function BitBlt(DestDC: THandle; X, Y, Width, Height: Integer; SrcDC: THandle; XSrc, YSrc: Integer; Rop: DWORD): BOOL;
   external 'BitBlt@gdi32.dll stdcall';
+function StretchBlt(DestDC: THandle; X, Y, Width, Height: Integer; SrcDC: THandle; XSrc, YSrc, SrcWidth, SrcHeight: Integer; Rop: DWORD): BOOL;
+  external 'StretchBlt@gdi32.dll stdcall';
+function SetStretchBltMode(DC: THandle; StretchMode: Integer): Integer;
+  external 'SetStretchBltMode@gdi32.dll stdcall';
 
 var
   KeepDataChecked: Boolean;
@@ -176,6 +185,7 @@ var
   StepPanels: array[1..4] of TPanel;
   StepLabels: array[1..4] of TNewStaticText;
 
+  MarqueePanel: TPanel;
   MarqueeImg: TBitmapImage;
   StripBmp: TBitmap;
   BufferBmp: TBitmap;
@@ -187,15 +197,16 @@ var
   CurrentSubText: String;
   CurrentWizardPageID: Integer;
 
-procedure RenderMarqueeFrame();
+procedure RenderMarqueeFrame(SyncToImageControl: Boolean);
 var
   SubTextToDraw: String;
   CycleIdx: Integer;
+  DestDC: THandle;
 begin
-  if (StripBmp = nil) or (BufferBmp = nil) or (MarqueeImg = nil) then
+  if (StripBmp = nil) or (BufferBmp = nil) or (MarqueePanel = nil) then
     Exit;
 
-  // Salin potongan poster film sebesar 700x160 dari StripBmp via GDI BitBlt (SRCCOPY = $00CC0020)
+  // 1. Salin potongan poster film sebesar 700x160 dari StripBmp ke BufferBmp di RAM (SRCCOPY = $00CC0020)
   BitBlt(
     BufferBmp.Canvas.Handle,
     0,
@@ -208,7 +219,7 @@ begin
     $00CC0020
   );
 
-  // Saat proses instalasi berjalan, rotasikan teks highlight fitur setiap ~3.5 detik
+  // Saat proses instalasi berjalan, rotasikan teks highlight fitur setiap ~4 detik
   SubTextToDraw := CurrentSubText;
   if CurrentWizardPageID = wpInstalling then
   begin
@@ -224,7 +235,7 @@ begin
   BufferBmp.Canvas.Brush.Style := bsClear;
   BufferBmp.Canvas.Font.Name := 'Segoe UI';
 
-  // 1. Label Kategori / Step Tag (Cinema Amber Bold)
+  // 2. Label Kategori / Step Tag (Cinema Amber Bold)
   BufferBmp.Canvas.Font.Size := 8;
   BufferBmp.Canvas.Font.Style := [fsBold];
   BufferBmp.Canvas.Font.Color := $000000;
@@ -232,7 +243,7 @@ begin
   BufferBmp.Canvas.Font.Color := CLR_AMBER_PRIMARY;
   BufferBmp.Canvas.TextOut(26, 64, CurrentTagText);
 
-  // 2. Judul Utama Halaman (Putih Tebal dengan Drop Shadow Halus)
+  // 3. Judul Utama Halaman (Putih Tebal dengan Drop Shadow Halus)
   BufferBmp.Canvas.Font.Size := 16;
   BufferBmp.Canvas.Font.Style := [fsBold];
   BufferBmp.Canvas.Font.Color := $000000;
@@ -240,7 +251,7 @@ begin
   BufferBmp.Canvas.Font.Color := CLR_TEXT_WHITE;
   BufferBmp.Canvas.TextOut(26, 84, CurrentTitleText);
 
-  // 3. Subjudul Deskripsi Halaman (Slate Terang)
+  // 4. Subjudul Deskripsi Halaman (Slate Terang)
   BufferBmp.Canvas.Font.Size := 9;
   BufferBmp.Canvas.Font.Style := [];
   BufferBmp.Canvas.Font.Color := $000000;
@@ -248,14 +259,41 @@ begin
   BufferBmp.Canvas.Font.Color := CLR_TEXT_SLATE;
   BufferBmp.Canvas.TextOut(26, 118, SubTextToDraw);
 
-  MarqueeImg.Bitmap.Assign(BufferBmp);
+  // 5. Hanya assign ke TBitmapImage saat perpindahan halaman (untuk fallback WM_PAINT),
+  //    sedangkan saat animasi timer gunakan direct GDI StretchBlt ke HWND MarqueePanel
+  //    agar TIDAK memicu WM_ERASEBKGND yang menyebabkan efek berkedip (flicker)!
+  if SyncToImageControl and (MarqueeImg <> nil) then
+    MarqueeImg.Bitmap.Assign(BufferBmp);
+
+  if MarqueePanel.Handle <> 0 then
+  begin
+    DestDC := GetDC(MarqueePanel.Handle);
+    if DestDC <> 0 then
+    begin
+      SetStretchBltMode(DestDC, 3); // COLORONCOLOR
+      StretchBlt(
+        DestDC,
+        0,
+        0,
+        MarqueePanel.Width,
+        MarqueePanel.Height,
+        BufferBmp.Canvas.Handle,
+        0,
+        0,
+        MARQUEE_VIEW_W,
+        MARQUEE_VIEW_H,
+        $00CC0020
+      );
+      ReleaseDC(MarqueePanel.Handle, DestDC);
+    end;
+  end;
 end;
 
 procedure OnMarqueeTimer(hWnd: HWND; uMsg: UINT; idEvent: UINT; dwTime: DWORD);
 begin
   MarqueeOffsetX := (MarqueeOffsetX + 1) mod MARQUEE_TILE_W;
   MarqueeTickCount := MarqueeTickCount + 1;
-  RenderMarqueeFrame();
+  RenderMarqueeFrame(False);
 end;
 
 procedure UpdateStepIndicators(ActiveStep: Integer);
@@ -269,6 +307,7 @@ begin
       Continue;
 
     BaseCaption := CustomMessage('Step' + IntToStr(I));
+    StepPanels[I].StyleElements := StepPanels[I].StyleElements - [seClient, seBorder];
     StepLabels[I].StyleElements := StepLabels[I].StyleElements - [seFont];
 
     if I = ActiveStep then
@@ -297,7 +336,8 @@ end;
 
 procedure InitializeWizard();
 var
-  HeaderH, TopBarH, MarqueeH, DeltaH: Integer;
+  HeaderH, TopBarH, MarqueeH: Integer;
+  OrigInnerH, OldOuterBottom, NewOuterBottom, ExtraWindowH: Integer;
   PillW, PillH, PillGap, RightEdge, I: Integer;
   FooterBrandLbl: TNewStaticText;
 begin
@@ -306,29 +346,48 @@ begin
   ExtractTemporaryFile('brand_logo.bmp');
 
   TopBarH := ScaleY(42);
-  MarqueeH := ScaleY(144);
+  MarqueeH := ScaleY(138);
   HeaderH := TopBarH + MarqueeH;
-  DeltaH := HeaderH - WizardForm.MainPanel.Height;
 
-  // Sembunyikan header putih/bawaan Inno Setup
+  // Simpan tinggi asli InnerNotebook agar seluruh kontrol di dalamnya
+  // (LicenseMemo, RadioButton Setuju, DirEdit, TasksList, ProgressBar)
+  // TIDAK PERNAH mengecil atau tergeser keluar layar oleh VCL Anchors!
+  OrigInnerH := WizardForm.InnerNotebook.Height;
+  OldOuterBottom := WizardForm.OuterNotebook.Top + WizardForm.OuterNotebook.Height;
+
+  // Lepaskan sementara akBottom pada OuterNotebook & InnerNotebook sebelum mengubah ukuran
+  WizardForm.OuterNotebook.Anchors := [akLeft, akTop, akRight];
+  WizardForm.InnerNotebook.Anchors := [akLeft, akTop, akRight];
+
+  // Sembunyikan header bawaan Inno Setup
   WizardForm.MainPanel.Visible := False;
   WizardForm.Bevel.Visible := False;
   WizardForm.WizardBitmapImage.Visible := False;
   WizardForm.WizardBitmapImage2.Visible := False;
 
-  // Perbesar tinggi jendela agar ruang halaman konten di bawah Marquee tetap lega
-  WizardForm.ClientHeight := WizardForm.ClientHeight + DeltaH;
+  // Posisikan InnerNotebook di bagian atas OuterNotebook dengan tinggi asli 100% utuh
+  WizardForm.InnerNotebook.Top := ScaleY(10);
+  WizardForm.InnerNotebook.Height := OrigInnerH;
 
-  // Geser area konten utama (OuterNotebook) tepat di bawah Marquee Header
+  // Posisikan OuterNotebook tepat di bawah HeaderPanel
   WizardForm.OuterNotebook.Top := HeaderH;
-  WizardForm.OuterNotebook.Height := WizardForm.Bevel1.Top - HeaderH;
-  WizardForm.InnerNotebook.Top := ScaleY(12);
-  WizardForm.InnerNotebook.Height := WizardForm.OuterNotebook.Height - ScaleY(20);
+  WizardForm.OuterNotebook.Height := WizardForm.InnerNotebook.Top + OrigInnerH + ScaleY(10);
 
-  // Warna latar belakang Obsidian & Charcoal
+  // Perbesar tinggi jendela sebesar selisih batas bawah OuterNotebook baru vs lama
+  // (Tombol Next, Back, dan Cancel otomatis turun karena memiliki akBottom)
+  NewOuterBottom := WizardForm.OuterNotebook.Top + WizardForm.OuterNotebook.Height;
+  ExtraWindowH := NewOuterBottom - OldOuterBottom;
+  if ExtraWindowH > 0 then
+    WizardForm.ClientHeight := WizardForm.ClientHeight + ExtraWindowH;
+
+  // Kembalikan Anchors seperti semula setelah posisi final terkunci
+  WizardForm.InnerNotebook.Anchors := [akLeft, akTop, akRight, akBottom];
+  WizardForm.OuterNotebook.Anchors := [akLeft, akTop, akRight, akBottom];
+
+  // Warna latar belakang Obsidian & penegasan tampilan halaman Lisensi
   WizardForm.Color := CLR_CHARCOAL_BODY;
   WizardForm.LicenseMemo.Color := CLR_CARD_SURFACE;
-  WizardForm.LicenseMemo.BorderStyle := bsNone;
+  WizardForm.LicenseAcceptedRadio.Font.Style := [fsBold];
 
   // ── 1. Panel Induk Header (TopBrandBar + Poster Wall Marquee) ──
   HeaderPanel := TPanel.Create(WizardForm);
@@ -337,8 +396,10 @@ begin
   HeaderPanel.Top := 0;
   HeaderPanel.Width := WizardForm.ClientWidth;
   HeaderPanel.Height := HeaderH;
+  HeaderPanel.Anchors := [akLeft, akTop, akRight];
   HeaderPanel.BevelOuter := bvNone;
   HeaderPanel.ParentBackground := False;
+  HeaderPanel.StyleElements := HeaderPanel.StyleElements - [seClient, seBorder];
   HeaderPanel.Color := CLR_OBSIDIAN_BG;
 
   // ── 2. Top Brand & 4-Step Progress Bar ──
@@ -348,8 +409,10 @@ begin
   TopBrandBar.Top := 0;
   TopBrandBar.Width := HeaderPanel.Width;
   TopBrandBar.Height := TopBarH;
+  TopBrandBar.Anchors := [akLeft, akTop, akRight];
   TopBrandBar.BevelOuter := bvNone;
   TopBrandBar.ParentBackground := False;
+  TopBrandBar.StyleElements := TopBrandBar.StyleElements - [seClient, seBorder];
   TopBrandBar.Color := CLR_OBSIDIAN_BG;
 
   BrandLogoImg := TBitmapImage.Create(TopBrandBar);
@@ -397,8 +460,10 @@ begin
     StepPanels[I].Height := PillH;
     StepPanels[I].Left := RightEdge - ((4 - I + 1) * PillW) - ((4 - I) * PillGap);
     StepPanels[I].Top := (TopBarH - PillH) div 2;
+    StepPanels[I].Anchors := [akTop, akRight];
     StepPanels[I].BevelOuter := bvNone;
     StepPanels[I].ParentBackground := False;
+    StepPanels[I].StyleElements := StepPanels[I].StyleElements - [seClient, seBorder];
     StepPanels[I].Color := CLR_PILL_INACTIVE;
 
     StepLabels[I] := TNewStaticText.Create(StepPanels[I]);
@@ -411,10 +476,11 @@ begin
     StepLabels[I].Alignment := taCenter;
     StepLabels[I].Font.Name := 'Segoe UI';
     StepLabels[I].Font.Size := 8;
+    StepLabels[I].StyleElements := StepLabels[I].StyleElements - [seFont];
     StepLabels[I].Caption := CustomMessage('Step' + IntToStr(I));
   end;
 
-  // ── 3. Animated Cinema Poster Wall Marquee ──
+  // ── 3. Animated Cinema Poster Wall Marquee (Zero-Flicker Dedicated HWND Panel) ──
   StripBmp := TBitmap.Create();
   StripBmp.LoadFromFile(ExpandConstant('{tmp}\marquee_strip.bmp'));
 
@@ -422,12 +488,25 @@ begin
   BufferBmp.Width := MARQUEE_VIEW_W;
   BufferBmp.Height := MARQUEE_VIEW_H;
 
-  MarqueeImg := TBitmapImage.Create(HeaderPanel);
-  MarqueeImg.Parent := HeaderPanel;
+  MarqueePanel := TPanel.Create(HeaderPanel);
+  MarqueePanel.Parent := HeaderPanel;
+  MarqueePanel.Left := 0;
+  MarqueePanel.Top := TopBarH;
+  MarqueePanel.Width := HeaderPanel.Width;
+  MarqueePanel.Height := MarqueeH;
+  MarqueePanel.Anchors := [akLeft, akTop, akRight];
+  MarqueePanel.BevelOuter := bvNone;
+  MarqueePanel.ParentBackground := False;
+  MarqueePanel.StyleElements := MarqueePanel.StyleElements - [seClient, seBorder];
+  MarqueePanel.Color := CLR_OBSIDIAN_BG;
+
+  MarqueeImg := TBitmapImage.Create(MarqueePanel);
+  MarqueeImg.Parent := MarqueePanel;
   MarqueeImg.Left := 0;
-  MarqueeImg.Top := TopBarH;
-  MarqueeImg.Width := HeaderPanel.Width;
-  MarqueeImg.Height := MarqueeH;
+  MarqueeImg.Top := 0;
+  MarqueeImg.Width := MarqueePanel.Width;
+  MarqueeImg.Height := MarqueePanel.Height;
+  MarqueeImg.Anchors := [akLeft, akTop, akRight, akBottom];
   MarqueeImg.Stretch := True;
 
   // ── 4. Tata Ulang Halaman Selesai (FinishedPage) Agar Selaras di Bawah Marquee ──
@@ -451,6 +530,7 @@ begin
   FooterBrandLbl.Parent := WizardForm;
   FooterBrandLbl.Left := ScaleX(24);
   FooterBrandLbl.Top := WizardForm.CancelButton.Top + (WizardForm.CancelButton.Height - ScaleY(14)) div 2;
+  FooterBrandLbl.Anchors := [akLeft, akBottom];
   FooterBrandLbl.Caption := CustomMessage('FooterTagline');
   FooterBrandLbl.Font.Name := 'Segoe UI';
   FooterBrandLbl.Font.Size := 8;
@@ -458,7 +538,7 @@ begin
   FooterBrandLbl.StyleElements := FooterBrandLbl.StyleElements - [seFont];
   FooterBrandLbl.Font.Color := CLR_TEXT_MUTED;
 
-  // Mulai animasi Cinema Poster Wall (~35 FPS)
+  // Mulai animasi Cinema Poster Wall (~30 FPS bebas kedip)
   MarqueeOffsetX := 0;
   MarqueeTickCount := 0;
   CurrentWizardPageID := wpLicense;
@@ -466,7 +546,7 @@ begin
   CurrentTitleText := CustomMessage('TitleLicense');
   CurrentSubText := CustomMessage('SubLicense');
   UpdateStepIndicators(1);
-  RenderMarqueeFrame();
+  RenderMarqueeFrame(True);
 
   SetTimer(WizardForm.Handle, MARQUEE_TIMER_ID, MARQUEE_INTERVAL_MS, CreateCallback(@OnMarqueeTimer));
 end;
@@ -513,7 +593,7 @@ begin
       end;
   end;
 
-  RenderMarqueeFrame();
+  RenderMarqueeFrame(True);
 end;
 
 procedure DeinitializeSetup();
@@ -557,6 +637,7 @@ begin
     HeaderBar.Height := ScaleY(42);
     HeaderBar.BevelOuter := bvNone;
     HeaderBar.ParentBackground := False;
+    HeaderBar.StyleElements := HeaderBar.StyleElements - [seClient, seBorder];
     HeaderBar.Color := CLR_OBSIDIAN_BG;
 
     HeaderTitleLbl := TNewStaticText.Create(HeaderBar);
@@ -578,6 +659,7 @@ begin
     AccentLine.Height := ScaleY(2);
     AccentLine.BevelOuter := bvNone;
     AccentLine.ParentBackground := False;
+    AccentLine.StyleElements := AccentLine.StyleElements - [seClient, seBorder];
     AccentLine.Color := CLR_AMBER_PRIMARY;
 
     PromptLabel := TNewStaticText.Create(CustomForm);
