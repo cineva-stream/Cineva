@@ -190,11 +190,9 @@ class AppStrings {
       isIndonesian ? 'Episode Berikutnya' : 'Next Episode';
   String playerNextEpisodePill(int ep) =>
       isIndonesian ? 'Episode $ep Berikutnya' : 'Next: Episode $ep';
-  String playerNextEpisodeInSecs(int ep, int secs) => isIndonesian
-      ? 'Episode $ep dalam ${secs}d'
-      : 'Episode $ep in ${secs}s';
-  String get playerAutoPlayCancel =>
-      isIndonesian ? 'Batal' : 'Cancel';
+  String playerNextEpisodeInSecs(int ep, int secs) =>
+      isIndonesian ? 'Episode $ep dalam ${secs}d' : 'Episode $ep in ${secs}s';
+  String get playerAutoPlayCancel => isIndonesian ? 'Batal' : 'Cancel';
   String get playerAutoPlayCancelledToast => isIndonesian
       ? 'Putar otomatis episode berikutnya dibatalkan'
       : 'Auto-play next episode cancelled';
@@ -202,8 +200,7 @@ class AppStrings {
       isIndonesian ? 'Ep $ep Lanjut' : 'Next Ep $ep';
   String get playerHold2xSpeedBadge =>
       isIndonesian ? '2.0x Kecepatan Ganda' : '2.0x Fast Forward';
-  String get playerLockScreen =>
-      isIndonesian ? 'Kunci Layar' : 'Lock Screen';
+  String get playerLockScreen => isIndonesian ? 'Kunci Layar' : 'Lock Screen';
   String get playerLockScreenToast => isIndonesian
       ? 'Layar dikunci • Sentuhan tidak sengaja dinonaktifkan'
       : 'Screen locked • Accidental touches disabled';
@@ -222,21 +219,17 @@ class AppStrings {
       isIndonesian ? 'Kunci layar dibuka' : 'Screen unlocked';
   String get playerSleepTimerTitle =>
       isIndonesian ? 'Pengatur Waktu Tidur' : 'Sleep Timer';
-  String get playerSleepTimerOff =>
-      isIndonesian ? 'Matikan Timer' : 'Off';
+  String get playerSleepTimerOff => isIndonesian ? 'Matikan Timer' : 'Off';
   String playerSleepTimerMinutes(int min) =>
       isIndonesian ? '$min Menit' : '$min Minutes';
   String get playerSleepTimerEndOfEpisode =>
       isIndonesian ? 'Akhir Episode / Film' : 'End of Episode / Movie';
-  String playerSleepTimerActiveToast(String label) => isIndonesian
-      ? 'Sleep Timer aktif: $label'
-      : 'Sleep Timer set: $label';
-  String get playerSleepTimerDisabledToast => isIndonesian
-      ? 'Sleep Timer dimatikan'
-      : 'Sleep Timer turned off';
-  String get playerSleepTimerExpiredTitle => isIndonesian
-      ? 'Waktu Tidur Selesai'
-      : 'Sleep Timer Ended';
+  String playerSleepTimerActiveToast(String label) =>
+      isIndonesian ? 'Sleep Timer aktif: $label' : 'Sleep Timer set: $label';
+  String get playerSleepTimerDisabledToast =>
+      isIndonesian ? 'Sleep Timer dimatikan' : 'Sleep Timer turned off';
+  String get playerSleepTimerExpiredTitle =>
+      isIndonesian ? 'Waktu Tidur Selesai' : 'Sleep Timer Ended';
   String get playerSleepTimerExpiredDesc => isIndonesian
       ? 'Pemutaran dijeda secara otomatis sesuai pengatur waktu tidur Anda.'
       : 'Playback has been automatically paused by your sleep timer.';
@@ -289,10 +282,8 @@ class AppStrings {
   String playerPreparingEpisode(int ep) =>
       isIndonesian ? 'Menyiapkan Episode $ep...' : 'Preparing Episode $ep...';
 
-  String get playerInfoTitle =>
-      isIndonesian ? 'Informasi' : 'Information';
-  String get playerSynopsisTitle =>
-      isIndonesian ? 'Sinopsis' : 'Synopsis';
+  String get playerInfoTitle => isIndonesian ? 'Informasi' : 'Information';
+  String get playerSynopsisTitle => isIndonesian ? 'Sinopsis' : 'Synopsis';
   String get playerNoSynopsis => isIndonesian
       ? 'Tidak Ada Sinopsis Untuk Film Ini atau Episode Ini'
       : 'No Synopsis Available for this Movie or Episode';
@@ -338,8 +329,7 @@ class AppStrings {
   String get playerUploadSubtitleFailed => isIndonesian
       ? 'Gagal membaca file subtitle'
       : 'Failed to load subtitle file';
-  String get playerCustomSubtitleTag =>
-      isIndonesian ? 'Kustom' : 'Custom';
+  String get playerCustomSubtitleTag => isIndonesian ? 'Kustom' : 'Custom';
   String get playerDisableSubtitle =>
       isIndonesian ? 'Matikan Subtitle' : 'Disable Subtitles';
   String get playerNoSubtitleFound =>
@@ -357,8 +347,7 @@ class AppStrings {
   String get playerSubSettingsTitle =>
       isIndonesian ? 'Pengaturan Subtitle' : 'Subtitle Settings';
   String get playerTabSync => isIndonesian ? 'Waktu (Sync)' : 'Timing (Sync)';
-  String get playerTabAppearance =>
-      isIndonesian ? 'Tampilan' : 'Appearance';
+  String get playerTabAppearance => isIndonesian ? 'Tampilan' : 'Appearance';
   String get playerSyncOnTime =>
       isIndonesian ? 'Tepat Waktu (0.00s)' : 'On Time (0.00s)';
   String get playerSyncDefault =>
@@ -406,15 +395,13 @@ class AppStrings {
   String get playerError =>
       isIndonesian ? 'Gagal memutar video' : 'Failed to play video';
   String get playerRetry => isIndonesian ? 'Coba Lagi' : 'Retry';
-  String get playerStreamNotFoundTitle => isIndonesian
-      ? 'Sumber Video Belum Tersedia'
-      : 'Stream Not Available';
+  String get playerStreamNotFoundTitle =>
+      isIndonesian ? 'Sumber Video Belum Tersedia' : 'Stream Not Available';
   String get playerStreamNotFoundMessage => isIndonesian
       ? 'Film ini mungkin masih tayang di bioskop atau belum memiliki rilis digital di server streaming.'
       : 'This title may still be in theaters or does not have a digital release available yet on streaming servers.';
-  String get playerStreamNotFoundChooseServer => isIndonesian
-      ? 'Pilih Server Lain'
-      : 'Choose Another Server';
+  String get playerStreamNotFoundChooseServer =>
+      isIndonesian ? 'Pilih Server Lain' : 'Choose Another Server';
   String get playerSubActive =>
       isIndonesian ? 'Subtitle aktif' : 'Subtitle active';
   String get playerSubAutoTranslated => isIndonesian
@@ -459,8 +446,7 @@ class AppStrings {
       ? 'Unduhan dimulai! Ketuk ikon Unduhan di AppBar untuk melihat proses.'
       : 'Download started! Tap the Downloads icon in the AppBar to view progress.';
   String get downloadModalViewToast => isIndonesian ? 'Lihat' : 'View';
-  String get downloadModalNextSub =>
-      isIndonesian ? 'Lanjut' : 'Next';
+  String get downloadModalNextSub => isIndonesian ? 'Lanjut' : 'Next';
   String get downloadModalMovie => isIndonesian ? 'Film' : 'Movie';
   String get downloadModalTv => isIndonesian ? 'Serial TV' : 'TV Series';
   String get downloadSheetQualityTitle =>
@@ -878,8 +864,7 @@ class AppStrings {
       : 'Explore original movies & series';
 
   // ── Airing Calendar ──
-  String get calendarTitle =>
-      isIndonesian ? 'Jadwal Rilis' : 'Airing Calendar';
+  String get calendarTitle => isIndonesian ? 'Jadwal Rilis' : 'Airing Calendar';
   String get calendarSubtitle => isIndonesian
       ? 'Jadwal tayang serial TV & Anime hari ini dan minggu ini'
       : 'TV series & anime release schedule for today and this week';
@@ -890,7 +875,8 @@ class AppStrings {
   String get calendarFilterAnime => isIndonesian ? 'Anime' : 'Anime';
   String get calendarFilterKdrama => isIndonesian ? 'K-Drama' : 'K-Drama';
   String get calendarFilterWestern => isIndonesian ? 'Barat' : 'Western';
-  String get calendarFilterIndonesian => isIndonesian ? 'Indonesia' : 'Indonesia';
+  String get calendarFilterIndonesian =>
+      isIndonesian ? 'Indonesia' : 'Indonesia';
   String get calendarNoShows => isIndonesian
       ? 'Tidak ada episode tayang untuk tanggal ini'
       : 'No episodes scheduled for this date';
@@ -910,8 +896,7 @@ class AppStrings {
   // ── In-App Official Trailer ──
   String get trailerTitle =>
       isIndonesian ? 'Trailer Resmi' : 'Official Trailer';
-  String get trailerWatch =>
-      isIndonesian ? 'Tonton Trailer' : 'Watch Trailer';
+  String get trailerWatch => isIndonesian ? 'Tonton Trailer' : 'Watch Trailer';
   String get trailerUnavailable => isIndonesian
       ? 'Trailer resmi belum tersedia'
       : 'Official trailer not available';
@@ -930,7 +915,8 @@ class AppStrings {
   String get personReadLess => isIndonesian ? 'Sembunyikan' : 'Show Less';
   String get personBorn => isIndonesian ? 'Lahir' : 'Born';
   String get personDied => isIndonesian ? 'Wafat' : 'Died';
-  String get personBirthPlace => isIndonesian ? 'Tempat Lahir' : 'Place of Birth';
+  String get personBirthPlace =>
+      isIndonesian ? 'Tempat Lahir' : 'Place of Birth';
   String get personKnownFor => isIndonesian ? 'Dikenal Atas' : 'Known For';
   String get personActing => isIndonesian ? 'Pemeran / Akting' : 'Acting';
   String get personDirecting => isIndonesian ? 'Penyutradaraan' : 'Directing';
@@ -963,16 +949,18 @@ class AppStrings {
       isIndonesian ? 'Segera Hadir' : 'Coming Soon';
 
   // ── Coming Soon / Release Radar ──
-  String get upcomingTitle =>
-      isIndonesian ? 'Segera Hadir' : 'Coming Soon';
+  String get upcomingTitle => isIndonesian ? 'Segera Hadir' : 'Coming Soon';
   String get upcomingSubtitle => isIndonesian
       ? 'Daftar film bioskop & serial TV yang paling dinantikan'
       : 'Most anticipated upcoming movies & TV shows';
   String get upcomingFilterAll => isIndonesian ? 'Semua' : 'All';
   String get upcomingFilterMovies => isIndonesian ? 'Film Bioskop' : 'Movies';
-  String get upcomingFilterTv => isIndonesian ? 'Serial TV & Anime' : 'TV Shows';
-  String get upcomingReleasedToday => isIndonesian ? 'Rilis Hari Ini' : 'Releases Today';
-  String get upcomingTomorrow => isIndonesian ? 'Rilis Besok' : 'Releases Tomorrow';
+  String get upcomingFilterTv =>
+      isIndonesian ? 'Serial TV & Anime' : 'TV Shows';
+  String get upcomingReleasedToday =>
+      isIndonesian ? 'Rilis Hari Ini' : 'Releases Today';
+  String get upcomingTomorrow =>
+      isIndonesian ? 'Rilis Besok' : 'Releases Tomorrow';
   String upcomingInDays(int days) =>
       isIndonesian ? '$days Hari Lagi' : 'In $days Days';
   String get upcomingNoMedia => isIndonesian
@@ -989,8 +977,9 @@ class AppStrings {
       isIndonesian ? 'Bagian dari Semesta' : 'Part of Universe';
   String get tvUniverseWatchOrder =>
       isIndonesian ? 'Panduan Urutan Nonton' : 'Watch Order Guide';
-  String get tvUniverseViewGuide =>
-      isIndonesian ? 'Lihat Panduan Urutan Nonton →' : 'View Watch Order Guide →';
+  String get tvUniverseViewGuide => isIndonesian
+      ? 'Lihat Panduan Urutan Nonton →'
+      : 'View Watch Order Guide →';
   String tvUniverseOrderNumber(int index, int total) => isIndonesian
       ? 'Urutan #$index dari $total Serial'
       : 'Watch Order #$index of $total Series';
@@ -1002,7 +991,8 @@ class AppStrings {
   String get tvUniversePrequel => isIndonesian ? 'Prekuel' : 'Prequel';
   String get tvUniverseSequel => isIndonesian ? 'Sekuel' : 'Sequel';
   String get tvUniverseSpinoff => isIndonesian ? 'Spin-off' : 'Spin-off';
-  String get tvUniverseViewSeries => isIndonesian ? 'Buka Serial' : 'View Series';
+  String get tvUniverseViewSeries =>
+      isIndonesian ? 'Buka Serial' : 'View Series';
   String get tvUniverseChronologicalOrder =>
       isIndonesian ? 'Urutan Cerita Rekomendasi' : 'Recommended Story Order';
 
@@ -1031,14 +1021,17 @@ class AppStrings {
       isIndonesian ? 'Masuk sebagai Tamu' : 'Continue as Guest';
   String get tvSyncManualPcSetup =>
       isIndonesian ? 'Setup Manual di PC' : 'Manual PC Setup';
-  String get tvSyncWaitingScan =>
-      isIndonesian ? 'Menunggu pemindaian ponsel...' : 'Waiting for smartphone scan...';
-  String get tvSyncReceiving =>
-      isIndonesian ? 'Menerima profil dari ponsel...' : 'Receiving profile from phone...';
+  String get tvSyncWaitingScan => isIndonesian
+      ? 'Menunggu pemindaian ponsel...'
+      : 'Waiting for smartphone scan...';
+  String get tvSyncReceiving => isIndonesian
+      ? 'Menerima profil dari ponsel...'
+      : 'Receiving profile from phone...';
   String tvSyncAlternativeCode(String code) =>
       isIndonesian ? 'Kode Alternatif: $code' : 'Alternative Code: $code';
-  String get tvSyncSuccessTitle =>
-      isIndonesian ? 'Profil Berhasil Ditautkan!' : 'Profile Linked Successfully!';
+  String get tvSyncSuccessTitle => isIndonesian
+      ? 'Profil Berhasil Ditautkan!'
+      : 'Profile Linked Successfully!';
   String tvSyncWelcomeUser(String name) =>
       isIndonesian ? 'Selamat Datang, $name' : 'Welcome, $name';
   String get tvSyncDefaultUser =>
@@ -1059,13 +1052,15 @@ class AppStrings {
   String get scannerInstructions => isIndonesian
       ? 'Arahkan kamera ke QR Code di layar Android TV atau Windows PC Anda.'
       : 'Point your camera at the QR code on your Android TV or Windows PC screen.';
-  String get scannerManualEntryBtn =>
-      isIndonesian ? 'Masukkan Kode Pairing Manual' : 'Enter Pairing Code Manually';
+  String get scannerManualEntryBtn => isIndonesian
+      ? 'Masukkan Kode Pairing Manual'
+      : 'Enter Pairing Code Manually';
   String get scannerConnecting =>
       isIndonesian ? 'Menghubungkan ke layar...' : 'Connecting to screen...';
   String scannerSending(String name) =>
       isIndonesian ? 'Mengirim profil $name...' : 'Sending profile $name...';
-  String scannerSendingData(String name, int watchlist, int history) => isIndonesian
+  String scannerSendingData(String name, int watchlist, int history) =>
+      isIndonesian
       ? 'Mengirim profil $name ($watchlist watchlist, $history riwayat)...'
       : 'Sending profile $name ($watchlist watchlist, $history history)...';
   String scannerSuccessDetailed(int watchlist, int history) => isIndonesian
@@ -1093,12 +1088,14 @@ class AppStrings {
       isIndonesian ? 'Secret Key (Base64)' : 'Secret Key (Base64)';
   String get scannerSendBtn => isIndonesian ? 'Kirim' : 'Send';
   String get scannerCancelBtn => isIndonesian ? 'Batal' : 'Cancel';
-  String get scannerDoNotClose =>
-      isIndonesian ? 'Harap jangan menutup aplikasi' : 'Please do not close the app';
+  String get scannerDoNotClose => isIndonesian
+      ? 'Harap jangan menutup aplikasi'
+      : 'Please do not close the app';
 
   // Settings Tile
-  String get settingsSyncTvTitle =>
-      isIndonesian ? 'Tautkan ke Android TV / PC' : 'Connect to Android TV / PC';
+  String get settingsSyncTvTitle => isIndonesian
+      ? 'Tautkan ke Android TV / PC'
+      : 'Connect to Android TV / PC';
   String get settingsSyncTvSubtitle => isIndonesian
       ? 'Pindai QR di layar TV atau PC untuk kirim profil (Wi-Fi / 4G)'
       : 'Scan QR on TV or PC screen to send profile (Wi-Fi / 4G)';
@@ -1118,57 +1115,46 @@ class AppStrings {
   String get backupImportDesc => isIndonesian
       ? 'Impor & pulihkan data dari file .cineva sebelumnya'
       : 'Import & restore data from a previously saved .cineva file';
-  String get backupCreating => isIndonesian
-      ? 'Membuat file cadangan...'
-      : 'Creating backup file...';
-  String get backupExportSuccess => isIndonesian
-      ? 'Cadangan berhasil disimpan'
-      : 'Backup saved successfully';
+  String get backupCreating =>
+      isIndonesian ? 'Membuat file cadangan...' : 'Creating backup file...';
+  String get backupExportSuccess =>
+      isIndonesian ? 'Cadangan berhasil disimpan' : 'Backup saved successfully';
   String get backupExportFailed => isIndonesian
       ? 'Gagal menyimpan file cadangan'
       : 'Failed to save backup file';
-  String get backupImporting => isIndonesian
-      ? 'Memulihkan data...'
-      : 'Restoring data...';
+  String get backupImporting =>
+      isIndonesian ? 'Memulihkan data...' : 'Restoring data...';
   String backupImportSuccessSummary(int watchlist, int history) => isIndonesian
       ? 'Berhasil memulihkan $watchlist watchlist dan $history riwayat tontonan.'
       : 'Successfully restored $watchlist watchlist items and $history watch history records.';
   String get backupImportFailed => isIndonesian
       ? 'Gagal memulihkan file cadangan. Format tidak valid atau rusak.'
       : 'Failed to restore backup file. Invalid format or corrupted.';
-  String get backupConfirmRestoreTitle => isIndonesian
-      ? 'Pulihkan Data Cadangan?'
-      : 'Restore Backup Data?';
+  String get backupConfirmRestoreTitle =>
+      isIndonesian ? 'Pulihkan Data Cadangan?' : 'Restore Backup Data?';
   String backupConfirmRestoreDesc(int watchlist, int history) => isIndonesian
       ? 'Ditemukan $watchlist item watchlist dan $history riwayat tontonan. Terapkan data ini ke aplikasi?'
       : 'Found $watchlist watchlist items and $history watch history records. Apply this data to the app?';
   String get backupApplyBtn => isIndonesian ? 'Terapkan' : 'Apply';
 
   // Google Cloud Sync
-  String get googleSignInTitle => isIndonesian
-      ? 'Masuk dengan Google'
-      : 'Sign in with Google';
+  String get googleSignInTitle =>
+      isIndonesian ? 'Masuk dengan Google' : 'Sign in with Google';
   String get googleSignInSubtitle => isIndonesian
       ? 'Sinkronisasi otomatis riwayat & watchlist antar perangkat'
       : 'Automatic cloud sync for history & watchlist across devices';
-  String get googleConnectTitle => isIndonesian
-      ? 'Hubungkan Akun Google'
-      : 'Connect Google Account';
+  String get googleConnectTitle =>
+      isIndonesian ? 'Hubungkan Akun Google' : 'Connect Google Account';
   String get googleConnectDesc => isIndonesian
       ? 'Sinkronkan data profil, riwayat, dan watchlist otomatis ke Google Cloud'
       : 'Sync profile, watch history, and watchlist automatically to Google Cloud';
-  String get googleConnectedStatus => isIndonesian
-      ? 'Tersambung ke Google'
-      : 'Connected to Google';
-  String googleConnectedAs(String email) => isIndonesian
-      ? 'Tersinkronisasi sebagai $email'
-      : 'Synced as $email';
-  String get googleSyncNow => isIndonesian
-      ? 'Sinkronkan Sekarang'
-      : 'Sync Now';
-  String get googleDisconnect => isIndonesian
-      ? 'Putuskan Sambungan'
-      : 'Disconnect';
+  String get googleConnectedStatus =>
+      isIndonesian ? 'Tersambung ke Google' : 'Connected to Google';
+  String googleConnectedAs(String email) =>
+      isIndonesian ? 'Tersinkronisasi sebagai $email' : 'Synced as $email';
+  String get googleSyncNow => isIndonesian ? 'Sinkronkan Sekarang' : 'Sync Now';
+  String get googleDisconnect =>
+      isIndonesian ? 'Putuskan Sambungan' : 'Disconnect';
   String get googleSyncing => isIndonesian
       ? 'Menyinkronkan ke Google Cloud...'
       : 'Syncing to Google Cloud...';
@@ -1178,18 +1164,16 @@ class AppStrings {
   String get googleSyncFailed => isIndonesian
       ? 'Gagal menyinkronkan data ke Google Cloud'
       : 'Failed to sync data to Google Cloud';
-  String get googleDisconnectConfirmTitle => isIndonesian
-      ? 'Putuskan Akun Google?'
-      : 'Disconnect Google Account?';
+  String get googleDisconnectConfirmTitle =>
+      isIndonesian ? 'Putuskan Akun Google?' : 'Disconnect Google Account?';
   String get googleDisconnectConfirmDesc => isIndonesian
       ? 'Data lokal Anda tetap aman, namun sinkronisasi otomatis antar perangkat akan dinonaktifkan.'
       : 'Your local data remains intact, but automatic cross-device sync will be disabled.';
   String get googleDisconnectBtn => isIndonesian ? 'Putuskan' : 'Disconnect';
 
   // Onboarding Start Phase
-  String get onboardingRestoreFromFile => isIndonesian
-      ? 'Pulihkan dari File Cadangan'
-      : 'Restore from Backup File';
+  String get onboardingRestoreFromFile =>
+      isIndonesian ? 'Pulihkan dari File Cadangan' : 'Restore from Backup File';
   String get onboardingRestoreFromFileDesc => isIndonesian
       ? 'Pilih file .cineva yang telah disimpan sebelumnya'
       : 'Select a previously saved .cineva backup file';
@@ -1203,9 +1187,8 @@ class AppStrings {
 
   // ── Download Feature Announcement Modal ──
   String get downloadModalBadge => isIndonesian ? 'FITUR BARU' : 'NEW FEATURE';
-  String get downloadModalPosterHeader => isIndonesian
-      ? 'UNDUH & TONTON OFFLINE'
-      : 'DOWNLOAD & WATCH OFFLINE';
+  String get downloadModalPosterHeader =>
+      isIndonesian ? 'UNDUH & TONTON OFFLINE' : 'DOWNLOAD & WATCH OFFLINE';
   String get downloadModalPosterSubtitle => isIndonesian
       ? 'Tonton film & serial favorit tanpa kuota internet'
       : 'Watch movies & series anytime without internet';
@@ -1218,19 +1201,19 @@ class AppStrings {
   String get downloadModalNote => isIndonesian
       ? 'Catatan: Kami tidak dapat memastikan untuk seluruh film maupun TV series dapat diunduh dikarenakan ketersediaan sumber server pihak ketiga.'
       : 'Note: We cannot guarantee that all movies or TV series can be downloaded due to third-party server and stream availability.';
-  String get downloadModalDontShowAgain => isIndonesian
-      ? 'Jangan tampilkan lagi'
-      : "Don't show again";
-  String get downloadModalCta => isIndonesian
-      ? 'Good Work! (Mengerti)'
-      : 'Good Work!';
+  String get downloadModalDontShowAgain =>
+      isIndonesian ? 'Jangan tampilkan lagi' : "Don't show again";
+  String get downloadModalCta =>
+      isIndonesian ? 'Bagus, Coba Sekarang' : 'Great, Try Now';
 
   // ── Download Finalizing & Season Grouping ──
-  String get downloadStatusFinalizing => isIndonesian ? 'FINALIZING' : 'FINALIZING';
+  String get downloadStatusFinalizing =>
+      isIndonesian ? 'FINALIZING' : 'FINALIZING';
   String get downloadFinalizingHint => isIndonesian
       ? 'Sedang menyatukan segmen offline, jangan tutup aplikasi...'
       : 'Merging offline media segments, please do not close the app...';
-  String get downloadSelectSeason => isIndonesian ? 'Pilih Season:' : 'Select Season:';
+  String get downloadSelectSeason =>
+      isIndonesian ? 'Pilih Season:' : 'Select Season:';
   String downloadAllSeasons(int count) => isIndonesian
       ? 'Semua Season ($count Episode)'
       : 'All Seasons ($count Episodes)';

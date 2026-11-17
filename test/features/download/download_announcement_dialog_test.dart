@@ -107,7 +107,7 @@ void main() {
       expect(find.text('Fitur Unduhan Offline Siap Dicoba!'), findsOneWidget);
       expect(find.textContaining('Catatan: Kami tidak dapat memastikan'), findsOneWidget);
       expect(find.text('Jangan tampilkan lagi'), findsOneWidget);
-      expect(find.text('Good Work! (Mengerti)'), findsOneWidget);
+      expect(find.text('Bagus, Coba Sekarang'), findsOneWidget);
     });
 
     testWidgets('Renders English poster header, title, description, and disclaimer', (tester) async {
@@ -123,7 +123,7 @@ void main() {
       expect(find.text('Offline Downloads Are Ready to Try!'), findsOneWidget);
       expect(find.textContaining('Note: We cannot guarantee'), findsOneWidget);
       expect(find.text("Don't show again"), findsOneWidget);
-      expect(find.text('Good Work!'), findsOneWidget);
+      expect(find.text('Great, Try Now'), findsOneWidget);
     });
 
     testWidgets('Toggles "Don\'t Show Again" checkbox reactively', (tester) async {
