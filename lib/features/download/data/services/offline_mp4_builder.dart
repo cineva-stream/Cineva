@@ -50,11 +50,21 @@ class OfflineMp4Builder {
     }
   }
 
-  static Future<void> _concat(List<File> parts, File target) async {
+  static Future<void> _concat(
+    List<File> parts,
+    File target, {
+    void Function(int current, int total)? onSegmentProgress,
+  }) async {
     final sink = target.openWrite();
     try {
-      for (final f in parts) {
-        await sink.addStream(f.openRead());
+      int lastEmitMs = 0;
+      for (int i = 0; i < parts.length; i++) {
+        await sink.addStream(parts[i].openRead());
+        final now = DateTime.now().millisecondsSinceEpoch;
+        if (now - lastEmitMs >= 250 || i == parts.length - 1) {
+          lastEmitMs = now;
+          onSegmentProgress?.call(i + 1, parts.length);
+        }
       }
       await sink.flush();
     } finally {
@@ -75,6 +85,10 @@ class OfflineMp4Builder {
     int? expectedDurationUs,
     bool deleteSegmentsOnSuccess = true,
     bool respectFailureMarker = false,
+    void Function({
+      required double progress,
+      required String statusMessage,
+    })? onProgress,
   }) async {
     final marker = File('${dir.path}/.mux_failed');
     if (respectFailureMarker && await marker.exists()) return false;
@@ -92,8 +106,14 @@ class OfflineMp4Builder {
     final audioTs = File('${dir.path}/$audioTsName');
 
     if (videoSegments.isEmpty) {
-      if (await isValidMp4(mp4)) return true;
-      if (await videoTs.exists() && (await videoTs.length()) > 50000) return true;
+      if (await isValidMp4(mp4)) {
+        onProgress?.call(progress: 1.0, statusMessage: 'Selesai');
+        return true;
+      }
+      if (await videoTs.exists() && (await videoTs.length()) > 50000) {
+        onProgress?.call(progress: 1.0, statusMessage: 'Selesai');
+        return true;
+      }
       return false;
     }
 
@@ -102,7 +122,22 @@ class OfflineMp4Builder {
       // concatenating init_v.mp4 + fragments directly forms a valid fragmented MP4!
       final isFmp4 = await initVideo.exists();
       if (isFmp4 && audioSegments.isEmpty) {
-        await _concat(<File>[initVideo, ...videoSegments], mp4);
+        onProgress?.call(
+          progress: 0.05,
+          statusMessage: 'Menyatukan segmen media 0/${videoSegments.length}',
+        );
+        await _concat(
+          <File>[initVideo, ...videoSegments],
+          mp4,
+          onSegmentProgress: (cur, tot) {
+            final p = 0.05 + (cur / tot) * 0.80;
+            onProgress?.call(
+              progress: p,
+              statusMessage: 'Menyatukan segmen $cur/$tot',
+            );
+          },
+        );
+        onProgress?.call(progress: 0.90, statusMessage: 'Memvalidasi video...');
         if (await isValidMp4(mp4, expectedDurationUs: expectedDurationUs)) {
           if (deleteSegmentsOnSuccess) {
             for (final f in [...videoSegments, initVideo]) {
@@ -111,6 +146,7 @@ class OfflineMp4Builder {
               } catch (_) {}
             }
           }
+          onProgress?.call(progress: 1.0, statusMessage: 'Selesai');
           debugPrint('[OfflineMp4Builder] Direct fMP4 concatenation validated: ${mp4.path}');
           return true;
         }
@@ -124,21 +160,58 @@ class OfflineMp4Builder {
         if (isFmp4) initVideo,
         ...videoSegments,
       ];
-      await _concat(videoParts, videoTs);
+      final hasAudio = audioSegments.isNotEmpty;
+      final videoMaxP = hasAudio ? 0.45 : 0.65;
+
+      onProgress?.call(
+        progress: 0.02,
+        statusMessage: 'Menyatukan segmen video 0/${videoParts.length}',
+      );
+
+      await _concat(
+        videoParts,
+        videoTs,
+        onSegmentProgress: (cur, tot) {
+          final p = 0.02 + (cur / tot) * (videoMaxP - 0.02);
+          onProgress?.call(
+            progress: p,
+            statusMessage: 'Menyatukan segmen video $cur/$tot',
+          );
+        },
+      );
 
       String? audioPath;
-      if (audioSegments.isNotEmpty) {
+      if (hasAudio) {
         final audioParts = <File>[
           if (await initAudio.exists()) initAudio,
           ...audioSegments,
         ];
-        await _concat(audioParts, audioTs);
+        onProgress?.call(
+          progress: 0.45,
+          statusMessage: 'Menyatukan segmen audio 0/${audioParts.length}',
+        );
+        await _concat(
+          audioParts,
+          audioTs,
+          onSegmentProgress: (cur, tot) {
+            final p = 0.45 + (cur / tot) * 0.20;
+            onProgress?.call(
+              progress: p,
+              statusMessage: 'Menyatukan segmen audio $cur/$tot',
+            );
+          },
+        );
         if (await audioTs.exists() && (await audioTs.length()) > 1000) {
           audioPath = audioTs.path;
         }
       }
 
-      // 2. On Android, attempt native remux to MP4
+      // 3. On Android, attempt native remux to MP4
+      onProgress?.call(
+        progress: 0.70,
+        statusMessage: 'Mengoptimalkan format MP4...',
+      );
+
       bool ok = false;
       if (Platform.isAndroid) {
         ok = await NativeMediaMuxer.muxToMp4(
@@ -148,6 +221,11 @@ class OfflineMp4Builder {
           expectedDurationUs: expectedDurationUs,
         );
       }
+
+      onProgress?.call(
+        progress: 0.90,
+        statusMessage: 'Memvalidasi video...',
+      );
 
       final validMp4 = ok && await isValidMp4(mp4, expectedDurationUs: expectedDurationUs);
       if (validMp4) {
@@ -160,11 +238,12 @@ class OfflineMp4Builder {
         }
         try { if (await videoTs.exists()) await videoTs.delete(); } catch (_) {}
         try { if (await audioTs.exists()) await audioTs.delete(); } catch (_) {}
+        onProgress?.call(progress: 1.0, statusMessage: 'Selesai');
         debugPrint('[OfflineMp4Builder] Validated MP4 successfully built: ${mp4.path}');
         return true;
       }
 
-      // 3. Fallback: MP4 did NOT validate or native mux failed.
+      // 4. Fallback: MP4 did NOT validate or native mux failed.
       // Clean up temporary concat TS and invalid MP4 files so disk space is not wasted.
       // NEVER delete the raw HLS segments! The HLS bundle (master.m3u8 + segments)
       // is preserved intact so LocalStreamServer plays it with 100% reliability.
@@ -172,6 +251,7 @@ class OfflineMp4Builder {
       try { if (await videoTs.exists()) await videoTs.delete(); } catch (_) {}
       try { if (await audioTs.exists()) await audioTs.delete(); } catch (_) {}
       await marker.writeAsString('mux_failed');
+      onProgress?.call(progress: 1.0, statusMessage: 'Selesai');
       debugPrint('[OfflineMp4Builder] Native remux failed or unvalidated; preserving raw HLS segments for LocalStreamServer.');
       return false;
     } catch (e) {

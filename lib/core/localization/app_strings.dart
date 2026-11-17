@@ -1224,4 +1224,14 @@ class AppStrings {
   String get downloadModalCta => isIndonesian
       ? 'Good Work! (Mengerti)'
       : 'Good Work!';
+
+  // ── Download Finalizing & Season Grouping ──
+  String get downloadStatusFinalizing => isIndonesian ? 'FINALIZING' : 'FINALIZING';
+  String get downloadFinalizingHint => isIndonesian
+      ? 'Sedang menyatukan segmen offline, jangan tutup aplikasi...'
+      : 'Merging offline media segments, please do not close the app...';
+  String get downloadSelectSeason => isIndonesian ? 'Pilih Season:' : 'Select Season:';
+  String downloadAllSeasons(int count) => isIndonesian
+      ? 'Semua Season ($count Episode)'
+      : 'All Seasons ($count Episodes)';
 }

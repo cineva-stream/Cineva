@@ -53,6 +53,8 @@ Pembaruan Cineva versi 1.1.8 menghadirkan **Relayout Responsif Modern untuk Tabl
   * Modal opsi download baru (`DownloadOptionsModal`) dengan pemilih kualitas resolusi, estimasi ukuran berkas, serta pemilihan track audio dan subtitle multibahasa.
   * **Catatan Penting**: *Kami tidak dapat memastikan untuk seluruh film maupun TV series dapat diunduh*, dikarenakan variasi proteksi DRM serta ketersediaan sumber dan server pihak ketiga di internet.
   * **Modal Pengumuman Fitur Unduhan Offline Modern**: Menampilkan modal pop-up sinematik Dark Obsidian dengan poster banner dwibahasa (ID & EN), tombol "Good Work! (Mengerti)", opsi checkbox "Jangan tampilkan lagi" / "Don't show again", serta pembatasan frekuensi cerdas maksimal 1x per 12 jam (*throttling*) saat membuka aplikasi.
+  * **UI Progress Real-Time Saat Finalizing Unduhan**: Memberikan indikator status dan progress bar realtime saat tahap penggabungan segmen video/audio dan perakitan MP4 offline (`DownloadStatus.finalizing`), lengkap dengan badge spinning `FINALIZING`, detail segmen (misal: "Menyatukan segmen video 45/300"), pesan penjelas ramah, serta persentase yang terus bergerak sehingga pengguna tahu proses berjalan aktif.
+  * **Pengelompokan TV Series & Dropdown Season**: Pengelompokan unduhan serial TV kini secara konsisten menggunakan poster resmi judul TV series (bukan thumbnail cuplikan episode awal), serta dilengkapi Dropdown Season yang memungkinkan pemilihan season secara cepat tanpa harus melakukan scrolling panjang.
 
 ### 7. Peningkatan Pemutar Video (In-App Mini Player, Android PiP & Tata Letak Kontrol)
 * **Penataan Ulang Ikon Bilah Atas Pemutar Video (`PlayerScreen`)**:

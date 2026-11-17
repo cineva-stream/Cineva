@@ -1,0 +1,235 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+import 'package:cineva/core/constants/app_constants.dart';
+import 'package:cineva/core/localization/app_language.dart';
+import 'package:cineva/core/localization/app_language_provider.dart';
+import 'package:cineva/features/download/data/repositories/download_repository.dart';
+import 'package:cineva/features/download/data/services/offline_mp4_builder.dart';
+import 'package:cineva/features/download/domain/models/download_item.dart';
+import 'package:cineva/features/download/presentation/providers/download_provider.dart';
+import 'package:cineva/features/download/presentation/screens/download_list_screen.dart';
+
+class _TestLanguageNotifier extends AppLanguageNotifier {
+  _TestLanguageNotifier(super.initialLanguage);
+
+  @override
+  Future<void> setLanguage(AppLanguage language) async {
+    state = language;
+  }
+}
+
+class _TestDownloadNotifier extends DownloadNotifier {
+  _TestDownloadNotifier(super.repository, List<DownloadItem> initialItems) {
+    state = initialItems;
+  }
+}
+
+void main() {
+  late Directory tempDir;
+
+  setUpAll(() async {
+    tempDir = await Directory.systemTemp.createTemp('cineva_download_screen_test_');
+    Hive.init(tempDir.path);
+    await Hive.openBox(AppConstants.downloadsBox);
+    await Hive.openBox(AppConstants.settingsBox);
+  });
+
+  group('DownloadStatus Finalizing & DownloadItem Tests', () {
+    test('DownloadStatus contains finalizing and isFinalizing is true', () {
+      final item = DownloadItem(
+        id: 'tv_123_s1_e1',
+        tmdbId: 123,
+        title: 'Loki',
+        mediaType: 'tv',
+        seasonNumber: 1,
+        episodeNumber: 1,
+        posterPath: '/official_loki_poster.jpg',
+        episodeStillPath: '/episode_still_1.jpg',
+        status: DownloadStatus.finalizing,
+        progress: 0.65,
+        speed: 'Menyatukan segmen video 65/100',
+        videoFileName: 'Loki - S1 E1.mp4',
+        subtitleFileName: 'Loki - S1 E1.srt',
+        videoPath: '/path/to/video',
+        createdAt: DateTime.now(),
+      );
+
+      expect(item.status, DownloadStatus.finalizing);
+      expect(item.isFinalizing, isTrue);
+      expect(item.isDownloading, isTrue);
+      expect(item.isCompleted, isFalse);
+      expect(item.posterPath, '/official_loki_poster.jpg');
+      expect(item.episodeStillPath, '/episode_still_1.jpg');
+
+      final json = item.toJson();
+      final restored = DownloadItem.fromJson(json);
+
+      expect(restored.status, DownloadStatus.finalizing);
+      expect(restored.isFinalizing, isTrue);
+      expect(restored.isDownloading, isTrue);
+      expect(restored.posterPath, '/official_loki_poster.jpg');
+      expect(restored.episodeStillPath, '/episode_still_1.jpg');
+      expect(restored.progress, 0.65);
+      expect(restored.speed, 'Menyatukan segmen video 65/100');
+    });
+  });
+
+  group('OfflineMp4Builder Real-Time Finalizing Progress Tests', () {
+    test('OfflineMp4Builder.build emits real-time progress callbacks for segments', () async {
+      final tempDir = await Directory.systemTemp.createTemp('cineva_finalize_test_');
+      try {
+        final bundleDir = Directory('${tempDir.path}/item');
+        await bundleDir.create(recursive: true);
+
+        // Write dummy TS segments
+        for (int i = 0; i < 4; i++) {
+          final seg = File('${bundleDir.path}/v_${i.toString().padLeft(4, '0')}.ts');
+          await seg.writeAsBytes(List.filled(188 * 5, 0x47));
+        }
+
+        final progressList = <double>[];
+        final messages = <String>[];
+
+        await OfflineMp4Builder.build(
+          dir: bundleDir,
+          deleteSegmentsOnSuccess: false,
+          onProgress: ({required double progress, required String statusMessage}) {
+            progressList.add(progress);
+            messages.add(statusMessage);
+          },
+        );
+
+        expect(progressList, isNotEmpty);
+        expect(messages, isNotEmpty);
+        expect(messages.any((m) => m.contains('Menyatukan segmen video')), isTrue);
+        expect(progressList.last, 1.0);
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
+    });
+  });
+
+  group('Download List Screen Finalizing & Season Dropdown Widget Tests', () {
+    Widget buildSubject({
+      required List<DownloadItem> items,
+      AppLanguage lang = AppLanguage.id,
+    }) {
+      return ProviderScope(
+        overrides: [
+          appLanguageProvider.overrideWith((ref) => _TestLanguageNotifier(lang)),
+          downloadManagerProvider.overrideWith(
+            (ref) => _TestDownloadNotifier(
+              ref.watch(downloadRepositoryProvider),
+              items,
+            ),
+          ),
+        ],
+        child: const MaterialApp(
+          home: DownloadListScreen(),
+        ),
+      );
+    }
+
+    testWidgets('Renders Finalizing badge and progress message during finalizing', (tester) async {
+      tester.view.physicalSize = const Size(800, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final finalizingItem = DownloadItem(
+        id: 'tv_456_s1_e2',
+        tmdbId: 456,
+        title: 'Stranger Things',
+        mediaType: 'tv',
+        seasonNumber: 1,
+        episodeNumber: 2,
+        episodeTitle: 'The Weirdo on Maple Street',
+        posterPath: '/stranger_things_official.jpg',
+        status: DownloadStatus.finalizing,
+        progress: 0.42,
+        speed: 'Menyatukan segmen video 42/100',
+        videoFileName: 'Stranger Things - S1 E2.mp4',
+        subtitleFileName: 'Stranger Things - S1 E2.srt',
+        videoPath: '',
+        createdAt: DateTime.now(),
+      );
+
+      await tester.pumpWidget(buildSubject(items: [finalizingItem]));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Verify Finalizing UI elements
+      expect(find.text('FINALIZING'), findsOneWidget);
+      expect(find.text('Menyatukan segmen video 42/100'), findsOneWidget);
+      expect(find.textContaining('Sedang menyatukan segmen offline'), findsOneWidget);
+      expect(find.text('42%'), findsOneWidget);
+    });
+
+    testWidgets('Renders TV Series Season Dropdown when multiple seasons are downloaded', (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final completedItems = [
+        DownloadItem(
+          id: 'tv_789_s1_e1',
+          tmdbId: 789,
+          title: 'Arcane',
+          mediaType: 'tv',
+          seasonNumber: 1,
+          episodeNumber: 1,
+          episodeTitle: 'Welcome to the Playground',
+          posterPath: '/arcane_official.jpg',
+          status: DownloadStatus.completed,
+          progress: 1.0,
+          speed: 'Selesai',
+          videoFileName: 'Arcane - S1 E1.mp4',
+          subtitleFileName: 'Arcane - S1 E1.srt',
+          videoPath: '/path/to/arcane_s1_e1.mp4',
+          createdAt: DateTime.now(),
+        ),
+        DownloadItem(
+          id: 'tv_789_s2_e1',
+          tmdbId: 789,
+          title: 'Arcane',
+          mediaType: 'tv',
+          seasonNumber: 2,
+          episodeNumber: 1,
+          episodeTitle: 'Heavy Is the Crown',
+          posterPath: '/arcane_official.jpg',
+          status: DownloadStatus.completed,
+          progress: 1.0,
+          speed: 'Selesai',
+          videoFileName: 'Arcane - S2 E1.mp4',
+          subtitleFileName: 'Arcane - S2 E1.srt',
+          videoPath: '/path/to/arcane_s2_e1.mp4',
+          createdAt: DateTime.now(),
+        ),
+      ];
+
+      await tester.pumpWidget(buildSubject(items: completedItems));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Switch to Tersimpan Offline (Completed) tab
+      await tester.tap(find.text('Tersimpan Offline'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Arcane'), findsOneWidget);
+      expect(find.text('2 Season • 2 Episode'), findsOneWidget);
+
+      // Tap on the TV Series card to expand
+      await tester.tap(find.text('Arcane'));
+      await tester.pumpAndSettle();
+
+      // Season Dropdown selector appears
+      expect(find.text('Pilih Season:'), findsOneWidget);
+      expect(find.byType(DropdownButton<int>), findsOneWidget);
+    });
+  });
+}

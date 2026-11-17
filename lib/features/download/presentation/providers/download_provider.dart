@@ -57,6 +57,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     int? episode,
     String? episodeTitle,
     String? posterPath,
+    String? episodeStillPath,
     String? backdropPath,
     String? imdbId,
     required String resolution,
@@ -100,6 +101,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       episodeNumber: episode,
       episodeTitle: episodeTitle,
       posterPath: posterPath,
+      episodeStillPath: episodeStillPath,
       backdropPath: backdropPath,
       resolution: resolution,
       estimatedSizeBytes: estimatedSizeBytes,
@@ -255,10 +257,31 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
           final expectedDurUs = await OfflineMp4Builder.expectedDurationUsFromPlaylist(
             File('${parentDir.path}/video.m3u8'),
           );
+
+          if (mounted) {
+            currentItem = currentItem.copyWith(
+              status: DownloadStatus.finalizing,
+              progress: 0.0,
+              speed: 'Menyiapkan berkas offline...',
+            );
+            await _repository.saveDownload(currentItem);
+            _updateItemInState(currentItem);
+          }
+
           mp4Built = await OfflineMp4Builder.build(
             dir: parentDir,
             expectedDurationUs: expectedDurUs,
             deleteSegmentsOnSuccess: true,
+            onProgress: ({required double progress, required String statusMessage}) {
+              if (!mounted) return;
+              currentItem = currentItem.copyWith(
+                status: DownloadStatus.finalizing,
+                progress: progress.clamp(0.0, 1.0),
+                speed: statusMessage,
+              );
+              _repository.saveDownload(currentItem);
+              _updateItemInState(currentItem);
+            },
           );
         }
       } catch (e) {

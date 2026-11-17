@@ -14,6 +14,7 @@ import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/platform/device_form_factor.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
+import '../../../detail/presentation/screens/tv_detail_screen.dart';
 
 /// Screen displaying movies and TV series currently downloading and finished.
 /// Supports YouTube-style in-app offline playback and Season-based TV Series management.
@@ -181,7 +182,7 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
             physics: const BouncingScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: gridCols,
-              mainAxisExtent: 130,
+              mainAxisExtent: 144,
               crossAxisSpacing: 14,
               mainAxisSpacing: 12,
             ),
@@ -565,6 +566,18 @@ class _InProgressCard extends ConsumerWidget {
 
   String _localizeSpeed(String raw, AppStrings s) {
     if (s.isIndonesian) return raw;
+    if (raw.startsWith('Menyatukan segmen video')) {
+      return raw.replaceFirst('Menyatukan segmen video', 'Merging video segments');
+    }
+    if (raw.startsWith('Menyatukan segmen audio')) {
+      return raw.replaceFirst('Menyatukan segmen audio', 'Merging audio segments');
+    }
+    if (raw.startsWith('Menyatukan segmen media')) {
+      return raw.replaceFirst('Menyatukan segmen media', 'Merging media segments');
+    }
+    if (raw.startsWith('Menyatukan segmen')) {
+      return raw.replaceFirst('Menyatukan segmen', 'Merging segments');
+    }
     switch (raw) {
       case 'Selesai':
         return 'Completed';
@@ -575,7 +588,14 @@ class _InProgressCard extends ConsumerWidget {
       case 'Melanjutkan...':
         return 'Resuming...';
       case 'Menyelesaikan unduhan...':
-        return 'Finalizing download...';
+      case 'Menyelesaikan berkas...':
+        return 'Finalizing package...';
+      case 'Menyiapkan berkas offline...':
+        return 'Preparing offline package...';
+      case 'Mengoptimalkan format MP4...':
+        return 'Optimizing MP4 container...';
+      case 'Memvalidasi video...':
+        return 'Validating video...';
       default:
         return raw;
     }
@@ -592,9 +612,14 @@ class _InProgressCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceElevated),
+        border: Border.all(
+          color: item.isFinalizing
+              ? AppColors.primary.withValues(alpha: 0.45)
+              : AppColors.surfaceElevated,
+        ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -648,31 +673,89 @@ class _InProgressCard extends ConsumerWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
+                        if (item.isFinalizing) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.22),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.5),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(
+                                  width: 8,
+                                  height: 8,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  s.downloadStatusFinalizing,
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.primary,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          child: Text(
-                            _localizeSpeed(item.speed, s),
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
+                          const SizedBox(width: 8),
+                        ],
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: item.isFinalizing
+                                  ? AppColors.surfaceElevated
+                                  : AppColors.primary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              _localizeSpeed(item.speed, s),
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${item.formattedDownloadedSize} / ${item.formattedTotalSize}',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 10,
-                            color: AppColors.textMuted,
+                        if (!item.isFinalizing) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            '${item.formattedDownloadedSize} / ${item.formattedTotalSize}',
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 10,
+                              color: AppColors.textMuted,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
+                    if (item.isFinalizing) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        s.downloadFinalizingHint,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: Colors.white.withValues(alpha: 0.72),
+                          height: 1.25,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -973,7 +1056,7 @@ class _CompletedMovieCard extends ConsumerWidget {
 // TV SERIES SEASON CARD (GROUPED BY SHOW & SEASON)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _TvSeriesSeasonCard extends ConsumerWidget {
+class _TvSeriesSeasonCard extends ConsumerStatefulWidget {
   final String seriesKey;
   final List<DownloadItem> episodes;
   final bool isExpanded;
@@ -986,6 +1069,13 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
     required this.onToggleExpand,
   });
 
+  @override
+  ConsumerState<_TvSeriesSeasonCard> createState() => _TvSeriesSeasonCardState();
+}
+
+class _TvSeriesSeasonCardState extends ConsumerState<_TvSeriesSeasonCard> {
+  int? _selectedSeason;
+
   String _formatBytes(int b) {
     if (b >= 1073741824) return '${(b / 1073741824).toStringAsFixed(2)} GB';
     if (b >= 1048576) return '${(b / 1048576).toStringAsFixed(1)} MB';
@@ -994,15 +1084,15 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final appStrings = ref.watch(appStringsProvider);
-    final first = episodes.first;
+    final first = widget.episodes.first;
     final notifier = ref.read(downloadManagerProvider.notifier);
 
     // Group episodes by seasonNumber
     final seasonsMap = <int, List<DownloadItem>>{};
     int totalBytes = 0;
-    for (final ep in episodes) {
+    for (final ep in widget.episodes) {
       final s = ep.seasonNumber ?? 1;
       seasonsMap.putIfAbsent(s, () => []).add(ep);
       totalBytes += ep.downloadedBytes > 0 ? ep.downloadedBytes : ep.totalBytes;
@@ -1014,30 +1104,51 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
       seasonsMap[s]!.sort((a, b) => (a.episodeNumber ?? 1).compareTo(b.episodeNumber ?? 1));
     }
 
+    // Validate or initialize selected season
+    if (_selectedSeason == null ||
+        (!sortedSeasonKeys.contains(_selectedSeason) && _selectedSeason != 0)) {
+      _selectedSeason = sortedSeasonKeys.isNotEmpty ? sortedSeasonKeys.first : 1;
+    }
+
+    // Resolve official series poster (prefers TMDB series poster, fallback to download poster)
+    String? displayPoster = first.posterPath;
+    if (first.tmdbId > 0) {
+      final tvDetailAsync = ref.watch(tvDetailProvider(first.tmdbId));
+      final official = tvDetailAsync.asData?.value['poster_path'] as String?;
+      if (official != null && official.isNotEmpty) {
+        displayPoster = official;
+      }
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isExpanded ? AppColors.primary.withValues(alpha: 0.5) : AppColors.surfaceElevated,
+          color: widget.isExpanded
+              ? AppColors.primary.withValues(alpha: 0.5)
+              : AppColors.surfaceElevated,
         ),
       ),
       child: Column(
         children: [
           // Header Card (Tap to Expand/Collapse)
           TvFocusable(
-            onTap: onToggleExpand,
+            onTap: widget.onToggleExpand,
             borderRadius: BorderRadius.circular(16),
             scaleOnFocus: 1.01,
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  // Poster Thumbnail
+                  // Official Series Poster Thumbnail
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: CachedNetworkImage(
-                      imageUrl: ApiConstants.imageUrl(first.posterPath, size: ApiConstants.posterSmall),
+                      imageUrl: ApiConstants.imageUrl(
+                        displayPoster,
+                        size: ApiConstants.posterSmall,
+                      ),
                       width: 58,
                       height: 84,
                       fit: BoxFit.cover,
@@ -1069,8 +1180,8 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
                         const SizedBox(height: 3),
                         Text(
                           appStrings.isIndonesian
-                              ? '${sortedSeasonKeys.length} Season • ${episodes.length} Episode'
-                              : '${sortedSeasonKeys.length} Seasons • ${episodes.length} Episodes',
+                              ? '${sortedSeasonKeys.length} Season • ${widget.episodes.length} Episode'
+                              : '${sortedSeasonKeys.length} Seasons • ${widget.episodes.length} Episodes',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -1097,8 +1208,8 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
                             const SizedBox(width: 8),
                             Text(
                               appStrings.isIndonesian
-                                  ? (isExpanded ? 'Tutup Daftar' : 'Buka Episode')
-                                  : (isExpanded ? 'Collapse List' : 'View Episodes'),
+                                  ? (widget.isExpanded ? 'Tutup Daftar' : 'Buka Episode')
+                                  : (widget.isExpanded ? 'Collapse List' : 'View Episodes'),
                               style: GoogleFonts.outfit(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -1113,8 +1224,10 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
 
                   // Expand Icon
                   Icon(
-                    isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                    color: isExpanded ? AppColors.primary : AppColors.textMuted,
+                    widget.isExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: widget.isExpanded ? AppColors.primary : AppColors.textMuted,
                     size: 24,
                   ),
                 ],
@@ -1122,31 +1235,113 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
             ),
           ),
 
-          // Expanded Season-by-Season Episode List
-          if (isExpanded) ...[
+          // Expanded Season-by-Season Episode List with Dropdown
+          if (widget.isExpanded) ...[
             const Divider(color: AppColors.surfaceElevated, height: 1),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final seasonNum in sortedSeasonKeys) ...[
-                    _buildSeasonHeader(
-                      context,
-                      seasonNum: seasonNum,
-                      episodes: seasonsMap[seasonNum]!,
-                      seriesTitle: first.title,
-                      notifier: notifier,
-                      s: appStrings,
-                    ),
-                    const SizedBox(height: 6),
-                    for (final ep in seasonsMap[seasonNum]!) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _EpisodeCard(item: ep),
+                  // Modern Season Dropdown Selector for series with multiple seasons
+                  if (sortedSeasonKeys.length > 1) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceElevated.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.35),
+                          width: 1.0,
+                        ),
                       ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.layers_rounded,
+                            size: 16,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            appStrings.downloadSelectSeason,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<int>(
+                                value: _selectedSeason,
+                                dropdownColor: AppColors.surfaceVariant,
+                                borderRadius: BorderRadius.circular(10),
+                                isDense: true,
+                                icon: const Icon(
+                                  Icons.arrow_drop_down_rounded,
+                                  color: AppColors.primary,
+                                ),
+                                items: [
+                                  for (final sNum in sortedSeasonKeys)
+                                    DropdownMenuItem<int>(
+                                      value: sNum,
+                                      child: Text(
+                                        'Season $sNum (${seasonsMap[sNum]?.length ?? 0} Episode)',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  DropdownMenuItem<int>(
+                                    value: 0,
+                                    child: Text(
+                                      appStrings.downloadAllSeasons(widget.episodes.length),
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() => _selectedSeason = val);
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  // Season Episodes Rendering (selected season or all if 0)
+                  for (final seasonNum in sortedSeasonKeys) ...[
+                    if (_selectedSeason == 0 || _selectedSeason == seasonNum) ...[
+                      _buildSeasonHeader(
+                        context,
+                        seasonNum: seasonNum,
+                        episodes: seasonsMap[seasonNum]!,
+                        seriesTitle: first.title,
+                        notifier: notifier,
+                        s: appStrings,
+                      ),
+                      const SizedBox(height: 6),
+                      for (final ep in seasonsMap[seasonNum]!) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _EpisodeCard(item: ep),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
                     ],
-                    const SizedBox(height: 8),
                   ],
                 ],
               ),

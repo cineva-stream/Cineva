@@ -1,6 +1,7 @@
 enum DownloadStatus {
   resolving,
   downloading,
+  finalizing,
   paused,
   completed,
   failed,
@@ -18,6 +19,7 @@ class DownloadItem {
   final int? episodeNumber;
   final String? episodeTitle;
   final String? posterPath;
+  final String? episodeStillPath;
   final String? backdropPath;
   final String resolution; // '1080p', '720p', '480p', '360p'
   final int estimatedSizeBytes;
@@ -46,6 +48,7 @@ class DownloadItem {
     this.episodeNumber,
     this.episodeTitle,
     this.posterPath,
+    this.episodeStillPath,
     this.backdropPath,
     this.resolution = '1080p',
     this.estimatedSizeBytes = 0,
@@ -68,7 +71,11 @@ class DownloadItem {
   bool get isMovie => mediaType == 'movie';
   bool get isTv => mediaType == 'tv';
   bool get isCompleted => status == DownloadStatus.completed;
-  bool get isDownloading => status == DownloadStatus.downloading || status == DownloadStatus.resolving;
+  bool get isDownloading =>
+      status == DownloadStatus.downloading ||
+      status == DownloadStatus.resolving ||
+      status == DownloadStatus.finalizing;
+  bool get isFinalizing => status == DownloadStatus.finalizing;
   bool get isPaused => status == DownloadStatus.paused;
   bool get isFailed => status == DownloadStatus.failed;
 
@@ -105,6 +112,7 @@ class DownloadItem {
     int? episodeNumber,
     String? episodeTitle,
     String? posterPath,
+    String? episodeStillPath,
     String? backdropPath,
     String? resolution,
     int? estimatedSizeBytes,
@@ -133,6 +141,7 @@ class DownloadItem {
       episodeNumber: episodeNumber ?? this.episodeNumber,
       episodeTitle: episodeTitle ?? this.episodeTitle,
       posterPath: posterPath ?? this.posterPath,
+      episodeStillPath: episodeStillPath ?? this.episodeStillPath,
       backdropPath: backdropPath ?? this.backdropPath,
       resolution: resolution ?? this.resolution,
       estimatedSizeBytes: estimatedSizeBytes ?? this.estimatedSizeBytes,
@@ -164,6 +173,7 @@ class DownloadItem {
       'episodeNumber': episodeNumber,
       'episodeTitle': episodeTitle,
       'posterPath': posterPath,
+      'episodeStillPath': episodeStillPath,
       'backdropPath': backdropPath,
       'resolution': resolution,
       'estimatedSizeBytes': estimatedSizeBytes,
@@ -195,6 +205,7 @@ class DownloadItem {
       episodeNumber: json['episodeNumber'] as int?,
       episodeTitle: json['episodeTitle'] as String?,
       posterPath: json['posterPath'] as String?,
+      episodeStillPath: json['episodeStillPath'] as String?,
       backdropPath: json['backdropPath'] as String?,
       resolution: json['resolution'] as String? ?? '1080p',
       estimatedSizeBytes: json['estimatedSizeBytes'] as int? ?? 0,

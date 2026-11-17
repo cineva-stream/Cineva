@@ -27,6 +27,7 @@ class DownloadOptionsModal extends ConsumerStatefulWidget {
   final int? episode;
   final String? episodeTitle;
   final String? posterPath;
+  final String? episodeStillPath;
   final String? backdropPath;
   final String? imdbId;
   final int runtimeMinutes;
@@ -41,6 +42,7 @@ class DownloadOptionsModal extends ConsumerStatefulWidget {
     this.episode,
     this.episodeTitle,
     this.posterPath,
+    this.episodeStillPath,
     this.backdropPath,
     this.imdbId,
     this.runtimeMinutes = 100,
@@ -56,6 +58,7 @@ class DownloadOptionsModal extends ConsumerStatefulWidget {
     int? episode,
     String? episodeTitle,
     String? posterPath,
+    String? episodeStillPath,
     String? backdropPath,
     String? imdbId,
     int runtimeMinutes = 100,
@@ -80,6 +83,7 @@ class DownloadOptionsModal extends ConsumerStatefulWidget {
         episode: episode,
         episodeTitle: episodeTitle,
         posterPath: posterPath,
+        episodeStillPath: episodeStillPath,
         backdropPath: backdropPath,
         imdbId: imdbId,
         runtimeMinutes: runtimeMinutes,
@@ -1124,6 +1128,7 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
           episode: widget.episode,
           episodeTitle: widget.episodeTitle,
           posterPath: widget.posterPath,
+          episodeStillPath: widget.episodeStillPath,
           backdropPath: widget.backdropPath,
           imdbId: widget.imdbId,
           resolution: _selectedResolution,
