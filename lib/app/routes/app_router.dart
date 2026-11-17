@@ -281,9 +281,21 @@ final GoRouter appRouter = GoRouter(
             localSubtitlePath: extra['localSubtitlePath'] as String?,
             overview: extra['overview'] as String?,
           ),
-          transitionDuration: const Duration(milliseconds: 400),
+          transitionDuration: const Duration(milliseconds: 340),
+          reverseTransitionDuration: const Duration(milliseconds: 300),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
+            final curved = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInOutCubic,
+            );
+            return FadeTransition(
+              opacity: curved,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.94, end: 1.0).animate(curved),
+                child: child,
+              ),
+            );
           },
         );
       },

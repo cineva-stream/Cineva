@@ -35,6 +35,7 @@ import '../../../download/data/services/local_stream_server.dart';
 import '../../../download/data/services/offline_mp4_builder.dart';
 import '../../../download/data/services/video_download_service.dart';
 import '../../../download/presentation/providers/download_provider.dart';
+import '../providers/mini_player_provider.dart';
 import '../providers/player_providers.dart';
 import '../widgets/custom_subtitle_overlay.dart';
 import '../../../../core/localization/app_strings.dart';
@@ -60,6 +61,7 @@ enum _PlayerMiniPopup {
   subtitleSettings,
   volume,
   server,
+  sleepTimer,
 }
 
 enum _SidePanelPage {
@@ -203,8 +205,38 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   // ── Audio Volume & Boost State ──
   double _volume = 100.0; // 0 to 150% (boosted)
+  double _preMuteVolume = 100.0;
   bool _showVolumeIndicator = false;
   Timer? _volumeIndicatorTimer;
+
+  // ── Hold-for-2x Speed State ──
+  bool _isHolding2x = false;
+  double _speedBeforeHold = 1.0;
+
+  // ── Screen Lock State ──
+  bool _isScreenLocked = false;
+  bool _showLockedOverlay = false;
+  Timer? _lockedOverlayTimer;
+
+  // ── Sleep Timer State ──
+  Timer? _sleepTimer;
+  int? _sleepTimerMinutesSelected; // null = Off, -1 = End of Episode, >0 = minutes
+  Duration? _sleepTimerRemaining;
+  bool _sleepAtEndOfEpisode = false;
+  bool _hasTriggeredEndOfEpisodeSleep = false;
+
+  // ── Desktop Fullscreen & Native PiP / Mini-Player State ──
+  bool _isDesktopFullScreen = false;
+  static const MethodChannel _pipChannel = MethodChannel(
+    'com.primadev.cineva/pip',
+  );
+  bool _transferredToMiniPlayer = false;
+  bool _isInNativePip = false;
+
+  bool get _isDesktopPlatform =>
+      !kIsWeb &&
+      !Platform.environment.containsKey('FLUTTER_TEST') &&
+      (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
   // ── Screen Brightness State ──
   static const MethodChannel _brightnessChannel = MethodChannel(
@@ -254,6 +286,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _hasRestoredPosition = false;
   bool _hasAutoPlayedNext = false;
   bool _nextEpisodeButtonVisible = false;
+  int? _nextEpisodeCountdownSecs;
+  bool _autoPlayCancelledForCurrentEpisode = false;
   bool _isSwitchingEpisode = false;
 
   // ── TV Series Episode & Media State (Allows seamless in-place episode skipping) ──
@@ -289,6 +323,79 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       ),
     );
 
+    // Listen to Native Android Picture-in-Picture mode changes
+    if (!kIsWeb &&
+        !Platform.environment.containsKey('FLUTTER_TEST') &&
+        Platform.isAndroid) {
+      _pipChannel.setMethodCallHandler((call) async {
+        if (call.method == 'onPipChanged' && mounted) {
+          final inPip = call.arguments == true;
+          setState(() {
+            _isInNativePip = inPip;
+            if (inPip) {
+              _showControls = false;
+              _isSidePanelOpen = false;
+              _activePopup = _PlayerMiniPopup.none;
+            }
+          });
+        }
+      });
+      _setNativeAutoPip(true);
+    }
+
+    // Check if we are expanding or resuming an active In-App Mini-Player session
+    final existingMiniSession = ref.read(miniPlayerProvider);
+    if (existingMiniSession != null &&
+        (existingMiniSession.isExpandingToFullPlayer ||
+            existingMiniSession.matchesMedia(
+              tmdbId: widget.tmdbId,
+              mediaType: widget.mediaType,
+              season: _currentSeason,
+              episode: _currentEpisode,
+              title: widget.title,
+            ))) {
+      final reclaimed = ref.read(miniPlayerProvider.notifier).takeOverSession()!;
+      _player = reclaimed.player;
+      _videoController = reclaimed.videoController;
+      _useNativePlayer = true;
+      _position = reclaimed.position;
+      _positionNotifier.value = reclaimed.position;
+      _duration = reclaimed.duration;
+      _isPlaying = reclaimed.isPlaying;
+      _isBuffering = reclaimed.isBuffering;
+      _volume = reclaimed.volume;
+      _preMuteVolume = reclaimed.volume > 0 ? reclaimed.volume : 100.0;
+      _playbackSpeed = reclaimed.playbackSpeed;
+      _currentQuality = reclaimed.currentQuality;
+      _resolutionLabel = reclaimed.resolutionLabel;
+      _currentServer = reclaimed.currentServer;
+      _availableServers = reclaimed.availableServers;
+      _availableSubtitles = List<SubtitleInfo>.from(reclaimed.availableSubtitles);
+      _streamSubtitles = List<SubtitleInfo>.from(reclaimed.streamSubtitles);
+      _selectedSubtitle = reclaimed.selectedSubtitle;
+      _isSubtitleTranslated = reclaimed.isSubtitleTranslated;
+      _customSubtitleCues.addAll(reclaimed.customSubtitleCues);
+      _isLoading = false;
+      _streamNotFound = false;
+      _hasRestoredPosition = true;
+      _hasAppliedDefaultQuality = true;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(subtitleStyleProvider.notifier).reloadFromSettings();
+          ref.read(activeSubtitleCuesProvider.notifier).state =
+              reclaimed.activeCues;
+        }
+      });
+
+      _listenToPlayerStreams();
+      _resetControlsTimer();
+      return;
+    } else if (existingMiniSession != null) {
+      // A different media was playing in Mini-Player; close it cleanly before starting the new video
+      unawaited(ref.read(miniPlayerProvider.notifier).closeAndDispose());
+    }
+
     // Initialize media_kit Player with 32 MB initial demuxer footprint (dynamically caches up to 128 MB)
     _player = Player(
       configuration: const PlayerConfiguration(bufferSize: 32 * 1024 * 1024),
@@ -319,6 +426,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
     _initializeStreaming();
     _resetControlsTimer();
+  }
+
+  void _setNativeAutoPip(bool enabled) {
+    if (!kIsWeb &&
+        !Platform.environment.containsKey('FLUTTER_TEST') &&
+        Platform.isAndroid &&
+        !gIsTv) {
+      try {
+        _pipChannel.invokeMethod('setAutoPipEnabled', {'enabled': enabled});
+      } catch (_) {}
+    }
   }
 
   /// Sets up smooth, zero-latency offline playback options for mpv.
@@ -512,7 +630,106 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  Future<void> _handleExit() async {
+  /// Smoothly minimizes the active native player into the floating In-App Mini-Player
+  /// without stopping, reloading, or resetting playback position/audio.
+  Future<void> _enterMiniPlayer() async {
+    if (_isExiting || !_useNativePlayer || _isLoading || _streamNotFound) return;
+    _isExiting = true;
+    _transferredToMiniPlayer = true;
+
+    if (_isHolding2x) {
+      _stopHold2xSpeed();
+    }
+
+    // Save current watch history checkpoint
+    _saveWatchHistory(force: true);
+
+    // Cancel local stream listeners before transferring ownership to MiniPlayerNotifier
+    _controlsTimer?.cancel();
+    _volumeIndicatorTimer?.cancel();
+    _brightnessIndicatorTimer?.cancel();
+    _lockedOverlayTimer?.cancel();
+    _sleepTimer?.cancel();
+    await _posSub?.cancel();
+    await _durSub?.cancel();
+    await _playingSub?.cancel();
+    await _bufferingSub?.cancel();
+    await _trackSub?.cancel();
+    await _tracksSub?.cancel();
+    _posSub = null;
+    _durSub = null;
+    _playingSub = null;
+    _bufferingSub = null;
+    _trackSub = null;
+    _tracksSub = null;
+
+    final activeCues = ref.read(activeSubtitleCuesProvider);
+    ref.read(miniPlayerProvider.notifier).activateSession(
+          MiniPlayerSession(
+            player: _player,
+            videoController: _videoController,
+            magnetLink: widget.magnetLink,
+            title: widget.title,
+            imdbId: _currentImdbId ?? widget.imdbId,
+            tmdbId: _currentTmdbId ?? widget.tmdbId,
+            mediaType: widget.mediaType,
+            season: _currentSeason,
+            episode: _currentEpisode,
+            episodeTitle: _currentEpisodeTitle,
+            posterPath: _currentPosterPath ?? widget.posterPath,
+            backdropPath: _currentBackdropPath ?? widget.backdropPath,
+            localVideoPath: _currentLocalVideoPath ?? widget.localVideoPath,
+            localSubtitlePath:
+                _currentLocalSubtitlePath ?? widget.localSubtitlePath,
+            overview: _currentOverview ?? widget.overview,
+            position: _position,
+            duration: _duration,
+            isPlaying: _isPlaying,
+            isBuffering: _isBuffering,
+            volume: _volume,
+            playbackSpeed: _playbackSpeed,
+            currentQuality: _currentQuality,
+            resolutionLabel: _resolutionLabel,
+            currentServer: _currentServer,
+            availableServers: _availableServers,
+            availableSubtitles: _availableSubtitles,
+            streamSubtitles: _streamSubtitles,
+            selectedSubtitle: _selectedSubtitle,
+            isSubtitleTranslated: _isSubtitleTranslated,
+            customSubtitleCues: Map<String, List<SubtitleCue>>.from(
+              _customSubtitleCues,
+            ),
+            activeCues: List<SubtitleCue>.from(activeCues),
+          ),
+        );
+
+    _setNativeAutoPip(false);
+
+    if (_isDesktopPlatform && _isDesktopFullScreen) {
+      try {
+        await windowManager.setFullScreen(false);
+        _isDesktopFullScreen = false;
+      } catch (_) {}
+    }
+
+    await restoreSystemUiAndOrientations(isTv: gIsTv);
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
+    );
+    _resetBrightness();
+
+    if (mounted) {
+      context.pop();
+    }
+  }
+
+  Future<void> _handleExit({bool forceStop = false}) async {
     if (_isExiting) return;
 
     final isTv =
@@ -524,7 +741,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     bool? markCompletedOnExit;
     // Show confirmation modal for movies when remaining time <= 12 minutes (720 seconds)
-    if (!isTv &&
+    if (!forceStop &&
+        !isTv &&
         durSecs > 180 &&
         remainingSecs <= (12 * 60) &&
         remainingSecs >= -30) {
@@ -541,9 +759,40 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         return;
       }
       markCompletedOnExit = result;
+      // If user chose "Belum" (Not Yet finished), resume and smoothly enter Mini-Player!
+      if (result == false &&
+          _useNativePlayer &&
+          !_isLoading &&
+          !_streamNotFound) {
+        try {
+          await _player.play();
+        } catch (_) {}
+        await _enterMiniPlayer();
+        return;
+      }
+    }
+
+    // If native video is actively loaded and user exits normally (not marking movie 100% done),
+    // smoothly transition to the In-App Floating Mini-Player so streaming & audio never stop!
+    if (!forceStop &&
+        markCompletedOnExit != true &&
+        _useNativePlayer &&
+        !_isLoading &&
+        !_streamNotFound &&
+        _duration.inSeconds > 0) {
+      await _enterMiniPlayer();
+      return;
     }
 
     _isExiting = true;
+    _setNativeAutoPip(false);
+
+    if (_isDesktopPlatform && _isDesktopFullScreen) {
+      try {
+        await windowManager.setFullScreen(false);
+        _isDesktopFullScreen = false;
+      } catch (_) {}
+    }
 
     // 1. Instantly mute and stop native player audio to kill sound immediately
     try {
@@ -590,6 +839,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   @override
   void dispose() {
+    _setNativeAutoPip(false);
     if (!_isExiting) {
       _saveWatchHistory(force: true);
     }
@@ -597,6 +847,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _controlsTimer?.cancel();
     _volumeIndicatorTimer?.cancel();
     _brightnessIndicatorTimer?.cancel();
+    _lockedOverlayTimer?.cancel();
+    _sleepTimer?.cancel();
     _posSub?.cancel();
     _durSub?.cancel();
     _playingSub?.cancel();
@@ -605,20 +857,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _tracksSub?.cancel();
     _positionNotifier.dispose();
 
-    try {
-      _player.setVolume(0.0);
-      _player.pause();
-      _player.stop();
-    } catch (_) {}
+    // Only stop and dispose _player if ownership was NOT transferred to MiniPlayerNotifier
+    if (!_transferredToMiniPlayer) {
+      try {
+        _player.setVolume(0.0);
+        _player.pause();
+        _player.stop();
+      } catch (_) {}
 
-    try {
-      _webViewController?.runJavaScript(
-        'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }',
-      );
-      _webViewController?.loadRequest(Uri.parse('about:blank'));
-    } catch (_) {}
+      try {
+        _webViewController?.runJavaScript(
+          'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }',
+        );
+        _webViewController?.loadRequest(Uri.parse('about:blank'));
+      } catch (_) {}
 
-    _player.dispose();
+      _player.dispose();
+    }
 
     // Re-assert form-factor orientation as safety net
     restoreSystemUiAndOrientations(isTv: gIsTv);
@@ -802,34 +1057,101 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         }
       }
 
-      // ── TV Series Next Episode (Auto when <= 5s, Manual button when <= 60s) ──
+      // ── Sleep Timer: End of Episode / Movie Check ──
+      if (_sleepAtEndOfEpisode &&
+          !_hasTriggeredEndOfEpisodeSleep &&
+          _duration.inSeconds > 30) {
+        final rem = (_duration - pos).inSeconds;
+        if (rem <= 2 && rem >= 0) {
+          _hasTriggeredEndOfEpisodeSleep = true;
+          _triggerSleepTimerPause(markEpisodeCompleted: true);
+          return;
+        }
+      }
+
+      // ── TV Series Next Episode (5s Auto-Play Countdown when enabled in Settings, Manual button when <= 60s) ──
       final isTv = _currentSeason != null && _currentEpisode != null;
       if (isTv && _duration.inSeconds > 30) {
         final remainingSecs = (_duration - pos).inSeconds;
+        final autoPlayEnabled = SettingsService.getAutoPlayNextEpisode();
 
-        // Auto next episode when 5 seconds or less remain
-        if (remainingSecs <= 5 &&
-            remainingSecs >= 0 &&
-            !_hasAutoPlayedNext &&
-            !_isSwitchingEpisode) {
-          _hasAutoPlayedNext = true;
-          if (_nextEpisodeButtonVisible && mounted) {
-            setState(() => _nextEpisodeButtonVisible = false);
+        if (remainingSecs > 15) {
+          if (_hasAutoPlayedNext) _hasAutoPlayedNext = false;
+          if (_autoPlayCancelledForCurrentEpisode) {
+            _autoPlayCancelledForCurrentEpisode = false;
           }
-          _playNextEpisode();
-        } else if (remainingSecs > 10 && _hasAutoPlayedNext) {
-          _hasAutoPlayedNext = false; // Reset on rewind
+          if (_nextEpisodeCountdownSecs != null && mounted) {
+            setState(() => _nextEpisodeCountdownSecs = null);
+          }
         }
 
-        // Show manual button when <= 60 seconds (under 1 minute) and > 5 seconds
-        final inNextEpisodeWindow = remainingSecs <= 60 && remainingSecs > 5;
-        if (inNextEpisodeWindow && !_isSwitchingEpisode) {
-          if (!_nextEpisodeButtonVisible && mounted) {
-            setState(() => _nextEpisodeButtonVisible = true);
+        if (autoPlayEnabled &&
+            !_autoPlayCancelledForCurrentEpisode &&
+            !_sleepAtEndOfEpisode) {
+          // 5-second interactive countdown window (5..4..3..2..1)
+          if (remainingSecs <= 5 &&
+              remainingSecs > 0 &&
+              !_hasAutoPlayedNext &&
+              !_isSwitchingEpisode) {
+            final clampedCountdown = remainingSecs.clamp(1, 5);
+            if ((_nextEpisodeCountdownSecs != clampedCountdown ||
+                    !_nextEpisodeButtonVisible) &&
+                mounted) {
+              setState(() {
+                _nextEpisodeCountdownSecs = clampedCountdown;
+                _nextEpisodeButtonVisible = true;
+              });
+            }
+          } else if (remainingSecs <= 0 &&
+              remainingSecs >= -5 &&
+              !_hasAutoPlayedNext &&
+              !_isSwitchingEpisode) {
+            // Countdown reached 0 -> Auto-play next episode
+            _hasAutoPlayedNext = true;
+            if (mounted) {
+              setState(() {
+                _nextEpisodeCountdownSecs = null;
+                _nextEpisodeButtonVisible = false;
+              });
+            }
+            _playNextEpisode();
+          } else if (remainingSecs <= 60 &&
+              remainingSecs > 5 &&
+              !_isSwitchingEpisode) {
+            if ((!_nextEpisodeButtonVisible ||
+                    _nextEpisodeCountdownSecs != null) &&
+                mounted) {
+              setState(() {
+                _nextEpisodeCountdownSecs = null;
+                _nextEpisodeButtonVisible = true;
+              });
+            }
+          } else if (remainingSecs > 60 && _nextEpisodeButtonVisible) {
+            if (mounted) {
+              setState(() {
+                _nextEpisodeCountdownSecs = null;
+                _nextEpisodeButtonVisible = false;
+              });
+            }
           }
         } else {
-          if (_nextEpisodeButtonVisible && mounted) {
-            setState(() => _nextEpisodeButtonVisible = false);
+          // Auto-play disabled in Settings or cancelled by user for this episode:
+          // Do NOT auto-advance; keep manual "Next Episode" button visible during last 60s
+          final inManualWindow = remainingSecs <= 60 && remainingSecs >= 0;
+          if (inManualWindow && !_isSwitchingEpisode) {
+            if ((!_nextEpisodeButtonVisible ||
+                    _nextEpisodeCountdownSecs != null) &&
+                mounted) {
+              setState(() {
+                _nextEpisodeCountdownSecs = null;
+                _nextEpisodeButtonVisible = true;
+              });
+            }
+          } else if (_nextEpisodeButtonVisible && mounted) {
+            setState(() {
+              _nextEpisodeCountdownSecs = null;
+              _nextEpisodeButtonVisible = false;
+            });
           }
         }
       }
@@ -1307,6 +1629,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Future<void> _initializeStreaming() async {
     _hasAutoPlayedNext = false;
     _nextEpisodeButtonVisible = false;
+    _nextEpisodeCountdownSecs = null;
+    _autoPlayCancelledForCurrentEpisode = false;
+    _hasTriggeredEndOfEpisodeSleep = false;
 
     // 0. OFFLINE LOCAL FILE PLAYBACK (Completely isolated from online streaming)
     if ((_currentLocalVideoPath != null &&
@@ -2169,6 +2494,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _setVolume(double newVolume) {
     final clamped = newVolume.clamp(0.0, 150.0);
+    if (clamped > 0.0) {
+      _preMuteVolume = clamped;
+    }
     setState(() {
       _volume = clamped;
       _showVolumeIndicator = true;
@@ -2179,6 +2507,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _volumeIndicatorTimer = Timer(const Duration(milliseconds: 1600), () {
       if (mounted) setState(() => _showVolumeIndicator = false);
     });
+  }
+
+  void _toggleMute() {
+    if (_volume > 0.0) {
+      _preMuteVolume = _volume;
+      _setVolume(0.0);
+    } else {
+      _setVolume(_preMuteVolume > 0.0 ? _preMuteVolume : 100.0);
+    }
   }
 
   // ── Screen Brightness Gesture Control ──
@@ -2305,6 +2642,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (_isLoading || _streamNotFound) {
       return; // Do not toggle controls while processing/searching server or when stream not found
     }
+    if (_isScreenLocked) {
+      _onLockedScreenTap();
+      return;
+    }
     if (_activePopup != _PlayerMiniPopup.none) {
       setState(() => _activePopup = _PlayerMiniPopup.none);
       _resetControlsTimer();
@@ -2316,6 +2657,388 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     } else {
       _controlsTimer?.cancel();
     }
+  }
+
+  // ── Hold-for-2x Speed ──
+
+  void _startHold2xSpeed() {
+    if (_isLoading || _streamNotFound || _isScreenLocked || _isHolding2x) return;
+    _speedBeforeHold = _playbackSpeed;
+    setState(() => _isHolding2x = true);
+    if (_useNativePlayer) {
+      try {
+        _player.setRate(2.0);
+      } catch (_) {}
+    } else {
+      _webViewController?.runJavaScript(
+        'var v = document.querySelector("video"); if (v) { v.playbackRate = 2.0; }',
+      );
+    }
+  }
+
+  void _stopHold2xSpeed() {
+    if (!_isHolding2x) return;
+    setState(() => _isHolding2x = false);
+    if (_useNativePlayer) {
+      try {
+        _player.setRate(_speedBeforeHold);
+      } catch (_) {}
+    } else {
+      _webViewController?.runJavaScript(
+        'var v = document.querySelector("video"); if (v) { v.playbackRate = $_speedBeforeHold; }',
+      );
+    }
+  }
+
+  // ── Screen Lock (Prevent Accidental Touches) ──
+
+  void _lockScreen() {
+    final s = ref.read(appStringsProvider);
+    _controlsTimer?.cancel();
+    setState(() {
+      _isScreenLocked = true;
+      _showControls = false;
+      _isSidePanelOpen = false;
+      _activePopup = _PlayerMiniPopup.none;
+      _showLockedOverlay = true;
+    });
+    _scheduleHideLockedOverlay();
+    _showToastSubtitle(s.playerLockScreenToast);
+  }
+
+  void _unlockScreen() {
+    final s = ref.read(appStringsProvider);
+    _lockedOverlayTimer?.cancel();
+    setState(() {
+      _isScreenLocked = false;
+      _showLockedOverlay = false;
+      _showControls = true;
+    });
+    _resetControlsTimer();
+    _showToastSubtitle(s.playerUnlockScreenToast);
+  }
+
+  void _onLockedScreenTap() {
+    setState(() => _showLockedOverlay = !_showLockedOverlay);
+    if (_showLockedOverlay) {
+      _scheduleHideLockedOverlay();
+    } else {
+      _lockedOverlayTimer?.cancel();
+    }
+  }
+
+  void _scheduleHideLockedOverlay() {
+    _lockedOverlayTimer?.cancel();
+    _lockedOverlayTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _isScreenLocked) {
+        setState(() => _showLockedOverlay = false);
+      }
+    });
+  }
+
+  // ── Sleep Timer ──
+
+  void _setSleepTimer(int? minutes, {bool endOfEpisode = false}) {
+    final s = ref.read(appStringsProvider);
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+
+    if (endOfEpisode) {
+      setState(() {
+        _sleepTimerMinutesSelected = -1;
+        _sleepTimerRemaining = null;
+        _sleepAtEndOfEpisode = true;
+        _hasTriggeredEndOfEpisodeSleep = false;
+        _activePopup = _PlayerMiniPopup.none;
+      });
+      _resetControlsTimer();
+      _showToastSubtitle(
+        s.playerSleepTimerActiveToast(s.playerSleepTimerEndOfEpisode),
+      );
+      return;
+    }
+
+    if (minutes == null || minutes <= 0) {
+      setState(() {
+        _sleepTimerMinutesSelected = null;
+        _sleepTimerRemaining = null;
+        _sleepAtEndOfEpisode = false;
+        _hasTriggeredEndOfEpisodeSleep = false;
+        _activePopup = _PlayerMiniPopup.none;
+      });
+      _resetControlsTimer();
+      _showToastSubtitle(s.playerSleepTimerDisabledToast);
+      return;
+    }
+
+    final initialDuration = Duration(minutes: minutes);
+    setState(() {
+      _sleepTimerMinutesSelected = minutes;
+      _sleepTimerRemaining = initialDuration;
+      _sleepAtEndOfEpisode = false;
+      _hasTriggeredEndOfEpisodeSleep = false;
+      _activePopup = _PlayerMiniPopup.none;
+    });
+    _resetControlsTimer();
+    _showToastSubtitle(
+      s.playerSleepTimerActiveToast(s.playerSleepTimerMinutes(minutes)),
+    );
+
+    _sleepTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final currentRem = _sleepTimerRemaining;
+      if (currentRem == null) {
+        timer.cancel();
+        return;
+      }
+      final nextSecs = currentRem.inSeconds - 1;
+      if (nextSecs <= 0) {
+        timer.cancel();
+        _triggerSleepTimerPause();
+      } else {
+        setState(() {
+          _sleepTimerRemaining = Duration(seconds: nextSecs);
+        });
+      }
+    });
+  }
+
+  void _triggerSleepTimerPause({bool markEpisodeCompleted = false}) {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+    if (!mounted) return;
+
+    setState(() {
+      _sleepTimerMinutesSelected = null;
+      _sleepTimerRemaining = null;
+      _sleepAtEndOfEpisode = false;
+    });
+
+    try {
+      if (_useNativePlayer) {
+        _player.pause();
+      } else {
+        _webViewController?.runJavaScript(
+          'var v = document.querySelector("video"); if (v) { v.pause(); }',
+        );
+        setState(() {
+          _isWebPlaying = false;
+          _isPlaying = false;
+        });
+      }
+    } catch (_) {}
+
+    _saveWatchHistory(
+      force: true,
+      markCompleted: markEpisodeCompleted ? true : null,
+    );
+
+    final s = ref.read(appStringsProvider);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.78),
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 360),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF141418),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.35),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.bedtime_rounded,
+                    color: AppColors.primary,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  s.playerSleepTimerExpiredTitle,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  s.playerSleepTimerExpiredDesc,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 12.5,
+                    height: 1.35,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TvFocusable(
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          _handleExit(forceStop: true);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            s.dialogExit,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: TvFocusable(
+                        autofocus: true,
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          _togglePlayPause();
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            s.playerSleepTimerResumeBtn,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String? _formatSleepTimerBadge() {
+    if (_sleepAtEndOfEpisode) {
+      return 'EP';
+    }
+    final rem = _sleepTimerRemaining;
+    if (rem == null) return null;
+    final mins = rem.inMinutes;
+    final secs = rem.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$mins:$secs';
+  }
+
+  // ── Desktop Fullscreen & Keyboard Shortcuts ──
+
+  Future<void> _toggleDesktopFullscreen() async {
+    if (!_isDesktopPlatform) return;
+    try {
+      final isFull = await windowManager.isFullScreen();
+      final nextFull = !isFull;
+      await windowManager.setFullScreen(nextFull);
+      if (mounted) {
+        setState(() => _isDesktopFullScreen = nextFull);
+        final s = ref.read(appStringsProvider);
+        _showToastSubtitle(
+          nextFull
+              ? s.playerFullscreenEnteredToast
+              : s.playerFullscreenExitedToast,
+        );
+      }
+    } catch (e) {
+      debugPrint('[PlayerScreen] Fullscreen toggle error: $e');
+    }
+  }
+
+  Future<void> _cycleSubtitleTrack() async {
+    final s = ref.read(appStringsProvider);
+    if (_availableSubtitles.isEmpty) {
+      _showToastSubtitle(s.playerNoSubtitleFound);
+      return;
+    }
+    if (_selectedSubtitle == null) {
+      final first = _availableSubtitles.first;
+      final ok = await _applySubtitle(first);
+      if (ok && mounted) {
+        _showToastSubtitle('${s.playerSubActiveToast(first.languageName)} (C)');
+      }
+      return;
+    }
+    final currentIndex = _availableSubtitles.indexWhere(
+      (item) => item.id == _selectedSubtitle!.id,
+    );
+    if (currentIndex < 0 || currentIndex + 1 >= _availableSubtitles.length) {
+      // Turn off subtitle at end of cycle
+      ref.read(activeSubtitleCuesProvider.notifier).state = [];
+      await _player.setSubtitleTrack(SubtitleTrack.no());
+      if (mounted) {
+        setState(() {
+          _selectedSubtitle = null;
+          _isSubtitleTranslated = false;
+        });
+        _showToastSubtitle('${s.playerDisableSubtitle} (C)');
+      }
+    } else {
+      final nextSub = _availableSubtitles[currentIndex + 1];
+      final ok = await _applySubtitle(nextSub);
+      if (ok && mounted) {
+        _showToastSubtitle(
+          '${s.playerSubActiveToast(nextSub.languageName)} (C)',
+        );
+      }
+    }
+  }
+
+  void _adjustPlaybackSpeedStep(int deltaDirection) {
+    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+    int currentIdx = speeds.indexWhere(
+      (sp) => (_playbackSpeed - sp).abs() < 0.05,
+    );
+    if (currentIdx < 0) currentIdx = 2; // 1.0x
+    final nextIdx = (currentIdx + deltaDirection).clamp(0, speeds.length - 1);
+    final nextSpeed = speeds[nextIdx];
+    _setPlaybackSpeed(nextSpeed);
+    final s = ref.read(appStringsProvider);
+    _showToastSubtitle('${s.playerSpeed}: ${nextSpeed}x');
   }
 
   void _openSidePanel([_SidePanelPage page = _SidePanelPage.main]) {
@@ -2403,6 +3126,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (mounted) {
       setState(() {
         _nextEpisodeButtonVisible = false;
+        _nextEpisodeCountdownSecs = null;
+        _autoPlayCancelledForCurrentEpisode = false;
+        _hasTriggeredEndOfEpisodeSleep = false;
         _showControls = false;
         _isSidePanelOpen = false;
         _activePopup = _PlayerMiniPopup.none;
@@ -2508,6 +3234,237 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     } finally {
       _isSwitchingEpisode = false;
     }
+  }
+
+  Widget _buildNextEpisodeCountdownWidget(AppStrings s) {
+    final nextEp = (_currentEpisode ?? 1) + 1;
+    final countdown = _nextEpisodeCountdownSecs;
+
+    if (countdown != null && countdown > 0) {
+      return Container(
+        key: ValueKey('tv_next_ep_countdown_${nextEp}_$countdown'),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF141418).withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.55),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.55),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Play Now Action
+            TvFocusable(
+              autofocus: true,
+              onTap: _playNextEpisode,
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CircularProgressIndicator(
+                            value: (countdown / 5.0).clamp(0.0, 1.0),
+                            strokeWidth: 2.2,
+                            backgroundColor: Colors.black26,
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Colors.black,
+                            ),
+                          ),
+                          Center(
+                            child: Text(
+                              '$countdown',
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.skip_next_rounded,
+                      color: Colors.black,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      s.playerNextEpisodeInSecs(nextEp, countdown),
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Cancel Auto-Play Action
+            TvFocusable(
+              onTap: () {
+                setState(() {
+                  _autoPlayCancelledForCurrentEpisode = true;
+                  _nextEpisodeCountdownSecs = null;
+                });
+                _showToastSubtitle(s.playerAutoPlayCancelledToast);
+              },
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Text(
+                  s.playerAutoPlayCancel,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _buildSkipPillButton(
+      key: ValueKey('tv_next_episode_$_currentEpisode'),
+      icon: Icons.skip_next_rounded,
+      label: s.playerNextEpisodePill(nextEp),
+      onTap: _playNextEpisode,
+    );
+  }
+
+  Widget _buildSleepTimerMiniPopup(AppStrings s) {
+    final presets = <({int? minutes, bool endOfEp, String label})>[
+      (minutes: null, endOfEp: false, label: s.playerSleepTimerOff),
+      (minutes: 15, endOfEp: false, label: s.playerSleepTimerMinutes(15)),
+      (minutes: 30, endOfEp: false, label: s.playerSleepTimerMinutes(30)),
+      (minutes: 45, endOfEp: false, label: s.playerSleepTimerMinutes(45)),
+      (minutes: 60, endOfEp: false, label: s.playerSleepTimerMinutes(60)),
+      (
+        minutes: -1,
+        endOfEp: true,
+        label: s.playerSleepTimerEndOfEpisode,
+      ),
+    ];
+
+    final badge = _formatSleepTimerBadge();
+
+    return _buildMiniPopupContainer(
+      width: 265,
+      title: s.playerSleepTimerTitle,
+      icon: Icons.bedtime_rounded,
+      trailing: badge != null
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                badge,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            )
+          : null,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: presets.map((preset) {
+          final isSelected = preset.endOfEp
+              ? _sleepAtEndOfEpisode
+              : (preset.minutes == null
+                    ? (!_sleepAtEndOfEpisode &&
+                          _sleepTimerMinutesSelected == null)
+                    : _sleepTimerMinutesSelected == preset.minutes);
+
+          return TvFocusable(
+            onTap: () => _setSleepTimer(
+              preset.minutes,
+              endOfEpisode: preset.endOfEp,
+            ),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
+              margin: const EdgeInsets.only(bottom: 4),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.18)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isSelected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    size: 16,
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      preset.label,
+                      style: TextStyle(
+                        color: isSelected ? AppColors.primary : Colors.white,
+                        fontSize: 12,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 
   Widget _buildSkipPillButton({
@@ -5967,6 +6924,61 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
+  Widget _buildSleepTimerTopBarButton(AppStrings s) {
+    final badge = _formatSleepTimerBadge();
+    final isActive =
+        _activePopup == _PlayerMiniPopup.sleepTimer || badge != null;
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: TvFocusable(
+        onTap: () {
+          _resetControlsTimer();
+          setState(() {
+            if (_isSidePanelOpen) _isSidePanelOpen = false;
+            _activePopup = _activePopup == _PlayerMiniPopup.sleepTimer
+                ? _PlayerMiniPopup.none
+                : _PlayerMiniPopup.sleepTimer;
+          });
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          height: 38,
+          padding: EdgeInsets.symmetric(horizontal: badge != null ? 11 : 9.5),
+          decoration: BoxDecoration(
+            color: isActive
+                ? AppColors.primary
+                : Colors.black.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                badge != null
+                    ? Icons.bedtime_rounded
+                    : Icons.bedtime_outlined,
+                size: 18,
+                color: isActive ? Colors.black : Colors.white,
+              ),
+              if (badge != null) ...[
+                const SizedBox(width: 5),
+                Text(
+                  badge,
+                  style: TextStyle(
+                    color: isActive ? Colors.black : AppColors.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTopBar(AppStrings s) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -6060,19 +7072,38 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ),
 
+          // In-App Mini-Player (PiP) Button
+          if (_useNativePlayer && !_isLoading && !_streamNotFound)
+            _buildTopBarIconButton(
+              icon: Icons.picture_in_picture_alt_rounded,
+              isActive: false,
+              onTap: _enterMiniPlayer,
+            ),
+
           // Side Panel Info Hub Toggle
           _buildTopBarIconButton(
             icon: Iconsax.info_circle,
             isActive: _isSidePanelOpen && _sidePanelPage == _SidePanelPage.info,
             onTap: () => _toggleSidePanel(_SidePanelPage.info),
           ),
-          const SizedBox(width: 8),
+
+          // Sleep Timer Toggle (Placed directly beside Settings icon)
+          _buildSleepTimerTopBarButton(s),
 
           // Side Panel Settings & Features Hub Toggle
           _buildTopBarIconButton(
             icon: Iconsax.setting_2,
             isActive: _isSidePanelOpen && _sidePanelPage != _SidePanelPage.info,
             onTap: () => _toggleSidePanel(_SidePanelPage.main),
+          ),
+
+          // Screen Lock Button (Placed directly beside Settings icon)
+          _buildTopBarIconButton(
+            icon: _isScreenLocked
+                ? Icons.lock_rounded
+                : Icons.lock_open_rounded,
+            isActive: _isScreenLocked,
+            onTap: _lockScreen,
           ),
 
           if (!kIsWeb &&
@@ -6122,6 +7153,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+        if (_isScreenLocked) {
+          _onLockedScreenTap();
+          return;
+        }
         if (_isSidePanelOpen) {
           if (_sidePanelPage != _SidePanelPage.main) {
             _navigateToSidePanelPage(_SidePanelPage.main);
@@ -6137,24 +7172,76 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         onKeyEvent: (node, event) {
           if (event is KeyDownEvent) {
             final key = event.logicalKey;
+
+            // If Screen Lock is active, intercept keys and show unlock pill
+            if (_isScreenLocked) {
+              if (key == LogicalKeyboardKey.select ||
+                  key == LogicalKeyboardKey.enter ||
+                  key == LogicalKeyboardKey.numpadEnter ||
+                  key == LogicalKeyboardKey.gameButtonA) {
+                if (_showLockedOverlay) {
+                  _unlockScreen();
+                } else {
+                  _onLockedScreenTap();
+                }
+              } else {
+                _onLockedScreenTap();
+              }
+              return KeyEventResult.handled;
+            }
+
             if (key == LogicalKeyboardKey.escape) {
+              if (_activePopup != _PlayerMiniPopup.none) {
+                setState(() => _activePopup = _PlayerMiniPopup.none);
+                return KeyEventResult.handled;
+              }
               if (_isSidePanelOpen) {
                 if (_sidePanelPage != _SidePanelPage.main) {
                   _navigateToSidePanelPage(_SidePanelPage.main);
                 } else {
                   _closeSidePanel();
                 }
+              } else if (_isDesktopPlatform && _isDesktopFullScreen) {
+                _toggleDesktopFullscreen();
               } else {
                 _handleExit();
               }
               return KeyEventResult.handled;
             }
-            if (key == LogicalKeyboardKey.keyM) {
-              _setVolume(_volume > 0 ? 0.0 : 100.0);
+
+            // Desktop / Global Keyboard Shortcuts: F, M, J, L, K/Space, C, [/]
+            if (key == LogicalKeyboardKey.keyF ||
+                key == LogicalKeyboardKey.f11) {
+              _toggleDesktopFullscreen();
               return KeyEventResult.handled;
             }
-            if (key == LogicalKeyboardKey.space) {
+            if (key == LogicalKeyboardKey.keyM) {
+              _toggleMute();
+              return KeyEventResult.handled;
+            }
+            if (key == LogicalKeyboardKey.space ||
+                key == LogicalKeyboardKey.keyK) {
               _togglePlayPause();
+              return KeyEventResult.handled;
+            }
+            if (key == LogicalKeyboardKey.keyJ) {
+              _seekRelative(-10);
+              return KeyEventResult.handled;
+            }
+            if (key == LogicalKeyboardKey.keyL) {
+              _seekRelative(10);
+              return KeyEventResult.handled;
+            }
+            if (key == LogicalKeyboardKey.keyC) {
+              _cycleSubtitleTrack();
+              return KeyEventResult.handled;
+            }
+            if (key == LogicalKeyboardKey.bracketLeft) {
+              _adjustPlaybackSpeedStep(-1);
+              return KeyEventResult.handled;
+            }
+            if (key == LogicalKeyboardKey.bracketRight) {
+              _adjustPlaybackSpeedStep(1);
               return KeyEventResult.handled;
             }
 
@@ -6165,6 +7252,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 _streamNotFound ||
                 _isLoading) {
               return KeyEventResult.ignored;
+            }
+
+            // On Desktop (Windows/macOS/Linux), Up/Down arrows adjust volume when no menu is open
+            if (_isDesktopPlatform) {
+              if (key == LogicalKeyboardKey.arrowUp) {
+                _setVolume(_volume + 5.0);
+                return KeyEventResult.handled;
+              } else if (key == LogicalKeyboardKey.arrowDown) {
+                _setVolume(_volume - 5.0);
+                return KeyEventResult.handled;
+              } else if (key == LogicalKeyboardKey.arrowLeft) {
+                _seekRelative(-10);
+                return KeyEventResult.handled;
+              } else if (key == LogicalKeyboardKey.arrowRight) {
+                _seekRelative(10);
+                return KeyEventResult.handled;
+              }
             }
 
             // When controls are hidden, use Left/Right for quick 10s seek,
@@ -6234,18 +7338,33 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onTap: _toggleControls,
+                              onDoubleTap: _isDesktopPlatform && !_isScreenLocked
+                                  ? _toggleDesktopFullscreen
+                                  : null,
+                              onLongPressStart: _isScreenLocked
+                                  ? null
+                                  : (_) => _startHold2xSpeed(),
+                              onLongPressEnd: _isScreenLocked
+                                  ? null
+                                  : (_) => _stopHold2xSpeed(),
+                              onLongPressCancel: _stopHold2xSpeed,
                               // Vertical swipe gesture on right half of video to adjust volume, left half to adjust brightness
-                              onVerticalDragUpdate: (details) {
-                                if (details.localPosition.dx > videoWidth / 2) {
-                                  // Drag up increases volume, drag down decreases volume
-                                  final delta = -details.primaryDelta! * 0.5;
-                                  _setVolume(_volume + delta);
-                                } else {
-                                  // Drag up increases brightness, drag down decreases brightness
-                                  final delta = -details.primaryDelta! / 250.0;
-                                  _setBrightness(_brightness + delta);
-                                }
-                              },
+                              onVerticalDragUpdate: _isScreenLocked
+                                  ? null
+                                  : (details) {
+                                      if (details.localPosition.dx >
+                                          videoWidth / 2) {
+                                        // Drag up increases volume, drag down decreases volume
+                                        final delta =
+                                            -details.primaryDelta! * 0.5;
+                                        _setVolume(_volume + delta);
+                                      } else {
+                                        // Drag up increases brightness, drag down decreases brightness
+                                        final delta =
+                                            -details.primaryDelta! / 250.0;
+                                        _setBrightness(_brightness + delta);
+                                      }
+                                    },
                               child: Video(
                                 controller: _videoController,
                                 controls:
@@ -6268,18 +7387,34 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                   child: GestureDetector(
                                     behavior: HitTestBehavior.opaque,
                                     onTap: _toggleControls,
-                                    onVerticalDragUpdate: (details) {
-                                      if (details.localPosition.dx >
-                                          videoWidth / 2) {
-                                        final delta =
-                                            -details.primaryDelta! * 0.5;
-                                        _setVolume(_volume + delta);
-                                      } else {
-                                        final delta =
-                                            -details.primaryDelta! / 250.0;
-                                        _setBrightness(_brightness + delta);
-                                      }
-                                    },
+                                    onDoubleTap:
+                                        _isDesktopPlatform && !_isScreenLocked
+                                        ? _toggleDesktopFullscreen
+                                        : null,
+                                    onLongPressStart: _isScreenLocked
+                                        ? null
+                                        : (_) => _startHold2xSpeed(),
+                                    onLongPressEnd: _isScreenLocked
+                                        ? null
+                                        : (_) => _stopHold2xSpeed(),
+                                    onLongPressCancel: _stopHold2xSpeed,
+                                    onVerticalDragUpdate: _isScreenLocked
+                                        ? null
+                                        : (details) {
+                                            if (details.localPosition.dx >
+                                                videoWidth / 2) {
+                                              final delta =
+                                                  -details.primaryDelta! * 0.5;
+                                              _setVolume(_volume + delta);
+                                            } else {
+                                              final delta =
+                                                  -details.primaryDelta! /
+                                                  250.0;
+                                              _setBrightness(
+                                                _brightness + delta,
+                                              );
+                                            }
+                                          },
                                     child: Container(color: Colors.transparent),
                                   ),
                                 ),
@@ -6287,6 +7422,55 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             )
                           else
                             const SizedBox.shrink(),
+
+                          // ── 1.5 Hold-for-2x Speed Top-Center Badge ──
+                          if (_isHolding2x)
+                            Positioned(
+                              top: 24,
+                              left: 0,
+                              right: 0,
+                              child: IgnorePointer(
+                                child: Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.78,
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                        width: 1.2,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.fast_forward_rounded,
+                                          color: AppColors.primary,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          s.playerHold2xSpeedBadge,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
 
                           // ── 2. Synchronized Custom Subtitles Layer (Direct child of Stack!) ──
                           CustomSubtitleOverlay(
@@ -6478,7 +7662,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             _buildStreamNotFoundOverlay(s),
 
                           // ── 5. Cineva Custom Cinema Controls (Unified for Both Native & Web Streams) ──
-                          if (!_isLoading && !_streamNotFound)
+                          if (!_isLoading &&
+                              !_streamNotFound &&
+                              !_isScreenLocked &&
+                              !_isInNativePip)
                             AnimatedOpacity(
                               opacity: _showControls ? 1.0 : 0.0,
                               duration: const Duration(milliseconds: 200),
@@ -6692,6 +7879,42 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                                         ),
                                                       ),
                                                     ),
+                                                    // Desktop Fullscreen toggle button (F / Double-Click)
+                                                    if (_isDesktopPlatform) ...[
+                                                      const SizedBox(width: 6),
+                                                      Tooltip(
+                                                        message: _isDesktopFullScreen
+                                                            ? s.playerExitFullscreenTooltip
+                                                            : s.playerFullscreenTooltip,
+                                                        child: TvFocusable(
+                                                          onTap:
+                                                              _toggleDesktopFullscreen,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                20,
+                                                              ),
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  8,
+                                                                ),
+                                                            child: Icon(
+                                                              _isDesktopFullScreen
+                                                                  ? Icons
+                                                                        .fullscreen_exit_rounded
+                                                                  : Icons
+                                                                        .open_in_full_rounded,
+                                                              color: _isDesktopFullScreen
+                                                                  ? AppColors
+                                                                        .primary
+                                                                  : Colors
+                                                                        .white70,
+                                                              size: 20,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ],
                                                 );
                                               },
@@ -6705,31 +7928,107 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                               ),
                             ),
 
-                          // ── 5.5 Floating TV Series Next Episode Action (<= 60s remaining) ──
+                          // ── 5.2 Screen Lock Overlay (Tap to reveal floating Unlock button) ──
                           if (!_isLoading &&
+                              _isScreenLocked &&
+                              _showLockedOverlay)
+                            Positioned(
+                              top: 28,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: AnimatedOpacity(
+                                  opacity: _showLockedOverlay ? 1.0 : 0.0,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: TvFocusable(
+                                    onTap: _unlockScreen,
+                                    borderRadius: BorderRadius.circular(28),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 18,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(
+                                          0xFF14141C,
+                                        ).withValues(alpha: 0.9),
+                                        borderRadius: BorderRadius.circular(28),
+                                        border: Border.all(
+                                          color: AppColors.primary.withValues(
+                                            alpha: 0.65,
+                                          ),
+                                          width: 1.4,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.55,
+                                            ),
+                                            blurRadius: 16,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Iconsax.lock_1,
+                                            color: AppColors.primary,
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                s.playerScreenLockedBadge,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12.5,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                              Text(
+                                                s.playerUnlockTapHint,
+                                                style: const TextStyle(
+                                                  color: Colors.white70,
+                                                  fontSize: 10.5,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // ── 5.5 Floating TV Series Next Episode Action (<= 60s remaining & 5s Auto-Play Countdown) ──
+                          if (!_isLoading &&
+                              !_isInNativePip &&
                               _nextEpisodeButtonVisible &&
                               (_currentSeason != null &&
                                   _currentEpisode != null))
                             Positioned(
-                              bottom: _showControls ? 78 : 28,
+                              bottom: (_showControls && !_isScreenLocked)
+                                  ? 78
+                                  : 28,
                               right: 28,
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 300),
-                                child: _buildSkipPillButton(
-                                  key: ValueKey(
-                                    'tv_next_episode_$_currentEpisode',
-                                  ),
-                                  icon: Icons.skip_next_rounded,
-                                  label: s.playerNextEpisodePill(
-                                    (_currentEpisode ?? 1) + 1,
-                                  ),
-                                  onTap: _playNextEpisode,
-                                ),
+                                child: _buildNextEpisodeCountdownWidget(s),
                               ),
                             ),
 
                           // ── 6. Compact Semi-Transparent Mini Popups Layer ──
                           if (!_isLoading &&
+                              !_isScreenLocked &&
+                              !_isInNativePip &&
                               _activePopup != _PlayerMiniPopup.none) ...[
                             // Outside tap dismisser (transparent, non-blocking)
                             Positioned.fill(
@@ -6760,6 +8059,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                   _buildSubtitleSettingsMiniPopup(s),
                                 _PlayerMiniPopup.server =>
                                   _buildServerMiniPopup(s),
+                                _PlayerMiniPopup.sleepTimer =>
+                                  _buildSleepTimerMiniPopup(s),
                                 _PlayerMiniPopup.none =>
                                   const SizedBox.shrink(),
                               },

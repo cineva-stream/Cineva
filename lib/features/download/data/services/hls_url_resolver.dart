@@ -34,10 +34,17 @@ class HlsUrlResolver {
       resolvedUri = parentUri.resolve(cleanChild);
     }
 
-    // If resolved URI doesn't have query parameters, but parent had query parameters,
-    // inherit them!
-    if (resolvedUri.queryParameters.isEmpty && parentUri.queryParameters.isNotEmpty) {
-      resolvedUri = resolvedUri.replace(queryParameters: parentUri.queryParameters);
+    // If resolved URI doesn't have query parameters, but parent had query parameters
+    // on the same host (and child was a relative/root-relative path), inherit them!
+    final isAbsoluteChild =
+        cleanChild.startsWith('http://') || cleanChild.startsWith('https://');
+    if (!isAbsoluteChild &&
+        resolvedUri.queryParameters.isEmpty &&
+        parentUri.queryParameters.isNotEmpty &&
+        resolvedUri.host.toLowerCase() == parentUri.host.toLowerCase()) {
+      resolvedUri = resolvedUri.replace(
+        queryParameters: parentUri.queryParameters,
+      );
     }
 
     return resolvedUri.toString();

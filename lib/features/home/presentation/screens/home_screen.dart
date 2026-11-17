@@ -990,8 +990,9 @@ class HomeScreen extends ConsumerWidget {
                       !hasUpcoming &&
                       !hasTv;
 
-                  if (!noneMatches)
+                  if (!noneMatches) {
                     return const SliverToBoxAdapter(child: SizedBox.shrink());
+                  }
 
                   return SliverToBoxAdapter(
                     child: Padding(

@@ -563,6 +563,24 @@ class _InProgressCard extends ConsumerWidget {
   final DownloadItem item;
   const _InProgressCard({required this.item});
 
+  String _localizeSpeed(String raw, AppStrings s) {
+    if (s.isIndonesian) return raw;
+    switch (raw) {
+      case 'Selesai':
+        return 'Completed';
+      case 'Dijeda':
+        return 'Paused';
+      case 'Gagal':
+        return 'Failed';
+      case 'Melanjutkan...':
+        return 'Resuming...';
+      case 'Menyelesaikan unduhan...':
+        return 'Finalizing download...';
+      default:
+        return raw;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
@@ -637,7 +655,7 @@ class _InProgressCard extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            item.speed,
+                            _localizeSpeed(item.speed, s),
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -791,8 +809,8 @@ class _CompletedMovieCard extends ConsumerWidget {
                   const SizedBox(height: 3),
                   Text(
                     item.releaseYear.isNotEmpty
-                        ? 'Film • ${item.releaseYear}'
-                        : 'Film',
+                        ? '${s.downloadModalMovie} • ${item.releaseYear}'
+                        : s.downloadModalMovie,
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: AppColors.textSecondary,
@@ -858,7 +876,7 @@ class _CompletedMovieCard extends ConsumerWidget {
                               ),
                               const SizedBox(width: 3),
                               Text(
-                                'SUB ID',
+                                'SUB ${item.selectedSubtitleLang.toUpperCase()}',
                                 style: GoogleFonts.jetBrainsMono(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
@@ -1050,7 +1068,9 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          '${sortedSeasonKeys.length} Season • ${episodes.length} Episode',
+                          appStrings.isIndonesian
+                              ? '${sortedSeasonKeys.length} Season • ${episodes.length} Episode'
+                              : '${sortedSeasonKeys.length} Seasons • ${episodes.length} Episodes',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -1076,7 +1096,9 @@ class _TvSeriesSeasonCard extends ConsumerWidget {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              isExpanded ? 'Tutup Daftar' : 'Buka Episode',
+                              appStrings.isIndonesian
+                                  ? (isExpanded ? 'Tutup Daftar' : 'Buka Episode')
+                                  : (isExpanded ? 'Collapse List' : 'View Episodes'),
                               style: GoogleFonts.outfit(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -1316,7 +1338,7 @@ class _EpisodeCard extends ConsumerWidget {
                     if (item.subtitlePath != null) ...[
                       const SizedBox(width: 6),
                       Text(
-                        '• SUB ID',
+                        '• SUB ${item.selectedSubtitleLang.toUpperCase()}',
                         style: GoogleFonts.jetBrainsMono(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,

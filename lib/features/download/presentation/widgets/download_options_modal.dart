@@ -1,20 +1,23 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_colors.dart';
-import '../../../../core/constants/api_constants.dart';
 import '../../../../core/localization/app_strings.dart';
+import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../player/data/services/smart_stream_service.dart';
+import '../../../player/data/services/subtitle_service.dart';
+import '../../../settings/data/settings_service.dart';
+import '../../../settings/data/subtitle_languages.dart';
 import '../providers/download_provider.dart';
-import '../../data/services/download_file_namer.dart';
 import '../../data/services/video_download_service.dart';
 
-/// Modal bottom sheet with a smooth two-step slide transition:
-/// Step 1: Video Resolution & File Size Selection
-/// Step 2: Subtitle Preference & Auto-Translation Selection
+/// Compact, content-hugging two-step modal bottom sheet with smooth horizontal slide animation:
+/// Step 1: Select Quality with Estimated File Size + [Cancel] & [Next] buttons.
+/// Step 2: Select Available Subtitle + Auto-Translate Toggle to Primary Subtitle + [Download] button.
 class DownloadOptionsModal extends ConsumerStatefulWidget {
   final int tmdbId;
   final String mediaType; // 'movie' or 'tv'
@@ -61,11 +64,13 @@ class DownloadOptionsModal extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       useRootNavigator: true,
+      useSafeArea: false,
       backgroundColor: AppColors.background,
-      barrierColor: Colors.black.withValues(alpha: 0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.78),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      clipBehavior: Clip.antiAlias,
       builder: (_) => DownloadOptionsModal(
         tmdbId: tmdbId,
         mediaType: mediaType,
@@ -89,23 +94,48 @@ class DownloadOptionsModal extends ConsumerStatefulWidget {
 
 class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
   final _videoService = VideoDownloadService();
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
+  final _subtitleService = SubtitleService();
+
+  int _currentStep = 0; // 0 = Quality, 1 = Subtitle
+  bool _slidingForward = true;
+
   bool _isLoadingResolutions = true;
+  bool _isLoadingSubtitles = true;
+
   List<ResolutionOption> _resolutions = [];
   String _selectedResolution = '1080p';
-  String _selectedSubtitleLang = 'id';
+
+  List<SubtitleInfo> _availableSubtitles = [];
+  SubtitleInfo? _selectedSubtitle;
+  bool _noSubtitleSelected = false;
+  late bool _autoTranslate;
 
   @override
   void initState() {
     super.initState();
-    _loadResolutions();
+    _autoTranslate = SettingsService.getAutoTranslate();
+    _loadData();
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _subtitleService.dispose();
     super.dispose();
+  }
+
+  String _getPrimarySubtitleLangCode() {
+    final pref = SettingsService.getDefaultSubtitleLang();
+    if (pref.isNotEmpty && pref != 'off') {
+      return pref.toLowerCase();
+    }
+    final appLang = ref.read(appLanguageProvider);
+    return appLang == AppLanguage.en ? 'en' : 'id';
+  }
+
+  Future<void> _loadData() async {
+    final resolutionsFuture = _loadResolutions();
+    final openSubsFuture = _fetchOpenSubtitles();
+    await Future.wait([resolutionsFuture, openSubsFuture]);
   }
 
   Future<void> _loadResolutions() async {
@@ -117,15 +147,17 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
         episode: widget.episode,
         runtimeMinutes: widget.runtimeMinutes,
       );
-      if (mounted) {
-        setState(() {
-          _resolutions = res;
-          _isLoadingResolutions = false;
-          if (res.isNotEmpty) {
-            _selectedResolution = res.first.label;
+      if (!mounted) return;
+      setState(() {
+        _resolutions = res;
+        _isLoadingResolutions = false;
+        if (res.isNotEmpty) {
+          _selectedResolution = res.first.label;
+          if (res.first.streamSubtitles.isNotEmpty) {
+            _mergeAndSelectSubtitles(res.first.streamSubtitles);
           }
-        });
-      }
+        }
+      });
     } catch (_) {
       if (mounted) {
         setState(() => _isLoadingResolutions = false);
@@ -133,40 +165,128 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
     }
   }
 
+  Future<void> _fetchOpenSubtitles() async {
+    try {
+      String? resolvedImdb = widget.imdbId;
+      if ((resolvedImdb == null || resolvedImdb.isEmpty) && widget.tmdbId > 0) {
+        try {
+          final ids = await SmartStreamService.resolveIds(
+            tmdbId: widget.tmdbId,
+            imdbId: widget.imdbId,
+            isTv: widget.season != null,
+          );
+          if (ids.imdbId != null && ids.imdbId!.isNotEmpty) {
+            resolvedImdb = ids.imdbId;
+          }
+        } catch (_) {}
+      }
+
+      final primaryLang = _getPrimarySubtitleLangCode();
+      final queryLangs = <String>{primaryLang, 'id', 'en'}.join(',');
+
+      List<SubtitleInfo> openSubs = [];
+      if (resolvedImdb != null && resolvedImdb.isNotEmpty) {
+        openSubs = await _subtitleService.searchByImdbId(
+          resolvedImdb,
+          language: queryLangs,
+          seasonNumber: widget.season,
+          episodeNumber: widget.episode,
+        );
+      }
+      if (openSubs.isEmpty && widget.title.isNotEmpty) {
+        openSubs = await _subtitleService.searchByQuery(
+          widget.title,
+          language: queryLangs,
+          seasonNumber: widget.season,
+          episodeNumber: widget.episode,
+        );
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _mergeAndSelectSubtitles(openSubs);
+        _isLoadingSubtitles = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingSubtitles = false);
+      }
+    }
+  }
+
+  void _mergeAndSelectSubtitles(List<SubtitleInfo> incoming) {
+    final combined = <SubtitleInfo>[..._availableSubtitles, ...incoming];
+    final seenKeys = <String>{};
+    final deduped = <SubtitleInfo>[];
+    final langCounts = <String, int>{};
+
+    for (final sub in combined) {
+      final lang = sub.language.toLowerCase().trim();
+      final isStream = sub.languageName.toLowerCase().contains('stream') ||
+          (sub.downloadUrl != null && sub.downloadUrl!.isNotEmpty);
+      final key = '${lang}_${isStream ? 'stream' : sub.id}';
+      if (!seenKeys.add(key)) continue;
+
+      final countKey = '${lang}_${isStream ? 's' : 'o'}';
+      final currentCount = langCounts[countKey] ?? 0;
+      if (isStream && currentCount >= 1) continue;
+      if (!isStream && currentCount >= 2) continue;
+      langCounts[countKey] = currentCount + 1;
+
+      deduped.add(sub);
+    }
+
+    final primaryLang = _getPrimarySubtitleLangCode();
+    deduped.sort((a, b) {
+      int score(SubtitleInfo item) {
+        final l = item.language.toLowerCase();
+        final isStream = item.languageName.toLowerCase().contains('stream') ||
+            (item.downloadUrl != null && item.downloadUrl!.isNotEmpty);
+        int s = 0;
+        if (l == primaryLang) {
+          s += 100;
+        } else if (l == 'id') {
+          s += 80;
+        } else if (l == 'en') {
+          s += 60;
+        }
+        if (isStream) s += 10;
+        return s;
+      }
+
+      return score(b).compareTo(score(a));
+    });
+
+    _availableSubtitles = deduped;
+
+    if (_selectedSubtitle == null &&
+        !_noSubtitleSelected &&
+        _availableSubtitles.isNotEmpty) {
+      _selectedSubtitle = _availableSubtitles.first;
+    }
+  }
+
   void _nextPage() {
-    _pageController.animateToPage(
-      1,
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-    );
+    setState(() {
+      _slidingForward = true;
+      _currentStep = 1;
+    });
   }
 
   void _prevPage() {
-    _pageController.animateToPage(
-      0,
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-    );
+    setState(() {
+      _slidingForward = false;
+      _currentStep = 0;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(appStringsProvider);
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    final isMovie = widget.mediaType == 'movie';
-
-    final videoFileName = isMovie
-        ? DownloadFileNamer.formatMovieFileName(
-            widget.title,
-            widget.releaseYear,
-          )
-        : DownloadFileNamer.formatTvFileName(
-            widget.title,
-            widget.season ?? 1,
-            widget.episode ?? 1,
-          );
-    final subtitleFileName = DownloadFileNamer.formatSubtitleFileName(
-      videoFileName,
+    // Respect Android gesture navigation bar inset accurately in edge-to-edge mode
+    final bottomInset = math.max(
+      MediaQuery.viewPaddingOf(context).bottom,
+      MediaQuery.paddingOf(context).bottom,
     );
 
     final selectedOption = _resolutions.firstWhere(
@@ -174,237 +294,138 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
       orElse: () => ResolutionOption(
         label: '1080p',
         title: '1080p Full HD',
-        description: s.isIndonesian ? 'Kualitas terbaik' : 'Best quality',
+        description: s.downloadQualityDesc('1080p'),
         estimatedSizeBytes: 1800000000,
         formattedSize: '~1.8 GB',
         streamUrl: '',
       ),
     );
 
-    return SafeArea(
-      top: false,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.88,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Simple Drag Handle
+        Center(
+          child: Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 4),
+            width: 38,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Drag Handle
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                width: 44,
-                height: 4.5,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(3),
+
+        // Content-hugging smooth slide transition between Step 1 and Step 2
+        AnimatedSize(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              final isIncoming = child.key == ValueKey<int>(_currentStep);
+              final beginOffset = isIncoming
+                  ? Offset(_slidingForward ? 1.0 : -1.0, 0.0)
+                  : Offset(_slidingForward ? -0.35 : 0.35, 0.0);
+              return ClipRect(
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: beginOffset,
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: FadeTransition(opacity: animation, child: child),
                 ),
-              ),
-            ),
-
-            // Header Media Preview with Step Dots
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: CachedNetworkImage(
-                      imageUrl: ApiConstants.imageUrl(
-                        widget.posterPath,
-                        size: ApiConstants.posterSmall,
-                      ),
-                      width: 48,
-                      height: 72,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => Container(
-                        width: 48,
-                        height: 72,
-                        color: AppColors.surfaceVariant,
-                      ),
-                      errorWidget: (_, _, _) => Container(
-                        width: 48,
-                        height: 72,
-                        color: AppColors.surfaceVariant,
-                        child: const Icon(
-                          Icons.movie,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
+              );
+            },
+            child: _currentStep == 0
+                ? KeyedSubtree(
+                    key: const ValueKey<int>(0),
+                    child: _buildQualityStep(
+                      context,
+                      selectedOption,
+                      bottomInset,
+                      s,
+                    ),
+                  )
+                : KeyedSubtree(
+                    key: const ValueKey<int>(1),
+                    child: _buildSubtitleStep(
+                      context,
+                      selectedOption,
+                      bottomInset,
+                      s,
                     ),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.title,
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          isMovie
-                              ? '${s.downloadModalMovie} • ${widget.releaseYear.isNotEmpty ? widget.releaseYear : 'N/A'}'
-                              : '${s.downloadModalTv} • S${widget.season} E${widget.episode}${widget.episodeTitle != null ? ' - ${widget.episodeTitle}' : ''}',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2.5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceElevated,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                _currentPage == 0
-                                    ? (s.isIndonesian
-                                          ? 'Langkah 1/2: Resolusi'
-                                          : 'Step 1/2: Resolution')
-                                    : (s.isIndonesian
-                                          ? 'Langkah 2/2: Subtitle'
-                                          : 'Step 2/2: Subtitle'),
-                                style: GoogleFonts.inter(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            // Smooth step indicator dots
-                            Row(
-                              children: [
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 250),
-                                  width: _currentPage == 0 ? 16 : 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color: _currentPage == 0
-                                        ? AppColors.primary
-                                        : Colors.white24,
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 250),
-                                  width: _currentPage == 1 ? 16 : 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color: _currentPage == 1
-                                        ? AppColors.primary
-                                        : Colors.white24,
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const Divider(color: Color(0x15FFFFFF), height: 1),
-
-            // Two-step PageView with smooth horizontal slide animation
-            Flexible(
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                onPageChanged: (idx) => setState(() => _currentPage = idx),
-                children: [
-                  // PAGE 1: Resolusi & Ukuran
-                  _buildResolutionStep(context, selectedOption, s),
-
-                  // PAGE 2: Subtitle Preference & Auto-Translation
-                  _buildSubtitleStep(
-                    context,
-                    selectedOption,
-                    videoFileName,
-                    subtitleFileName,
-                    bottomInset,
-                    s,
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
-  /// Step 1: Video resolution & file size selection
-  Widget _buildResolutionStep(
+  /// Step 1: Title, Quality List with Estimated File Size, Cancel & Next Buttons
+  Widget _buildQualityStep(
     BuildContext context,
     ResolutionOption selectedOption,
+    double bottomInset,
     AppStrings s,
   ) {
+    final isMovie = widget.mediaType == 'movie';
+    final mediaSubtitle = isMovie
+        ? (widget.releaseYear.isNotEmpty
+            ? '${widget.title} (${widget.releaseYear})'
+            : widget.title)
+        : '${widget.title} • S${widget.season ?? 1}:E${widget.episode ?? 1}${widget.episodeTitle != null && widget.episodeTitle!.isNotEmpty ? ' - ${widget.episodeTitle}' : ''}';
+
+    final maxListHeight = MediaQuery.sizeOf(context).height * 0.42;
+
     return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
+        // Bottom Sheet Title
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                s.downloadSheetQualityTitle,
+                style: GoogleFonts.outfit(
+                  fontSize: 17.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                mediaSubtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const Divider(color: Color(0x15FFFFFF), height: 1),
+
+        // Quality List with Estimated File Sizes (shrink-wrapped to content)
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxListHeight),
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.hd_rounded,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      s.downloadModalSelectResolution,
-                      style: GoogleFonts.outfit(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  s.downloadModalSelectResolutionDesc,
-                  style: GoogleFonts.inter(
-                    fontSize: 11.5,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                if (_isLoadingResolutions)
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 36),
-                    alignment: Alignment.center,
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+            child: _isLoadingResolutions
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 28),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -417,8 +438,318 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                           ),
                         ),
                         const SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            s.downloadModalConnecting,
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : _resolutions.isEmpty
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 22,
+                        ),
+                        margin: const EdgeInsets.only(bottom: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.cloud_off_rounded,
+                              color: AppColors.textMuted,
+                              size: 30,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              s.isIndonesian
+                                  ? 'Tautan unduhan belum tersedia untuk judul ini'
+                                  : 'Download stream not available for this title',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 12.5,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: _resolutions.map((res) {
+                          final isSelected = _selectedResolution == res.label;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () =>
+                                  setState(() => _selectedResolution = res.label),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 11,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? AppColors.primary.withValues(alpha: 0.12)
+                                      : AppColors.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.surfaceElevated,
+                                    width: isSelected ? 1.5 : 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isSelected
+                                          ? Icons.radio_button_checked_rounded
+                                          : Icons.radio_button_off_rounded,
+                                      size: 20,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.textMuted,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            res.label,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 14.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: isSelected
+                                                  ? AppColors.primary
+                                                  : Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 1),
+                                          Text(
+                                            s.downloadQualityDesc(res.label),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? AppColors.primary.withValues(
+                                                alpha: 0.18,
+                                              )
+                                            : AppColors.surfaceElevated,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        res.formattedSize,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: isSelected
+                                              ? AppColors.primary
+                                              : AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+          ),
+        ),
+
+        // Bottom Buttons: [Batal / Cancel] and [Lanjut / Next]
+        Container(
+          padding: EdgeInsets.fromLTRB(20, 10, 20, 12 + bottomInset),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () =>
+                      Navigator.of(context, rootNavigator: true).pop(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    s.downloadSheetCancel,
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: (_isLoadingResolutions ||
+                          _resolutions.isEmpty ||
+                          selectedOption.streamUrl.isEmpty)
+                      ? null
+                      : _nextPage,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        s.downloadSheetNext,
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.arrow_forward_rounded, size: 17),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Step 2: Title, Available Subtitles List, Auto-Translate Toggle, Download Button
+  Widget _buildSubtitleStep(
+    BuildContext context,
+    ResolutionOption selectedOption,
+    double bottomInset,
+    AppStrings s,
+  ) {
+    final primaryLangCode = _getPrimarySubtitleLangCode();
+    final primaryLangObj = SubtitleLanguageCatalog.findByCode(primaryLangCode);
+    final maxListHeight = MediaQuery.sizeOf(context).height * 0.36;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Bottom Sheet Title with Back Arrow
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 20, 10),
+          child: Row(
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: _prevPage,
+                child: Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: const BoxDecoration(
+                    color: AppColors.surfaceElevated,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.downloadSheetSubtitleTitle,
+                      style: GoogleFonts.outfit(
+                        fontSize: 17.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${selectedOption.label} • ${selectedOption.formattedSize}',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const Divider(color: Color(0x15FFFFFF), height: 1),
+
+        // Available Subtitles List (shrink-wrapped to content)
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxListHeight),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_isLoadingSubtitles && _availableSubtitles.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                         Text(
-                          s.downloadModalConnecting,
+                          s.downloadSheetLoadingSubtitles,
                           style: const TextStyle(
                             color: AppColors.textMuted,
                             fontSize: 12,
@@ -426,536 +757,423 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
                         ),
                       ],
                     ),
-                  )
-                else if (_resolutions.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 24,
-                    ),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.06),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.cloud_off_rounded,
-                          color: AppColors.textMuted,
-                          size: 36,
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          s.isIndonesian
-                              ? 'Tautan unduhan belum tersedia untuk judul ini'
-                              : 'Download stream not available for this title',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  Column(
-                    children: _resolutions.map((res) {
-                      final isSelected = _selectedResolution == res.label;
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () {
-                          setState(() => _selectedResolution = res.label);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.primary.withValues(alpha: 0.12)
-                                : AppColors.surfaceVariant,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.surfaceElevated,
-                              width: isSelected ? 1.5 : 1.0,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? AppColors.primary
-                                      : AppColors.surfaceElevated,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  res.label,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: isSelected
-                                        ? Colors.black
-                                        : Colors.white,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      res.title,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
-                                        color: isSelected
-                                            ? AppColors.primary
-                                            : Colors.white,
-                                      ),
-                                    ),
-                                    Text(
-                                      res.description,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                res.formattedSize,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: isSelected
-                                      ? AppColors.primary
-                                      : AppColors.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Icon(
-                                isSelected
-                                    ? Icons.check_circle_rounded
-                                    : Icons.circle_outlined,
-                                size: 20,
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.textMuted,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
                   ),
+
+                // Available Subtitle Items for this Movie / Episode
+                for (final sub in _availableSubtitles)
+                  _buildAvailableSubtitleTile(sub, s),
+
+                // Fallback default language option if OpenSubtitles & Stream returned empty
+                if (!_isLoadingSubtitles && _availableSubtitles.isEmpty)
+                  _buildFallbackPrimarySubtitleTile(primaryLangObj, s),
+
+                // No Subtitle Option
+                _buildNoSubtitleTile(s),
               ],
             ),
           ),
         ),
 
-        // Action Button: Lanjut ke Subtitle
+        // Auto-Translate Toggle + Download Button Footer
         Container(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            12,
-            20,
-            14 + MediaQuery.of(context).padding.bottom,
-          ),
+          padding: EdgeInsets.fromLTRB(20, 10, 20, 12 + bottomInset),
           decoration: BoxDecoration(
             color: AppColors.surface,
             border: Border(
               top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
             ),
           ),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed:
-                  (_isLoadingResolutions ||
-                      _resolutions.isEmpty ||
-                      selectedOption.streamUrl.isEmpty)
-                  ? null
-                  : _nextPage,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Toggle: Auto-Translate to Primary Subtitle
+              Opacity(
+                opacity: _noSubtitleSelected ? 0.45 : 1.0,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.surfaceElevated),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.translate_rounded,
+                        color: AppColors.primary,
+                        size: 19,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              s.downloadSheetAutoTranslateTitle(
+                                primaryLangObj.name,
+                              ),
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              s.downloadSheetAutoTranslateDesc(
+                                primaryLangObj.name,
+                              ),
+                              style: GoogleFonts.inter(
+                                fontSize: 10.5,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: !_noSubtitleSelected && _autoTranslate,
+                        activeThumbColor: AppColors.primary,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        onChanged: _noSubtitleSelected
+                            ? null
+                            : (val) {
+                                setState(() => _autoTranslate = val);
+                              },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '${s.downloadModalNextSub} (${selectedOption.label} • ${selectedOption.formattedSize})',
+
+              // Download Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _startDownload(selectedOption, s),
+                  icon: const Icon(Icons.download_rounded, size: 19),
+                  label: Text(
+                    '${s.downloadSheetDownloadBtn} (${selectedOption.formattedSize})',
                     style: GoogleFonts.outfit(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward_rounded, size: 18),
-                ],
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 12.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  /// Step 2: Subtitle preference selection with auto-translate option
-  Widget _buildSubtitleStep(
-    BuildContext context,
-    ResolutionOption selectedOption,
-    String videoFileName,
-    String subtitleFileName,
-    double bottomInset,
-    AppStrings s,
-  ) {
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header with back button
-                Row(
+  Widget _buildAvailableSubtitleTile(SubtitleInfo sub, AppStrings s) {
+    final isSelected =
+        !_noSubtitleSelected && _selectedSubtitle?.id == sub.id;
+    final langObj = SubtitleLanguageCatalog.findByCode(sub.language);
+    final isStream = sub.languageName.toLowerCase().contains('stream') ||
+        (sub.downloadUrl != null && sub.downloadUrl!.isNotEmpty);
+    final sourceLabel = isStream
+        ? s.downloadSheetSubSourceStream
+        : s.downloadSheetSubSourceOpenSub;
+    final detailText = sub.fileName.isNotEmpty && sub.fileName != sub.languageName
+        ? '$sourceLabel • ${sub.fileName}'
+        : sourceLabel;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          setState(() {
+            _noSubtitleSelected = false;
+            _selectedSubtitle = sub;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.12)
+                : AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color:
+                  isSelected ? AppColors.primary : AppColors.surfaceElevated,
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isSelected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_off_rounded,
+                size: 20,
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      onTap: _prevPage,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: AppColors.surfaceElevated,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
+                    Text(
+                      langObj.displayName,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? AppColors.primary : Colors.white,
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            s.downloadModalSelectSubtitle,
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            s.downloadModalSelectedQuality(
-                              selectedOption.label,
-                              selectedOption.formattedSize,
-                            ),
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 1),
+                    Text(
+                      detailText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-
-                _buildSubtitleOption(
-                  langCode: 'id',
-                  title: s.downloadModalIndonesianPriority,
-                  badge: 'Auto-Translate',
-                  subtitle: s.downloadModalIndonesianPriorityDesc,
-                ),
-                _buildSubtitleOption(
-                  langCode: 'en',
-                  title: s.downloadModalEnglishSub,
-                  badge: 'Original',
-                  subtitle: s.downloadModalEnglishSubDesc,
-                ),
-                _buildSubtitleOption(
-                  langCode: 'none',
-                  title: s.downloadModalNoSub,
-                  subtitle: s.downloadModalNoSubDesc,
-                ),
-
-                const SizedBox(height: 14),
-
-                // File location card
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceElevated.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.06),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.folder_outlined,
-                            color: AppColors.textSecondary,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            s.downloadModalStorageLocation,
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Penyimpanan Utama > Download > Cineva > $videoFileName',
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      if (_selectedSubtitleLang != 'none') ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          '+ Subtitle: $subtitleFileName',
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 10,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-
-        // Bottom Action Button: Mulai Mengunduh
-        Container(
-          padding: EdgeInsets.fromLTRB(20, 12, 20, 14 + bottomInset),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border(
-              top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-            ),
-          ),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                final router = GoRouter.of(context);
-
-                Navigator.of(context, rootNavigator: true).pop();
-
-                await ref
-                    .read(downloadManagerProvider.notifier)
-                    .startDownload(
-                      tmdbId: widget.tmdbId,
-                      mediaType: widget.mediaType,
-                      title: widget.title,
-                      releaseYear: widget.releaseYear,
-                      season: widget.season,
-                      episode: widget.episode,
-                      episodeTitle: widget.episodeTitle,
-                      posterPath: widget.posterPath,
-                      backdropPath: widget.backdropPath,
-                      imdbId: widget.imdbId,
-                      resolution: _selectedResolution,
-                      streamUrl: selectedOption.streamUrl,
-                      masterPlaylistUrl: selectedOption.masterPlaylistUrl,
-                      headers: selectedOption.headers,
-                      estimatedSizeBytes: selectedOption.estimatedSizeBytes,
-                      preferredSubtitleLang: _selectedSubtitleLang,
-                      runtimeMinutes: widget.runtimeMinutes,
-                    );
-
-                messenger.clearSnackBars();
-                messenger.showSnackBar(
-                  SnackBar(
-                    duration: const Duration(seconds: 5),
-                    backgroundColor: AppColors.surfaceElevated,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    content: Row(
-                      children: [
-                        const Icon(
-                          Icons.download_rounded,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            s.downloadModalStartedToast,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    action: SnackBarAction(
-                      label: s.downloadModalViewToast,
-                      textColor: AppColors.primary,
-                      onPressed: () {
-                        messenger.hideCurrentSnackBar();
-                        router.push('/downloads');
-                      },
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.download_rounded, size: 20),
-              label: Text(
-                '${s.downloadModalStartDownload} (${selectedOption.formattedSize})',
-                style: GoogleFonts.outfit(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildSubtitleOption({
-    required String langCode,
-    required String title,
-    String? badge,
-    required String subtitle,
-  }) {
-    final isSelected = _selectedSubtitleLang == langCode;
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: () => setState(() => _selectedSubtitleLang = langCode),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.12)
-              : AppColors.surfaceVariant,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
-            width: isSelected ? 1.5 : 1.0,
+  Widget _buildFallbackPrimarySubtitleTile(
+    SubtitleLanguage primaryLangObj,
+    AppStrings s,
+  ) {
+    final isSelected = !_noSubtitleSelected;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          setState(() {
+            _noSubtitleSelected = false;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.12)
+                : AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color:
+                  isSelected ? AppColors.primary : AppColors.surfaceElevated,
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isSelected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_off_rounded,
+                size: 20,
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      primaryLangObj.displayName,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? AppColors.primary : Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      s.downloadModalIndonesianPriorityDesc,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: isSelected ? AppColors.primary : Colors.white,
-                        ),
+      ),
+    );
+  }
+
+  Widget _buildNoSubtitleTile(AppStrings s) {
+    final isSelected = _noSubtitleSelected;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          setState(() {
+            _noSubtitleSelected = true;
+            _selectedSubtitle = null;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.12)
+                : AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color:
+                  isSelected ? AppColors.primary : AppColors.surfaceElevated,
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isSelected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_off_rounded,
+                size: 20,
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.downloadModalNoSub,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? AppColors.primary : Colors.white,
                       ),
-                      if (badge != null) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            badge,
-                            style: GoogleFonts.inter(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primaryLight,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      color: AppColors.textMuted,
-                      height: 1.3,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 1),
+                    Text(
+                      s.downloadModalNoSubDesc,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _startDownload(
+    ResolutionOption selectedOption,
+    AppStrings s,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+    final downloadNotifier = ref.read(downloadManagerProvider.notifier);
+    final primaryLangCode = _getPrimarySubtitleLangCode();
+
+    final effectiveSubLang = _noSubtitleSelected
+        ? 'none'
+        : (_autoTranslate
+            ? primaryLangCode
+            : (_selectedSubtitle?.language ?? primaryLangCode));
+
+    Navigator.of(context, rootNavigator: true).pop();
+
+    await downloadNotifier.startDownload(
+          tmdbId: widget.tmdbId,
+          mediaType: widget.mediaType,
+          title: widget.title,
+          releaseYear: widget.releaseYear,
+          season: widget.season,
+          episode: widget.episode,
+          episodeTitle: widget.episodeTitle,
+          posterPath: widget.posterPath,
+          backdropPath: widget.backdropPath,
+          imdbId: widget.imdbId,
+          resolution: _selectedResolution,
+          streamUrl: selectedOption.streamUrl,
+          masterPlaylistUrl: selectedOption.masterPlaylistUrl,
+          headers: selectedOption.headers,
+          estimatedSizeBytes: selectedOption.estimatedSizeBytes,
+          preferredSubtitleLang: effectiveSubLang,
+          selectedSubtitle: _noSubtitleSelected ? null : _selectedSubtitle,
+          autoTranslate: !_noSubtitleSelected && _autoTranslate,
+          targetTranslateLang: primaryLangCode,
+          runtimeMinutes: widget.runtimeMinutes,
+        );
+
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 5),
+        backgroundColor: AppColors.surfaceElevated,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        content: Row(
+          children: [
+            const Icon(
+              Icons.download_rounded,
+              color: AppColors.primary,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                s.downloadModalStartedToast,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            const SizedBox(width: 8),
-            Icon(
-              isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
-              size: 20,
-              color: isSelected ? AppColors.primary : AppColors.textMuted,
-            ),
           ],
+        ),
+        action: SnackBarAction(
+          label: s.downloadModalViewToast,
+          textColor: AppColors.primary,
+          onPressed: () {
+            messenger.hideCurrentSnackBar();
+            router.push('/downloads');
+          },
         ),
       ),
     );

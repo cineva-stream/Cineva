@@ -11,6 +11,7 @@ import '../../data/services/download_file_namer.dart';
 import '../../data/services/download_subtitle_pipeline.dart';
 import '../../data/services/offline_mp4_builder.dart';
 import '../../data/services/video_download_service.dart';
+import '../../../player/data/services/subtitle_service.dart';
 
 /// State notifier managing all download tasks, persistent storage, and live progress.
 class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
@@ -64,6 +65,9 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     Map<String, String>? headers,
     required int estimatedSizeBytes,
     String preferredSubtitleLang = 'id',
+    SubtitleInfo? selectedSubtitle,
+    bool autoTranslate = true,
+    String targetTranslateLang = 'id',
     int runtimeMinutes = 100,
   }) async {
     final id = mediaType == 'movie'
@@ -127,6 +131,9 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       streamUrl: streamUrl,
       masterPlaylistUrl: masterPlaylistUrl,
       headers: headers,
+      selectedSubtitle: selectedSubtitle,
+      autoTranslate: autoTranslate,
+      targetTranslateLang: targetTranslateLang,
       cancelToken: cancelToken,
       runtimeMinutes: runtimeMinutes,
     ));
@@ -138,6 +145,9 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     required String streamUrl,
     String masterPlaylistUrl = '',
     Map<String, String>? headers,
+    SubtitleInfo? selectedSubtitle,
+    bool autoTranslate = true,
+    String targetTranslateLang = 'id',
     required CancelToken cancelToken,
     required int runtimeMinutes,
   }) async {
@@ -185,6 +195,9 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
               season: item.seasonNumber,
               episode: item.episodeNumber,
               preferredLang: item.selectedSubtitleLang,
+              selectedSubtitle: selectedSubtitle,
+              autoTranslate: autoTranslate,
+              targetTranslateLang: targetTranslateLang,
               masterPlaylistUrl: targetMasterUrl,
             );
             currentItem = currentItem.copyWith(
@@ -206,6 +219,11 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
         headers: targetHeaders,
         targetFilePath: item.videoPath,
         estimatedSizeBytes: item.estimatedSizeBytes,
+        preferredQuality: item.resolution,
+        tmdbId: item.tmdbId,
+        imdbId: imdbId,
+        season: item.seasonNumber,
+        episode: item.episodeNumber,
         cancelToken: cancelToken,
         onProgress: ({
           required int downloadedBytes,
@@ -228,13 +246,17 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       // Wait for both video and subtitle streams to complete
       await Future.wait([videoFuture, subtitleFuture]);
 
-      // Step 3: Build unified offline media container (video.mp4 with video.ts fallback)
+      // Step 3: Build unified offline media container (video.mp4 with video.ts / HLS fallback)
       final parentDir = Directory(File(item.videoPath).parent.path);
       try {
         if (await parentDir.exists()) {
           debugPrint('[DownloadNotifier] Building offline media package in: ${parentDir.path}');
+          final expectedDurUs = await OfflineMp4Builder.expectedDurationUsFromPlaylist(
+            File('${parentDir.path}/video.m3u8'),
+          );
           await OfflineMp4Builder.build(
             dir: parentDir,
+            expectedDurationUs: expectedDurUs,
             deleteSegmentsOnSuccess: true,
           );
         }

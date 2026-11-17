@@ -144,6 +144,9 @@ class LocalStreamServer {
         case 'mp4':
           response.headers.contentType = ContentType('video', 'mp4');
           break;
+        case 'm4s':
+          response.headers.contentType = ContentType('video', 'iso.segment');
+          break;
         case 'mkv':
           response.headers.contentType = ContentType('video', 'x-matroska');
           break;

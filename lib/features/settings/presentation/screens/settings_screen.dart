@@ -45,6 +45,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _subtitleFontSize = 'Sedang';
   String _subtitleBg = 'Transparan';
   bool _hwAcceleration = true;
+  bool _autoPlayNextEpisode = true;
   double _cacheSizeMb = 38.4;
   String _appVersion = AppConstants.appVersion;
   String _buildNumber = '1';
@@ -79,6 +80,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _subtitleFontSize = SettingsService.getSubtitleFontSize();
       _subtitleBg = SettingsService.getSubtitleBackground();
       _hwAcceleration = SettingsService.getHardwareAcceleration();
+      _autoPlayNextEpisode = SettingsService.getAutoPlayNextEpisode();
     });
   }
 
@@ -1203,6 +1205,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 value: _hwAcceleration,
                 onChanged: (v) async {
                   await SettingsService.setHardwareAcceleration(v);
+                  _loadSettings();
+                },
+              ),
+              _buildCardDivider(),
+              _SettingsToggleItem(
+                icon: Icons.skip_next_rounded,
+                title: s.settingsAutoPlayNextEpisode,
+                subtitle: s.settingsAutoPlayNextEpisodeDesc,
+                value: _autoPlayNextEpisode,
+                onChanged: (v) async {
+                  await SettingsService.setAutoPlayNextEpisode(v);
                   _loadSettings();
                 },
               ),

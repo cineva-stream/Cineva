@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/platform/cineva_scroll_behavior.dart';
+import '../features/player/presentation/widgets/mini_player_overlay.dart';
 import 'routes/app_router.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
@@ -20,7 +21,13 @@ class CinevaApp extends StatelessWidget {
       builder: (context, child) {
         return Container(
           color: AppColors.background,
-          child: child ?? const SizedBox.shrink(),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              child ?? const SizedBox.shrink(),
+              const MiniPlayerOverlay(),
+            ],
+          ),
         );
       },
     );

@@ -1,5 +1,7 @@
 package com.primadev.cineva
 
+import android.app.PictureInPictureParams
+import android.content.res.Configuration
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -7,6 +9,7 @@ import android.media.MediaMuxer
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.util.Rational
 import android.view.WindowManager
 import android.content.Intent
 import android.net.Uri
@@ -22,6 +25,8 @@ import kotlin.concurrent.thread
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.primadev.cineva/muxer"
     private val TAG = "CinevaMuxer"
+    private var isPlayerActiveForPip: Boolean = false
+    private var pipMethodChannel: MethodChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,6 +103,41 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (isPlayerActiveForPip && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            tryEnterPipMode()
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        try {
+            pipMethodChannel?.invokeMethod("onPipChanged", isInPictureInPictureMode)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Failed to notify Flutter of PiP change: ${t.message}")
+        }
+    }
+
+    private fun tryEnterPipMode(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isTelevisionDevice()) {
+            try {
+                if (packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+                    val params = PictureInPictureParams.Builder()
+                        .setAspectRatio(Rational(16, 9))
+                        .build()
+                    return enterPictureInPictureMode(params)
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "enterPictureInPictureMode failed: ${t.message}")
+            }
+        }
+        return false
+    }
+
     override fun onStop() {
         super.onStop()
         try {
@@ -119,6 +159,40 @@ class MainActivity : FlutterActivity() {
                 }
                 "isTablet" -> {
                     result.success(isTabletDevice())
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        val pipChannel = "com.primadev.cineva/pip"
+        pipMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, pipChannel)
+        pipMethodChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isPipSupported" -> {
+                    val supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                        packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE) &&
+                        !isTelevisionDevice()
+                    result.success(supported)
+                }
+                "setAutoPipEnabled" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    isPlayerActiveForPip = enabled
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !isTelevisionDevice()) {
+                        try {
+                            val params = PictureInPictureParams.Builder()
+                                .setAspectRatio(Rational(16, 9))
+                                .setAutoEnterEnabled(enabled)
+                                .build()
+                            setPictureInPictureParams(params)
+                        } catch (t: Throwable) {
+                            Log.w(TAG, "Failed to set auto PiP params: ${t.message}")
+                        }
+                    }
+                    result.success(true)
+                }
+                "enterPip" -> {
+                    val entered = tryEnterPipMode()
+                    result.success(entered)
                 }
                 else -> result.notImplemented()
             }

@@ -109,6 +109,7 @@ class SettingsService {
   static const String keySubtitleBottomOffset = 'subtitle_bottom_offset';
   static const String keySubtitleTextColor = 'subtitle_text_color';
   static const String keyHardwareAcceleration = 'hardware_acceleration';
+  static const String keyAutoPlayNextEpisode = 'auto_play_next_episode';
   static const String keyDownloadLimit = 'download_limit';
   static const String keyUploadLimit = 'upload_limit';
 
@@ -190,6 +191,21 @@ class SettingsService {
     await _box.put(keyHardwareAcceleration, enabled);
   }
 
+  /// Whether to automatically play the next episode of a TV series after a 5s countdown.
+  /// Defaults to true.
+  static bool getAutoPlayNextEpisode() {
+    try {
+      if (!Hive.isBoxOpen(AppConstants.settingsBox)) return true;
+      return _box.get(keyAutoPlayNextEpisode, defaultValue: true) as bool;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static Future<void> setAutoPlayNextEpisode(bool enabled) async {
+    await _box.put(keyAutoPlayNextEpisode, enabled);
+  }
+
   static String getDownloadLimit() {
     return _box.get(keyDownloadLimit, defaultValue: '10 MB/s') as String;
   }
@@ -237,6 +253,7 @@ class SettingsService {
       keySubtitleBottomOffset: getSubtitleBottomOffset(),
       keySubtitleTextColor: _box.get(keySubtitleTextColor),
       keyHardwareAcceleration: getHardwareAcceleration(),
+      keyAutoPlayNextEpisode: getAutoPlayNextEpisode(),
       keyWifiOnlySeeding: getWifiOnlySeeding(),
     };
   }

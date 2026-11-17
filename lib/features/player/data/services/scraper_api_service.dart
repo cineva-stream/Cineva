@@ -244,6 +244,84 @@ class ScraperApiService {
     return Uri.parse('$root$path').replace(queryParameters: queryParams);
   }
 
+  /// Estimates stream byte size using a Scraper API v2 `sizeToken`.
+  /// Ported from `ScraperApi.estimateStreamSize` in `flixquest-add-language`.
+  Future<int?> estimateStreamSize(String token) async {
+    final normalized = token.trim();
+    if (normalized.isEmpty) return null;
+
+    final instances = <String>[
+      _baseUrl,
+      for (final s in defaultScraperInstances)
+        if (_normalizeBaseUrl(s) != _baseUrl) _normalizeBaseUrl(s),
+    ];
+
+    for (final base in instances) {
+      try {
+        final root = base.endsWith('/api/v2') ? base : '$base/api/v2';
+        final uri = Uri.parse('$root/stream-size');
+        final response = await _dio.post<String>(
+          uri.toString(),
+          data: jsonEncode({'token': normalized}),
+          options: Options(
+            headers: const {'Content-Type': 'application/json'},
+            sendTimeout: const Duration(seconds: 12),
+            receiveTimeout: const Duration(seconds: 25),
+          ),
+        );
+        final body = _decodeJson(response.data);
+        if (body['success'] == true) {
+          final bytes = body['estimatedBytes'];
+          if (bytes is num && bytes > 0) return bytes.round();
+          if (bytes is String) {
+            final parsed = int.tryParse(bytes);
+            if (parsed != null && parsed > 0) return parsed;
+          }
+        }
+      } catch (e) {
+        debugPrint('[ScraperApiService] estimateStreamSize failed on $base: $e');
+      }
+    }
+    return null;
+  }
+
+  /// Infers required HTTP headers (`Origin`, `Referer`, `User-Agent`) for known
+  /// upstream CDNs (e.g. `vixsrc.to`, `secretanchor`, `boats`, `vixcloud`).
+  /// Ported from `VideoUtils.inferVideoHeaders` in `flixquest-add-language`.
+  static Map<String, String>? inferVideoHeaders(
+    String? url, [
+    Map<String, String>? explicitHeaders,
+  ]) {
+    if (explicitHeaders != null && explicitHeaders.isNotEmpty) {
+      return Map<String, String>.from(explicitHeaders);
+    }
+    if (url == null || url.isEmpty) return null;
+
+    final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+    if (host.contains('vixsrc.to') ||
+        host.contains('secretanchor') ||
+        host.contains('boats') ||
+        host.contains('vixcloud')) {
+      return const {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://vixsrc.to/',
+        'Origin': 'https://vixsrc.to',
+      };
+    }
+
+    if (url.toLowerCase().contains('vixsrc')) {
+      return const {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://vixsrc.to/',
+        'Origin': 'https://vixsrc.to',
+      };
+    }
+
+    return null;
+  }
+
   Map<String, dynamic> _decodeJson(String? data) {
     if (data == null || data.isEmpty) return const {};
     try {

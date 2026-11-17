@@ -190,8 +190,68 @@ class AppStrings {
       isIndonesian ? 'Episode Berikutnya' : 'Next Episode';
   String playerNextEpisodePill(int ep) =>
       isIndonesian ? 'Episode $ep Berikutnya' : 'Next: Episode $ep';
+  String playerNextEpisodeInSecs(int ep, int secs) => isIndonesian
+      ? 'Episode $ep dalam ${secs}d'
+      : 'Episode $ep in ${secs}s';
+  String get playerAutoPlayCancel =>
+      isIndonesian ? 'Batal' : 'Cancel';
+  String get playerAutoPlayCancelledToast => isIndonesian
+      ? 'Putar otomatis episode berikutnya dibatalkan'
+      : 'Auto-play next episode cancelled';
   String playerNextEpShort(int ep) =>
       isIndonesian ? 'Ep $ep Lanjut' : 'Next Ep $ep';
+  String get playerHold2xSpeedBadge =>
+      isIndonesian ? '2.0x Kecepatan Ganda' : '2.0x Fast Forward';
+  String get playerLockScreen =>
+      isIndonesian ? 'Kunci Layar' : 'Lock Screen';
+  String get playerLockScreenToast => isIndonesian
+      ? 'Layar dikunci • Sentuhan tidak sengaja dinonaktifkan'
+      : 'Screen locked • Accidental touches disabled';
+  String get playerUnlockScreenPill => isIndonesian
+      ? 'Layar Terkunci • Ketuk untuk Buka'
+      : 'Screen Locked • Tap to Unlock';
+  String get playerScreenLockedBadge =>
+      isIndonesian ? 'Layar Terkunci' : 'Screen Locked';
+  String get playerUnlockTapHint =>
+      isIndonesian ? 'Ketuk untuk membuka kunci' : 'Tap to unlock controls';
+  String get playerFullscreenTooltip =>
+      isIndonesian ? 'Layar Penuh (F)' : 'Full Screen (F)';
+  String get playerExitFullscreenTooltip =>
+      isIndonesian ? 'Keluar Layar Penuh (F)' : 'Exit Full Screen (F)';
+  String get playerUnlockScreenToast =>
+      isIndonesian ? 'Kunci layar dibuka' : 'Screen unlocked';
+  String get playerSleepTimerTitle =>
+      isIndonesian ? 'Pengatur Waktu Tidur' : 'Sleep Timer';
+  String get playerSleepTimerOff =>
+      isIndonesian ? 'Matikan Timer' : 'Off';
+  String playerSleepTimerMinutes(int min) =>
+      isIndonesian ? '$min Menit' : '$min Minutes';
+  String get playerSleepTimerEndOfEpisode =>
+      isIndonesian ? 'Akhir Episode / Film' : 'End of Episode / Movie';
+  String playerSleepTimerActiveToast(String label) => isIndonesian
+      ? 'Sleep Timer aktif: $label'
+      : 'Sleep Timer set: $label';
+  String get playerSleepTimerDisabledToast => isIndonesian
+      ? 'Sleep Timer dimatikan'
+      : 'Sleep Timer turned off';
+  String get playerSleepTimerExpiredTitle => isIndonesian
+      ? 'Waktu Tidur Selesai'
+      : 'Sleep Timer Ended';
+  String get playerSleepTimerExpiredDesc => isIndonesian
+      ? 'Pemutaran dijeda secara otomatis sesuai pengatur waktu tidur Anda.'
+      : 'Playback has been automatically paused by your sleep timer.';
+  String get playerSleepTimerResumeBtn =>
+      isIndonesian ? 'Lanjutkan Menonton' : 'Resume Watching';
+  String get playerMiniPlayerTooltip =>
+      isIndonesian ? 'Pemutar Mini (PiP)' : 'Mini Player (PiP)';
+  String get playerFullscreenEnteredToast =>
+      isIndonesian ? 'Mode Layar Penuh (F)' : 'Full Screen Mode (F)';
+  String get playerFullscreenExitedToast =>
+      isIndonesian ? 'Keluar Layar Penuh (F)' : 'Exited Full Screen (F)';
+  String get playerMuteToast =>
+      isIndonesian ? 'Audio Dibisukan (M)' : 'Audio Muted (M)';
+  String playerUnmuteToast(int vol) =>
+      isIndonesian ? 'Audio Aktif: $vol% (M)' : 'Audio Unmuted: $vol% (M)';
   String get playerFinishedPromptTitle =>
       isIndonesian ? 'Apakah sudah selesai menonton?' : 'Finished watching?';
   String playerFinishedPromptDesc(String title) => isIndonesian
@@ -400,9 +460,51 @@ class AppStrings {
       : 'Download started! Tap the Downloads icon in the AppBar to view progress.';
   String get downloadModalViewToast => isIndonesian ? 'Lihat' : 'View';
   String get downloadModalNextSub =>
-      isIndonesian ? 'Lanjut: Pilih Subtitle' : 'Next: Select Subtitle';
+      isIndonesian ? 'Lanjut' : 'Next';
   String get downloadModalMovie => isIndonesian ? 'Film' : 'Movie';
   String get downloadModalTv => isIndonesian ? 'Serial TV' : 'TV Series';
+  String get downloadSheetQualityTitle =>
+      isIndonesian ? 'Pilih Kualitas Unduhan' : 'Select Download Quality';
+  String get downloadSheetSubtitleTitle =>
+      isIndonesian ? 'Pilih Subtitle' : 'Select Subtitle';
+  String get downloadSheetCancel => isIndonesian ? 'Batal' : 'Cancel';
+  String get downloadSheetNext => isIndonesian ? 'Lanjut' : 'Next';
+  String get downloadSheetDownloadBtn => isIndonesian ? 'Unduh' : 'Download';
+  String get downloadSheetLoadingSubtitles => isIndonesian
+      ? 'Memuat subtitle yang tersedia...'
+      : 'Loading available subtitles...';
+  String downloadSheetAutoTranslateTitle(String langName) => isIndonesian
+      ? 'Auto Terjemah ke Subtitle Utama ($langName)'
+      : 'Auto-Translate to Primary Subtitle ($langName)';
+  String downloadSheetAutoTranslateDesc(String langName) => isIndonesian
+      ? 'Terjemahkan subtitle terpilih ke $langName secara otomatis'
+      : 'Automatically translate selected subtitle to $langName';
+  String get downloadSheetSubSourceStream =>
+      isIndonesian ? 'Subtitle Stream' : 'Stream Subtitle';
+  String get downloadSheetSubSourceOpenSub =>
+      isIndonesian ? 'OpenSubtitles' : 'OpenSubtitles';
+  String downloadQualityDesc(String label) {
+    switch (label) {
+      case '1080p':
+        return isIndonesian
+            ? 'Full HD • Kualitas terbaik & jernih'
+            : 'Full HD • Best & sharpest quality';
+      case '720p':
+        return isIndonesian
+            ? 'HD • Tajam & hemat penyimpanan'
+            : 'HD • Balanced clarity & storage';
+      case '480p':
+        return isIndonesian
+            ? 'SD • Hemat kuota & ruang memori'
+            : 'SD • Data & storage saver';
+      case '360p':
+        return isIndonesian
+            ? 'Hemat • Ukuran terkecil & unduh tercepat'
+            : 'Data Saver • Smallest size & fastest download';
+      default:
+        return label;
+    }
+  }
 
   // ── Settings Screen ──
   String get settingsTitle => isIndonesian ? 'Pengaturan' : 'Settings';
@@ -427,6 +529,12 @@ class AppStrings {
   String get settingsHwAccelDesc => isIndonesian
       ? 'Gunakan GPU decoder untuk pemutaran video 60fps tanpa patah-patah'
       : 'Use GPU decoder for smooth 60fps playback';
+  String get settingsAutoPlayNextEpisode => isIndonesian
+      ? 'Putar Otomatis Episode Berikutnya'
+      : 'Auto-Play Next Episode';
+  String get settingsAutoPlayNextEpisodeDesc => isIndonesian
+      ? 'Otomatis lanjut ke episode serial TV berikutnya dengan hitung mundur 5 detik'
+      : 'Automatically advance to the next TV series episode with a 5-second countdown';
   String get settingsWifiOnly => isIndonesian
       ? 'Streaming Hemat Kuota (Wi-Fi Saja)'
       : 'Data Saver Streaming (Wi-Fi Only)';

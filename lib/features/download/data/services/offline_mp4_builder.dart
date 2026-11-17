@@ -17,13 +17,16 @@ class OfflineMp4Builder {
 
   static String _baseName(FileSystemEntity f) => f.path.split(RegExp(r'[\\/]')).last;
 
-  /// Lists segment files in [dir] whose name starts with [prefix] and ends with `.ts`, sorted.
+  /// Lists segment files in [dir] whose name starts with [prefix] and ends with `.ts` or `.m4s`, sorted.
   static Future<List<File>> listSegments(Directory dir, String prefix) async {
     final files = <File>[];
     await for (final e in dir.list()) {
       if (e is File) {
         final name = _baseName(e);
-        if (name.startsWith(prefix) && name.endsWith('.ts')) files.add(e);
+        if (name.startsWith(prefix) &&
+            (name.endsWith('.ts') || name.endsWith('.m4s'))) {
+          files.add(e);
+        }
       }
     }
     files.sort((a, b) => _baseName(a).compareTo(_baseName(b)));
@@ -80,6 +83,8 @@ class OfflineMp4Builder {
 
     final videoSegments = await listSegments(dir, 'v_');
     final audioSegments = await listSegments(dir, 'a_');
+    final initVideo = File('${dir.path}/init_v.mp4');
+    final initAudio = File('${dir.path}/init_a.mp4');
 
     final mp4 = File('${dir.path}/$mp4Name');
     final videoTs = File('${dir.path}/$videoTsName');
@@ -92,12 +97,41 @@ class OfflineMp4Builder {
     }
 
     try {
-      // 1. Concatenate all video segments into temporary video.ts
-      await _concat(videoSegments, videoTs);
+      // 1. If fMP4 stream with muxed audio (init_v.mp4 exists and no separate audio track),
+      // concatenating init_v.mp4 + fragments directly forms a valid fragmented MP4!
+      final isFmp4 = await initVideo.exists();
+      if (isFmp4 && audioSegments.isEmpty) {
+        await _concat(<File>[initVideo, ...videoSegments], mp4);
+        if (await isValidMp4(mp4, expectedDurationUs: expectedDurationUs)) {
+          if (deleteSegmentsOnSuccess) {
+            for (final f in [...videoSegments, initVideo]) {
+              try {
+                if (await f.exists()) await f.delete();
+              } catch (_) {}
+            }
+          }
+          debugPrint('[OfflineMp4Builder] Direct fMP4 concatenation validated: ${mp4.path}');
+          return true;
+        }
+        try {
+          if (await mp4.exists()) await mp4.delete();
+        } catch (_) {}
+      }
+
+      // 2. Concatenate all video segments (prepending init_v.mp4 if fMP4) into temporary video.ts
+      final videoParts = <File>[
+        if (isFmp4) initVideo,
+        ...videoSegments,
+      ];
+      await _concat(videoParts, videoTs);
 
       String? audioPath;
       if (audioSegments.isNotEmpty) {
-        await _concat(audioSegments, audioTs);
+        final audioParts = <File>[
+          if (await initAudio.exists()) initAudio,
+          ...audioSegments,
+        ];
+        await _concat(audioParts, audioTs);
         if (await audioTs.exists() && (await audioTs.length()) > 1000) {
           audioPath = audioTs.path;
         }
@@ -117,8 +151,10 @@ class OfflineMp4Builder {
       final validMp4 = ok && await isValidMp4(mp4, expectedDurationUs: expectedDurationUs);
       if (validMp4) {
         if (deleteSegmentsOnSuccess) {
-          for (final f in [...videoSegments, ...audioSegments]) {
-            try { await f.delete(); } catch (_) {}
+          for (final f in [...videoSegments, ...audioSegments, initVideo, initAudio]) {
+            try {
+              if (await f.exists()) await f.delete();
+            } catch (_) {}
           }
         }
         try { if (await videoTs.exists()) await videoTs.delete(); } catch (_) {}
