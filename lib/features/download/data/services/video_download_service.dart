@@ -13,6 +13,7 @@ import '../../../player/data/services/scraper_api_service.dart';
 import '../../../player/data/services/smart_stream_service.dart';
 import '../../../player/data/services/subtitle_service.dart';
 import '../../../player/data/services/vixsrc_stream_service.dart';
+import 'download_speed_meter.dart';
 import 'hls_url_resolver.dart';
 import 'offline_mp4_builder.dart';
 import 'ts_segment_utils.dart';
@@ -334,7 +335,9 @@ class VideoDownloadService {
                   'User-Agent':
                       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
                   'accept': '*/*',
-                  'accept-encoding': 'gzip, deflate, br',
+                  // NOTE: do not advertise `br`: dart:io can only inflate gzip, so a
+                  // brotli-compressed segment would be saved verbatim and become garbage.
+                  // dart:io adds `Accept-Encoding: gzip` (and inflates it) on its own.
                 },
               ),
             ),
@@ -523,6 +526,116 @@ class VideoDownloadService {
       }
     } catch (e) {
       debugPrint('[VideoDownloadService] repairOfflineDirectory error: $e');
+    }
+  }
+
+  /// Identifies "the same download" across pause/resume so partially downloaded
+  /// segments are only re-used when they belong to the very same stream.
+  @visibleForTesting
+  static String buildDownloadSignature({
+    required String? quality,
+    required int videoSegments,
+    required int audioSegments,
+    required double videoSeconds,
+    required bool hasInit,
+  }) {
+    return 'v2|${quality ?? 'auto'}|v$videoSegments|a$audioSegments|'
+        '${videoSeconds.round()}|${hasInit ? 'fmp4' : 'ts'}';
+  }
+
+  static final RegExp _workFilePattern = RegExp(
+    r'^(?:[va]_\d+\.(?:ts|m4s|cdat)(?:\.part)?|init_[va]\.mp4|video\.ts|audio\.ts|video\.mp4)$',
+  );
+
+  /// Prepares [dir] before segments are downloaded.
+  ///
+  /// * Always removes previous build artifacts (`video.mp4`, `video.ts`, `audio.ts`,
+  ///   `.mux_failed`) because they are regenerated once the download finishes.
+  /// * Keeps already downloaded segments only if they were created by this exact
+  ///   download (matching `.dl_state` [signature]). Segments with a different or
+  ///   missing signature (older app builds, another quality, a failed attempt) are
+  ///   deleted so they can never be mixed into the new file.
+  @visibleForTesting
+  static Future<void> prepareDownloadWorkspace(
+    Directory dir, {
+    required String signature,
+  }) async {
+    try {
+      await dir.create(recursive: true);
+      final stateFile = File('${dir.path}/.dl_state');
+      String? previous;
+      try {
+        if (await stateFile.exists()) previous = (await stateFile.readAsString()).trim();
+      } catch (_) {}
+      final sameDownload = previous == signature;
+
+      const artifacts = {'video.mp4', 'video.ts', 'audio.ts'};
+      await for (final entity in dir.list()) {
+        if (entity is! File) continue;
+        final name = entity.path.split(RegExp(r'[\\/]')).last;
+        if (!_workFilePattern.hasMatch(name)) continue;
+        final isArtifact = artifacts.contains(name);
+        final isPartial = name.endsWith('.part');
+        if (isArtifact || isPartial || !sameDownload) {
+          try {
+            await entity.delete();
+          } catch (_) {}
+        }
+      }
+
+      if (!sameDownload) {
+        // Old playlists reference old segments; they are rewritten on completion.
+        for (final stale in const [
+          'master.m3u8',
+          'master.cineva',
+          'video.m3u8',
+          'video.cineva',
+          'audio.m3u8',
+          'audio.cineva',
+          'cineva_package.json',
+        ]) {
+          try {
+            final f = File('${dir.path}/$stale');
+            if (await f.exists()) await f.delete();
+          } catch (_) {}
+        }
+      }
+
+      try {
+        final marker = File('${dir.path}/.mux_failed');
+        if (await marker.exists()) await marker.delete();
+      } catch (_) {}
+
+      await stateFile.writeAsString(signature);
+    } catch (e) {
+      debugPrint('[VideoDownloadService] prepareDownloadWorkspace note: $e');
+    }
+  }
+
+  /// True when [file] looks like a complete, genuine media segment (MPEG-TS packets
+  /// or fMP4 boxes) rather than leftover garbage. Used to decide whether a segment
+  /// found on disk can be re-used when resuming.
+  @visibleForTesting
+  static Future<bool> isStoredSegmentUsable(
+    File file, {
+    required bool allowRawAudio,
+  }) async {
+    RandomAccessFile? raf;
+    try {
+      final len = await file.length();
+      if (len <= 512) return false;
+      raf = await file.open();
+      final head = await raf.read(TsSegmentUtils.tsPacketSize * 5);
+      return TsSegmentUtils.isValidMediaSegment(
+        head,
+        allowRawAudio: allowRawAudio,
+      );
+    } catch (_) {
+      return false;
+    } finally {
+      try {
+        await raf?.close();
+      } catch (_) {}
     }
   }
 
@@ -1021,6 +1134,20 @@ class VideoDownloadService {
       throw Exception('Tidak ada segmen video yang ditemukan dalam stream.');
     }
 
+    // Guard against stale/foreign files from an earlier (possibly broken) attempt:
+    // re-using them used to make a "download" finish instantly with garbage and
+    // produce an unplayable black-screen video.
+    await prepareDownloadWorkspace(
+      targetDir,
+      signature: buildDownloadSignature(
+        quality: preferredQuality,
+        videoSegments: videoMedia.tasks.length,
+        audioSegments: audioMedia?.tasks.length ?? 0,
+        videoSeconds: videoMedia.totalDurationSeconds,
+        hasInit: videoMedia.initMap != null,
+      ),
+    );
+
     // Update effectiveHeaders if redirected to a known CDN (e.g. secretanchor / boats / vixcloud)
     final redirectedHeaders = ScraperApiService.inferVideoHeaders(
       videoMedia.finalPlaylistUrl,
@@ -1106,6 +1233,7 @@ class VideoDownloadService {
           responseType: ResponseType.bytes,
           headers: {
             ...effectiveHeaders,
+            'Accept-Encoding': 'identity',
             if (initInfo.byteRangeHeader != null)
               'Range': initInfo.byteRangeHeader!,
           },
@@ -1117,11 +1245,16 @@ class VideoDownloadService {
         throw Exception('Gagal mengunduh segmen inisialisasi fMP4.');
       }
       if (initInfo.keyUrl != null && initInfo.keyUrl!.isNotEmpty) {
-        final encrypter = await getEncrypterForKeyUrl(initInfo.keyUrl!);
-        final iv = parseIv(initInfo.ivHex, 0);
-        initBytes = decryptSegmentBytes(initBytes, encrypter, iv);
+        if (!TsSegmentUtils.isFmp4Segment(initBytes)) {
+          final encrypter = await getEncrypterForKeyUrl(initInfo.keyUrl!);
+          final iv = parseIv(initInfo.ivHex, 0);
+          initBytes = decryptSegmentBytes(initBytes, encrypter, iv);
+        }
       } else {
         initBytes = TsSegmentUtils.unwrapDisguisedSegment(initBytes);
+      }
+      if (!TsSegmentUtils.isFmp4Segment(initBytes)) {
+        throw Exception('Segmen inisialisasi fMP4 tidak valid.');
       }
       await initFile.writeAsBytes(initBytes);
     }
@@ -1144,9 +1277,10 @@ class VideoDownloadService {
     final allTasks = <_HlsSegmentTask>[...videoTasks, ...audioTasks];
     final totalSegments = allTasks.length;
 
-    int downloadedBytes = 0;
-    int lastBytes = 0;
-    int lastTime = DateTime.now().millisecondsSinceEpoch;
+    // Real network throughput (sliding window over bytes as they arrive on the wire).
+    final speedMeter = DownloadSpeedMeter();
+    int downloadedBytes = 0; // bytes stored on disk (used for size/progress display)
+    int lastEmitMs = 0;
     String currentSpeed = '0 KB/s (0.0 Mbps)';
 
     const int concurrency = 12; // High-speed 12 parallel connection workers
@@ -1215,6 +1349,77 @@ class VideoDownloadService {
       }
     }
 
+    // Throttled progress emitter (also keeps Hive writes in the provider reasonable).
+    void emitProgress({bool force = false}) {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (!force && now - lastEmitMs < 400) return;
+      lastEmitMs = now;
+      currentSpeed = speedMeter.formatted;
+      onProgress?.call(
+        downloadedBytes: downloadedBytes,
+        totalBytes: estimatedSizeBytes > 0
+            ? estimatedSizeBytes
+            : totalSegments * 524288,
+        progress: (completedSegments / totalSegments).clamp(0.0, 1.0),
+        speed: currentSpeed,
+      );
+    }
+
+    // Turns a raw HTTP body into clean, verified media bytes (MPEG-TS / fMP4 / raw audio).
+    // Throws if the result is not genuine media so the segment is retried and the download
+    // can never "succeed" with garbage (which previously played as black screen, 00:00).
+    Future<List<int>> processSegmentBytes(
+      _HlsSegmentTask task,
+      List<int> data,
+    ) async {
+      final allowRaw = task.isAudio;
+
+      // Some CDNs advertise AES-128 but serve plain media: keep it as-is.
+      if (TsSegmentUtils.isValidMediaSegment(data, allowRawAudio: allowRaw)) {
+        if (!TsSegmentUtils.isFmp4Segment(data) &&
+            !TsSegmentUtils.isTsSyncRun(data, 0)) {
+          return data; // raw AAC/MP3 audio
+        }
+        return TsSegmentUtils.stripPaddingAndAlign(data, isEncrypted: false);
+      }
+
+      final keyUrl = task.keyUrl;
+      if (keyUrl != null && keyUrl.isNotEmpty) {
+        final encrypter = await getEncrypterForKeyUrl(keyUrl);
+        final candidates = <Uint8List>[
+          parseIv(task.ivHex, task.sequenceNumber),
+          if (task.ivHex != null && task.ivHex!.isNotEmpty)
+            parseIv(null, task.sequenceNumber),
+          parseIv(null, task.index),
+          Uint8List(16),
+        ];
+        final tried = <String>{};
+        for (final iv in candidates) {
+          if (!tried.add(iv.join(','))) continue;
+          List<int> out;
+          try {
+            out = decryptSegmentBytes(data, encrypter, iv);
+          } catch (_) {
+            continue;
+          }
+          if (TsSegmentUtils.isValidMediaSegment(out, allowRawAudio: allowRaw)) {
+            return out;
+          }
+        }
+        throw Exception(
+          'Segmen ${task.fileName} tidak valid setelah dekripsi (kunci/IV tidak cocok).',
+        );
+      }
+
+      final out = TsSegmentUtils.stripPaddingAndAlign(data, isEncrypted: false);
+      if (!TsSegmentUtils.isValidMediaSegment(out, allowRawAudio: allowRaw)) {
+        throw Exception(
+          'Segmen ${task.fileName} bukan data video yang valid (${data.length} byte).',
+        );
+      }
+      return out;
+    }
+
     Future<void> runWorker() async {
       while (true) {
         if (cancelToken?.isCancelled ?? false) {
@@ -1232,23 +1437,21 @@ class VideoDownloadService {
         final task = allTasks[myIndex];
         final chunkFile = File('${targetDir.path}/${task.fileName}');
 
-        // Resume support: skip already-downloaded valid segments on disk!
+        // Resume support: re-use segments already on disk ONLY if they are genuine media
+        // (valid TS/fMP4 header). Leftovers are NOT counted into the speed meter.
         if (await chunkFile.exists()) {
-          final existingLen = await chunkFile.length();
-          if (existingLen > 512) {
-            downloadedBytes += existingLen;
+          if (await isStoredSegmentUsable(
+            chunkFile,
+            allowRawAudio: task.isAudio,
+          )) {
+            downloadedBytes += await chunkFile.length();
             completedSegments++;
-            final progress = (completedSegments / totalSegments).clamp(0.0, 1.0);
-            onProgress?.call(
-              downloadedBytes: downloadedBytes,
-              totalBytes: estimatedSizeBytes > 0
-                  ? estimatedSizeBytes
-                  : totalSegments * 524288,
-              progress: progress,
-              speed: currentSpeed,
-            );
+            emitProgress();
             continue;
           }
+          try {
+            await chunkFile.delete();
+          } catch (_) {}
         }
 
         List<int>? outputBytes;
@@ -1259,15 +1462,26 @@ class VideoDownloadService {
           try {
             final segHeaders = <String, String>{
               ...effectiveHeaders,
+              // Binary payload: never let a CDN compress it (dart:io can't inflate brotli).
+              'Accept-Encoding': 'identity',
               if (task.byteRangeHeader != null) 'Range': task.byteRangeHeader!,
             };
+            int received = 0;
             final response = await _dio.get<List<int>>(
               task.url,
               options: Options(
                 responseType: ResponseType.bytes,
-                headers: segHeaders.isNotEmpty ? segHeaders : null,
+                headers: segHeaders,
               ),
               cancelToken: cancelToken,
+              onReceiveProgress: (rec, total) {
+                final delta = rec - received;
+                if (delta > 0) {
+                  received = rec;
+                  speedMeter.add(delta);
+                  emitProgress();
+                }
+              },
             );
             final data = response.data;
             if (data == null || data.isEmpty) {
@@ -1279,25 +1493,7 @@ class VideoDownloadService {
               );
             }
 
-            List<int> processed = data;
-            if (task.keyUrl != null && task.keyUrl!.isNotEmpty) {
-              final encrypter = await getEncrypterForKeyUrl(task.keyUrl!);
-              final iv = parseIv(task.ivHex, task.sequenceNumber);
-              processed = decryptSegmentBytes(data, encrypter, iv);
-            } else {
-              processed = TsSegmentUtils.stripPaddingAndAlign(
-                processed,
-                isEncrypted: false,
-              );
-            }
-
-            if (processed.isEmpty ||
-                TsSegmentUtils.looksLikeErrorDocument(processed)) {
-              throw Exception(
-                'Segmen terdekripsi tidak valid (${task.fileName})',
-              );
-            }
-            outputBytes = processed;
+            outputBytes = await processSegmentBytes(task, data);
           } catch (e) {
             if (e is DioException) {
               final status = e.response?.statusCode;
@@ -1318,39 +1514,17 @@ class VideoDownloadService {
         }
 
         if (outputBytes != null && outputBytes.isNotEmpty) {
-          await chunkFile.writeAsBytes(outputBytes);
+          // Write atomically so an interrupted write can never be mistaken for a
+          // complete segment when the download is resumed.
+          final tmp = File('${chunkFile.path}.part');
+          await tmp.writeAsBytes(outputBytes, flush: true);
+          await tmp.rename(chunkFile.path);
 
           downloadedBytes += outputBytes.length;
           completedSegments++;
         }
 
-        final now = DateTime.now().millisecondsSinceEpoch;
-        final timeDiff = (now - lastTime) / 1000.0;
-        if (timeDiff >= 0.5) {
-          final byteDiff = downloadedBytes - lastBytes;
-          final bps = (byteDiff >= 0 ? byteDiff / timeDiff : 0).round();
-          final mbps = (bps * 8) / 1000000.0;
-          if (bps >= 1048576) {
-            currentSpeed =
-                '${(bps / 1048576).toStringAsFixed(1)} MB/s (${mbps.toStringAsFixed(1)} Mbps)';
-          } else {
-            currentSpeed =
-                '${(bps / 1024).toStringAsFixed(0)} KB/s (${mbps.toStringAsFixed(1)} Mbps)';
-          }
-          lastBytes = downloadedBytes;
-          lastTime = now;
-        }
-
-        final progress = (completedSegments / totalSegments).clamp(0.0, 1.0);
-
-        onProgress?.call(
-          downloadedBytes: downloadedBytes,
-          totalBytes: estimatedSizeBytes > 0
-              ? estimatedSizeBytes
-              : totalSegments * 524288,
-          progress: progress,
-          speed: currentSpeed,
-        );
+        emitProgress();
       }
     }
 
@@ -1366,6 +1540,11 @@ class VideoDownloadService {
       if (hasError && errorObj != null) {
         throw errorObj!;
       }
+      if (completedSegments < totalSegments) {
+        throw Exception(
+          'Unduhan tidak lengkap ($completedSegments/$totalSegments segmen).',
+        );
+      }
 
       onProgress?.call(
         downloadedBytes: downloadedBytes,
@@ -1374,12 +1553,21 @@ class VideoDownloadService {
         speed: 'Menyelesaikan unduhan...',
       );
 
+      int targetDurationOf(List<_HlsSegmentTask> tasks) {
+        double maxDur = 0;
+        for (final t in tasks) {
+          if (t.duration > maxDur) maxDur = t.duration;
+        }
+        return maxDur.ceil().clamp(1, 3600);
+      }
+
       // 1. Write video.m3u8 (and video.cineva alias)
       final videoM3u8 = StringBuffer()
         ..writeln('#EXTM3U')
         ..writeln('#EXT-X-VERSION:${videoMedia.initMap != null ? 6 : 3}')
-        ..writeln('#EXT-X-TARGETDURATION:7')
-        ..writeln('#EXT-X-MEDIA-SEQUENCE:0');
+        ..writeln('#EXT-X-TARGETDURATION:${targetDurationOf(videoTasks)}')
+        ..writeln('#EXT-X-MEDIA-SEQUENCE:0')
+        ..writeln('#EXT-X-PLAYLIST-TYPE:VOD');
       if (videoMedia.initMap != null) {
         videoM3u8.writeln('#EXT-X-MAP:URI="${videoMedia.initMap!.fileName}"');
       }
@@ -1397,8 +1585,9 @@ class VideoDownloadService {
         final audioM3u8 = StringBuffer()
           ..writeln('#EXTM3U')
           ..writeln('#EXT-X-VERSION:${audioMedia?.initMap != null ? 6 : 3}')
-          ..writeln('#EXT-X-TARGETDURATION:7')
-          ..writeln('#EXT-X-MEDIA-SEQUENCE:0');
+          ..writeln('#EXT-X-TARGETDURATION:${targetDurationOf(audioTasks)}')
+          ..writeln('#EXT-X-MEDIA-SEQUENCE:0')
+          ..writeln('#EXT-X-PLAYLIST-TYPE:VOD');
         if (audioMedia?.initMap != null) {
           audioM3u8.writeln('#EXT-X-MAP:URI="${audioMedia!.initMap!.fileName}"');
         }
@@ -1462,33 +1651,30 @@ class VideoDownloadService {
     })? onProgress,
   }) async {
     final mp4File = File('${targetDir.path}/${OfflineMp4Builder.mp4Name}');
-    int lastBytes = 0;
-    int lastTime = DateTime.now().millisecondsSinceEpoch;
-    String currentSpeed = '0 KB/s';
+    final speedMeter = DownloadSpeedMeter();
+    int lastReceived = 0;
+    int lastEmitMs = 0;
 
     await _dio.download(
       url,
       mp4File.path,
-      options: headers.isNotEmpty ? Options(headers: headers) : null,
+      options: Options(
+        headers: {
+          ...headers,
+          'Accept-Encoding': 'identity',
+        },
+      ),
       cancelToken: cancelToken,
       onReceiveProgress: (received, total) {
-        final now = DateTime.now().millisecondsSinceEpoch;
-        final timeDiff = (now - lastTime) / 1000.0;
-
-        if (timeDiff >= 0.5) {
-          final byteDiff = received - lastBytes;
-          final bps = (byteDiff >= 0 ? byteDiff / timeDiff : 0).round();
-          final mbps = (bps * 8) / 1000000.0;
-          if (bps >= 1048576) {
-            currentSpeed =
-                '${(bps / 1048576).toStringAsFixed(1)} MB/s (${mbps.toStringAsFixed(1)} Mbps)';
-          } else {
-            currentSpeed =
-                '${(bps / 1024).toStringAsFixed(0)} KB/s (${mbps.toStringAsFixed(1)} Mbps)';
-          }
-          lastBytes = received;
-          lastTime = now;
+        final delta = received - lastReceived;
+        if (delta > 0) {
+          speedMeter.add(delta);
+          lastReceived = received;
         }
+
+        final now = DateTime.now().millisecondsSinceEpoch;
+        if (now - lastEmitMs < 400 && received != total) return;
+        lastEmitMs = now;
 
         final effectiveTotal = total > 0 ? total : estimatedSizeBytes;
         final prog = effectiveTotal > 0
@@ -1499,10 +1685,34 @@ class VideoDownloadService {
           downloadedBytes: received,
           totalBytes: effectiveTotal,
           progress: prog,
-          speed: currentSpeed,
+          speed: speedMeter.formatted,
         );
       },
     );
+
+    // The payload must really be an MP4 container, not an HTML/JSON error page.
+    RandomAccessFile? raf;
+    try {
+      raf = await mp4File.open();
+      final head = await raf.read(64);
+      final isMkv = head.length > 4 &&
+          head[0] == 0x1A &&
+          head[1] == 0x45 &&
+          head[2] == 0xDF &&
+          head[3] == 0xA3;
+      if (!TsSegmentUtils.isFmp4Segment(head) && !isMkv) {
+        try {
+          await raf.close();
+          raf = null;
+          await mp4File.delete();
+        } catch (_) {}
+        throw Exception('File unduhan bukan video yang valid.');
+      }
+    } finally {
+      try {
+        await raf?.close();
+      } catch (_) {}
+    }
   }
 
   /// Fetches a playlist URL and detects whether it is an `#EXTM3U` text manifest

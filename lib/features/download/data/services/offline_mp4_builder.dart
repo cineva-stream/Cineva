@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import 'native_media_muxer.dart';
+import 'ts_segment_utils.dart';
 
 /// Shared helper that concatenates offline HLS `.ts` segments (v_XXXX.ts / a_XXXX.ts)
 /// and remuxes them into a single, validated `video.mp4` via hardware muxer on Android.
@@ -202,6 +203,50 @@ class OfflineMp4Builder {
         if (actualUs < expectedDurationUs * 0.9) return false;
       }
       return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Verifies that a preserved raw HLS bundle in [dir] (used when MP4 remuxing failed)
+  /// is genuinely playable material: the first, middle and last video segments (and
+  /// audio segments, if any) must be real MPEG-TS / fMP4 data and a playlist must exist.
+  ///
+  /// This lets the app flag a broken download as failed instead of presenting a
+  /// "completed" item that opens as a black screen with 00:00 duration.
+  static Future<bool> verifyHlsBundle(Directory dir) async {
+    try {
+      final hasPlaylist = await File('${dir.path}/master.m3u8').exists() ||
+          await File('${dir.path}/video.m3u8').exists() ||
+          await File('${dir.path}/master.cineva').exists();
+      if (!hasPlaylist) return false;
+
+      Future<bool> segmentsLookValid(List<File> segs, bool audio) async {
+        if (segs.isEmpty) return true; // video emptiness is checked separately
+        final probes = <File>{segs.first, segs[segs.length ~/ 2], segs.last};
+        for (final f in probes) {
+          RandomAccessFile? raf;
+          try {
+            if (await f.length() <= 512) return false;
+            raf = await f.open();
+            final head = await raf.read(TsSegmentUtils.tsPacketSize * 5);
+            if (!TsSegmentUtils.isValidMediaSegment(head, allowRawAudio: audio)) {
+              return false;
+            }
+          } finally {
+            try {
+              await raf?.close();
+            } catch (_) {}
+          }
+        }
+        return true;
+      }
+
+      final video = await listSegments(dir, 'v_');
+      final audio = await listSegments(dir, 'a_');
+      if (video.isEmpty) return false;
+      return await segmentsLookValid(video, false) &&
+          await segmentsLookValid(audio, true);
     } catch (_) {
       return false;
     }

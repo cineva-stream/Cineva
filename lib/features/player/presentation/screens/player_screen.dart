@@ -7072,7 +7072,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ),
 
-          // In-App Mini-Player (PiP) Button
+          // 1. In-App Mini-Player (PiP) Button
           if (_useNativePlayer && !_isLoading && !_streamNotFound)
             _buildTopBarIconButton(
               icon: Icons.picture_in_picture_alt_rounded,
@@ -7080,30 +7080,30 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               onTap: _enterMiniPlayer,
             ),
 
-          // Side Panel Info Hub Toggle
-          _buildTopBarIconButton(
-            icon: Iconsax.info_circle,
-            isActive: _isSidePanelOpen && _sidePanelPage == _SidePanelPage.info,
-            onTap: () => _toggleSidePanel(_SidePanelPage.info),
-          ),
-
-          // Sleep Timer Toggle (Placed directly beside Settings icon)
+          // 2. Sleep Timer Toggle
           _buildSleepTimerTopBarButton(s),
 
-          // Side Panel Settings & Features Hub Toggle
-          _buildTopBarIconButton(
-            icon: Iconsax.setting_2,
-            isActive: _isSidePanelOpen && _sidePanelPage != _SidePanelPage.info,
-            onTap: () => _toggleSidePanel(_SidePanelPage.main),
-          ),
-
-          // Screen Lock Button (Placed directly beside Settings icon)
+          // 3. Screen Lock Button
           _buildTopBarIconButton(
             icon: _isScreenLocked
                 ? Icons.lock_rounded
                 : Icons.lock_open_rounded,
             isActive: _isScreenLocked,
             onTap: _lockScreen,
+          ),
+
+          // 4. Side Panel Settings & Features Hub Toggle
+          _buildTopBarIconButton(
+            icon: Iconsax.setting_2,
+            isActive: _isSidePanelOpen && _sidePanelPage != _SidePanelPage.info,
+            onTap: () => _toggleSidePanel(_SidePanelPage.main),
+          ),
+
+          // 5. Side Panel Info Hub Toggle
+          _buildTopBarIconButton(
+            icon: Iconsax.info_circle,
+            isActive: _isSidePanelOpen && _sidePanelPage == _SidePanelPage.info,
+            onTap: () => _toggleSidePanel(_SidePanelPage.info),
           ),
 
           if (!kIsWeb &&

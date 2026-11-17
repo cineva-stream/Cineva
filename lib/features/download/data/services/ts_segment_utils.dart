@@ -50,6 +50,52 @@ class TsSegmentUtils {
     return true;
   }
 
+  /// Returns true if [bytes] has [packets] consecutive MPEG-TS packets starting at
+  /// [offset] (each beginning with `0x47`, spaced 188 bytes apart). When fewer than
+  /// [packets] full packets fit in the buffer, every available packet must be in sync.
+  ///
+  /// A single `0x47 ... 0x47` pair matches random data once every ~65k bytes, so the
+  /// previous two-packet check produced false positives on garbage (undecryptable or
+  /// compressed) payloads. A run of several packets makes false positives negligible.
+  static bool isTsSyncRun(List<int> bytes, int offset, {int packets = 5}) {
+    if (offset < 0 || offset >= bytes.length) return false;
+    final available = (bytes.length - offset + tsPacketSize - 1) ~/ tsPacketSize;
+    final required = available < packets ? available : packets;
+    if (required <= 0) return false;
+    for (int i = 0; i < required; i++) {
+      final pos = offset + i * tsPacketSize;
+      if (pos >= bytes.length) return false;
+      if ((bytes[pos] & 0xFF) != tsSyncByte) return false;
+    }
+    return true;
+  }
+
+  /// True when [bytes] starts with a raw ADTS AAC frame, an MP3 frame or an ID3 tag
+  /// (audio-only HLS renditions that are not wrapped in MPEG-TS).
+  static bool isRawAudioSegment(List<int> bytes) {
+    if (bytes.length < 4) return false;
+    final b0 = bytes[0] & 0xFF;
+    final b1 = bytes[1] & 0xFF;
+    if (b0 == 0x49 && b1 == 0x44 && (bytes[2] & 0xFF) == 0x33) return true; // ID3
+    // ADTS / MPEG audio frame sync: 12 set bits.
+    return b0 == 0xFF && (b1 & 0xF0) == 0xF0;
+  }
+
+  /// Strict "is this really media?" check applied to every downloaded segment after
+  /// decryption / unwrapping. Accepts MPEG-TS (a run of in-sync packets from the very
+  /// first byte), fMP4 box headers and, when [allowRawAudio] is set, raw AAC/MP3.
+  ///
+  /// Anything else (HTML/JSON error pages, undecrypted ciphertext, fake images, brotli
+  /// blobs...) is rejected so that a broken download fails loudly and gets retried
+  /// instead of silently producing a black-screen, 00:00 video.
+  static bool isValidMediaSegment(List<int> bytes, {bool allowRawAudio = false}) {
+    if (bytes.isEmpty) return false;
+    if (isFmp4Segment(bytes)) return true;
+    if (bytes.length >= tsPacketSize * 2 && isTsSyncRun(bytes, 0)) return true;
+    if (allowRawAudio && isRawAudioSegment(bytes)) return true;
+    return false;
+  }
+
   /// Returns true if [bytes] is a fragmented MP4 (fMP4 / ISO BMFF) segment
   /// starting with a standard box header (`ftyp`, `styp`, `moof`, `sidx`, `moov`, `emsg`, `free`, `mdat`).
   static bool isFmp4Segment(List<int> bytes) {
@@ -342,9 +388,25 @@ class TsSegmentUtils {
       return null;
     }
 
-    final limit = bytes.length - tsPacketSize;
-    for (int i = 0; i <= limit; i++) {
-      if (isTsSync(bytes, i)) {
+    // Require a run of consecutive in-sync packets (not just two) so random bytes of an
+    // undecryptable payload are never mistaken for an MPEG-TS stream. The run must fit
+    // completely inside the buffer: near the tail a shortened run would match noise.
+    final totalPackets = bytes.length ~/ tsPacketSize;
+    if (totalPackets < 5) {
+      // Tiny buffers cannot hold a long run; fall back to the classic two-packet check.
+      final limit = bytes.length - tsPacketSize;
+      for (int i = 0; i <= limit; i++) {
+        if (isTsSync(bytes, i)) {
+          return i == 0 ? bytes : Uint8List.sublistView(bytes, i);
+        }
+      }
+      return null;
+    }
+    const need = 5;
+    final lastStart = bytes.length - need * tsPacketSize;
+    for (int i = 0; i <= lastStart; i++) {
+      if ((bytes[i] & 0xFF) != tsSyncByte) continue;
+      if (isTsSyncRun(bytes, i, packets: need)) {
         return i == 0 ? bytes : Uint8List.sublistView(bytes, i);
       }
     }

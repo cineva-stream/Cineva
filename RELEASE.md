@@ -45,6 +45,21 @@ Pembaruan Cineva versi 1.1.8 menghadirkan **Relayout Responsif Modern untuk Tabl
 * **Cinema Poster Wall Marquee (~35 FPS)**: Header beranimasi mulus menggunakan deretan poster film miring dengan gradasi hitam Obsidian dan aksen *Cinema Amber* (`#FF9500`).
 * **Modern Dark Step-by-Step Wizard**: Indikator progres 4 langkah interaktif (`1. Lisensi ➔ 2. Lokasi ➔ 3. Instalasi ➔ 4. Selesai`), tema gelap penuh (`WizardStyle=modern dark`), dokumen Syarat & Ketentuan bertema gelap, serta dialog *Uninstall* bergaya Obsidian.
 
+### 6. Rilis Fitur Unduhan Offline (Status Under Maintenance Selesai)
+* **Mesin Unduhan Offline & HLS TS Segment Decryption**:
+  * Fitur unduhan offline yang sebelumnya berstatus *Under Maintenance* kini telah resmi diperbaiki dan dapat langsung dicoba (*Available to Try*).
+  * Dukungan engine `VideoDownloadService` baru: parser m3u8 HLS adaptif, dekripsi segmen TS terenkripsi AES-128, dan perakitan berkas MP4 offline mandiri melalui `OfflineMp4Builder`.
+  * Pipeline download subtitle otomatis (`DownloadSubtitlePipeline`) yang mengunduh dan menyinkronkan subtitle film/serial secara independen.
+  * Modal opsi download baru (`DownloadOptionsModal`) dengan pemilih kualitas resolusi, estimasi ukuran berkas, serta pemilihan track audio dan subtitle multibahasa.
+  * **Catatan Penting**: *Kami tidak dapat memastikan untuk seluruh film maupun TV series dapat diunduh*, dikarenakan variasi proteksi DRM serta ketersediaan sumber dan server pihak ketiga di internet.
+
+### 7. Peningkatan Pemutar Video (In-App Mini Player, Android PiP & Tata Letak Kontrol)
+* **Penataan Ulang Ikon Bilah Atas Pemutar Video (`PlayerScreen`)**:
+  * Menyelaraskan urutan ikon bilah atas saat memutar film atau serial TV menjadi lebih ergonomis: **Icon PiP ➔ Icon Sleep Timer ➔ Icon Lock ➔ Icon Settings ➔ Icon Info**.
+* **Floating In-App Mini-Player & Android Native PiP**:
+  * Dukungan `MiniPlayerOverlay` yang memungkinkan video terus berputar dalam jendela melayang (*floating mini-player*) di sudut layar saat pengguna menjelajahi halaman lain di dalam aplikasi.
+  * Integrasi *Picture-in-Picture* (PiP) bawaan Android untuk menonton video saat beralih ke aplikasi lain.
+
 ---
 
 ## Riwayat Versi Sebelumnya

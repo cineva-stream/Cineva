@@ -248,13 +248,14 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
 
       // Step 3: Build unified offline media container (video.mp4 with video.ts / HLS fallback)
       final parentDir = Directory(File(item.videoPath).parent.path);
+      bool mp4Built = false;
       try {
         if (await parentDir.exists()) {
           debugPrint('[DownloadNotifier] Building offline media package in: ${parentDir.path}');
           final expectedDurUs = await OfflineMp4Builder.expectedDurationUsFromPlaylist(
             File('${parentDir.path}/video.m3u8'),
           );
-          await OfflineMp4Builder.build(
+          mp4Built = await OfflineMp4Builder.build(
             dir: parentDir,
             expectedDurationUs: expectedDurUs,
             deleteSegmentsOnSuccess: true,
@@ -262,6 +263,29 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
         }
       } catch (e) {
         debugPrint('[DownloadNotifier] OfflineMp4Builder build note: $e');
+      }
+
+      // If no valid MP4 could be produced, the raw HLS bundle is the only thing left to
+      // play. Make sure it is genuine media; otherwise report a failure now instead of
+      // marking the item "completed" and letting it open as a black screen at 00:00.
+      if (!mp4Built && !await OfflineMp4Builder.verifyHlsBundle(parentDir)) {
+        // Drop the suspicious segments so a retry downloads everything fresh.
+        try {
+          final junk = RegExp(r'^(?:[va]_\d+\.(?:ts|m4s)|init_[va]\.mp4|\.dl_state)$');
+          await for (final f in parentDir.list()) {
+            if (f is! File) continue;
+            final name = f.path.split(RegExp(r'[\\/]')).last;
+            if (junk.hasMatch(name)) {
+              try {
+                await f.delete();
+              } catch (_) {}
+            }
+          }
+        } catch (_) {}
+        throw Exception(
+          'File hasil unduhan tidak valid atau rusak (bukan data video). '
+          'Hapus lalu unduh ulang.',
+        );
       }
 
       // Step 4: Resolve the best validated playable file and compute actual size

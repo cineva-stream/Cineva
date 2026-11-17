@@ -50,8 +50,13 @@ class DownloadRepository {
     if (item != null) {
       try {
         final videoFile = File(item.videoPath);
-        if (item.videoPath.endsWith('master.cineva') || item.videoPath.endsWith('master.m3u8')) {
-          final parentDir = videoFile.parent;
+        final parentDir = videoFile.parent;
+        final parentName = parentDir.path.split(RegExp(r'[\\/]')).last;
+        if (item.videoPath.endsWith('master.cineva') ||
+            item.videoPath.endsWith('master.m3u8') ||
+            parentName == item.id) {
+          // Remove the whole per-item folder (playlists, leftover segments, state files)
+          // so a later re-download can never pick up stale data.
           if (await parentDir.exists()) {
             await parentDir.delete(recursive: true);
           }
