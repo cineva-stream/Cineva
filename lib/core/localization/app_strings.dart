@@ -1200,4 +1200,28 @@ class AppStrings {
   String get onboardingGoogleSyncSuccessGoHome => isIndonesian
       ? 'Akun Google terhubung! Memuat data Anda...'
       : 'Google Account linked! Loading your data...';
+
+  // ── Download Feature Announcement Modal ──
+  String get downloadModalBadge => isIndonesian ? 'FITUR BARU' : 'NEW FEATURE';
+  String get downloadModalPosterHeader => isIndonesian
+      ? 'UNDUH & TONTON OFFLINE'
+      : 'DOWNLOAD & WATCH OFFLINE';
+  String get downloadModalPosterSubtitle => isIndonesian
+      ? 'Tonton film & serial favorit tanpa kuota internet'
+      : 'Watch movies & series anytime without internet';
+  String get downloadModalTitle => isIndonesian
+      ? 'Fitur Unduhan Offline Siap Dicoba!'
+      : 'Offline Downloads Are Ready to Try!';
+  String get downloadModalDescription => isIndonesian
+      ? 'Sekarang kamu bisa menyimpan film dan episode serial favorit langsung ke perangkatmu untuk dinikmati kapan saja secara offline.'
+      : 'You can now save your favorite movies and TV episodes directly to your device to enjoy completely offline.';
+  String get downloadModalNote => isIndonesian
+      ? 'Catatan: Kami tidak dapat memastikan untuk seluruh film maupun TV series dapat diunduh dikarenakan ketersediaan sumber server pihak ketiga.'
+      : 'Note: We cannot guarantee that all movies or TV series can be downloaded due to third-party server and stream availability.';
+  String get downloadModalDontShowAgain => isIndonesian
+      ? 'Jangan tampilkan lagi'
+      : "Don't show again";
+  String get downloadModalCta => isIndonesian
+      ? 'Good Work! (Mengerti)'
+      : 'Good Work!';
 }

@@ -28,6 +28,8 @@ import '../widgets/airing_calendar_banner.dart';
 import '../../../search/presentation/screens/search_screen.dart';
 import '../../../../core/platform/device_form_factor.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
+import '../../../download/presentation/widgets/download_feature_announcement_dialog.dart';
+import '../../../settings/data/settings_service.dart';
 
 /// Active category filter on the Home Screen.
 enum HomeCategoryFilter {
@@ -56,11 +58,29 @@ final homeFilterProvider = StateProvider<HomeCategoryFilter>(
 );
 
 /// Modern, informative Home Screen inspired by elite streaming platforms (Apple TV+, Netflix, HBO Max).
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (SettingsService.shouldShowDownloadAnnouncement()) {
+        Future.delayed(const Duration(milliseconds: 900), () {
+          if (!mounted) return;
+          DownloadFeatureAnnouncementDialog.show(context);
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Ensure search state is reset when user lands on Beranda
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (ref.read(searchQueryProvider).isNotEmpty) {

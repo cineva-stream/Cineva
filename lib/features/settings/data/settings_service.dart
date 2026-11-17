@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/constants/app_constants.dart';
 
@@ -237,6 +239,64 @@ class SettingsService {
 
   static Future<void> setLegalAccepted(bool accepted) async {
     await _box.put(keyLegalAccepted, accepted);
+  }
+
+  // ── Download Feature Announcement Modal ──
+  static const String keyDownloadAnnouncementDismissed =
+      'download_announcement_dismissed';
+  static const String keyDownloadAnnouncementLastShown =
+      'download_announcement_last_shown';
+
+  static bool hasDismissedDownloadAnnouncement() {
+    try {
+      if (!Hive.isBoxOpen(AppConstants.settingsBox)) return false;
+      return _box.get(keyDownloadAnnouncementDismissed, defaultValue: false)
+          as bool;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> setDismissedDownloadAnnouncement(bool dismissed) async {
+    try {
+      if (!Hive.isBoxOpen(AppConstants.settingsBox)) return;
+      await _box.put(keyDownloadAnnouncementDismissed, dismissed);
+    } catch (_) {}
+  }
+
+  static int? getDownloadAnnouncementLastShown() {
+    try {
+      if (!Hive.isBoxOpen(AppConstants.settingsBox)) return null;
+      final val = _box.get(keyDownloadAnnouncementLastShown);
+      if (val is int) return val;
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> setDownloadAnnouncementLastShown(int timestamp) async {
+    try {
+      if (!Hive.isBoxOpen(AppConstants.settingsBox)) return;
+      await _box.put(keyDownloadAnnouncementLastShown, timestamp);
+    } catch (_) {}
+  }
+
+  /// Determines whether the 12-hour throttled announcement modal should be shown.
+  static bool shouldShowDownloadAnnouncement({DateTime? now, bool bypassTestCheck = false}) {
+    if (!bypassTestCheck &&
+        (kIsWeb || Platform.environment.containsKey('FLUTTER_TEST'))) {
+      return false;
+    }
+    if (hasDismissedDownloadAnnouncement()) return false;
+    final lastShown = getDownloadAnnouncementLastShown();
+    if (lastShown != null) {
+      final currentTime = now ?? DateTime.now();
+      final diff = currentTime
+          .difference(DateTime.fromMillisecondsSinceEpoch(lastShown));
+      if (diff.inHours < 12) return false;
+    }
+    return true;
   }
 
   /// Exports portable user preferences for cross-device synchronization.
