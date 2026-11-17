@@ -59,8 +59,13 @@ Pembaruan Cineva versi 1.1.8 menghadirkan **Relayout Responsif Modern untuk Tabl
 ### 7. Peningkatan Pemutar Video (In-App Mini Player, Android PiP & Tata Letak Kontrol)
 * **Penataan Ulang Ikon Bilah Atas Pemutar Video (`PlayerScreen`)**:
   * Menyelaraskan urutan ikon bilah atas saat memutar film atau serial TV menjadi lebih ergonomis: **Icon PiP ➔ Icon Sleep Timer ➔ Icon Lock ➔ Icon Settings ➔ Icon Info**.
+* **Penyempurnaan Logika Aktivasi PiP & Navigasi Kembali**:
+  * Menekan tombol kembali (baik ikon *back* di bilah atas pemutar maupun tombol/gesture *back* sistem Android) kini **tidak memicu PiP atau Mini-Player**, melainkan menghentikan pemutaran secara bersih (*clean exit*), menyimpan progres tontonan, memulihkan orientasi layar, dan kembali ke halaman sebelumnya.
+  * Mode Picture-in-Picture (PiP) kini **hanya aktif secara eksklusif** ketika:
+    1. Pengguna menekan tombol navigasi **Home** sistem Android secara langsung (tombol tengah atau gesture *swipe-up to home*).
+    2. Pengguna mengetuk **Ikon PiP** di bilah atas pemutar streaming.
 * **Floating In-App Mini-Player & Android Native PiP**:
-  * Dukungan `MiniPlayerOverlay` yang memungkinkan video terus berputar dalam jendela melayang (*floating mini-player*) di sudut layar saat pengguna menjelajahi halaman lain di dalam aplikasi.
+  * Dukungan `MiniPlayerOverlay` yang memungkinkan video terus berputar dalam jendela melayang (*floating mini-player*) di sudut layar saat pengguna menjelajahi halaman lain di dalam aplikasi ketika diaktifkan melalui aksi PiP.
   * Integrasi *Picture-in-Picture* (PiP) bawaan Android untuk menonton video saat beralih ke aplikasi lain.
 
 ---

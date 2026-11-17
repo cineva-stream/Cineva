@@ -630,6 +630,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
+  /// Activates Picture-in-Picture mode on demand.
+  /// On Android (phones/tablets), triggers Android OS native PiP window.
+  /// On Desktop/TV or when native PiP is unavailable, falls back to In-App Floating Mini-Player.
+  Future<void> _handlePipAction() async {
+    if (_isExiting || !_useNativePlayer || _isLoading || _streamNotFound) return;
+
+    if (!kIsWeb &&
+        !Platform.environment.containsKey('FLUTTER_TEST') &&
+        Platform.isAndroid &&
+        !gIsTv) {
+      try {
+        final entered = await _pipChannel.invokeMethod<bool>('enterPip');
+        if (entered == true) return;
+      } catch (e) {
+        debugPrint('[PlayerScreen] Native enterPip note: $e');
+      }
+    }
+
+    await _enterMiniPlayer();
+  }
+
   /// Smoothly minimizes the active native player into the floating In-App Mini-Player
   /// without stopping, reloading, or resetting playback position/audio.
   Future<void> _enterMiniPlayer() async {
@@ -756,32 +777,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         try {
           _player.play();
         } catch (_) {}
+        _setNativeAutoPip(true);
         return;
       }
       markCompletedOnExit = result;
-      // If user chose "Belum" (Not Yet finished), resume and smoothly enter Mini-Player!
-      if (result == false &&
-          _useNativePlayer &&
-          !_isLoading &&
-          !_streamNotFound) {
-        try {
-          await _player.play();
-        } catch (_) {}
-        await _enterMiniPlayer();
-        return;
-      }
-    }
-
-    // If native video is actively loaded and user exits normally (not marking movie 100% done),
-    // smoothly transition to the In-App Floating Mini-Player so streaming & audio never stop!
-    if (!forceStop &&
-        markCompletedOnExit != true &&
-        _useNativePlayer &&
-        !_isLoading &&
-        !_streamNotFound &&
-        _duration.inSeconds > 0) {
-      await _enterMiniPlayer();
-      return;
     }
 
     _isExiting = true;
@@ -7072,12 +7071,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ),
 
-          // 1. In-App Mini-Player (PiP) Button
+          // 1. In-App Mini-Player / Native PiP Button
           if (_useNativePlayer && !_isLoading && !_streamNotFound)
             _buildTopBarIconButton(
               icon: Icons.picture_in_picture_alt_rounded,
               isActive: false,
-              onTap: _enterMiniPlayer,
+              onTap: _handlePipAction,
             ),
 
           // 2. Sleep Timer Toggle
@@ -7153,8 +7152,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+        _setNativeAutoPip(false);
         if (_isScreenLocked) {
           _onLockedScreenTap();
+          _setNativeAutoPip(true);
           return;
         }
         if (_isSidePanelOpen) {
@@ -7163,6 +7164,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           } else {
             _closeSidePanel();
           }
+          _setNativeAutoPip(true);
           return;
         }
         await _handleExit();
