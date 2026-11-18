@@ -514,29 +514,32 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
                     : Colors.white.withValues(alpha: 0.08),
               ),
             ),
-            child: CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              activeColor: AppColors.primary,
-              checkColor: Colors.white,
-              title: Text(
-                s.watchPartyAllowGuestControl,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+            child: Material(
+              color: Colors.transparent,
+              child: CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                activeColor: AppColors.primary,
+                checkColor: Colors.white,
+                title: Text(
+                  s.watchPartyAllowGuestControl,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              subtitle: Text(
-                s.watchPartyAllowGuestControlSubtitle,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
+                subtitle: Text(
+                  s.watchPartyAllowGuestControlSubtitle,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
                 ),
+                value: _allowGuestControl,
+                onChanged: (val) {
+                  setState(() => _allowGuestControl = val ?? false);
+                },
               ),
-              value: _allowGuestControl,
-              onChanged: (val) {
-                setState(() => _allowGuestControl = val ?? false);
-              },
             ),
           ),
 

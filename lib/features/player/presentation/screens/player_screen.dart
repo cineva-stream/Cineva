@@ -31,8 +31,8 @@ import '../../../settings/data/subtitle_languages.dart';
 import '../../../sync/data/services/device_handoff_service.dart';
 import '../../../watch_party/domain/models/watch_party_room.dart';
 import '../../../watch_party/presentation/providers/watch_party_provider.dart';
-import '../../../watch_party/presentation/widgets/watch_party_modal.dart';
 import '../../../watch_party/presentation/widgets/watch_party_chat_panel.dart';
+import '../../../watch_party/presentation/widgets/watch_party_side_view.dart';
 import '../../../watch_party/presentation/widgets/floating_emoji_particles.dart';
 import '../../../history/data/models/watch_history_item.dart';
 import '../../../history/data/repositories/watch_history_repository.dart';
@@ -79,6 +79,7 @@ enum _SidePanelPage {
   server,
   speed,
   info,
+  watchParty,
 }
 
 /// Full-featured Cinema Player Screen with edge-to-edge notch rendering,
@@ -3195,7 +3196,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   void _toggleSidePanel([_SidePanelPage page = _SidePanelPage.main]) {
-    if (_isSidePanelOpen) {
+    if (_isSidePanelOpen && _sidePanelPage == page) {
       _closeSidePanel();
     } else {
       _openSidePanel(page);
@@ -5430,10 +5431,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         title = s.playerInfoTitle;
         icon = Iconsax.info_circle;
         break;
+      case _SidePanelPage.watchParty:
+        title = s.watchPartyTitle;
+        icon = Iconsax.people;
+        break;
     }
 
     final isSubPage = _sidePanelPage != _SidePanelPage.main &&
-        _sidePanelPage != _SidePanelPage.info;
+        _sidePanelPage != _SidePanelPage.info &&
+        _sidePanelPage != _SidePanelPage.watchParty;
 
     return Container(
       width: drawerWidth,
@@ -5579,7 +5585,65 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         return _buildSidePanelSpeed(s, key: const ValueKey('panel_speed'));
       case _SidePanelPage.info:
         return _buildSidePanelInfo(s, key: const ValueKey('panel_info'));
+      case _SidePanelPage.watchParty:
+        return _buildSidePanelWatchParty(
+          s,
+          key: const ValueKey('panel_watch_party'),
+        );
     }
+  }
+
+  Widget _buildSidePanelWatchParty(AppStrings s, {required Key key}) {
+    final media = WatchPartyMedia(
+      title: widget.title,
+      mediaType: (_currentSeason != null || _currentEpisode != null)
+          ? 'tv'
+          : (widget.mediaType ?? 'movie'),
+      tmdbId: widget.tmdbId ?? _currentTmdbId ?? 0,
+      imdbId: widget.imdbId,
+      season: _currentSeason,
+      episode: _currentEpisode,
+      episodeTitle: (_currentEpisodeName != null &&
+              _currentEpisodeName!.isNotEmpty)
+          ? _currentEpisodeName
+          : (_currentEpisodeTitle ?? widget.episodeTitle),
+      posterPath: _currentPosterPath ?? widget.posterPath,
+      backdropPath: _currentBackdropPath ?? widget.backdropPath,
+    );
+
+    return WatchPartySideView(
+      key: key,
+      media: media,
+      onClose: _closeSidePanel,
+      onRoomCreatedOrJoined: (roomCode, targetMedia) {
+        _closeSidePanel();
+        ref.read(watchPartyProvider.notifier).toggleChatPanel(true);
+
+        // If joined a room with a different media, navigate smoothly to that media
+        final currentTmdb = widget.tmdbId ?? _currentTmdbId ?? 0;
+        final currentEp = _currentEpisode;
+        final isDifferentMedia = (targetMedia.tmdbId != 0 &&
+                targetMedia.tmdbId != currentTmdb) ||
+            (targetMedia.episode != null && targetMedia.episode != currentEp);
+
+        if (isDifferentMedia) {
+          context.pushReplacement(
+            '/player',
+            extra: {
+              'title': targetMedia.title,
+              'tmdbId': targetMedia.tmdbId,
+              'imdbId': targetMedia.imdbId,
+              'mediaType': targetMedia.mediaType,
+              'season': targetMedia.season,
+              'episode': targetMedia.episode,
+              'episodeTitle': targetMedia.episodeTitle,
+              'posterPath': targetMedia.posterPath,
+              'backdropPath': targetMedia.backdropPath,
+            },
+          );
+        }
+      },
+    );
   }
 
   Widget _buildSidePanelInfo(AppStrings s, {Key? key}) {
@@ -7129,6 +7193,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final isInRoom = wp.isInRoom;
     final isChatOpen = wp.isChatPanelOpen;
     final hasUnread = wp.hasUnreadMessages;
+    final isSidePanelActive =
+        _isSidePanelOpen && _sidePanelPage == _SidePanelPage.watchParty;
+    final isActive = isInRoom ? isChatOpen : isSidePanelActive;
 
     return Padding(
       padding: const EdgeInsets.only(left: 8),
@@ -7136,27 +7203,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         onTap: () {
           _resetControlsTimer();
           if (isInRoom) {
+            if (_isSidePanelOpen) _closeSidePanel();
             ref.read(watchPartyProvider.notifier).toggleChatPanel();
           } else {
-            WatchPartyModal.show(
-              context,
-              media: WatchPartyMedia(
-                title: widget.title,
-                mediaType: (_currentSeason != null || _currentEpisode != null)
-                    ? 'tv'
-                    : (widget.mediaType ?? 'movie'),
-                tmdbId: widget.tmdbId ?? 0,
-                imdbId: widget.imdbId,
-                season: _currentSeason,
-                episode: _currentEpisode,
-                episodeTitle: (_currentEpisodeName != null &&
-                        _currentEpisodeName!.isNotEmpty)
-                    ? _currentEpisodeName
-                    : (_currentEpisodeTitle ?? widget.episodeTitle),
-                posterPath: _currentPosterPath ?? widget.posterPath,
-                backdropPath: _currentBackdropPath ?? widget.backdropPath,
-              ),
-            );
+            if (wp.isChatPanelOpen) {
+              ref.read(watchPartyProvider.notifier).toggleChatPanel(false);
+            }
+            _toggleSidePanel(_SidePanelPage.watchParty);
           }
         },
         borderRadius: BorderRadius.circular(20),
@@ -7167,28 +7220,31 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: (isInRoom && isChatOpen)
+                color: isActive
                     ? AppColors.primary
                     : Colors.black.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
-                border: isInRoom
+                border: (isInRoom || isActive)
                     ? Border.all(
                         color: AppColors.primary.withValues(alpha: 0.8),
                         width: 1.5,
                       )
-                    : null,
+                    : Border.all(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        width: 1.0,
+                      ),
               ),
               child: Center(
                 child: Icon(
-                  Iconsax.people,
+                  isInRoom ? Iconsax.messages_1 : Iconsax.people,
                   size: 19,
-                  color: (isInRoom && isChatOpen)
+                  color: isActive
                       ? Colors.black
                       : (isInRoom ? AppColors.primary : Colors.white),
                 ),
               ),
             ),
-            if (hasUnread)
+            if (hasUnread && !isChatOpen)
               Positioned(
                 top: 0,
                 right: 0,
@@ -7330,7 +7386,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           // 5. Side Panel Settings & Features Hub Toggle
           _buildTopBarIconButton(
             icon: Iconsax.setting_2,
-            isActive: _isSidePanelOpen && _sidePanelPage != _SidePanelPage.info,
+            isActive: _isSidePanelOpen &&
+                _sidePanelPage != _SidePanelPage.info &&
+                _sidePanelPage != _SidePanelPage.watchParty,
             onTap: () => _toggleSidePanel(_SidePanelPage.main),
           ),
 
@@ -7459,7 +7517,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         }
         if (_isSidePanelOpen) {
           if (_sidePanelPage != _SidePanelPage.main) {
-            _navigateToSidePanelPage(_SidePanelPage.main);
+            if (_sidePanelPage == _SidePanelPage.info ||
+                _sidePanelPage == _SidePanelPage.watchParty) {
+              _closeSidePanel();
+            } else {
+              _navigateToSidePanelPage(_SidePanelPage.main);
+            }
           } else {
             _closeSidePanel();
           }
@@ -7498,7 +7561,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               }
               if (_isSidePanelOpen) {
                 if (_sidePanelPage != _SidePanelPage.main) {
-                  _navigateToSidePanelPage(_SidePanelPage.main);
+                  if (_sidePanelPage == _SidePanelPage.info ||
+                      _sidePanelPage == _SidePanelPage.watchParty) {
+                    _closeSidePanel();
+                  } else {
+                    _navigateToSidePanelPage(_SidePanelPage.main);
+                  }
                 } else {
                   _closeSidePanel();
                 }
@@ -7607,10 +7675,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             final totalWidth = constraints.maxWidth;
             final totalHeight = constraints.maxHeight;
             final drawerWidth = (totalWidth * 0.36).clamp(310.0, 390.0);
-            final videoWidth = _isSidePanelOpen
-                ? totalWidth - drawerWidth
+            final wp = ref.watch(watchPartyProvider);
+            final isChatOpen = wp.isInRoom && wp.isChatPanelOpen;
+            final isAnyDrawerOpen = _isSidePanelOpen || isChatOpen;
+            final activeDrawerWidth = _isSidePanelOpen
+                ? drawerWidth
+                : (isChatOpen ? 340.0 : 0.0);
+            final videoWidth = isAnyDrawerOpen
+                ? totalWidth - activeDrawerWidth
                 : totalWidth;
-            final effectiveFit = _isSidePanelOpen ? BoxFit.contain : _fitMode;
+            final effectiveFit = isAnyDrawerOpen ? BoxFit.contain : _fitMode;
 
             return MouseRegion(
               cursor: _isCursorVisible

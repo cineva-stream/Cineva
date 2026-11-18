@@ -1,7 +1,10 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cineva/features/watch_party/domain/models/watch_party_room.dart';
 import 'package:cineva/features/watch_party/data/services/watch_party_service.dart';
 import 'package:cineva/features/watch_party/presentation/providers/watch_party_provider.dart';
+import 'package:cineva/features/watch_party/presentation/widgets/watch_party_side_view.dart';
 
 void main() {
   group('WatchPartyRoom Models & Serialization', () {
@@ -258,6 +261,59 @@ void main() {
         formattedEpisodeSubtitle(3, 10, '10'),
         'Season 3 - Episode 10',
       );
+    });
+  });
+
+  group('WatchPartySideView Widget Tests', () {
+    testWidgets('Renders side panel with tabs, media summary card, and controls', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1280, 720));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      const testMedia = WatchPartyMedia(
+        title: 'The Rookie',
+        mediaType: 'tv',
+        tmdbId: 79744,
+        season: 3,
+        episode: 10,
+        episodeTitle: 'True Crime',
+      );
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 360,
+                height: 720,
+                child: WatchPartySideView(media: testMedia),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Check Tabs
+      expect(find.text('Buat Ruangan'), findsOneWidget);
+      expect(find.text('Gabung Ruangan'), findsOneWidget);
+
+      // Check Media Card
+      expect(find.text('The Rookie'), findsOneWidget);
+      expect(find.text('Season 3 - Episode 10 (True Crime)'), findsOneWidget);
+      expect(find.text('Serial TV'), findsOneWidget);
+
+      // Check Host controls
+      expect(find.text('Nama Panggilan'), findsOneWidget);
+      expect(find.text('Izinkan partner/tamu mengontrol video'), findsOneWidget);
+      expect(find.text('Buat Ruangan & Mulai'), findsOneWidget);
+
+      // Switch to Join Room Tab
+      await tester.tap(find.text('Gabung Ruangan'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kode Ruangan'), findsOneWidget);
+      expect(find.text('Nama Panggilan (Guest Mode)'), findsOneWidget);
+      expect(find.text('Gabung Ruangan'), findsNWidgets(2)); // Tab title + button label
     });
   });
 }
