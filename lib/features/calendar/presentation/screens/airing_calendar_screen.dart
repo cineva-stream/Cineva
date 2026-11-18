@@ -152,13 +152,13 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                         ),
                       ),
                       child: const Icon(
-                        Icons.arrow_back,
+                        Icons.arrow_back_rounded,
                         color: Colors.white,
                         size: 20,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,8 +167,9 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                           activeTab == 0 ? s.calendarTitle : s.upcomingTitle,
                           style: GoogleFonts.outfit(
                             fontSize: 20,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
+                            letterSpacing: -0.3,
                           ),
                         ),
                         Text(

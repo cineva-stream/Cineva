@@ -13,6 +13,8 @@ class WatchPartyState {
   final bool isHost;
   final bool isChatPanelOpen;
   final bool hasUnreadMessages;
+  final int unreadCount;
+  final WatchPartyMessage? latestIncomingMessage;
   final String? latestEmoji;
   final bool isLoading;
   final String? errorMessage;
@@ -24,6 +26,8 @@ class WatchPartyState {
     this.isHost = false,
     this.isChatPanelOpen = false,
     this.hasUnreadMessages = false,
+    this.unreadCount = 0,
+    this.latestIncomingMessage,
     this.latestEmoji,
     this.isLoading = false,
     this.errorMessage,
@@ -43,6 +47,9 @@ class WatchPartyState {
     bool? isHost,
     bool? isChatPanelOpen,
     bool? hasUnreadMessages,
+    int? unreadCount,
+    WatchPartyMessage? latestIncomingMessage,
+    bool clearLatestIncomingMessage = false,
     String? latestEmoji,
     bool clearEmoji = false,
     bool? isLoading,
@@ -56,6 +63,10 @@ class WatchPartyState {
       isHost: isHost ?? this.isHost,
       isChatPanelOpen: isChatPanelOpen ?? this.isChatPanelOpen,
       hasUnreadMessages: hasUnreadMessages ?? this.hasUnreadMessages,
+      unreadCount: unreadCount ?? this.unreadCount,
+      latestIncomingMessage: clearLatestIncomingMessage
+          ? null
+          : (latestIncomingMessage ?? this.latestIncomingMessage),
       latestEmoji: clearEmoji ? null : (latestEmoji ?? this.latestEmoji),
       isLoading: isLoading ?? this.isLoading,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
@@ -80,24 +91,37 @@ class WatchPartyNotifier extends StateNotifier<WatchPartyState> {
           clearRoom: true,
           isHost: false,
           hasUnreadMessages: false,
+          unreadCount: 0,
+          clearLatestIncomingMessage: true,
           isChatPanelOpen: false,
         );
         return;
       }
 
-      // Detect unread messages
-      bool hasUnread = false;
+      // Detect unread messages and incoming previews
+      int unread = 0;
+      WatchPartyMessage? newIncoming;
       String? newEmoji;
-      if (room.messages.isNotEmpty) {
-        final lastMsg = room.messages.last;
-        if (lastMsg.timestamp > _lastReadMessageTimestamp) {
-          if (!state.isChatPanelOpen && lastMsg.senderId != _service.myMemberId) {
-            hasUnread = true;
+
+      if (!state.isChatPanelOpen) {
+        for (final m in room.messages) {
+          if (m.timestamp > _lastReadMessageTimestamp &&
+              m.senderId != _service.myMemberId &&
+              m.type != 'system') {
+            unread++;
+            newIncoming = m;
           }
-          if (lastMsg.type == 'emoji' && lastMsg.emoji != null) {
+        }
+        if (room.messages.isNotEmpty) {
+          final lastMsg = room.messages.last;
+          if (lastMsg.type == 'emoji' &&
+              lastMsg.timestamp > _lastReadMessageTimestamp &&
+              lastMsg.emoji != null) {
             newEmoji = lastMsg.emoji;
           }
         }
+      } else {
+        _lastReadMessageTimestamp = DateTime.now().millisecondsSinceEpoch;
       }
 
       state = state.copyWith(
@@ -105,7 +129,9 @@ class WatchPartyNotifier extends StateNotifier<WatchPartyState> {
         myMemberId: _service.myMemberId,
         myName: _service.myName,
         isHost: _service.isHost,
-        hasUnreadMessages: hasUnread || state.hasUnreadMessages,
+        hasUnreadMessages: unread > 0 || state.hasUnreadMessages,
+        unreadCount: state.isChatPanelOpen ? 0 : (state.unreadCount + unread),
+        latestIncomingMessage: newIncoming ?? state.latestIncomingMessage,
         latestEmoji: newEmoji,
       );
     });
@@ -153,11 +179,16 @@ class WatchPartyNotifier extends StateNotifier<WatchPartyState> {
         memberName: memberName,
       );
       if (success) {
+        _lastReadMessageTimestamp = DateTime.now().millisecondsSinceEpoch;
         state = state.copyWith(
           isLoading: false,
           isHost: false,
+          room: _service.currentRoom,
           myMemberId: _service.myMemberId,
           myName: _service.myName,
+          unreadCount: 0,
+          hasUnreadMessages: false,
+          clearLatestIncomingMessage: true,
         );
         return true;
       } else {
@@ -176,16 +207,31 @@ class WatchPartyNotifier extends StateNotifier<WatchPartyState> {
     }
   }
 
+  /// Fetches room metadata before or during join flow.
+  Future<WatchPartyRoom?> fetchRoom(String roomCode) async {
+    return _service.fetchRoom(roomCode);
+  }
+
   /// Toggles visibility of the right side Live Chat panel.
   void toggleChatPanel([bool? open]) {
     final next = open ?? !state.isChatPanelOpen;
     if (next) {
       // Mark messages read when panel opens
       _lastReadMessageTimestamp = DateTime.now().millisecondsSinceEpoch;
-      state = state.copyWith(isChatPanelOpen: true, hasUnreadMessages: false);
+      state = state.copyWith(
+        isChatPanelOpen: true,
+        hasUnreadMessages: false,
+        unreadCount: 0,
+        clearLatestIncomingMessage: true,
+      );
     } else {
       state = state.copyWith(isChatPanelOpen: false);
     }
+  }
+
+  /// Clears floating incoming message preview after timeout or interaction.
+  void clearLatestIncomingMessage() {
+    state = state.copyWith(clearLatestIncomingMessage: true);
   }
 
   /// Host toggle: Allow or disallow partner/guest to control video playback.

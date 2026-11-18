@@ -25,6 +25,7 @@ import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../profile/presentation/widgets/avatar_display.dart';
 import '../../../updater/presentation/widgets/in_app_update_banner.dart';
 import '../../../sync/presentation/widgets/handoff_top_capsule.dart';
+import '../../../watch_party/presentation/widgets/watch_party_join_banner.dart';
 import '../widgets/airing_calendar_banner.dart';
 import '../../../search/presentation/screens/search_screen.dart';
 import '../../../../core/platform/device_form_factor.dart';
@@ -516,6 +517,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             // ── Seamless Device Hand-Off Capsule ──
             const SliverToBoxAdapter(child: HandOffTopCapsule()),
+
+            // ── Modern Watch Party Quick Join Banner ──
+            const SliverToBoxAdapter(child: WatchPartyJoinBanner()),
 
             // ── Hero Billboard Carousel (Trending Movies or Popular TV Series) ──
             if (activeFilter == HomeCategoryFilter.all ||

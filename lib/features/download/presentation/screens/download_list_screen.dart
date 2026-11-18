@@ -63,6 +63,7 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
         backgroundColor: AppColors.background,
         appBar: AppBar(
           backgroundColor: AppColors.background,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
@@ -73,7 +74,7 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
                 context.go('/');
               }
             },
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
           ),
           title: Text(
             s.downloadTitle,
@@ -81,6 +82,7 @@ class _DownloadListScreenState extends ConsumerState<DownloadListScreen> {
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: Colors.white,
+              letterSpacing: -0.3,
             ),
           ),
           actions: [

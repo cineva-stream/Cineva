@@ -29,6 +29,7 @@ class LegalDocumentScreen extends ConsumerWidget {
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
@@ -39,7 +40,8 @@ class LegalDocumentScreen extends ConsumerWidget {
           style: GoogleFonts.outfit(
             color: Colors.white,
             fontWeight: FontWeight.w700,
-            fontSize: 18,
+            fontSize: 20,
+            letterSpacing: -0.3,
           ),
         ),
         bottom: PreferredSize(

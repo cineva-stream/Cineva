@@ -7192,31 +7192,33 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final wp = ref.watch(watchPartyProvider);
     final isInRoom = wp.isInRoom;
     final isChatOpen = wp.isChatPanelOpen;
-    final hasUnread = wp.hasUnreadMessages;
+    final unreadCount = wp.unreadCount;
+    final latestMsg = wp.latestIncomingMessage;
     final isSidePanelActive =
         _isSidePanelOpen && _sidePanelPage == _SidePanelPage.watchParty;
     final isActive = isInRoom ? isChatOpen : isSidePanelActive;
 
     return Padding(
       padding: const EdgeInsets.only(left: 8),
-      child: TvFocusable(
-        onTap: () {
-          _resetControlsTimer();
-          if (isInRoom) {
-            if (_isSidePanelOpen) _closeSidePanel();
-            ref.read(watchPartyProvider.notifier).toggleChatPanel();
-          } else {
-            if (wp.isChatPanelOpen) {
-              ref.read(watchPartyProvider.notifier).toggleChatPanel(false);
-            }
-            _toggleSidePanel(_SidePanelPage.watchParty);
-          }
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          TvFocusable(
+            onTap: () {
+              _resetControlsTimer();
+              if (isInRoom) {
+                if (_isSidePanelOpen) _closeSidePanel();
+                ref.read(watchPartyProvider.notifier).toggleChatPanel();
+              } else {
+                if (wp.isChatPanelOpen) {
+                  ref.read(watchPartyProvider.notifier).toggleChatPanel(false);
+                }
+                _toggleSidePanel(_SidePanelPage.watchParty);
+              }
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
               width: 38,
               height: 38,
               decoration: BoxDecoration(
@@ -7244,21 +7246,63 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 ),
               ),
             ),
-            if (hasUnread && !isChatOpen)
-              Positioned(
-                top: 0,
-                right: 0,
+          ),
+
+          // Unread Count Badge
+          if (!isChatOpen && unreadCount > 0)
+            Positioned(
+              top: -4,
+              right: -4,
+              child: IgnorePointer(
                 child: Container(
-                  width: 9,
-                  height: 9,
-                  decoration: const BoxDecoration(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                  constraints:
+                      const BoxConstraints(minWidth: 18, minHeight: 18),
+                  decoration: BoxDecoration(
                     color: Colors.redAccent,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.black, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.redAccent.withValues(alpha: 0.5),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      unreadCount > 9 ? '9+' : '$unreadCount',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
               ),
-          ],
-        ),
+            ),
+
+          // Preview Bubble Below Icon (Auto-dismisses in 5s)
+          if (!isChatOpen && latestMsg != null)
+            Positioned(
+              top: 44,
+              right: 0,
+              child: _WatchPartyMessagePreviewBubble(
+                message: latestMsg,
+                onDismiss: () => ref
+                    .read(watchPartyProvider.notifier)
+                    .clearLatestIncomingMessage(),
+                onTap: () {
+                  _resetControlsTimer();
+                  if (_isSidePanelOpen) _closeSidePanel();
+                  ref.read(watchPartyProvider.notifier).toggleChatPanel(true);
+                },
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -7278,7 +7322,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 shape: BoxShape.circle,
               ),
               child: const Icon(
-                Icons.arrow_back,
+                Icons.arrow_back_rounded,
                 color: Colors.white,
                 size: 20,
               ),
@@ -8520,4 +8564,131 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     ),
   );
 }
+}
+
+/// Floating message preview bubble anchored under the Watch Party top bar icon.
+/// Automatically dismisses after 5 seconds or upon tap.
+class _WatchPartyMessagePreviewBubble extends StatefulWidget {
+  final WatchPartyMessage message;
+  final VoidCallback onDismiss;
+  final VoidCallback onTap;
+
+  const _WatchPartyMessagePreviewBubble({
+    required this.message,
+    required this.onDismiss,
+    required this.onTap,
+  });
+
+  @override
+  State<_WatchPartyMessagePreviewBubble> createState() =>
+      _WatchPartyMessagePreviewBubbleState();
+}
+
+class _WatchPartyMessagePreviewBubbleState
+    extends State<_WatchPartyMessagePreviewBubble> {
+  Timer? _dismissTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant _WatchPartyMessagePreviewBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.message.id != widget.message.id) {
+      _startTimer();
+    }
+  }
+
+  void _startTimer() {
+    _dismissTimer?.cancel();
+    _dismissTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) widget.onDismiss();
+    });
+  }
+
+  @override
+  void dispose() {
+    _dismissTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final msg = widget.message;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 220),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF14141E).withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.6),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          msg.senderName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: msg.isHost
+                                ? const Color(0xFFFFD54F)
+                                : AppColors.primary,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      if (msg.isHost) ...[
+                        const SizedBox(width: 4),
+                        const Text('👑', style: TextStyle(fontSize: 8.5)),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    msg.type == 'emoji' ? (msg.emoji ?? '🔥') : msg.text,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: msg.type == 'emoji' ? 18 : 11.5,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

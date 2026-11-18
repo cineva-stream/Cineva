@@ -116,15 +116,6 @@ class _WatchHistoryScreenState extends ConsumerState<WatchHistoryScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  IconButton(
-                    onPressed: () => context.pop(),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.surfaceVariant,
-                      padding: const EdgeInsets.all(10),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Container(
                     width: 3.5,
                     height: 22,

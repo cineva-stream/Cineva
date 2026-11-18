@@ -5,6 +5,7 @@ import 'package:cineva/features/watch_party/domain/models/watch_party_room.dart'
 import 'package:cineva/features/watch_party/data/services/watch_party_service.dart';
 import 'package:cineva/features/watch_party/presentation/providers/watch_party_provider.dart';
 import 'package:cineva/features/watch_party/presentation/widgets/watch_party_side_view.dart';
+import 'package:cineva/features/watch_party/presentation/widgets/watch_party_join_banner.dart';
 
 void main() {
   group('WatchPartyRoom Models & Serialization', () {
@@ -279,6 +280,59 @@ void main() {
         'Season 3 - Episode 10',
       );
     });
+    test('WatchPartyRoom.fromJson preserves message id and deduplicates properly', () {
+      final json = {
+        'roomCode': 'CNV-1234',
+        'hostId': 'host_1',
+        'hostName': 'Host',
+        'allowGuestControl': true,
+        'createdAt': 1000,
+        'media': {
+          'title': 'The Hunger Games',
+          'mediaType': 'movie',
+          'tmdbId': 100,
+        },
+        'playback': {
+          'isPlaying': true,
+          'positionSeconds': 0.0,
+          'updatedAt': 1000,
+          'updatedBy': 'Host',
+          'action': 'init',
+        },
+        'messages': {
+          'push_key_1': {
+            'id': 'msg_custom_id_1',
+            'senderId': 'user_1',
+            'senderName': 'Alice',
+            'text': 'Halo',
+            'timestamp': 1001,
+            'type': 'chat',
+          },
+          'push_key_2': {
+            'id': 'msg_custom_id_1', // Duplicate id
+            'senderId': 'user_1',
+            'senderName': 'Alice',
+            'text': 'Halo',
+            'timestamp': 1001,
+            'type': 'chat',
+          },
+          'push_key_3': {
+            'id': 'msg_custom_id_2',
+            'senderId': 'user_2',
+            'senderName': 'Bob',
+            'text': 'Hai Alice',
+            'timestamp': 1002,
+            'type': 'chat',
+          },
+        },
+      };
+
+      final room = WatchPartyRoom.fromJson(json);
+      expect(room.media.title, 'The Hunger Games');
+      expect(room.messages.length, 2); // Deduplicated from 3 to 2!
+      expect(room.messages[0].id, 'msg_custom_id_1');
+      expect(room.messages[1].id, 'msg_custom_id_2');
+    });
   });
 
   group('WatchPartySideView Widget Tests', () {
@@ -331,6 +385,23 @@ void main() {
       expect(find.text('Kode Ruangan'), findsOneWidget);
       expect(find.text('Nama Panggilan (Guest Mode)'), findsOneWidget);
       expect(find.text('Gabung Ruangan'), findsNWidgets(2)); // Tab title + button label
+    });
+
+    testWidgets('WatchPartyJoinBanner renders cleanly with action button', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: WatchPartyJoinBanner(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nonton Bareng Teman'), findsOneWidget);
+      expect(find.text('SYNC'), findsOneWidget);
+      expect(find.text('Gabung Nobar'), findsOneWidget);
     });
   });
 }

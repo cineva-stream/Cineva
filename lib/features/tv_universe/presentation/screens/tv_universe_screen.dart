@@ -140,9 +140,12 @@ class TvUniverseScreen extends ConsumerWidget {
         backgroundColor: AppColors.background,
         appBar: AppBar(
           backgroundColor: AppColors.background,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
           leading: IconButton(
             onPressed: () => context.canPop() ? context.pop() : context.go('/'),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
           ),
         ),
         body: Center(

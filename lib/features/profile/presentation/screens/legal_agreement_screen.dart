@@ -160,9 +160,10 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
           backgroundColor: AppColors.background,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
+          scrolledUnderElevation: 0,
           leading: IconButton(
             icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
+              Icons.arrow_back_rounded,
               color: Colors.white,
               size: 20,
             ),
@@ -180,7 +181,8 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
             style: GoogleFonts.outfit(
               color: Colors.white,
               fontWeight: FontWeight.w700,
-              fontSize: 18,
+              fontSize: 20,
+              letterSpacing: -0.3,
             ),
           ),
           bottom: PreferredSize(

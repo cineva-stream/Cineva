@@ -15,12 +15,12 @@ class WatchPartyMember {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'isHost': isHost,
-        'joinedAt': joinedAt,
-        'lastSeen': lastSeen,
-      };
+    'id': id,
+    'name': name,
+    'isHost': isHost,
+    'joinedAt': joinedAt,
+    'lastSeen': lastSeen,
+  };
 
   factory WatchPartyMember.fromJson(Map<dynamic, dynamic> json) {
     return WatchPartyMember(
@@ -60,17 +60,17 @@ class WatchPartyMedia {
   });
 
   Map<String, dynamic> toJson() => {
-        'title': title,
-        'mediaType': mediaType,
-        'tmdbId': tmdbId,
-        'imdbId': imdbId,
-        'season': season,
-        'episode': episode,
-        'episodeTitle': episodeTitle,
-        'posterPath': posterPath,
-        'backdropPath': backdropPath,
-        'streamServer': streamServer,
-      };
+    'title': title,
+    'mediaType': mediaType,
+    'tmdbId': tmdbId,
+    'imdbId': imdbId,
+    'season': season,
+    'episode': episode,
+    'episodeTitle': episodeTitle,
+    'posterPath': posterPath,
+    'backdropPath': backdropPath,
+    'streamServer': streamServer,
+  };
 
   factory WatchPartyMedia.fromJson(Map<dynamic, dynamic> json) {
     return WatchPartyMedia(
@@ -105,12 +105,12 @@ class WatchPartyPlayback {
   });
 
   Map<String, dynamic> toJson() => {
-        'isPlaying': isPlaying,
-        'positionSeconds': positionSeconds,
-        'updatedAt': updatedAt,
-        'updatedBy': updatedBy,
-        'action': action,
-      };
+    'isPlaying': isPlaying,
+    'positionSeconds': positionSeconds,
+    'updatedAt': updatedAt,
+    'updatedBy': updatedBy,
+    'action': action,
+  };
 
   factory WatchPartyPlayback.fromJson(Map<dynamic, dynamic> json) {
     return WatchPartyPlayback(
@@ -162,15 +162,15 @@ class WatchPartyMessage {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'senderId': senderId,
-        'senderName': senderName,
-        'isHost': isHost,
-        'text': text,
-        'emoji': emoji,
-        'timestamp': timestamp,
-        'type': type,
-      };
+    'id': id,
+    'senderId': senderId,
+    'senderName': senderName,
+    'isHost': isHost,
+    'text': text,
+    'emoji': emoji,
+    'timestamp': timestamp,
+    'type': type,
+  };
 
   factory WatchPartyMessage.fromJson(Map<dynamic, dynamic> json) {
     return WatchPartyMessage(
@@ -211,16 +211,16 @@ class WatchPartyRoom {
   });
 
   Map<String, dynamic> toJson() => {
-        'roomCode': roomCode,
-        'hostId': hostId,
-        'hostName': hostName,
-        'allowGuestControl': allowGuestControl,
-        'media': media.toJson(),
-        'playback': playback.toJson(),
-        'members': members.map((k, v) => MapEntry(k, v.toJson())),
-        'messages': {for (final m in messages) m.id: m.toJson()},
-        'createdAt': createdAt,
-      };
+    'roomCode': roomCode,
+    'hostId': hostId,
+    'hostName': hostName,
+    'allowGuestControl': allowGuestControl,
+    'media': media.toJson(),
+    'playback': playback.toJson(),
+    'members': members.map((k, v) => MapEntry(k, v.toJson())),
+    'messages': {for (final m in messages) m.id: m.toJson()},
+    'createdAt': createdAt,
+  };
 
   factory WatchPartyRoom.fromJson(Map<dynamic, dynamic> json) {
     final rawMembers = json['members'];
@@ -228,8 +228,9 @@ class WatchPartyRoom {
     if (rawMembers is Map) {
       rawMembers.forEach((k, v) {
         if (v is Map) {
-          membersMap[k.toString()] =
-              WatchPartyMember.fromJson(v.cast<dynamic, dynamic>());
+          membersMap[k.toString()] = WatchPartyMember.fromJson(
+            v.cast<dynamic, dynamic>(),
+          );
         }
       });
     }
@@ -240,21 +241,45 @@ class WatchPartyRoom {
       rawMessages.forEach((k, v) {
         if (v is Map) {
           final m = v.cast<dynamic, dynamic>();
-          messageList.add(WatchPartyMessage.fromJson({
-            ...m,
-            'id': k.toString(),
-          }));
+          final origId = (m['id'] as String?)?.trim();
+          final effectiveId = (origId != null && origId.isNotEmpty)
+              ? origId
+              : k.toString();
+          messageList.add(
+            WatchPartyMessage.fromJson({...m, 'id': effectiveId}),
+          );
         }
       });
-      messageList.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      final seen = <String>{};
+      final unique = <WatchPartyMessage>[];
+      for (final m in messageList) {
+        if (seen.add(m.id)) {
+          unique.add(m);
+        }
+      }
+      unique.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      messageList
+        ..clear()
+        ..addAll(unique);
     } else if (rawMessages is List) {
       for (final v in rawMessages) {
         if (v is Map) {
           messageList.add(
-              WatchPartyMessage.fromJson(v.cast<dynamic, dynamic>()));
+            WatchPartyMessage.fromJson(v.cast<dynamic, dynamic>()),
+          );
         }
       }
-      messageList.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      final seen = <String>{};
+      final unique = <WatchPartyMessage>[];
+      for (final m in messageList) {
+        if (seen.add(m.id)) {
+          unique.add(m);
+        }
+      }
+      unique.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      messageList
+        ..clear()
+        ..addAll(unique);
     }
 
     return WatchPartyRoom(
@@ -298,4 +323,3 @@ class WatchPartyRoom {
     );
   }
 }
-

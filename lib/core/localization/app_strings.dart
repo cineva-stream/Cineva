@@ -1273,4 +1273,14 @@ class AppStrings {
   String get watchPartyGuestPrompt => isIndonesian
       ? 'Mode Tamu: Masukkan nama panggilan untuk nonton bersama teman'
       : 'Guest Mode: Enter a nickname to watch with friends';
+  String get watchPartyBannerTitle =>
+      isIndonesian ? 'Nonton Bareng Teman' : 'Watch Party with Friends';
+  String get watchPartyBannerDesc => isIndonesian
+      ? 'Punya kode ruangan? Gabung nobar dan tonton bersama secara realtime.'
+      : 'Have a room code? Join and watch movies or series together in real-time.';
+  String get watchPartyBannerJoinBtn =>
+      isIndonesian ? 'Gabung Nobar' : 'Join Party';
+  String get watchPartyAutoSearchDesc => isIndonesian
+      ? 'Masukkan kode ruangan dari Host untuk langsung memutar tontonan yang sedang diputar Host.'
+      : 'Enter the Host room code to automatically play whatever the Host is currently watching.';
 }

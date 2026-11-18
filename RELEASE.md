@@ -23,6 +23,13 @@ Pembaruan besar Cineva versi 1.1.9 menghadirkan **Lanjutkan Menonton Cerdas (Sea
 * **Sinkronisasi Playback Presisi (*Play, Pause, & Seek*)**:
   * Seluruh aksi pemutaran video, jeda, maupun pergeseran durasi tersinkronisasi secara *real-time*.
   * Dilengkapi algoritma **Kompensasi Latensi Jaringan (*Clock Skew Compensation*)** sehingga perbedaan koneksi antar pengguna tidak membuat video terputus atau tidak sinkron.
+* **Banner Minimalis Gabung Nobar di Beranda (*Home Quick Join Banner*)**:
+  * Pengguna yang ingin bergabung tidak perlu lagi mencari judul film atau serial TV secara manual. Cukup menekan banner **"Gabung Nobar"** di layar utama, memasukkan Kode Ruangan (contoh: `CNV-8492`), dan sistem akan secara otomatis melacak media Host serta langsung membuka pemutar video pada judul yang tepat.
+* **Preview Pesan Melayang & Badge Pesan Belum Dibaca (*Message Preview & Unread Counter*)**:
+  * Balon preview pesan kaca (*Floating Glass Preview*) muncul otomatis di bawah ikon chat saat ada pesan masuk dan menghilang sendiri setelah 5 detik tanpa mengganggu jalannya video.
+  * Dilengkapi lencana (*Badge Counter*) angka merah di pojok ikon yang menghitung jumlah pesan belum dibaca secara presisi dan mereset saat panel dibuka.
+* **Eliminasi Bug Pesan Duplikat**:
+  * Menerapkan deduplikasi ID deterministik di seluruh lapisan (domain model, cloud sync service, dan UI builder) sehingga pesan chat yang baru dikirim tidak pernah lagi muncul ganda.
 * **Pengaturan Otoritas Host (*Allow Guest Control*)**:
   * Terdapat panel pengaturan di sisi kanan bagi Host dengan opsi checkbox apakah mengizinkan partner/tamu ikut mengontrol video (Play/Pause/Seek) atau mengunci kontrol video khusus untuk Host saja.
 * **Panel Live Chat & Floating Animated Emojis**:
@@ -30,6 +37,12 @@ Pembaruan besar Cineva versi 1.1.9 menghadirkan **Lanjutkan Menonton Cerdas (Sea
   * Tombol reaksi emoji cepat (❤️, 😂, 😮, 👏, 🔥) yang memunculkan partikel animasi emoji melayang (*Floating Emoji Particles*) di atas layar.
 * **Dukungan Guest Mode**:
   * Pengguna yang belum atau tidak ingin masuk ke akun Google tetap dapat membuat dan bergabung ke dalam Watch Party cukup dengan memasukkan nama panggilan (*Display Name*).
+
+### 3. Konsistensi Desain AppBar & Perapian Navigasi
+* **Penyelarasan AppBar Seluruh Halaman**:
+  * Menyeragamkan tipografi judul menggunakan **Google Fonts Outfit** (bobot 700/800, ukuran proporsional 20–22px, `letterSpacing: -0.3`), ikon kembali yang ergonomis (*rounded*), dan latar transparan bebas artefak elevasi di Watchlist, Unduhan, Profil, Legal, Kalender, dsb.
+* **Penyempurnaan AppBar Riwayat Tontonan**:
+  * Menghilangkan ikon *chevron left* pada halaman Riwayat Tontonan sesuai kaidah layar tab utama.
 
 ### 3. Sinkronisasi Cloud Otomatis Real-Time (Google Account)
 * **Sinkronisasi Otomatis Tanpa Perlu Menekan Tombol Sync**:

@@ -129,6 +129,11 @@ class WatchPartyService {
     return roomCode;
   }
 
+  /// Fetches an existing Watch Party room by its code (Firebase RTDB or Cloud Relay).
+  Future<WatchPartyRoom?> fetchRoom(String roomCode) async {
+    return _fetchRoomFromCloud(roomCode.trim().toUpperCase());
+  }
+
   /// Joins an existing Watch Party room as a Member (Guest or Signed-in user).
   Future<bool> joinRoom({
     required String roomCode,
@@ -364,6 +369,16 @@ class WatchPartyService {
       type: 'chat',
     );
 
+    // Optimistically append message with ID deduplication
+    final existingIds = _currentRoom!.messages.map((m) => m.id).toSet();
+    if (!existingIds.contains(msg.id)) {
+      final updatedMessages = List<WatchPartyMessage>.from(
+        _currentRoom!.messages,
+      )..add(msg);
+      _currentRoom = _currentRoom!.copyWith(messages: updatedMessages);
+      _roomController.add(_currentRoom);
+    }
+
     if (!_isUsingRelay) {
       try {
         if (isNativeSupported && Firebase.apps.isNotEmpty) {
@@ -387,12 +402,6 @@ class WatchPartyService {
       'event': 'message',
       'message': msg.toJson(),
     });
-
-    final updatedMessages = List<WatchPartyMessage>.from(
-      _currentRoom!.messages,
-    )..add(msg);
-    _currentRoom = _currentRoom!.copyWith(messages: updatedMessages);
-    _roomController.add(_currentRoom);
   }
 
   /// Sends a quick emoji reaction to trigger floating animation and chat feed.
@@ -411,6 +420,16 @@ class WatchPartyService {
       timestamp: now,
       type: 'emoji',
     );
+
+    // Optimistically append emoji message with ID deduplication
+    final existingIds = _currentRoom!.messages.map((m) => m.id).toSet();
+    if (!existingIds.contains(msg.id)) {
+      final updatedMessages = List<WatchPartyMessage>.from(
+        _currentRoom!.messages,
+      )..add(msg);
+      _currentRoom = _currentRoom!.copyWith(messages: updatedMessages);
+      _roomController.add(_currentRoom);
+    }
 
     if (!_isUsingRelay) {
       try {
@@ -435,12 +454,6 @@ class WatchPartyService {
       'event': 'message',
       'message': msg.toJson(),
     });
-
-    final updatedMessages = List<WatchPartyMessage>.from(
-      _currentRoom!.messages,
-    )..add(msg);
-    _currentRoom = _currentRoom!.copyWith(messages: updatedMessages);
-    _roomController.add(_currentRoom);
   }
 
   /// Leaves the active Watch Party room and cleans up listeners.

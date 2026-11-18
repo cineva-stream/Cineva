@@ -363,13 +363,25 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
 
               // ── 3. Realtime Messages Stream ──
               Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                  itemCount: room.messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = room.messages[index];
-                    return _buildMessageItem(msg, watchPartyState.myMemberId);
+                child: Builder(
+                  builder: (context) {
+                    final seenIds = <String>{};
+                    final displayMessages = <WatchPartyMessage>[];
+                    for (final m in room.messages) {
+                      if (seenIds.add(m.id)) {
+                        displayMessages.add(m);
+                      }
+                    }
+
+                    return ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                      itemCount: displayMessages.length,
+                      itemBuilder: (context, index) {
+                        final msg = displayMessages[index];
+                        return _buildMessageItem(msg, watchPartyState.myMemberId);
+                      },
+                    );
                   },
                 ),
               ),
