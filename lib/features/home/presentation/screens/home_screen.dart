@@ -24,6 +24,7 @@ import '../../../../core/localization/app_language_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../profile/presentation/widgets/avatar_display.dart';
 import '../../../updater/presentation/widgets/in_app_update_banner.dart';
+import '../../../sync/presentation/widgets/handoff_top_capsule.dart';
 import '../widgets/airing_calendar_banner.dart';
 import '../../../search/presentation/screens/search_screen.dart';
 import '../../../../core/platform/device_form_factor.dart';
@@ -512,6 +513,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             // ── In-App Update Notification Banner ──
             const SliverToBoxAdapter(child: InAppUpdateBanner()),
+
+            // ── Seamless Device Hand-Off Capsule ──
+            const SliverToBoxAdapter(child: HandOffTopCapsule()),
 
             // ── Hero Billboard Carousel (Trending Movies or Popular TV Series) ──
             if (activeFilter == HomeCategoryFilter.all ||

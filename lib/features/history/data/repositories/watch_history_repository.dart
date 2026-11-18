@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../backup/presentation/providers/backup_providers.dart';
 import '../models/watch_history_item.dart';
 
 /// Repository for managing persistent watch history backed by Hive.
@@ -148,8 +149,9 @@ final watchHistoryRepositoryProvider = Provider<WatchHistoryRepository>((ref) {
 /// Notifier managing real-time watch history state.
 class WatchHistoryNotifier extends StateNotifier<List<WatchHistoryItem>> {
   final WatchHistoryRepository _repo;
+  final Ref? _ref;
 
-  WatchHistoryNotifier(this._repo) : super(_repo.getAll());
+  WatchHistoryNotifier(this._repo, [this._ref]) : super(_repo.getAll());
 
   void refresh() {
     state = _repo.getAll();
@@ -163,22 +165,31 @@ class WatchHistoryNotifier extends StateNotifier<List<WatchHistoryItem>> {
   Future<void> saveProgress(WatchHistoryItem item) async {
     await _repo.saveProgress(item);
     state = _repo.getAll();
+    _scheduleAutoSync();
   }
 
   Future<void> removeItem(String key) async {
     await _repo.removeItem(key);
     state = _repo.getAll();
+    _scheduleAutoSync();
   }
 
   Future<void> clearAll() async {
     await _repo.clearAll();
     state = [];
+    _scheduleAutoSync();
+  }
+
+  void _scheduleAutoSync() {
+    try {
+      _ref?.read(googleSyncProvider.notifier).scheduleAutoSync();
+    } catch (_) {}
   }
 }
 
 final watchHistoryProvider = StateNotifierProvider<WatchHistoryNotifier, List<WatchHistoryItem>>((ref) {
   final repo = ref.watch(watchHistoryRepositoryProvider);
-  return WatchHistoryNotifier(repo);
+  return WatchHistoryNotifier(repo, ref);
 });
 
 /// Real-time provider for in-progress items (for Home Screen "Lanjutkan Menonton").

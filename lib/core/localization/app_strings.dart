@@ -1217,4 +1217,60 @@ class AppStrings {
   String downloadAllSeasons(int count) => isIndonesian
       ? 'Semua Season ($count Episode)'
       : 'All Seasons ($count Episodes)';
+
+  // ── Seamless Device Hand-Off ──
+  String get handoffContinueWatching =>
+      isIndonesian ? 'Lanjutkan Menonton' : 'Continue Watching';
+  String handoffFromDevice(String device) =>
+      isIndonesian ? 'Sesi dari $device' : 'Session from $device';
+  String handoffPrompt(String title, String time) => isIndonesian
+      ? 'Lanjutkan menonton $title di menit $time?'
+      : 'Continue watching $title at $time?';
+  String get handoffContinueBtn => isIndonesian ? 'Lanjutkan' : 'Resume';
+  String get handoffDismiss => isIndonesian ? 'Tutup' : 'Dismiss';
+
+  // ── Watch Party & Sync Play ──
+  String get watchPartyTitle => isIndonesian ? 'Nonton Bareng' : 'Watch Party';
+  String get watchPartyCreateRoom =>
+      isIndonesian ? 'Buat Ruangan' : 'Create Room';
+  String get watchPartyJoinRoom =>
+      isIndonesian ? 'Gabung Ruangan' : 'Join Room';
+  String get watchPartyRoomCode =>
+      isIndonesian ? 'Kode Ruangan' : 'Room Code';
+  String get watchPartyRoomCodeHint =>
+      isIndonesian ? 'Contoh: CNV-8492' : 'Example: CNV-8492';
+  String get watchPartyNickname =>
+      isIndonesian ? 'Nama Panggilan' : 'Display Name';
+  String get watchPartyNicknameHint =>
+      isIndonesian ? 'Nama Anda di ruang tonton' : 'Your name in the room';
+  String get watchPartyAllowGuestControl => isIndonesian
+      ? 'Izinkan partner/tamu mengontrol video'
+      : 'Allow partner/guests to control video';
+  String get watchPartyAllowGuestControlSubtitle => isIndonesian
+      ? 'Peserta lain dapat menjeda, memutar, dan memajukan video'
+      : 'Other members can play, pause, and seek video';
+  String get watchPartyHostOnlyControlNotice => isIndonesian
+      ? 'Hanya Host yang dapat mengontrol video'
+      : 'Only Host can control video playback';
+  String get watchPartyCreateAndStart =>
+      isIndonesian ? 'Buat Ruangan & Mulai' : 'Create Room & Start';
+  String get watchPartyJoinAndStart =>
+      isIndonesian ? 'Gabung & Tonton' : 'Join & Watch';
+  String get watchPartyLiveChat =>
+      isIndonesian ? 'Obrolan Langsung' : 'Live Chat';
+  String watchPartyOnlineCount(int count) =>
+      isIndonesian ? '$count Penonton' : '$count Viewers';
+  String get watchPartyTypeMessage =>
+      isIndonesian ? 'Ketik pesan...' : 'Type a message...';
+  String get watchPartyCodeCopied =>
+      isIndonesian ? 'Kode ruangan disalin!' : 'Room code copied!';
+  String get watchPartyLeaveConfirm =>
+      isIndonesian ? 'Keluar dari Ruangan?' : 'Leave Room?';
+  String get watchPartyLeaveConfirmDesc => isIndonesian
+      ? 'Anda akan keluar dari sesi Nonton Bareng ini.'
+      : 'You will disconnect from this Watch Party session.';
+  String get watchPartyLeaveBtn => isIndonesian ? 'Keluar' : 'Leave';
+  String get watchPartyGuestPrompt => isIndonesian
+      ? 'Mode Tamu: Masukkan nama panggilan untuk nonton bersama teman'
+      : 'Guest Mode: Enter a nickname to watch with friends';
 }

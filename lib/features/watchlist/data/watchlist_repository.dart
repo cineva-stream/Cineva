@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../backup/presentation/providers/backup_providers.dart';
 
 /// Represents a watchlist item stored in Hive.
 class WatchlistItem {
@@ -110,8 +111,9 @@ final watchlistRepositoryProvider = Provider<WatchlistRepository>((ref) {
 /// Notifier that manages the watchlist state.
 class WatchlistNotifier extends StateNotifier<List<WatchlistItem>> {
   final WatchlistRepository _repo;
+  final Ref? _ref;
 
-  WatchlistNotifier(this._repo) : super(_repo.getAll());
+  WatchlistNotifier(this._repo, [this._ref]) : super(_repo.getAll());
 
   bool isInWatchlist(int id, String type) => _repo.isInWatchlist(id, type);
 
@@ -127,18 +129,26 @@ class WatchlistNotifier extends StateNotifier<List<WatchlistItem>> {
   Future<bool> toggle(WatchlistItem item) async {
     final added = await _repo.toggle(item);
     state = _repo.getAll();
+    _scheduleAutoSync();
     return added;
   }
 
   Future<void> remove(int id, String type) async {
     await _repo.remove(id, type);
     state = _repo.getAll();
+    _scheduleAutoSync();
+  }
+
+  void _scheduleAutoSync() {
+    try {
+      _ref?.read(googleSyncProvider.notifier).scheduleAutoSync();
+    } catch (_) {}
   }
 }
 
 final watchlistProvider = StateNotifierProvider<WatchlistNotifier, List<WatchlistItem>>((ref) {
   final repo = ref.watch(watchlistRepositoryProvider);
-  return WatchlistNotifier(repo);
+  return WatchlistNotifier(repo, ref);
 });
 
 /// Reactively checks whether a media item is in the watchlist.

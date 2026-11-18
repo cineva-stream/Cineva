@@ -28,6 +28,12 @@ import '../../data/services/provider_loader_service.dart';
 import '../../data/models/provider_stream_models.dart';
 import '../../../settings/data/settings_service.dart';
 import '../../../settings/data/subtitle_languages.dart';
+import '../../../sync/data/services/device_handoff_service.dart';
+import '../../../watch_party/domain/models/watch_party_room.dart';
+import '../../../watch_party/presentation/providers/watch_party_provider.dart';
+import '../../../watch_party/presentation/widgets/watch_party_modal.dart';
+import '../../../watch_party/presentation/widgets/watch_party_chat_panel.dart';
+import '../../../watch_party/presentation/widgets/floating_emoji_particles.dart';
 import '../../../history/data/models/watch_history_item.dart';
 import '../../../history/data/repositories/watch_history_repository.dart';
 import '../../../download/domain/models/download_item.dart';
@@ -1018,6 +1024,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     _lastHistorySaveTime = DateTime.now();
     ref.read(watchHistoryProvider.notifier).saveProgress(item);
+
+    try {
+      if (isCompleted) {
+        ref.read(deviceHandoffProvider.notifier).clearActivePlayback();
+      } else {
+        ref.read(deviceHandoffProvider.notifier).updateActivePlayback(
+              title: widget.title,
+              mediaType: mediaType,
+              tmdbId: tmdbId,
+              imdbId: widget.imdbId,
+              season: _currentSeason,
+              episode: _currentEpisode,
+              episodeTitle: _currentEpisodeTitle ?? widget.episodeTitle,
+              posterPath: widget.posterPath,
+              backdropPath: widget.backdropPath,
+              positionSeconds: (posMs / 1000).toInt(),
+              durationSeconds: (durMs / 1000).toInt(),
+              isCompleted: false,
+            );
+      }
+    } catch (_) {}
   }
 
   void _listenToPlayerStreams() {
@@ -2546,6 +2573,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _togglePlayPause() {
     _resetControlsTimer();
+    final wp = ref.read(watchPartyProvider);
+    if (wp.isInRoom && !wp.canControlVideo) {
+      final s = ref.read(appStringsProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(s.watchPartyHostOnlyControlNotice),
+          backgroundColor: Colors.amber[900],
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     if (_useNativePlayer) {
       _player.playOrPause();
     } else {
@@ -2557,10 +2598,33 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         _isPlaying = _isWebPlaying;
       });
     }
+
+    if (wp.isInRoom && wp.canControlVideo) {
+      final nextPlaying = !_isPlaying;
+      ref.read(watchPartyProvider.notifier).updatePlayback(
+            isPlaying: nextPlaying,
+            positionSeconds: _position.inMilliseconds / 1000.0,
+            action: nextPlaying ? 'play' : 'pause',
+          );
+    }
   }
 
   void _seekRelative(int seconds) {
     _resetControlsTimer();
+    final wp = ref.read(watchPartyProvider);
+    if (wp.isInRoom && !wp.canControlVideo) {
+      final s = ref.read(appStringsProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(s.watchPartyHostOnlyControlNotice),
+          backgroundColor: Colors.amber[900],
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     final target = _position + Duration(seconds: seconds);
     final clamped = target < Duration.zero ? Duration.zero : target;
     _position = clamped;
@@ -2572,10 +2636,32 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         'var v = document.querySelector("video"); if (v) { v.currentTime = Math.max(0, v.currentTime + $seconds); }',
       );
     }
+
+    if (wp.isInRoom && wp.canControlVideo) {
+      ref.read(watchPartyProvider.notifier).updatePlayback(
+            isPlaying: _isPlaying,
+            positionSeconds: clamped.inMilliseconds / 1000.0,
+            action: 'seek',
+          );
+    }
   }
 
   void _seekTo(double seconds) {
     _resetControlsTimer();
+    final wp = ref.read(watchPartyProvider);
+    if (wp.isInRoom && !wp.canControlVideo) {
+      final s = ref.read(appStringsProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(s.watchPartyHostOnlyControlNotice),
+          backgroundColor: Colors.amber[900],
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     final target = Duration(milliseconds: (seconds * 1000).toInt());
     _position = target;
     _positionNotifier.value = target;
@@ -2585,6 +2671,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _webViewController?.runJavaScript(
         'var v = document.querySelector("video"); if (v) { v.currentTime = $seconds; }',
       );
+    }
+
+    if (wp.isInRoom && wp.canControlVideo) {
+      ref.read(watchPartyProvider.notifier).updatePlayback(
+            isPlaying: _isPlaying,
+            positionSeconds: seconds,
+            action: 'seek',
+          );
     }
   }
 
@@ -6986,6 +7080,86 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
+  Widget _buildWatchPartyTopBarButton(AppStrings s) {
+    final wp = ref.watch(watchPartyProvider);
+    final isInRoom = wp.isInRoom;
+    final isChatOpen = wp.isChatPanelOpen;
+    final hasUnread = wp.hasUnreadMessages;
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: TvFocusable(
+        onTap: () {
+          _resetControlsTimer();
+          if (isInRoom) {
+            ref.read(watchPartyProvider.notifier).toggleChatPanel();
+          } else {
+            WatchPartyModal.show(
+              context,
+              media: WatchPartyMedia(
+                title: widget.title,
+                mediaType: (_currentSeason != null || _currentEpisode != null)
+                    ? 'tv'
+                    : (widget.mediaType ?? 'movie'),
+                tmdbId: widget.tmdbId ?? 0,
+                imdbId: widget.imdbId,
+                season: _currentSeason,
+                episode: _currentEpisode,
+                episodeTitle: _currentEpisodeTitle ?? widget.episodeTitle,
+                posterPath: widget.posterPath,
+                backdropPath: widget.backdropPath,
+              ),
+            );
+          }
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: (isInRoom && isChatOpen)
+                    ? AppColors.primary
+                    : Colors.black.withValues(alpha: 0.5),
+                shape: BoxShape.circle,
+                border: isInRoom
+                    ? Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.8),
+                        width: 1.5,
+                      )
+                    : null,
+              ),
+              child: Center(
+                child: Icon(
+                  Iconsax.people,
+                  size: 19,
+                  color: (isInRoom && isChatOpen)
+                      ? Colors.black
+                      : (isInRoom ? AppColors.primary : Colors.white),
+                ),
+              ),
+            ),
+            if (hasUnread)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  width: 9,
+                  height: 9,
+                  decoration: const BoxDecoration(
+                    color: Colors.redAccent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTopBar(AppStrings s) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -7113,6 +7287,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             onTap: () => _toggleSidePanel(_SidePanelPage.info),
           ),
 
+          // 6. Watch Party (Nonton Bareng) Button
+          _buildWatchPartyTopBarButton(s),
+
           if (!kIsWeb &&
               !Platform.environment.containsKey('FLUTTER_TEST') &&
               (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) ...[
@@ -7156,6 +7333,63 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final subtitleStyle = ref.watch(subtitleStyleProvider);
     final activeCues = ref.watch(activeSubtitleCuesProvider);
 
+    ref.listen<WatchPartyState>(watchPartyProvider, (prev, next) {
+      if (next.isInRoom && next.room != null) {
+        final playback = next.room!.playback;
+        // Ignore events triggered by ourselves
+        if (playback.updatedBy == next.myName) return;
+
+        // Sync Play / Pause state
+        if (playback.isPlaying != _isPlaying && !_isLoading) {
+          if (playback.isPlaying) {
+            if (_useNativePlayer) {
+              _player.play();
+            } else {
+              _webViewController?.runJavaScript(
+                  'var v = document.querySelector("video"); if (v && v.paused) v.play();');
+              setState(() {
+                _isWebPlaying = true;
+                _isPlaying = true;
+              });
+            }
+          } else {
+            if (_useNativePlayer) {
+              _player.pause();
+            } else {
+              _webViewController?.runJavaScript(
+                  'var v = document.querySelector("video"); if (v && !v.paused) v.pause();');
+              setState(() {
+                _isWebPlaying = false;
+                _isPlaying = false;
+              });
+            }
+          }
+        }
+
+        // Sync Seek position with latency compensation
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final elapsed = (now - playback.updatedAt) / 1000.0;
+        final targetSec = playback.isPlaying
+            ? (playback.positionSeconds +
+                (elapsed > 0 && elapsed < 30 ? elapsed : 0))
+            : playback.positionSeconds;
+
+        final currentSec = _position.inMilliseconds / 1000.0;
+        if ((currentSec - targetSec).abs() > 2.0 && !_isLoading) {
+          final targetDuration =
+              Duration(milliseconds: (targetSec * 1000).toInt());
+          _position = targetDuration;
+          _positionNotifier.value = targetDuration;
+          if (_useNativePlayer) {
+            _player.seek(targetDuration);
+          } else {
+            _webViewController?.runJavaScript(
+                'var v = document.querySelector("video"); if (v) v.currentTime = $targetSec;');
+          }
+        }
+      }
+    });
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -7163,6 +7397,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         _setNativeAutoPip(false);
         if (_isScreenLocked) {
           _onLockedScreenTap();
+          _setNativeAutoPip(true);
+          return;
+        }
+        final wp = ref.read(watchPartyProvider);
+        if (wp.isInRoom && wp.isChatPanelOpen) {
+          ref.read(watchPartyProvider.notifier).toggleChatPanel(false);
           _setNativeAutoPip(true);
           return;
         }
@@ -8076,6 +8316,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                               },
                             ),
                           ],
+
+                          // ── 7. Watch Party Floating Animated Emojis Overlay ──
+                          const Positioned.fill(
+                            child: FloatingEmojiParticles(),
+                          ),
                         ],
                       ),
                     ),
@@ -8103,6 +8348,42 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         ),
                       ),
                     ),
+                  ),
+
+                  // ── 3. Watch Party Live Chat Right Side Panel ──
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final wp = ref.watch(watchPartyProvider);
+                      final isChatOpen = wp.isInRoom && wp.isChatPanelOpen;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 280),
+                        curve: Curves.easeInOutCubic,
+                        width: isChatOpen ? 340.0 : 0.0,
+                        height: totalHeight,
+                        child: ExcludeFocus(
+                          excluding: !isChatOpen,
+                          child: IgnorePointer(
+                            ignoring: !isChatOpen,
+                            child: ClipRect(
+                              child: OverflowBox(
+                                minWidth: 340.0,
+                                maxWidth: 340.0,
+                                minHeight: totalHeight,
+                                maxHeight: totalHeight,
+                                alignment: Alignment.topRight,
+                                child: isChatOpen
+                                    ? WatchPartyChatPanel(
+                                        onClose: () => ref
+                                            .read(watchPartyProvider.notifier)
+                                            .toggleChatPanel(false),
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

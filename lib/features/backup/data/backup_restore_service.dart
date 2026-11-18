@@ -37,7 +37,7 @@ class BackupRestoreService {
   BackupRestoreService._();
 
   /// Gathers all current application data into a single [CinevaBackupPayload].
-  static Future<CinevaBackupPayload> createPayload(WidgetRef ref) async {
+  static Future<CinevaBackupPayload> createPayload(dynamic ref) async {
     final profile = ref.read(userProfileProvider);
 
     // Convert custom avatar to Base64 thumbnail if available
@@ -167,7 +167,7 @@ class BackupRestoreService {
 
   /// Atomically restores and imports a [CinevaBackupPayload] into local Hive databases & state providers.
   static Future<BackupOperationResult> applyPayload(
-    WidgetRef ref,
+    dynamic ref,
     CinevaBackupPayload payload,
   ) async {
     try {

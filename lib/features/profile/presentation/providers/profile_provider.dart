@@ -1,10 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../backup/presentation/providers/backup_providers.dart';
 import '../../data/profile_service.dart';
 import '../../domain/models/user_profile.dart';
 
 class UserProfileNotifier extends StateNotifier<UserProfile> {
-  UserProfileNotifier() : super(ProfileService.getProfile());
+  final Ref? _ref;
+
+  UserProfileNotifier([this._ref]) : super(ProfileService.getProfile());
 
   /// Sets name in local state
   void updateName(String name) {
@@ -50,6 +53,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     );
     state = updated;
     await ProfileService.saveProfile(updated);
+    _scheduleAutoSync();
   }
 
   /// Marks profile as configured and saves current state
@@ -57,6 +61,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     final updated = state.copyWith(isConfigured: true);
     state = updated;
     await ProfileService.saveProfile(updated);
+    _scheduleAutoSync();
   }
 
   /// Skips onboarding with default profile but marks isConfigured as true
@@ -64,15 +69,22 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     final updated = state.copyWith(isConfigured: true);
     state = updated;
     await ProfileService.saveProfile(updated);
+    _scheduleAutoSync();
   }
 
   /// Reloads profile from storage
   void reload() {
     state = ProfileService.getProfile();
   }
+
+  void _scheduleAutoSync() {
+    try {
+      _ref?.read(googleSyncProvider.notifier).scheduleAutoSync();
+    } catch (_) {}
+  }
 }
 
 final userProfileProvider =
     StateNotifierProvider<UserProfileNotifier, UserProfile>((ref) {
-  return UserProfileNotifier();
+  return UserProfileNotifier(ref);
 });

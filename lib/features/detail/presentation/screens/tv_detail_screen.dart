@@ -19,6 +19,8 @@ import '../widgets/in_app_trailer_modal.dart';
 import '../../data/models/trailer_video_model.dart';
 import '../../../tv_universe/presentation/widgets/tv_universe_banner.dart';
 import '../../../../core/platform/device_form_factor.dart';
+import '../../../watch_party/domain/models/watch_party_room.dart';
+import '../../../watch_party/presentation/widgets/watch_party_modal.dart';
 
 // ── TV Detail Provider ──
 
@@ -1797,6 +1799,50 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                         ),
                       ),
                     ],
+                    const SizedBox(width: 10),
+                    // Watch Party Button (Nonton Bareng)
+                    Tooltip(
+                      message: s.watchPartyTitle,
+                      child: InkWell(
+                        onTap: () {
+                          WatchPartyModal.show(
+                            context,
+                            media: WatchPartyMedia(
+                              title: name,
+                              mediaType: 'tv',
+                              tmdbId: tvId,
+                              imdbId: imdbId,
+                              season: _selectedSeasonNumber,
+                              episode: 1,
+                              episodeTitle:
+                                  'Season $_selectedSeasonNumber Episode 1',
+                              posterPath: posterPath,
+                              backdropPath: backdropPath,
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant.withValues(
+                              alpha: 0.6,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.6),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: const Icon(
+                            Iconsax.people,
+                            color: AppColors.primary,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     // Watchlist Button (Outlined when not added, Filled icon when added)
                     Consumer(

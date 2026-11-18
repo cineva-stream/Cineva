@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,11 +59,16 @@ class GoogleSyncState {
 
 /// Service managing Google Sign-In and Firebase Realtime Database cloud synchronization.
 class GoogleSyncService extends StateNotifier<GoogleSyncState> {
+  final Ref? _ref;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
   );
 
-  GoogleSyncService()
+  StreamSubscription<DatabaseEvent>? _cloudListenerSub;
+  Timer? _debounceTimer;
+  bool _isSyncing = false;
+
+  GoogleSyncService([this._ref])
       : super(GoogleSyncState(
           isSupported: !kIsWeb && (Platform.isAndroid || Platform.isIOS),
         )) {
@@ -81,14 +87,59 @@ class GoogleSyncService extends StateNotifier<GoogleSyncState> {
           displayName: currentUser.displayName,
           photoUrl: currentUser.photoURL,
         );
+        _startCloudListener(currentUser.uid);
       }
     } catch (e) {
       debugPrint('[GoogleSyncService] Auth init check: $e');
     }
   }
 
+  /// Listens to remote cloud updates in realtime and auto-pulls newer data.
+  void _startCloudListener(String uid) {
+    _cloudListenerSub?.cancel();
+    if (!state.isSupported) return;
+
+    try {
+      final cloudRef =
+          FirebaseDatabase.instance.ref('users/$uid/backup/exportedAt');
+      _cloudListenerSub = cloudRef.onValue.listen((event) async {
+        final val = event.snapshot.value;
+        if (val != null) {
+          DateTime? remoteTime;
+          if (val is String) {
+            remoteTime = DateTime.tryParse(val);
+          } else if (val is int) {
+            remoteTime = DateTime.fromMillisecondsSinceEpoch(val);
+          }
+          if (remoteTime != null) {
+            final localLast = state.lastSyncedAt;
+            if (localLast == null ||
+                remoteTime.isAfter(localLast.add(const Duration(seconds: 3)))) {
+              debugPrint(
+                  '[GoogleSyncService] Remote update detected ($remoteTime > $localLast). Auto-pulling cloud data...');
+              await syncFromCloud(_ref, true);
+            }
+          }
+        }
+      }, onError: (e) {
+        debugPrint('[GoogleSyncService] Cloud listener error: $e');
+      });
+    } catch (e) {
+      debugPrint('[GoogleSyncService] Setup cloud listener failed: $e');
+    }
+  }
+
+  /// Schedules automatic debounced synchronization to the cloud (5-second debounce).
+  void scheduleAutoSync([dynamic ref]) {
+    if (!state.isSupported || !state.isSignedIn || _isSyncing) return;
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(seconds: 5), () {
+      syncToCloud(ref ?? _ref, true);
+    });
+  }
+
   /// Triggers Google Sign-In flow, then pulls cloud data or pushes initial snapshot.
-  Future<bool> signInWithGoogle(WidgetRef ref) async {
+  Future<bool> signInWithGoogle([dynamic ref]) async {
     if (!state.isSupported) {
       state = state.copyWith(
         errorMessage:
@@ -132,6 +183,8 @@ class GoogleSyncService extends StateNotifier<GoogleSyncState> {
         displayName: user.displayName ?? googleUser.displayName,
         photoUrl: user.photoURL ?? googleUser.photoUrl,
       );
+
+      final effectiveRef = ref ?? _ref;
 
       // 1. Download and set avatar from Google profile if photoURL exists
       String? downloadedAvatarPath;
@@ -181,12 +234,14 @@ class GoogleSyncService extends StateNotifier<GoogleSyncState> {
       }
 
       // 3. Save Google profile defaults locally
-      await ref.read(userProfileProvider.notifier).save(
-            name: defaultName,
-            username: defaultUsername,
-            avatarId: downloadedAvatarPath != null ? 'custom' : 'avatar_popcorn',
-            customAvatarPath: downloadedAvatarPath,
-          );
+      if (effectiveRef != null) {
+        await effectiveRef.read(userProfileProvider.notifier).save(
+              name: defaultName,
+              username: defaultUsername,
+              avatarId: downloadedAvatarPath != null ? 'custom' : 'avatar_popcorn',
+              customAvatarPath: downloadedAvatarPath,
+            );
+      }
 
       // 4. Check for remote cloud backup
       final rtdb = FirebaseDatabase.instance.ref('users/${user.uid}/backup');
@@ -196,25 +251,27 @@ class GoogleSyncService extends StateNotifier<GoogleSyncState> {
         // Restore existing cloud data
         final rawMap = (snapshot.value as Map).cast<String, dynamic>();
         final payload = CinevaBackupPayload.fromJson(rawMap);
-        await BackupRestoreService.applyPayload(ref, payload);
+        if (effectiveRef != null) {
+          await BackupRestoreService.applyPayload(effectiveRef, payload);
 
-        // Ensure downloaded Google avatar/name is retained if cloud was default
-        final currentProfile = ref.read(userProfileProvider);
-        if (downloadedAvatarPath != null ||
-            currentProfile.name == 'Penikmat Film') {
-          await ref.read(userProfileProvider.notifier).save(
-                name: currentProfile.name != 'Penikmat Film'
-                    ? currentProfile.name
-                    : defaultName,
-                username: currentProfile.username != 'cineva_fan'
-                    ? currentProfile.username
-                    : defaultUsername,
-                avatarId: downloadedAvatarPath != null
-                    ? 'custom'
-                    : currentProfile.avatarId,
-                customAvatarPath:
-                    downloadedAvatarPath ?? currentProfile.customAvatarPath,
-              );
+          // Ensure downloaded Google avatar/name is retained if cloud was default
+          final currentProfile = effectiveRef.read(userProfileProvider);
+          if (downloadedAvatarPath != null ||
+              currentProfile.name == 'Penikmat Film') {
+            await effectiveRef.read(userProfileProvider.notifier).save(
+                  name: currentProfile.name != 'Penikmat Film'
+                      ? currentProfile.name
+                      : defaultName,
+                  username: currentProfile.username != 'cineva_fan'
+                      ? currentProfile.username
+                      : defaultUsername,
+                  avatarId: downloadedAvatarPath != null
+                      ? 'custom'
+                      : currentProfile.avatarId,
+                  customAvatarPath:
+                      downloadedAvatarPath ?? currentProfile.customAvatarPath,
+                );
+          }
         }
 
         state = state.copyWith(
@@ -223,10 +280,11 @@ class GoogleSyncService extends StateNotifier<GoogleSyncState> {
         );
       } else {
         // No remote data yet: initial sync local -> cloud
-        await syncToCloud(ref);
+        await syncToCloud(effectiveRef);
         state = state.copyWith(isLoading: false);
       }
 
+      _startCloudListener(user.uid);
       return true;
     } catch (e) {
       debugPrint('[GoogleSyncService] Sign in error: $e');
@@ -239,19 +297,31 @@ class GoogleSyncService extends StateNotifier<GoogleSyncState> {
   }
 
   /// Synchronizes local data to Firebase Realtime Database (`users/{uid}/backup`).
-  Future<bool> syncToCloud(WidgetRef ref) async {
+  Future<bool> syncToCloud([dynamic ref, bool isAutoSync = false]) async {
     if (!state.isSupported) return false;
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      state = state.copyWith(errorMessage: 'Belum masuk ke akun Google.');
+      if (!isAutoSync) {
+        state = state.copyWith(errorMessage: 'Belum masuk ke akun Google.');
+      }
       return false;
     }
 
-    state = state.copyWith(isLoading: true, clearError: true);
+    if (!isAutoSync) {
+      state = state.copyWith(isLoading: true, clearError: true);
+    }
+    _isSyncing = true;
 
     try {
-      final payload = await BackupRestoreService.createPayload(ref);
+      final effectiveRef = ref ?? _ref;
+      if (effectiveRef == null) {
+        _isSyncing = false;
+        if (!isAutoSync) state = state.copyWith(isLoading: false);
+        return false;
+      }
+
+      final payload = await BackupRestoreService.createPayload(effectiveRef);
       final rtdb = FirebaseDatabase.instance.ref('users/${user.uid}/backup');
       await rtdb.set(payload.toJson());
 
@@ -260,58 +330,82 @@ class GoogleSyncService extends StateNotifier<GoogleSyncState> {
         isLoading: false,
         lastSyncedAt: now,
       );
+      _isSyncing = false;
       return true;
     } catch (e) {
       debugPrint('[GoogleSyncService] Cloud upload error: $e');
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Gagal mengunggah cadangan ke cloud: $e',
-      );
+      _isSyncing = false;
+      if (!isAutoSync) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Gagal mengunggah cadangan ke cloud: $e',
+        );
+      }
       return false;
     }
   }
 
   /// Pulls remote backup from Firebase Realtime Database and restores locally.
-  Future<bool> syncFromCloud(WidgetRef ref) async {
+  Future<bool> syncFromCloud([dynamic ref, bool isAutoSync = false]) async {
     if (!state.isSupported) return false;
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
 
-    state = state.copyWith(isLoading: true, clearError: true);
+    if (!isAutoSync) {
+      state = state.copyWith(isLoading: true, clearError: true);
+    }
+    _isSyncing = true;
 
     try {
+      final effectiveRef = ref ?? _ref;
+      if (effectiveRef == null) {
+        _isSyncing = false;
+        if (!isAutoSync) state = state.copyWith(isLoading: false);
+        return false;
+      }
+
       final rtdb = FirebaseDatabase.instance.ref('users/${user.uid}/backup');
       final snapshot = await rtdb.get();
 
       if (snapshot.exists && snapshot.value is Map) {
         final rawMap = (snapshot.value as Map).cast<String, dynamic>();
         final payload = CinevaBackupPayload.fromJson(rawMap);
-        await BackupRestoreService.applyPayload(ref, payload);
+        await BackupRestoreService.applyPayload(effectiveRef, payload);
         state = state.copyWith(
           isLoading: false,
           lastSyncedAt: payload.exportedAt,
         );
+        _isSyncing = false;
         return true;
       }
 
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Tidak ditemukan data cadangan di akun Google ini.',
-      );
+      _isSyncing = false;
+      if (!isAutoSync) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Tidak ditemukan data cadangan di akun Google ini.',
+        );
+      }
       return false;
     } catch (e) {
       debugPrint('[GoogleSyncService] Cloud pull error: $e');
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Gagal mengunduh cadangan: $e',
-      );
+      _isSyncing = false;
+      if (!isAutoSync) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Gagal mengunduh cadangan: $e',
+        );
+      }
       return false;
     }
   }
 
   /// Disconnects Google account without wiping local data.
   Future<void> signOut() async {
+    _cloudListenerSub?.cancel();
+    _debounceTimer?.cancel();
+
     try {
       if (state.isSupported) {
         await _googleSignIn.signOut();
@@ -330,5 +424,11 @@ class GoogleSyncService extends StateNotifier<GoogleSyncState> {
       clearError: true,
     );
   }
-}
 
+  @override
+  void dispose() {
+    _cloudListenerSub?.cancel();
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+}

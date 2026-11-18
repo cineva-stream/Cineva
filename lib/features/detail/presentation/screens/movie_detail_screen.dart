@@ -19,6 +19,8 @@ import '../widgets/in_app_trailer_modal.dart';
 import '../../data/models/trailer_video_model.dart';
 import '../../../collection/presentation/widgets/franchise_collection_banner.dart';
 import '../../../../core/platform/device_form_factor.dart';
+import '../../../watch_party/domain/models/watch_party_room.dart';
+import '../../../watch_party/presentation/widgets/watch_party_modal.dart';
 
 // ── Detail Providers ──
 
@@ -1161,6 +1163,44 @@ class _DetailContent extends ConsumerWidget {
                         ),
                       ),
                     ],
+                    const SizedBox(width: 10),
+                    // Watch Party Button (Nonton Bareng)
+                    Tooltip(
+                      message: s.watchPartyTitle,
+                      child: InkWell(
+                        onTap: () {
+                          WatchPartyModal.show(
+                            context,
+                            media: WatchPartyMedia(
+                              title: title,
+                              mediaType: 'movie',
+                              tmdbId: data['id'] as int? ?? 0,
+                              imdbId: imdbId,
+                              posterPath: posterPath,
+                              backdropPath: backdropPath,
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.6),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: const Icon(
+                            Iconsax.people,
+                            color: AppColors.primary,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     // Watchlist Button (Outlined when not added, Filled icon when added)
                     Consumer(
