@@ -19,8 +19,10 @@ class WatchPartyJoinBanner extends ConsumerWidget {
   void _showJoinModal(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.65),
       builder: (ctx) => const _WatchPartyJoinSheet(),
     );
   }
@@ -331,43 +333,44 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
   @override
   Widget build(BuildContext context) {
     final s = ref.watch(appStringsProvider);
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
+      padding: EdgeInsets.only(bottom: keyboardInset),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        decoration: BoxDecoration(
-          color: const Color(0xFF14141B),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.1),
-            width: 1,
-          ),
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          color: Color(0xFF14141B),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.6),
-              blurRadius: 24,
-              offset: const Offset(0, -6),
+              color: Colors.black54,
+              blurRadius: 28,
+              offset: Offset(0, -6),
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Modal Handle Bar
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(2),
+        child: SafeArea(
+          top: false,
+          bottom: keyboardInset == 0,
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Modal Handle Bar
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-              ),
-            ),
             const SizedBox(height: 16),
 
             // Header Row
@@ -700,6 +703,8 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }

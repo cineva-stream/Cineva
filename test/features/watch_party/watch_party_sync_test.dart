@@ -425,7 +425,7 @@ void main() {
       expect(find.text('Gabung Ruangan'), findsNWidgets(2)); // Tab title + button label
     });
 
-    testWidgets('WatchPartyJoinBanner renders cleanly with action button', (tester) async {
+    testWidgets('WatchPartyJoinBanner renders cleanly and opens full-width 24dp bottom sheet', (tester) async {
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -440,6 +440,15 @@ void main() {
       expect(find.text('Nonton Bareng Teman'), findsOneWidget);
       expect(find.text('SYNC'), findsOneWidget);
       expect(find.text('Gabung Nobar'), findsOneWidget);
+
+      // Tap Join button to open bottom sheet
+      await tester.tap(find.text('Gabung Nobar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kode Ruangan'), findsOneWidget);
+      expect(find.text('PIN Ruangan (4 digit)'), findsOneWidget);
+      expect(find.text('Nama Panggilan'), findsOneWidget);
+      expect(find.text('Gabung & Tonton'), findsOneWidget);
     });
   });
 }
