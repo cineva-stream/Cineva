@@ -111,9 +111,20 @@ void main() {
       );
 
       expect(room.allowGuestControl, isFalse);
+      expect(room.isProtectedByPin, isFalse);
+      expect(room.verifyPin('any'), isTrue);
 
-      final updated = room.copyWith(allowGuestControl: true);
+      final updated = room.copyWith(allowGuestControl: true, pin: '4321');
       expect(updated.allowGuestControl, isTrue);
+      expect(updated.isProtectedByPin, isTrue);
+      expect(updated.pin, '4321');
+      expect(updated.verifyPin('4321'), isTrue);
+      expect(updated.verifyPin('0000'), isFalse);
+      expect(updated.verifyPin(null), isFalse);
+
+      final cleared = updated.copyWith(clearPin: true);
+      expect(cleared.isProtectedByPin, isFalse);
+      expect(cleared.pin, isNull);
     });
   });
 
@@ -155,6 +166,25 @@ void main() {
       expect(service.currentRoom, isNotNull);
       expect(service.isHost, isTrue);
       expect(service.currentRoom?.hostName, 'Test Host');
+      service.dispose();
+    });
+
+    test('createRoom with pin sets isProtectedByPin to true and saves pin', () async {
+      final service = WatchPartyService();
+      final code = await service.createRoom(
+        hostName: 'PIN Host',
+        pin: '1234',
+        media: const WatchPartyMedia(
+          title: 'Protected Movie',
+          mediaType: 'movie',
+          tmdbId: 101,
+        ),
+      );
+      expect(code.startsWith('CNV-'), isTrue);
+      expect(service.currentRoom?.isProtectedByPin, isTrue);
+      expect(service.currentRoom?.pin, '1234');
+      expect(service.currentRoom?.verifyPin('1234'), isTrue);
+      expect(service.currentRoom?.verifyPin('9999'), isFalse);
       service.dispose();
     });
   });
@@ -376,13 +406,21 @@ void main() {
       // Check Host controls
       expect(find.text('Nama Panggilan'), findsOneWidget);
       expect(find.text('Izinkan partner/tamu mengontrol video'), findsOneWidget);
+      expect(find.text('Kunci ruangan dengan PIN'), findsOneWidget);
       expect(find.text('Buat Ruangan & Mulai'), findsOneWidget);
+
+      // Tap PIN checkbox to reveal 4-digit PIN field
+      await tester.tap(find.text('Kunci ruangan dengan PIN'));
+      await tester.pumpAndSettle();
+      expect(find.text('Contoh: 1234'), findsOneWidget);
 
       // Switch to Join Room Tab
       await tester.tap(find.text('Gabung Ruangan'));
       await tester.pumpAndSettle();
 
       expect(find.text('Kode Ruangan'), findsOneWidget);
+      expect(find.text('PIN Ruangan (4 digit)'), findsOneWidget);
+      expect(find.text('(Jika dikunci PIN)'), findsOneWidget);
       expect(find.text('Nama Panggilan (Guest Mode)'), findsOneWidget);
       expect(find.text('Gabung Ruangan'), findsNWidgets(2)); // Tab title + button label
     });

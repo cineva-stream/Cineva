@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
@@ -41,8 +42,12 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
   final TextEditingController _hostNameController = TextEditingController();
   final TextEditingController _roomCodeController = TextEditingController();
   final TextEditingController _guestNameController = TextEditingController();
+  final TextEditingController _createPinController = TextEditingController();
+  final TextEditingController _joinPinController = TextEditingController();
 
   bool _allowGuestControl = false;
+  bool _usePin = false;
+  bool _joinRequiresPin = false;
   bool _isSubmitting = false;
   String? _errorMessage;
 
@@ -71,6 +76,8 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
     _hostNameController.dispose();
     _roomCodeController.dispose();
     _guestNameController.dispose();
+    _createPinController.dispose();
+    _joinPinController.dispose();
     super.dispose();
   }
 
@@ -81,6 +88,18 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
         ? _hostNameController.text.trim()
         : 'Host';
 
+    if (_usePin) {
+      final pin = _createPinController.text.trim();
+      if (pin.length != 4 || int.tryParse(pin) == null) {
+        setState(() {
+          _errorMessage = s.isIndonesian
+              ? 'PIN harus terdiri dari 4 digit angka.'
+              : 'PIN must be 4 numeric digits.';
+        });
+        return;
+      }
+    }
+
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
@@ -90,6 +109,7 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
           hostName: hostName,
           media: widget.media!,
           allowGuestControl: _allowGuestControl,
+          pin: _usePin ? _createPinController.text.trim() : null,
         );
 
     if (!mounted) return;
@@ -144,10 +164,35 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
       _errorMessage = null;
     });
 
-    final success = await ref.read(watchPartyProvider.notifier).joinRoom(
-          roomCode: code,
-          memberName: guestName,
-        );
+    final notifier = ref.read(watchPartyProvider.notifier);
+    final room = await notifier.fetchRoom(code);
+
+    if (room != null && room.isProtectedByPin) {
+      final pinCandidate = _joinPinController.text.trim();
+      if (pinCandidate.isEmpty) {
+        setState(() {
+          _isSubmitting = false;
+          _joinRequiresPin = true;
+          _errorMessage = s.watchPartyPinRequired;
+        });
+        return;
+      } else if (!room.verifyPin(pinCandidate)) {
+        setState(() {
+          _isSubmitting = false;
+          _joinRequiresPin = true;
+          _errorMessage = s.watchPartyPinIncorrect;
+        });
+        return;
+      }
+    }
+
+    final success = await notifier.joinRoom(
+      roomCode: code,
+      memberName: guestName,
+      pin: _joinPinController.text.trim().isNotEmpty
+          ? _joinPinController.text.trim()
+          : null,
+    );
 
     if (!mounted) return;
 
@@ -175,11 +220,13 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
         );
       }
     } else {
+      final err = ref.read(watchPartyProvider).errorMessage;
       setState(() {
         _isSubmitting = false;
-        _errorMessage = s.isIndonesian
-            ? 'Ruangan tidak ditemukan atau kode salah.'
-            : 'Room not found or invalid code.';
+        _errorMessage = err ??
+            (s.isIndonesian
+                ? 'Ruangan tidak ditemukan atau kode salah.'
+                : 'Room not found or invalid code.');
       });
     }
   }
@@ -543,6 +590,104 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
             ),
           ),
 
+          const SizedBox(height: 12),
+
+          // Optional Room PIN Security Toggle (User Requested!)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _usePin
+                    ? Colors.amber.withValues(alpha: 0.5)
+                    : Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+            child: Column(
+              children: [
+                Material(
+                  color: Colors.transparent,
+                  child: CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeColor: const Color(0xFFFFB300),
+                    checkColor: Colors.black,
+                    secondary: Icon(
+                      Icons.lock_outline_rounded,
+                      size: 20,
+                      color: _usePin
+                          ? const Color(0xFFFFB300)
+                          : AppColors.textSecondary,
+                    ),
+                    title: Text(
+                      s.watchPartyUsePin,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      s.watchPartyUsePinDesc,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10.5,
+                      ),
+                    ),
+                    value: _usePin,
+                    onChanged: (val) {
+                      setState(() => _usePin = val ?? false);
+                    },
+                  ),
+                ),
+                if (_usePin) ...[
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _createPinController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 6.0,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(4),
+                    ],
+                    decoration: InputDecoration(
+                      counterText: '',
+                      hintText: s.watchPartyPinHint,
+                      hintStyle: const TextStyle(
+                        color: AppColors.textSecondary,
+                        letterSpacing: 1.0,
+                        fontSize: 12,
+                      ),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.05),
+                      prefixIcon: const Icon(
+                        Icons.pin_rounded,
+                        size: 16,
+                        color: Color(0xFFFFB300),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+              ],
+            ),
+          ),
+
           const SizedBox(height: 20),
 
           // Action Button
@@ -626,6 +771,81 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
               ),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Room PIN Input (Optional if room has no PIN, Required if protected)
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 6,
+            children: [
+              Text(
+                s.watchPartyPin,
+                style: TextStyle(
+                  color: _joinRequiresPin
+                      ? const Color(0xFFFFB300)
+                      : Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (!_joinRequiresPin)
+                Text(
+                  s.isIndonesian
+                      ? '(Jika dikunci PIN)'
+                      : '(If PIN protected)',
+                  style: TextStyle(
+                    color: AppColors.textSecondary.withValues(alpha: 0.7),
+                    fontSize: 10.5,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _joinPinController,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 6.0,
+            ),
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(4),
+            ],
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: s.watchPartyPinHint,
+              hintStyle: const TextStyle(
+                color: AppColors.textSecondary,
+                letterSpacing: 1.0,
+                fontSize: 12,
+              ),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.05),
+              prefixIcon: Icon(
+                Icons.lock_outline_rounded,
+                size: 16,
+                color: _joinRequiresPin
+                    ? const Color(0xFFFFB300)
+                    : AppColors.primary,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: _joinRequiresPin
+                    ? const BorderSide(color: Color(0xFFFFB300))
+                    : BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 14,
+              ),
             ),
           ),
 

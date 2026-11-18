@@ -67,11 +67,18 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
     _scrollToBottom();
   }
 
-  void _copyRoomCode(String roomCode, AppStrings s) {
-    Clipboard.setData(ClipboardData(text: roomCode));
+  void _copyRoomCode(WatchPartyRoom room, AppStrings s) {
+    final textToCopy = room.isProtectedByPin
+        ? 'Kode: ${room.roomCode} | PIN: ${room.pin}'
+        : room.roomCode;
+    Clipboard.setData(ClipboardData(text: textToCopy));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(s.watchPartyCodeCopied),
+        content: Text(
+          room.isProtectedByPin
+              ? s.watchPartyPinCopied
+              : s.watchPartyCodeCopied,
+        ),
         duration: const Duration(seconds: 2),
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
@@ -212,11 +219,11 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                     ),
                     const SizedBox(height: 8),
 
-                    // Room Code Pill + Member Count
+                    // Room Code Pill + PIN Badge + Member Count
                     Row(
                       children: [
                         InkWell(
-                          onTap: () => _copyRoomCode(room.roomCode, s),
+                          onTap: () => _copyRoomCode(room, s),
                           borderRadius: BorderRadius.circular(8),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -251,6 +258,40 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                             ),
                           ),
                         ),
+                        if (room.isProtectedByPin) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.amber.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.lock_rounded,
+                                  size: 12,
+                                  color: Colors.amberAccent,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  isHost ? 'PIN: ${room.pin}' : 'PIN',
+                                  style: const TextStyle(
+                                    color: Colors.amberAccent,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const Spacer(),
                         Container(
                           padding: const EdgeInsets.symmetric(

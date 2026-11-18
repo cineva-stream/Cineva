@@ -192,6 +192,7 @@ class WatchPartyRoom {
   final String hostId;
   final String hostName;
   final bool allowGuestControl; // Host toggle checkbox
+  final String? pin; // Optional 4-digit security PIN set by Host
   final WatchPartyMedia media;
   final WatchPartyPlayback playback;
   final Map<String, WatchPartyMember> members;
@@ -203,6 +204,7 @@ class WatchPartyRoom {
     required this.hostId,
     required this.hostName,
     this.allowGuestControl = false,
+    this.pin,
     required this.media,
     required this.playback,
     this.members = const {},
@@ -210,11 +212,21 @@ class WatchPartyRoom {
     required this.createdAt,
   });
 
+  /// Whether the room requires a PIN to enter.
+  bool get isProtectedByPin => pin != null && pin!.trim().isNotEmpty;
+
+  /// Verifies a candidate PIN against the room's secret PIN.
+  bool verifyPin(String? candidate) {
+    if (!isProtectedByPin) return true;
+    return pin!.trim() == candidate?.trim();
+  }
+
   Map<String, dynamic> toJson() => {
     'roomCode': roomCode,
     'hostId': hostId,
     'hostName': hostName,
     'allowGuestControl': allowGuestControl,
+    'pin': pin,
     'media': media.toJson(),
     'playback': playback.toJson(),
     'members': members.map((k, v) => MapEntry(k, v.toJson())),
@@ -287,6 +299,7 @@ class WatchPartyRoom {
       hostId: (json['hostId'] as String?) ?? '',
       hostName: (json['hostName'] as String?) ?? 'Host',
       allowGuestControl: (json['allowGuestControl'] as bool?) ?? false,
+      pin: (json['pin'] as String?)?.trim(),
       media: WatchPartyMedia.fromJson(
         (json['media'] as Map?)?.cast<dynamic, dynamic>() ?? {},
       ),
@@ -304,6 +317,8 @@ class WatchPartyRoom {
     String? hostId,
     String? hostName,
     bool? allowGuestControl,
+    String? pin,
+    bool clearPin = false,
     WatchPartyMedia? media,
     WatchPartyPlayback? playback,
     Map<String, WatchPartyMember>? members,
@@ -315,6 +330,7 @@ class WatchPartyRoom {
       hostId: hostId ?? this.hostId,
       hostName: hostName ?? this.hostName,
       allowGuestControl: allowGuestControl ?? this.allowGuestControl,
+      pin: clearPin ? null : (pin ?? this.pin),
       media: media ?? this.media,
       playback: playback ?? this.playback,
       members: members ?? this.members,

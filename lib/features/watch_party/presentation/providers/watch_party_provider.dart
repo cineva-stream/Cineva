@@ -142,6 +142,7 @@ class WatchPartyNotifier extends StateNotifier<WatchPartyState> {
     required String hostName,
     required WatchPartyMedia media,
     bool allowGuestControl = false,
+    String? pin,
   }) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
@@ -149,6 +150,7 @@ class WatchPartyNotifier extends StateNotifier<WatchPartyState> {
         hostName: hostName,
         media: media,
         allowGuestControl: allowGuestControl,
+        pin: pin,
       );
       state = state.copyWith(
         isLoading: false,
@@ -171,12 +173,14 @@ class WatchPartyNotifier extends StateNotifier<WatchPartyState> {
   Future<bool> joinRoom({
     required String roomCode,
     required String memberName,
+    String? pin,
   }) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final success = await _service.joinRoom(
         roomCode: roomCode,
         memberName: memberName,
+        pin: pin,
       );
       if (success) {
         _lastReadMessageTimestamp = DateTime.now().millisecondsSinceEpoch;
@@ -192,9 +196,14 @@ class WatchPartyNotifier extends StateNotifier<WatchPartyState> {
         );
         return true;
       } else {
+        final room = await _service.fetchRoom(roomCode);
+        final isPinError =
+            room != null && room.isProtectedByPin && !room.verifyPin(pin);
         state = state.copyWith(
           isLoading: false,
-          errorMessage: 'Ruangan tidak ditemukan. Periksa kembali kodenya.',
+          errorMessage: isPinError
+              ? 'PIN ruangan salah. Periksa kembali dengan Host.'
+              : 'Ruangan tidak ditemukan. Periksa kembali kodenya.',
         );
         return false;
       }

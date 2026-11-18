@@ -1283,4 +1283,23 @@ class AppStrings {
   String get watchPartyAutoSearchDesc => isIndonesian
       ? 'Masukkan kode ruangan dari Host untuk langsung memutar tontonan yang sedang diputar Host.'
       : 'Enter the Host room code to automatically play whatever the Host is currently watching.';
+  String get watchPartyUsePin =>
+      isIndonesian ? 'Kunci ruangan dengan PIN' : 'Lock room with PIN';
+  String get watchPartyUsePinDesc => isIndonesian
+      ? 'Hanya peserta dengan PIN yang dapat bergabung'
+      : 'Only guests with the PIN can join';
+  String get watchPartyPin =>
+      isIndonesian ? 'PIN Ruangan (4 digit)' : 'Room PIN (4 digits)';
+  String get watchPartyPinHint => isIndonesian ? 'Contoh: 1234' : 'e.g. 1234';
+  String get watchPartyPinRequired => isIndonesian
+      ? 'Ruangan ini memerlukan PIN dari Host'
+      : 'This room requires a PIN from Host';
+  String get watchPartyPinIncorrect => isIndonesian
+      ? 'PIN ruangan salah. Periksa kembali dengan Host.'
+      : 'Incorrect room PIN. Please check with Host.';
+  String get watchPartyPinCopied => isIndonesian
+      ? 'Kode & PIN ruangan disalin!'
+      : 'Room code & PIN copied!';
+  String get watchPartyRoomProtected =>
+      isIndonesian ? 'Ruangan Terkunci PIN' : 'PIN Protected Room';
 }

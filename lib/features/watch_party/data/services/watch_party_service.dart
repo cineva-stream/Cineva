@@ -76,6 +76,7 @@ class WatchPartyService {
     required String hostName,
     required WatchPartyMedia media,
     bool allowGuestControl = false,
+    String? pin,
   }) async {
     final roomCode = generateRoomCode();
     _myMemberId = _resolveMemberId();
@@ -109,11 +110,14 @@ class WatchPartyService {
       type: 'system',
     );
 
+    final cleanPin = pin?.trim().isNotEmpty == true ? pin!.trim() : null;
+
     final room = WatchPartyRoom(
       roomCode: roomCode,
       hostId: _myMemberId!,
       hostName: _myName!,
       allowGuestControl: allowGuestControl,
+      pin: cleanPin,
       media: media,
       playback: initialPlayback,
       members: {_myMemberId!: hostMember},
@@ -138,6 +142,7 @@ class WatchPartyService {
   Future<bool> joinRoom({
     required String roomCode,
     required String memberName,
+    String? pin,
   }) async {
     final cleanCode = roomCode.trim().toUpperCase();
     _myMemberId = _resolveMemberId();
@@ -146,6 +151,11 @@ class WatchPartyService {
 
     final existingRoom = await _fetchRoomFromCloud(cleanCode);
     if (existingRoom == null) {
+      return false;
+    }
+
+    if (existingRoom.isProtectedByPin && !existingRoom.verifyPin(pin)) {
+      debugPrint('[WatchPartyService] Access denied: Incorrect room PIN.');
       return false;
     }
 

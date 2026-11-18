@@ -210,7 +210,9 @@ class _WatchPartyJoinSheet extends ConsumerStatefulWidget {
 class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
   final TextEditingController _codeController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _pinController = TextEditingController();
   bool _isSearching = false;
+  bool _requiresPin = false;
   String? _errorMessage;
 
   @override
@@ -225,10 +227,12 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
   void dispose() {
     _codeController.dispose();
     _nameController.dispose();
+    _pinController.dispose();
     super.dispose();
   }
 
   Future<void> _handleJoin() async {
+    final s = ref.read(appStringsProvider);
     final rawCode = _codeController.text.trim();
     if (rawCode.isEmpty) {
       setState(() {
@@ -264,10 +268,33 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
       return;
     }
 
+    // Verify PIN if the room is protected
+    if (room.isProtectedByPin) {
+      final candidatePin = _pinController.text.trim();
+      if (candidatePin.isEmpty) {
+        setState(() {
+          _isSearching = false;
+          _requiresPin = true;
+          _errorMessage = s.watchPartyPinRequired;
+        });
+        return;
+      } else if (!room.verifyPin(candidatePin)) {
+        setState(() {
+          _isSearching = false;
+          _requiresPin = true;
+          _errorMessage = s.watchPartyPinIncorrect;
+        });
+        return;
+      }
+    }
+
     // Join room
     final joinSuccess = await notifier.joinRoom(
       roomCode: code,
       memberName: name,
+      pin: _pinController.text.trim().isNotEmpty
+          ? _pinController.text.trim()
+          : null,
     );
 
     if (!mounted) return;
@@ -293,9 +320,10 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
         },
       );
     } else {
+      final err = ref.read(watchPartyProvider).errorMessage;
       setState(() {
         _isSearching = false;
-        _errorMessage = 'Gagal bergabung ke ruangan. Silakan coba lagi.';
+        _errorMessage = err ?? 'Gagal bergabung ke ruangan. Silakan coba lagi.';
       });
     }
   }
@@ -445,6 +473,99 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(
                     color: AppColors.primary,
+                    width: 1.4,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Room PIN Input (Optional if open, Required if room has PIN)
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              children: [
+                Text(
+                  s.watchPartyPin,
+                  style: GoogleFonts.inter(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: _requiresPin
+                        ? const Color(0xFFFFB300)
+                        : Colors.white,
+                  ),
+                ),
+                if (!_requiresPin)
+                  Text(
+                    s.isIndonesian
+                        ? '(Jika dikunci PIN)'
+                        : '(If PIN protected)',
+                    style: GoogleFonts.inter(
+                      fontSize: 10.5,
+                      color: AppColors.textSecondary.withValues(alpha: 0.7),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _pinController,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.jetBrainsMono(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                letterSpacing: 6.0,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(4),
+              ],
+              decoration: InputDecoration(
+                counterText: '',
+                hintText: s.watchPartyPinHint,
+                hintStyle: GoogleFonts.jetBrainsMono(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  letterSpacing: 1.0,
+                ),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.05),
+                prefixIcon: Icon(
+                  Icons.lock_outline_rounded,
+                  size: 18,
+                  color: _requiresPin
+                      ? const Color(0xFFFFB300)
+                      : AppColors.primary,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: _requiresPin
+                        ? const Color(0xFFFFB300)
+                        : Colors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: _requiresPin
+                        ? const Color(0xFFFFB300)
+                        : Colors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: _requiresPin
+                        ? const Color(0xFFFFB300)
+                        : AppColors.primary,
                     width: 1.4,
                   ),
                 ),
