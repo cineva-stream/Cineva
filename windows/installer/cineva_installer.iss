@@ -4,7 +4,7 @@
 ; ==============================================================================
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.8"
+  #define MyAppVersion "1.1.9"
 #endif
 
 #define MyAppName "Cineva"

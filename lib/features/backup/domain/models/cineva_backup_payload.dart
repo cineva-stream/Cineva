@@ -135,7 +135,7 @@ class CinevaBackupPayload {
 
     return CinevaBackupPayload(
       version: (json['version'] as num?)?.toInt() ?? currentSchemaVersion,
-      appVersion: json['appVersion'] as String? ?? '1.1.8',
+      appVersion: json['appVersion'] as String? ?? '1.1.9',
       exportedAt: DateTime.tryParse(json['exportedAt'] as String? ?? '') ??
           DateTime.now(),
       profile: profile,

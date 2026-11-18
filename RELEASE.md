@@ -1,98 +1,111 @@
-# Cineva v1.1.8 - Release Notes 🎬
+# Cineva v1.1.9 - Release Notes 🎬
 
-Pembaruan Cineva versi 1.1.8 menghadirkan **Relayout Responsif Modern untuk Tablet, Windows Desktop & Android TV**, perombakan **Desain Antarmuka Sinematik (Obsidian & Crimson Cinema UI)** di seluruh halaman, serta **Perbaikan Total Navigasi Remote D-Pad & Orientasi Layar** pada perangkat Android TV dan Tablet.
+Pembaruan besar Cineva versi 1.1.9 menghadirkan **Lanjutkan Menonton Cerdas (Seamless Device Hand-Off)** lintas perangkat, fitur **Nonton Bareng Jarak Jauh (Watch Party & Sync Play)** lengkap dengan Live Chat & kontrol Host, **Sinkronisasi Cloud Real-Time Otomatis** untuk akun Google, serta perombakan revolusioner pada subtitle melalui **Cinematic NLP Post-Processing Engine** dan **Normalisasi Alami Singkatan & Akronim Subtitle**.
 
 ---
 
 ## Ringkasan Fitur Baru & Peningkatan Utama
 
-### 1. Relayout Responsif Modern untuk Tablet, Windows Desktop & Android TV
-* **Mesin Deteksi Form-Factor & Grid Adaptif (`device_form_factor.dart`)**:
-  * Deteksi cerdas untuk **Smartphone**, **Tablet** (`shortestSide >= 600px`), **Windows Desktop**, serta **Android TV** (mendukung penuh resolusi TV 720p dan 1080p/4K).
-  * Perhitungan kolom grid poster otomatis (`adaptivePosterGridColumns`) dan grid kartu horizontal (`adaptiveHorizontalCardGridColumns`) dari 3 hingga 8 kolom sesuai lebar layar perangkat.
-* **Navigasi Samping Widescreen (`AdaptiveNavRail` & `MainShell`)**:
-  * Perangkat Tablet, Windows, dan Android TV kini secara konsisten menggunakan bilah navigasi samping (*Side Navigation Rail*) yang modern dengan indikator kapsul menyala, menggantikan bilah bawah smartphone agar ruang pandang horizontal lebih maksimal.
-* **Tata Letak Multi-Kolom & Widescreen di Seluruh Halaman**:
-  * **Beranda (Home)**: Banner Hero sinematik proporsional, kartu *Lanjutkan Menonton* lebih lebar di layar besar (`240px`), serta pemilih genre responsif.
-  * **Pencarian & Katalog Platform**: Kartu *Hero Top Result* bersebelahan dengan daftar hasil, *Trending Bento Grid* adaptif, dan grid platform streaming 3–6 kolom.
-  * **Live TV & Split-View Player**: Panel daftar saluran di sisi kiri (`340px–380px`) berdampingan dengan pemutar video langsung dan EPG di sisi kanan untuk Tablet, Windows, dan Android TV.
-  * **Detail Film, Serial TV, Koleksi Franchise & TV Universe**: *Split Hero Banner* untuk layar lebar, grid daftar episode **2–3 kolom** pada layar widescreen/TV untuk meminimalkan *scrolling* vertikal, serta grid *Seasons* dan *Cast* yang proporsional.
-  * **Watchlist, Riwayat Tontonan, Unduhan & Kalender Tayang**: Transformasi dari daftar satu kolom memanjang menjadi grid multi-kolom (2–3 kolom di Tablet/Windows/TV) lengkap dengan pembatas lebar proporsional (`maxWidth`) pada halaman Pengaturan, Edit Profil, dan Syarat & Ketentuan.
+### 1. Lanjutkan Menonton Cerdas (Seamless Device Hand-Off)
+* **Pelacakan Sesi Playback Lintas Perangkat (`DeviceHandoffService` & `DevicePlaybackSession`)**:
+  * Cineva kini melacak sesi menonton terakhir secara cerdas di Cloud.
+  * Jika pengguna berhenti menonton di satu perangkat (misalnya di Android TV pada menit ke-45), saat membuka Cineva di Smartphone atau Windows Desktop akan muncul kartu kapsul kaca modern (*Floating Glass Capsule*) di bagian atas layar:
+    > *"Lanjutkan menonton Interstellar di menit 45:12?"*
+  * Dilengkapi tombol aksi *"Lanjutkan"* yang langsung membuka pemutar video pada detik yang tepat dan tombol tutup (*Dismiss*) instan.
 
-### 2. Perbaikan Total Kontroler D-Pad Android TV & Keyboard Navigasi
-* **Engine Fokus `TvFocusable` Generasi Baru**:
-  * Dilengkapi *focus ring* (`showFocusBorder`) bertepi `AppColors.primary` (`2px`), animasi skala halus, dukungan penuh tombol `Select`, `Enter`, `NumpadEnter`, `GameButtonA`, dan `Space`, serta *auto-scroll* aman (`Scrollable.ensureVisible`) saat item menerima fokus D-Pad.
-* **Perbaikan Bug Fokus Terjebak di Pemutar Video (`PlayerScreen`)**:
-  * Memperbaiki *handler* tombol D-Pad pada `PlayerScreen` yang sebelumnya mencegat seluruh arah panah untuk *seek* meskipun kontrol sedang tampil atau panel samping terbuka.
-  * Kini saat kontrol video terlihat, Side Panel (Episode/Server/Subtitle) terbuka, *Mini Popup* tampil, atau *Error Overlay* muncul, tombol panah D-Pad dan `Enter` berpindah antar tombol secara normal.
-  * Menambahkan `ExcludeFocus` saat kontrol video tersembunyi agar fokus D-Pad tidak lari ke tombol transparan di belakang layar.
-* **Dukungan D-Pad Menyeluruh di Halaman yang Sebelumnya Terkunci**:
-  * **Pencarian (`SearchScreen`)**: Fokus D-Pad penuh pada bilah cari, tombol hapus, chip riwayat pencarian, *Quick Categories*, kartu platform streaming, hingga kartu hasil pencarian.
-  * **Detail Film & Serial TV**: Seluruh tombol aksi (*Play*, *Download*, *Trailer*, *Watchlist*), chip *Season*, kartu *Episode*, kartu *Cast*, serta banner *Franchise/Universe* kini dapat dinavigasi dengan D-Pad.
-  * **Watchlist, Riwayat, Unduhan & Kalender Tayang**: Kartu item, tab filter, tanggal kalender, serta tombol hapus/aksi kini sepenuhnya mendukung fokus D-Pad & keyboard.
-  * **Syarat & Ketentuan (`LegalAgreementScreen`)**: Menambahkan *scroll* dokumen menggunakan D-Pad Atas/Bawah serta pembungkus `TvFocusable` pada tombol *Scroll ke Bawah* dan *Setuju & Lanjutkan*.
-  * **Dialog Konfirmasi Keluar (`ExitConfirmationBottomSheet`)**: Ditampilkan sebagai dialog tengah (*centered modal*) pada Tablet/Windows/TV dengan tombol *Batal* (autofocus) dan *Keluar* yang dapat dipilih via remote TV.
+### 2. Nonton Bareng Jarak Jauh (Watch Party / Sync Play Engine) dengan Live Chat
+* **Kamar Nobar Berbasis Room Code (`WatchPartyService` & `WatchPartyRoom`)**:
+  * Pengguna dapat membuat Room Code 8 digit unik (contoh: `CNV-XXXX`) atau bergabung ke ruangan teman untuk menonton film dan serial TV yang sama secara bersamaan dari jarak jauh.
+* **Sinkronisasi Playback Presisi (*Play, Pause, & Seek*)**:
+  * Seluruh aksi pemutaran video, jeda, maupun pergeseran durasi tersinkronisasi secara *real-time*.
+  * Dilengkapi algoritma **Kompensasi Latensi Jaringan (*Clock Skew Compensation*)** sehingga perbedaan koneksi antar pengguna tidak membuat video terputus atau tidak sinkron.
+* **Pengaturan Otoritas Host (*Allow Guest Control*)**:
+  * Terdapat panel pengaturan di sisi kanan bagi Host dengan opsi checkbox apakah mengizinkan partner/tamu ikut mengontrol video (Play/Pause/Seek) atau mengunci kontrol video khusus untuk Host saja.
+* **Panel Live Chat & Floating Animated Emojis**:
+  * Panel percakapan interaktif di sisi kanan pemutar video untuk saling berkirim pesan teks secara langsung saat menonton.
+  * Tombol reaksi emoji cepat (❤️, 😂, 😮, 👏, 🔥) yang memunculkan partikel animasi emoji melayang (*Floating Emoji Particles*) di atas layar.
+* **Dukungan Guest Mode**:
+  * Pengguna yang belum atau tidak ingin masuk ke akun Google tetap dapat bergabung ke dalam Watch Party cukup dengan memasukkan nama panggilan (*Display Name*).
 
-### 3. Perbaikan Bug Orientasi Layar (Tablet & Android TV)
-* **Eliminasi Penguncian Paksa ke Portrait (`portraitUp`)**:
-  * Memperbaiki bug di mana keluar dari pemutar video (`PlayerScreen` & `LiveTvPlayerScreen`) mengunci layar kembali ke mode `portraitUp` yang merusak tampilan di Tablet landscape dan Android TV.
-  * Menghadirkan fungsi terpusat `restoreSystemUiAndOrientations` yang mengembalikan orientasi sesuai form-factor perangkat (bebas rotasi untuk Tablet, landscape untuk TV, dan portrait untuk Smartphone).
+### 3. Sinkronisasi Cloud Otomatis Real-Time (Google Account)
+* **Sinkronisasi Otomatis Tanpa Perlu Menekan Tombol Sync**:
+  * Pengguna yang telah masuk dengan akun Google kini menikmati sinkronisasi riwayat tontonan (*Watch History*), daftar tontonan (*Watchlist*), dan profil secara otomatis di latar belakang (*auto-push debounced* 5 detik).
+  * Dilengkapi pendengar jarak jauh (*Realtime Remote Listener*) yang mendeteksi perubahan data dari perangkat lain dan menyinkronkannya ke perangkat lokal secara instan.
 
-### 4. Penyegaran Visual Obsidian & Crimson Cinema UI
-* Pembaruan palet warna gelap sinematik (`AppColors` & `AppTheme`), peningkatan kontras tipografi, kartu kaca (*glassmorphism*), serta penyempurnaan *Splash Screen* dan modal opsi unduhan agar tampil lebih tegas, rapi, dan modern di segala ukuran layar.
+### 4. Normalisasi Alami Singkatan & Akronim Subtitle (*Natural Abbreviation & Acronym Normalization*)
+* **Perbaikan Cacat Tokenizer Pemisah Titik**:
+  * Memperbaiki masalah pemisahan tanda titik pada tokenizer yang sebelumnya merusak singkatan bertitik di tengah kalimat menjadi huruf kecil campur besar yang aneh (seperti `l.A.P.D`, `i.A`, dan `t.O` pada serial seperti *The Rookie*).
+  * Seluruh singkatan bertitik kini otomatis dinormalisasi secara utuh menjadi huruf besar bersih: **`L.A.P.D.`**, **`I.A.`**, **`T.O.`**, **`D.A.`**, **`U.S.A.`**, dsb.
+* **Dukungan Imbuhan & Klitis Bahasa Indonesia**:
+  * Mengakomodasi singkatan berimbuhan secara rapi: **`T.O.-ku`**, **`L.A.P.D.-nya`**, **`I.A.-mu`** (bagian singkatan huruf kapital, imbuhan huruf kecil).
+* **Intelligent Sentence Continuation Guard**:
+  * Tanda titik di akhir singkatan (misalnya: *"Petugas L.A.P.D. itu sedang bertugas..."*) tidak lagi salah mengkapitalisasi kata sambung atau kata tunjuk berikutnya (`itu`, `ini`, `yang`, `sedang`, `adalah`), namun tetap menjaga huruf kapital jika singkatan benar-benar berada di akhir kalimat.
+* **Normalisasi Singkatan Berjarak (*Spaced Abbreviations*)**:
+  * Pola singkatan berjarak hasil pemindaian OCR subtitle (seperti `l. a. p. d.` atau `t. o.`) otomatis dirapatkan menjadi **`L.A.P.D.`** dan **`T.O.`**.
+* **Perlindungan Kata Asli Bahasa Indonesia**:
+  * Kata ganti orang ketiga bahasa Indonesia **`"ia"`** (dia) dan kata **`"doa"`** (berdoa) tetap dipertahankan huruf kecil di tengah kalimat dan tidak diubah paksa menjadi akronim tanpa titik.
 
-### 5. Desain Ulang Setup Installer Windows (Dark Obsidian & Animasi Poster Film)
-* **Cinema Poster Wall Marquee (~35 FPS)**: Header beranimasi mulus menggunakan deretan poster film miring dengan gradasi hitam Obsidian dan aksen *Cinema Amber* (`#FF9500`).
-* **Modern Dark Step-by-Step Wizard**: Indikator progres 4 langkah interaktif (`1. Lisensi ➔ 2. Lokasi ➔ 3. Instalasi ➔ 4. Selesai`), tema gelap penuh (`WizardStyle=modern dark`), dokumen Syarat & Ketentuan bertema gelap, serta dialog *Uninstall* bergaya Obsidian.
-
-### 6. Rilis Fitur Unduhan Offline (Status Under Maintenance Selesai)
-* **Mesin Unduhan Offline & HLS TS Segment Decryption**:
-  * Fitur unduhan offline yang sebelumnya berstatus *Under Maintenance* kini telah resmi diperbaiki dan dapat langsung dicoba (*Available to Try*).
-  * Dukungan engine `VideoDownloadService` baru: parser m3u8 HLS adaptif, dekripsi segmen TS terenkripsi AES-128, dan perakitan berkas MP4 offline mandiri melalui `OfflineMp4Builder`.
-  * Pipeline download subtitle otomatis (`DownloadSubtitlePipeline`) yang mengunduh dan menyinkronkan subtitle film/serial secara independen.
-  * Modal opsi download baru (`DownloadOptionsModal`) dengan pemilih kualitas resolusi, estimasi ukuran berkas, serta pemilihan track audio dan subtitle multibahasa.
-  * **Catatan Penting**: *Kami tidak dapat memastikan untuk seluruh film maupun TV series dapat diunduh*, dikarenakan variasi proteksi DRM serta ketersediaan sumber dan server pihak ketiga di internet.
-  * **Modal Pengumuman Fitur Unduhan Offline Modern**: Menampilkan modal pop-up sinematik Dark Obsidian dengan poster banner dwibahasa (ID & EN), tombol "Good Work! (Mengerti)", opsi checkbox "Jangan tampilkan lagi" / "Don't show again", serta pembatasan frekuensi cerdas maksimal 1x per 12 jam (*throttling*) saat membuka aplikasi.
-  * **UI Progress Real-Time Saat Finalizing Unduhan**: Memberikan indikator status dan progress bar realtime saat tahap penggabungan segmen video/audio dan perakitan MP4 offline (`DownloadStatus.finalizing`), lengkap dengan badge spinning `FINALIZING`, detail segmen (misal: "Menyatukan segmen video 45/300"), pesan penjelas ramah, serta persentase yang terus bergerak sehingga pengguna tahu proses berjalan aktif.
-  * **Pengelompokan TV Series & Dropdown Season**: Pengelompokan unduhan serial TV kini secara konsisten menggunakan poster resmi judul TV series (bukan thumbnail cuplikan episode awal), serta dilengkapi Dropdown Season yang memungkinkan pemilihan season secara cepat tanpa harus melakukan scrolling panjang.
-
-### 7. Peningkatan Pemutar Video (In-App Mini Player, Android PiP & Tata Letak Kontrol)
-* **Penataan Ulang Ikon Bilah Atas Pemutar Video (`PlayerScreen`)**:
-  * Menyelaraskan urutan ikon bilah atas saat memutar film atau serial TV menjadi lebih ergonomis: **Icon PiP ➔ Icon Sleep Timer ➔ Icon Lock ➔ Icon Settings ➔ Icon Info**.
-* **Penyempurnaan Logika Aktivasi PiP & Navigasi Kembali**:
-  * Menekan tombol kembali (baik ikon *back* di bilah atas pemutar maupun tombol/gesture *back* sistem Android) kini **tidak memicu PiP atau Mini-Player**, melainkan menghentikan pemutaran secara bersih (*clean exit*), menyimpan progres tontonan, memulihkan orientasi layar, dan kembali ke halaman sebelumnya.
-  * Mode Picture-in-Picture (PiP) kini **hanya aktif secara eksklusif** ketika:
-    1. Pengguna menekan tombol navigasi **Home** sistem Android secara langsung (tombol tengah atau gesture *swipe-up to home*).
-    2. Pengguna mengetuk **Ikon PiP** di bilah atas pemutar streaming.
-* **Floating In-App Mini-Player & Android Native PiP**:
-  * Dukungan `MiniPlayerOverlay` yang memungkinkan video terus berputar dalam jendela melayang (*floating mini-player*) di sudut layar saat pengguna menjelajahi halaman lain di dalam aplikasi ketika diaktifkan melalui aksi PiP.
-  * Integrasi *Picture-in-Picture* (PiP) bawaan Android untuk menonton video saat beralih ke aplikasi lain.
-* **Skala Subtitle Otomatis untuk Windows & Android TV (1080p/4K)**:
-  * Menghadirkan engine skala subtitle responsif cerdas (`is1080pOrHigherDesktopOrTv`) khusus untuk perangkat **Windows Desktop** dan **Android TV** yang berjalan pada resolusi 1080p atau lebih (1080p, 1440p, 4K, ultrawide).
-  * Subtitle diperbesar secara proporsional (~1.5x, dari standar 20pt ➔ 30pt), batas lebar maksimum diperluas hingga 1400px agar tidak mudah terpotong, garis tepi (*stroke outline*) dipertebal menjadi 6.5px untuk kontras maksimal di adegan terang, serta posisi vertikal dinaikkan agar pas di atas progress bar.
-  * Dirancang khusus untuk kenyamanan menonton santai dari sofa (*couch viewing distance* / jarak 2–3 meter). Perangkat Smartphone dan Tablet tetap mempertahankan ukuran teks standar yang presisi tanpa perubahan.
+### 5. Cinematic NLP Post-Processing Engine untuk Auto-Translate Subtitle
+* **Penyempurnaan Subtitle Mesin Menjadi Bahasa Dialog Sinematik**:
+  * Menerapkan mesin pemrosesan bahasa alami sinematik di sisi klien (*Client-Side NLP*) yang mengubah terjemahan kaku dan ambigu dari Google GTX menjadi terjemahan dialog percakapan yang hidup dan natural layaknya dikerjakan oleh penerjemah film profesional (*Netflix ID / Lebah Ganteng style*), **tetap 100% gratis, tanpa kuota, dan tanpa API Key**.
+* **Pembersihan Idiom Harfiah Bahasa Inggris**:
+  * *"Aku punya punggungmu"* $\rightarrow$ **`Aku melindungimu`** (*I got your back*)
+  * *"Beri aku istirahat"* $\rightarrow$ **`Yang benar saja`** (*Give me a break*)
+  * *"Kepala ke atas!"* $\rightarrow$ **`Awas!`** (*Heads up*)
+  * *"Sebut itu sehari"* $\rightarrow$ **`Cukup untuk hari ini`** (*Call it a day*)
+  * *"Bukan sepotong kue"* $\rightarrow$ **`Tidak mudah`** (*Not a piece of cake*)
+  * *"Berada di kapal yang sama"* $\rightarrow$ **`Senasib`** (*In the same boat*)
+  * *"Di bawah cuaca"* $\rightarrow$ **`Kurang enak badan`** (*Under the weather*)
+  * *"Tarik kakimu"* $\rightarrow$ **`Hanya bercanda`** (*Pulling your leg*)
+  * *"Keluar dari pertanyaan"* $\rightarrow$ **`Mustahil`** (*Out of the question*)
+* **Istilah Kriminal, Kepolisian & Aksi (*The Rookie, SWAT, FBI*)**:
+  * *"Salin itu"* $\rightarrow$ **`Dimengerti`** (*Copy that*)
+  * *"Pegang apimu / Tahan apimu"* $\rightarrow$ **`Tahan tembakan`** (*Hold your fire*)
+  * *"Tembakan dilepaskan"* $\rightarrow$ **`Ada tembakan`** (*Shots fired*)
+  * *"Tersangka dalam tahanan"* $\rightarrow$ **`Tersangka sudah diamankan`** (*Suspect in custody*)
+  * *"Butuh cadangan"* $\rightarrow$ **`Butuh bantuan`** (*Need backup*)
+  * *"Dalam perjalanan saya"* $\rightarrow$ **`Aku segera ke sana`** (*On my way*)
+  * *"Semua bersih"* $\rightarrow$ **`Area aman`** (*All clear*)
+  * *"Adegan kejahatan"* $\rightarrow$ **`TKP`** (*Crime scene*)
+  * *"Tiarap di lantai"* $\rightarrow$ **`Tiarap`** (*On the floor*)
+* **Penghalusan Frasa Kaku (Conversational Dialogue Smoothing)**:
+  * *"Aku tidak berpikir begitu"* $\rightarrow$ **`Kurasa tidak`** (*I don't think so*)
+  * *"Aku pikir kita harus..."* $\rightarrow$ **`Kurasa kita harus...`**
+  * *"Itu masuk akal"* $\rightarrow$ **`Masuk akal`**
+  * *"Itu tidak apa-apa / Tidak apa-apa"* $\rightarrow$ **`Tak apa`**
+  * *"Apa yang sedang kau bicarakan?"* $\rightarrow$ **`Kau bicara apa?`**
+  * *"Apa yang kau tunggu?"* $\rightarrow$ **`Tunggu apa lagi?`**
+  * *"Di sanalah kau berada"* $\rightarrow$ **`Rupanya kau di sana`** (*There you are*)
+  * *"Kau dipersilakan"* $\rightarrow$ **`Sama-sama`** (*You're welcome*)
+  * *"Jangan khawatir tentang itu"* $\rightarrow$ **`Jangan khawatir`**
 
 ---
 
 ## Riwayat Versi Sebelumnya
 
+### Cineva v1.1.8
+* **Relayout Responsif Modern**: Grid adaptif dan bilah navigasi samping (*Side Navigation Rail*) untuk Tablet, Windows Desktop & Android TV.
+* **Perbaikan Total Navigasi Remote D-Pad Android TV**: Mesin fokus `TvFocusable` baru, eliminasi bug fokus terjebak di pemutar video, serta dukungan D-Pad menyeluruh di Search, Detail, Watchlist, Riwayat, dan Unduhan.
+* **Perbaikan Bug Orientasi Layar**: Memperbaiki penguncian paksa ke `portraitUp` saat keluar dari pemutar video di Tablet dan TV.
+* **Rilis Fitur Unduhan Offline**: Parser HLS m3u8, dekripsi segmen TS terenkripsi AES-128, perakitan MP4 offline mandiri via `OfflineMp4Builder`, UI progress realtime saat *finalizing*, dan pengelompokan serial TV dengan poster resmi serta dropdown season.
+* **Penyempurnaan Pemutar Video & Android PiP**: Urutan kontrol bilah atas yang ergonomis, pemisahan navigasi *Back* bersih dengan aktivasi PiP eksklusif via tombol Home / ikon PiP, serta skala subtitle otomatis 1080p/4K untuk sofa viewing di Windows dan Android TV.
+
 ### Cineva v1.1.7
 * **Fitur Cadangan & Pemulihan Data Mandiri (Backup & Restore System)**: Ekspor & impor seluruh data aplikasi ke dalam berkas `.cineva` beserta opsi pemulihan langsung di layar awal (*Splash Screen*).
 * **Masuk dengan Google & Sinkronisasi Cloud**: Integrasi Google Sign-In & Firebase Realtime Database untuk sinkronisasi multi-perangkat otomatis dan pengisian profil cerdas.
 * **Desain Ulang Side Panel Streaming & Subtitle Minimalis**: Panel samping hitam obsidian pada pemutar video dan pengaturan subtitle *real-time* yang ringkas.
-* **Keamanan Build, ProGuard & Obfuscation**: Aturan proteksi refleksi penuh pada `proguard-rules.pro` dan pengamanan endpoint runtime.
 
 ---
 
 ## Informasi Versi
 
-* **Versi Aplikasi**: 1.1.8
-* **Build**: 19
+* **Versi Aplikasi**: 1.1.9
+* **Build**: 20
 * **Target Sistem Operasi**: Android 5.0 (API 21) ke atas (Smartphone, Tablet & Android TV / Google TV), Windows 10/11 (64-bit)
 * **Daftar Varian File Rilis**:
-  * `Cineva_setup_v1.1.8.exe` (Windows Desktop Installer Resmi)
-  * `Cineva_v1.1.8-android-tv.apk` (Khusus Android TV & Smart TV - **Rekomendasi TV**)
-  * `Cineva_v1.1.8-arm64-v8a.apk` (HP & Tablet Android Modern 64-bit)
-  * `Cineva_v1.1.8-armeabi-v7a.apk` (HP & Tablet Android Lawas 32-bit)
-  * `Cineva_v1.1.8-x86_64.apk` (Emulator PC & Android x86)
-  * `Cineva_v1.1.8.apk` (Universal / Semua CPU, Kompatibel Penuh)
+  * `Cineva_setup_v1.1.9.exe` (Windows Desktop Installer Resmi)
+  * `Cineva_v1.1.9-android-tv.apk` (Khusus Android TV & Smart TV - **Rekomendasi TV**)
+  * `Cineva_v1.1.9-arm64-v8a.apk` (HP & Tablet Android Modern 64-bit)
+  * `Cineva_v1.1.9-armeabi-v7a.apk` (HP & Tablet Android Lawas 32-bit)
+  * `Cineva_v1.1.9-x86_64.apk` (Emulator PC & Android x86)
+  * `Cineva_v1.1.9.apk` (Universal / Semua CPU, Kompatibel Penuh)
