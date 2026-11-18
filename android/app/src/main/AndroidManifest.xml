@@ -26,6 +26,8 @@
     <!-- Android TV Leanback & non-touchscreen compatibility -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
 
     <!-- Camera permission for QR Code Scanner on smartphone (Optional for Android TV) -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -42,9 +44,9 @@
         android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"
+            android:banner="@drawable/tv_banner"
             android:exported="true"
             android:launchMode="singleTop"
-            android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:supportsPictureInPicture="true"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"

@@ -74,8 +74,8 @@ switch ($mode) {
         # Tidak menyertakan --split-per-abi agar menghasilkan 1 file APK universal
     }
     "tv" {
-        Write-Host "[-] Menyiapkan target khusus Android TV (32-bit ARM, hemat penyimpanan & ringan)..." -ForegroundColor Yellow
-        $flutterArgs += @("--split-per-abi", "--target-platform", "android-arm")
+        Write-Host "[-] Menyiapkan target khusus Android TV (Universal ARM 32-bit & 64-bit kompatibel penuh)..." -ForegroundColor Yellow
+        $flutterArgs += @("--target-platform", "android-arm,android-arm64")
     }
     "mobile" {
         Write-Host "[-] Menyiapkan target khusus Ponsel Android Modern (64-bit ARM)..." -ForegroundColor Yellow
@@ -111,14 +111,20 @@ if ($LASTEXITCODE -ne 0) {
     Write-Error "Gagal melakukan build Flutter APK."
 }
 
-# Pastikan file Cineva_v{ver}-android-tv.apk tercipta dari armeabi-v7a jika ada
-$srcArmV7 = Join-Path $apkOutputDir "app-armeabi-v7a-release.apk"
-if (-not (Test-Path $srcArmV7)) {
-    $srcArmV7 = Join-Path $apkOutputDir "Cineva_v$appVersion-armeabi-v7a.apk"
+# Pastikan file Cineva_v{ver}-android-tv.apk tercipta dari app-release.apk (universal) atau varian ARM
+$srcTv = Join-Path $apkOutputDir "app-release.apk"
+if (-not (Test-Path $srcTv)) {
+    $srcTv = Join-Path $apkOutputDir "Cineva_v$appVersion.apk"
 }
-if (Test-Path $srcArmV7) {
+if (-not (Test-Path $srcTv)) {
+    $srcTv = Join-Path $apkOutputDir "app-arm64-v8a-release.apk"
+}
+if (-not (Test-Path $srcTv)) {
+    $srcTv = Join-Path $apkOutputDir "app-armeabi-v7a-release.apk"
+}
+if (Test-Path $srcTv) {
     $tvDest = Join-Path $apkOutputDir "Cineva_v$appVersion-android-tv.apk"
-    Copy-Item -Path $srcArmV7 -Destination $tvDest -Force
+    Copy-Item -Path $srcTv -Destination $tvDest -Force
 }
 
 Write-Host "[3/3] Memeriksa artefak APK yang dihasilkan..." -ForegroundColor Cyan

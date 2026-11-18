@@ -1,4 +1,5 @@
-# Flutter Wrapper
+# Flutter Wrapper & Main Activity
+-keep class com.primadev.cineva.MainActivity { *; }
 -keep class io.flutter.app.** { *; }
 -keep class io.flutter.plugin.** { *; }
 -keep class io.flutter.util.** { *; }

@@ -67,6 +67,10 @@ Pembaruan Cineva versi 1.1.8 menghadirkan **Relayout Responsif Modern untuk Tabl
 * **Floating In-App Mini-Player & Android Native PiP**:
   * Dukungan `MiniPlayerOverlay` yang memungkinkan video terus berputar dalam jendela melayang (*floating mini-player*) di sudut layar saat pengguna menjelajahi halaman lain di dalam aplikasi ketika diaktifkan melalui aksi PiP.
   * Integrasi *Picture-in-Picture* (PiP) bawaan Android untuk menonton video saat beralih ke aplikasi lain.
+* **Skala Subtitle Otomatis untuk Windows & Android TV (1080p/4K)**:
+  * Menghadirkan engine skala subtitle responsif cerdas (`is1080pOrHigherDesktopOrTv`) khusus untuk perangkat **Windows Desktop** dan **Android TV** yang berjalan pada resolusi 1080p atau lebih (1080p, 1440p, 4K, ultrawide).
+  * Subtitle diperbesar secara proporsional (~1.5x, dari standar 20pt ➔ 30pt), batas lebar maksimum diperluas hingga 1400px agar tidak mudah terpotong, garis tepi (*stroke outline*) dipertebal menjadi 6.5px untuk kontras maksimal di adegan terang, serta posisi vertikal dinaikkan agar pas di atas progress bar.
+  * Dirancang khusus untuk kenyamanan menonton santai dari sofa (*couch viewing distance* / jarak 2–3 meter). Perangkat Smartphone dan Tablet tetap mempertahankan ukuran teks standar yang presisi tanpa perubahan.
 
 ---
 

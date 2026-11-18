@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/platform/device_form_factor.dart';
 import '../../data/services/subtitle_service.dart';
 import '../providers/player_providers.dart';
 
@@ -276,6 +277,14 @@ class _SubtitleSettingsDialogState extends ConsumerState<SubtitleSettingsDialog>
   }
 
   Widget _buildStyleTab(dynamic style, dynamic notifier) {
+    final is1080pDesktopOrTv = is1080pOrHigherDesktopOrTv(context, isTv: gIsTv);
+    final previewFontSize = is1080pDesktopOrTv
+        ? (style.fontSize as double) * 1.5
+        : (style.fontSize as double);
+    final previewStrokeWidth = is1080pDesktopOrTv
+        ? (style.strokeWidth as double) * 1.3
+        : (style.strokeWidth as double);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
@@ -294,22 +303,22 @@ class _SubtitleSettingsDialogState extends ConsumerState<SubtitleSettingsDialog>
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  if (style.strokeWidth > 0)
+                  if (previewStrokeWidth > 0)
                     Text(
                       'Pratinjau Tampilan Subtitle Cineva',
                       style: TextStyle(
-                        fontSize: style.fontSize,
+                        fontSize: previewFontSize,
                         fontWeight: FontWeight.w700,
                         foreground: Paint()
                           ..style = PaintingStyle.stroke
-                          ..strokeWidth = style.strokeWidth * 2
+                          ..strokeWidth = previewStrokeWidth * 2
                           ..color = style.strokeColor,
                       ),
                     ),
                   Text(
                     'Pratinjau Tampilan Subtitle Cineva',
                     style: TextStyle(
-                      fontSize: style.fontSize,
+                      fontSize: previewFontSize,
                       fontWeight: FontWeight.w700,
                       color: style.textColor,
                     ),

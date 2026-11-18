@@ -4128,6 +4128,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Widget _buildSubtitleSettingsContent(AppStrings s, {Key? key}) {
     final style = ref.watch(subtitleStyleProvider);
     final notifier = ref.read(subtitleStyleProvider.notifier);
+    final is1080pDesktopOrTv = is1080pOrHigherDesktopOrTv(context, isTv: gIsTv);
+    final effectivePt = is1080pDesktopOrTv
+        ? (style.fontSize * 1.5).round()
+        : style.fontSize.round();
 
     return Column(
       key: key,
@@ -4417,7 +4421,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 _buildSubtitleSectionHeader(
                   icon: Icons.format_size_rounded,
                   title: s.isIndonesian ? 'Ukuran Font' : 'Font Size',
-                  valueLabel: '${style.fontSize.toInt()} pt',
+                  valueLabel: is1080pDesktopOrTv
+                      ? (s.isIndonesian
+                          ? '$effectivePt pt (1080p+ Aktif)'
+                          : '$effectivePt pt (1080p+ Active)')
+                      : '$effectivePt pt',
                 ),
                 const SizedBox(height: 10),
                 Row(

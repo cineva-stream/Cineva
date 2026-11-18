@@ -97,15 +97,17 @@ afterEvaluate {
 
         flutterApkDir.mkdirs()
 
-        // Mapping of source Gradle APK names to customized Cineva release filenames
+        // Mapping of source Gradle APK names to customized Cineva release filenames.
+        // Android TV build is mapped to universal app-release.apk (multi-ABI) ensuring 100% compatibility
+        // across modern 64-bit (arm64-v8a) and 32-bit (armeabi-v7a) Android TV / Google TV hardware.
         val apkMapping = mapOf(
             "app-arm64-v8a-release.apk" to listOf("Cineva_v${finalVersion}-arm64-v8a.apk"),
-            "app-armeabi-v7a-release.apk" to listOf(
-                "Cineva_v${finalVersion}-armeabi-v7a.apk",
-                "Cineva_v${finalVersion}-android-tv.apk"
-            ),
+            "app-armeabi-v7a-release.apk" to listOf("Cineva_v${finalVersion}-armeabi-v7a.apk"),
             "app-x86_64-release.apk" to listOf("Cineva_v${finalVersion}-x86_64.apk"),
-            "app-release.apk" to listOf("Cineva_v${finalVersion}.apk")
+            "app-release.apk" to listOf(
+                "Cineva_v${finalVersion}.apk",
+                "Cineva_v${finalVersion}-android-tv.apk"
+            )
         )
 
         val activeCustomNames = apkMapping.values.flatten().toSet()
@@ -142,6 +144,25 @@ afterEvaluate {
         if (generatedCount == 0) {
             println(" (No release APKs found to rename in ${gradleApkDir.name})")
         }
+
+        // Fallback: If Cineva_v{ver}-android-tv.apk was not generated (e.g. split-per-abi without app-release.apk),
+        // fallback to arm64-v8a or armeabi-v7a
+        val tvArtifact = File(flutterApkDir, "Cineva_v${finalVersion}-android-tv.apk")
+        if (!tvArtifact.exists()) {
+            val fallbackSource = listOf(
+                File(gradleApkDir, "app-arm64-v8a-release.apk"),
+                File(flutterApkDir, "app-arm64-v8a-release.apk"),
+                File(gradleApkDir, "app-armeabi-v7a-release.apk"),
+                File(flutterApkDir, "app-armeabi-v7a-release.apk")
+            ).firstOrNull { it.exists() }
+            if (fallbackSource != null) {
+                fallbackSource.copyTo(tvArtifact, overwrite = true)
+                val tvGradle = File(gradleApkDir, "Cineva_v${finalVersion}-android-tv.apk")
+                fallbackSource.copyTo(tvGradle, overwrite = true)
+                println(" -> ${tvArtifact.name} [fallback] (${tvArtifact.length() / (1024 * 1024)} MB)")
+            }
+        }
+
         println(" Target Output: ${flutterApkDir.absolutePath}")
         println("=======================================================\n")
     }

@@ -429,21 +429,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showFontSizeSheet(AppStrings s) {
+    final is1080pDesktopOrTv = is1080pOrHigherDesktopOrTv(context, isTv: gIsTv);
     final sizes = [
       {
         'val': 'Kecil',
         'label': s.isIndonesian ? 'Kecil' : 'Small',
-        'desc': s.isIndonesian ? 'Ukuran teks 16pt (Cocok untuk layar landscape luas)' : '16pt font size (Best for wide landscape screens)',
+        'desc': is1080pDesktopOrTv
+            ? (s.isIndonesian
+                ? 'Ukuran teks 24pt (Skala 1080p+ ringkas)'
+                : '24pt font size (1080p+ compact scale)')
+            : (s.isIndonesian
+                ? 'Ukuran teks 16pt (Cocok untuk layar landscape luas)'
+                : '16pt font size (Best for wide landscape screens)'),
       },
       {
         'val': 'Sedang',
         'label': s.isIndonesian ? 'Sedang' : 'Medium',
-        'desc': s.isIndonesian ? 'Ukuran teks 20pt (Standar nyaman untuk semua layar)' : '20pt font size (Standard comfortable size for all screens)',
+        'desc': is1080pDesktopOrTv
+            ? (s.isIndonesian
+                ? 'Ukuran teks 30pt (Standar ideal jarak sofa 1080p+)'
+                : '30pt font size (Ideal couch distance for 1080p+)')
+            : (s.isIndonesian
+                ? 'Ukuran teks 20pt (Standar nyaman untuk semua layar)'
+                : '20pt font size (Standard comfortable size for all screens)'),
       },
       {
         'val': 'Besar',
         'label': s.isIndonesian ? 'Besar' : 'Large',
-        'desc': s.isIndonesian ? 'Ukuran teks 24pt (Terlihat jelas dan mudah dibaca)' : '24pt font size (Clear and easily readable)',
+        'desc': is1080pDesktopOrTv
+            ? (s.isIndonesian
+                ? 'Ukuran teks 36pt (Besar dan sangat jelas jarak jauh)'
+                : '36pt font size (Large and ultra clear from distance)')
+            : (s.isIndonesian
+                ? 'Ukuran teks 24pt (Terlihat jelas dan mudah dibaca)'
+                : '24pt font size (Clear and easily readable)'),
       },
     ];
 

@@ -111,6 +111,47 @@ bool isWideScreenLayout(BuildContext context, {bool isTv = false}) {
   return false;
 }
 
+/// Checks whether the current device is a Windows PC or Android TV running at 1080p resolution or higher.
+///
+/// Specifically returns `false` for mobile smartphones and tablets so their subtitle size is preserved.
+///
+/// On Windows or Android TV:
+/// - Checks physical display resolution (width >= 1800 or height >= 1000)
+/// - Checks logical viewport resolution (width >= 1800 or height >= 1000)
+/// - Accommodates high-DPI scaling (125%, 150%, 200%), TV overscan, and window maximization.
+bool is1080pOrHigherDesktopOrTv(BuildContext context, {bool? isTv, bool? isWindows}) {
+  if (kIsWeb) return false;
+
+  final effectiveIsTv = isTv ?? gIsTelevision;
+  final effectiveIsWindows = isWindows ??
+      (!Platform.environment.containsKey('FLUTTER_TEST') && Platform.isWindows);
+
+  // Specifically restricted to Windows and Android TV
+  if (!effectiveIsWindows && !effectiveIsTv) {
+    return false;
+  }
+
+  final media = MediaQuery.maybeOf(context);
+  final size = media?.size ?? Size.zero;
+  final dpr = media?.devicePixelRatio ?? 1.0;
+
+  final physicalWidth = size.width * dpr;
+  final physicalHeight = size.height * dpr;
+
+  final view = View.maybeOf(context);
+  final viewPhysicalWidth = view?.physicalSize.width ?? physicalWidth;
+  final viewPhysicalHeight = view?.physicalSize.height ?? physicalHeight;
+
+  // 1080p standard is 1920x1080 (or higher: 1440p, 4K, ultrawide).
+  // Use 1800 x 1000 threshold to safely distinguish 1080p+ from 720p (1280x720).
+  return physicalWidth >= 1800 ||
+      physicalHeight >= 1000 ||
+      viewPhysicalWidth >= 1800 ||
+      viewPhysicalHeight >= 1000 ||
+      size.width >= 1800 ||
+      size.height >= 1000;
+}
+
 /// Context helper to resolve the effective form factor based on screen width & TV mode.
 DeviceFormFactor resolveFormFactor(BuildContext context, {required bool isTv}) {
   if (isTv || gIsTelevision) return DeviceFormFactor.tv;
