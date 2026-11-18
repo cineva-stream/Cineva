@@ -302,12 +302,47 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   late String? _currentEpisodeTitle =
       widget.episodeTitle ??
       (widget.episode != null ? 'Episode ${widget.episode}' : null);
+  late String? _currentEpisodeName = _cleanEpisodeName(widget.episodeTitle);
   late String? _currentLocalVideoPath = widget.localVideoPath;
   late String? _currentLocalSubtitlePath = widget.localSubtitlePath;
   late int? _initialPositionMs = widget.initialPositionMs;
   late String? _currentOverview = widget.overview;
   late String? _currentBackdropPath = widget.backdropPath;
   late String? _currentPosterPath = widget.posterPath;
+
+  static String _cleanEpisodeName(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '';
+    var cleaned = raw.trim();
+    cleaned = cleaned.replaceFirst(
+      RegExp(r'^S\d+\s*:\s*E\d+\s*[-:•]?\s*', caseSensitive: false),
+      '',
+    );
+    cleaned = cleaned.replaceFirst(
+      RegExp(
+        r'^Season\s+\d+\s*(?:[-:•]\s*)?Episode\s+\d+\s*[-:•]?\s*',
+        caseSensitive: false,
+      ),
+      '',
+    );
+    cleaned = cleaned.replaceFirst(
+      RegExp(r'^Episode\s+\d+\s*[-:•]?\s*', caseSensitive: false),
+      '',
+    );
+    if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+      cleaned = cleaned.substring(1, cleaned.length - 1).trim();
+    }
+    if (RegExp(r'^\d+$').hasMatch(cleaned)) return '';
+    return cleaned.trim();
+  }
+
+  String get _formattedEpisodeSubtitle {
+    final base = 'Season $_currentSeason - Episode $_currentEpisode';
+    final name = _currentEpisodeName?.trim();
+    if (name != null && name.isNotEmpty) {
+      return '$base ($name)';
+    }
+    return base;
+  }
 
   @override
   void initState() {
@@ -886,7 +921,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Future<void> _fetchOverviewIfNeeded() async {
-    if (_currentOverview != null && _currentOverview!.trim().isNotEmpty) return;
+    final isTv = _currentSeason != null || _currentEpisode != null;
+    final needsTvEpInfo = isTv &&
+        (_currentEpisodeName == null || _currentEpisodeName!.trim().isEmpty);
+    if (!needsTvEpInfo &&
+        _currentOverview != null &&
+        _currentOverview!.trim().isNotEmpty) {
+      return;
+    }
     final tmdbId = widget.tmdbId ?? _currentTmdbId;
     if (tmdbId == null || tmdbId == 0) return;
 
@@ -912,6 +954,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               if (epName != null && epName.isNotEmpty) {
                 _currentEpisodeTitle =
                     'S$_currentSeason:E$_currentEpisode $epName';
+                _currentEpisodeName = epName.trim();
               }
               if (epStill != null && epStill.isNotEmpty) {
                 _currentBackdropPath = epStill;
@@ -3213,6 +3256,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // Advance episode state immediately
     _currentEpisode = nextEp;
     _currentEpisodeTitle = 'Episode $nextEp';
+    _currentEpisodeName = null;
     _currentOverview = null;
     _fetchOverviewIfNeeded();
 
@@ -7105,9 +7149,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 imdbId: widget.imdbId,
                 season: _currentSeason,
                 episode: _currentEpisode,
-                episodeTitle: _currentEpisodeTitle ?? widget.episodeTitle,
-                posterPath: widget.posterPath,
-                backdropPath: widget.backdropPath,
+                episodeTitle: (_currentEpisodeName != null &&
+                        _currentEpisodeName!.isNotEmpty)
+                    ? _currentEpisodeName
+                    : (_currentEpisodeTitle ?? widget.episodeTitle),
+                posterPath: _currentPosterPath ?? widget.posterPath,
+                backdropPath: _currentBackdropPath ?? widget.backdropPath,
               ),
             );
           }
@@ -7201,12 +7248,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        'Season $_currentSeason • Episode $_currentEpisode',
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: Text(
+                          _formattedEpisodeSubtitle,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (!_useNativePlayer) ...[
@@ -7253,7 +7304,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ),
 
-          // 1. In-App Mini-Player / Native PiP Button
+          // 1. Watch Party (Nonton Bareng) Button - Placed immediately to the left of PiP button
+          _buildWatchPartyTopBarButton(s),
+
+          // 2. In-App Mini-Player / Native PiP Button
           if (_useNativePlayer && !_isLoading && !_streamNotFound)
             _buildTopBarIconButton(
               icon: Icons.picture_in_picture_alt_rounded,
@@ -7261,10 +7315,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               onTap: _handlePipAction,
             ),
 
-          // 2. Sleep Timer Toggle
+          // 3. Sleep Timer Toggle
           _buildSleepTimerTopBarButton(s),
 
-          // 3. Screen Lock Button
+          // 4. Screen Lock Button
           _buildTopBarIconButton(
             icon: _isScreenLocked
                 ? Icons.lock_rounded
@@ -7273,22 +7327,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             onTap: _lockScreen,
           ),
 
-          // 4. Side Panel Settings & Features Hub Toggle
+          // 5. Side Panel Settings & Features Hub Toggle
           _buildTopBarIconButton(
             icon: Iconsax.setting_2,
             isActive: _isSidePanelOpen && _sidePanelPage != _SidePanelPage.info,
             onTap: () => _toggleSidePanel(_SidePanelPage.main),
           ),
 
-          // 5. Side Panel Info Hub Toggle
+          // 6. Side Panel Info Hub Toggle
           _buildTopBarIconButton(
             icon: Iconsax.info_circle,
             isActive: _isSidePanelOpen && _sidePanelPage == _SidePanelPage.info,
             onTap: () => _toggleSidePanel(_SidePanelPage.info),
           ),
-
-          // 6. Watch Party (Nonton Bareng) Button
-          _buildWatchPartyTopBarButton(s),
 
           if (!kIsWeb &&
               !Platform.environment.containsKey('FLUTTER_TEST') &&

@@ -182,5 +182,83 @@ void main() {
       expect(guestStateUnlocked.canControlVideo, isTrue);
     });
   });
+
+  group('TV Series Episode Subtitle & Formatting Helper Tests', () {
+    String cleanEpisodeName(String? raw) {
+      if (raw == null || raw.trim().isEmpty) return '';
+      var cleaned = raw.trim();
+      cleaned = cleaned.replaceFirst(
+        RegExp(r'^S\d+\s*:\s*E\d+\s*[-:•]?\s*', caseSensitive: false),
+        '',
+      );
+      cleaned = cleaned.replaceFirst(
+        RegExp(
+          r'^Season\s+\d+\s*(?:[-:•]\s*)?Episode\s+\d+\s*[-:•]?\s*',
+          caseSensitive: false,
+        ),
+        '',
+      );
+      cleaned = cleaned.replaceFirst(
+        RegExp(r'^Episode\s+\d+\s*[-:•]?\s*', caseSensitive: false),
+        '',
+      );
+      if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+        cleaned = cleaned.substring(1, cleaned.length - 1).trim();
+      }
+      if (RegExp(r'^\d+$').hasMatch(cleaned)) return '';
+      return cleaned.trim();
+    }
+
+    String formattedEpisodeSubtitle(int season, int episode, String? episodeTitle) {
+      final base = 'Season $season - Episode $episode';
+      final epName = cleanEpisodeName(episodeTitle);
+      if (epName.isNotEmpty) {
+        return '$base ($epName)';
+      }
+      return base;
+    }
+
+    test('Formats TV episode subtitle with episode name correctly', () {
+      expect(
+        formattedEpisodeSubtitle(3, 10, 'True Crime'),
+        'Season 3 - Episode 10 (True Crime)',
+      );
+      expect(
+        formattedEpisodeSubtitle(3, 10, 'S3:E10 True Crime'),
+        'Season 3 - Episode 10 (True Crime)',
+      );
+      expect(
+        formattedEpisodeSubtitle(3, 10, 'Season 3 Episode 10 (True Crime)'),
+        'Season 3 - Episode 10 (True Crime)',
+      );
+      expect(
+        formattedEpisodeSubtitle(1, 1, 'Pilot'),
+        'Season 1 - Episode 1 (Pilot)',
+      );
+    });
+
+    test('Omits parentheses when episodeTitle contains no distinct name', () {
+      expect(
+        formattedEpisodeSubtitle(3, 10, null),
+        'Season 3 - Episode 10',
+      );
+      expect(
+        formattedEpisodeSubtitle(3, 10, ''),
+        'Season 3 - Episode 10',
+      );
+      expect(
+        formattedEpisodeSubtitle(3, 10, 'Episode 10'),
+        'Season 3 - Episode 10',
+      );
+      expect(
+        formattedEpisodeSubtitle(3, 10, 'Season 3 Episode 10'),
+        'Season 3 - Episode 10',
+      );
+      expect(
+        formattedEpisodeSubtitle(3, 10, '10'),
+        'Season 3 - Episode 10',
+      );
+    });
+  });
 }
 

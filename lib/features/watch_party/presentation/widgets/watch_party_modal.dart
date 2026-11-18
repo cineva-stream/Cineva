@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -275,6 +276,8 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
                   ),
                   child: TabBar(
                     controller: _tabController,
+                    dividerColor: Colors.transparent,
+                    dividerHeight: 0,
                     indicator: BoxDecoration(
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(12),
@@ -376,69 +379,94 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: SizedBox(
-                    width: 44,
-                    height: 64,
-                    child: (media.posterPath != null &&
-                            media.posterPath!.isNotEmpty)
-                        ? Image.network(
-                            '${ApiConstants.tmdbImageBaseUrl}${media.posterPath}',
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => Container(
-                              color: AppColors.surfaceVariant,
-                              child: const Icon(Icons.movie_rounded,
-                                  color: AppColors.textSecondary),
+            child: Builder(
+              builder: (context) {
+                final imageUrl = _resolveImageUrl(media);
+                final episodeSubtitle = _formattedEpisodeSubtitle(media);
+
+                return Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(
+                        width: 44,
+                        height: 64,
+                        child: imageUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: imageUrl,
+                                fit: BoxFit.cover,
+                                placeholder: (_, _) => Container(
+                                  color: AppColors.surfaceVariant,
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                errorWidget: (_, _, _) => Container(
+                                  color: AppColors.surfaceVariant,
+                                  child: const Icon(
+                                    Icons.movie_rounded,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              )
+                            : Container(
+                                color: AppColors.surfaceVariant,
+                                child: const Icon(
+                                  Icons.movie_rounded,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            media.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
                             ),
-                          )
-                        : Container(
-                            color: AppColors.surfaceVariant,
-                            child: const Icon(Icons.movie_rounded,
-                                color: AppColors.textSecondary),
                           ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        media.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      if (media.episode != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          'Season ${media.season ?? 1} • Episode ${media.episode}',
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                          if (media.episode != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              episodeSubtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 2),
+                          Text(
+                            media.mediaType == 'tv' ? 'Serial TV' : 'Film',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                            ),
                           ),
-                        ),
-                      ],
-                      const SizedBox(height: 2),
-                      Text(
-                        media.mediaType == 'tv' ? 'Serial TV' : 'Film',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                  ],
+                );
+              },
             ),
           ),
 
@@ -698,6 +726,56 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
         ],
       ),
     );
+  }
+
+  String? _resolveImageUrl(WatchPartyMedia media) {
+    final p = media.posterPath?.trim();
+    final b = media.backdropPath?.trim();
+    if (p != null && p.isNotEmpty) {
+      return p.startsWith('http')
+          ? p
+          : ApiConstants.imageUrl(p, size: ApiConstants.posterMedium);
+    }
+    if (b != null && b.isNotEmpty) {
+      return b.startsWith('http')
+          ? b
+          : ApiConstants.imageUrl(b, size: ApiConstants.backdropSmall);
+    }
+    return null;
+  }
+
+  String _formattedEpisodeSubtitle(WatchPartyMedia media) {
+    final base = 'Season ${media.season ?? 1} - Episode ${media.episode}';
+    final epName = _cleanEpisodeName(media.episodeTitle);
+    if (epName.isNotEmpty) {
+      return '$base ($epName)';
+    }
+    return base;
+  }
+
+  String _cleanEpisodeName(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '';
+    var cleaned = raw.trim();
+    cleaned = cleaned.replaceFirst(
+      RegExp(r'^S\d+\s*:\s*E\d+\s*[-:•]?\s*', caseSensitive: false),
+      '',
+    );
+    cleaned = cleaned.replaceFirst(
+      RegExp(
+        r'^Season\s+\d+\s*(?:[-:•]\s*)?Episode\s+\d+\s*[-:•]?\s*',
+        caseSensitive: false,
+      ),
+      '',
+    );
+    cleaned = cleaned.replaceFirst(
+      RegExp(r'^Episode\s+\d+\s*[-:•]?\s*', caseSensitive: false),
+      '',
+    );
+    if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+      cleaned = cleaned.substring(1, cleaned.length - 1).trim();
+    }
+    if (RegExp(r'^\d+$').hasMatch(cleaned)) return '';
+    return cleaned.trim();
   }
 }
 
