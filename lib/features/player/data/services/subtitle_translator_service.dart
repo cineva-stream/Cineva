@@ -213,6 +213,377 @@ class SubtitleTranslatorService {
     );
   }
 
+  /// Matches the casing of [original] onto [replacement]:
+  /// - If [original] is ALL CAPS -> [replacement] is uppercase
+  /// - If [original] is TitleCase / Capitalized -> [replacement] is capitalized
+  /// - Otherwise -> [replacement] is lowercase
+  static String _matchCase(String original, String replacement) {
+    if (original.isEmpty || replacement.isEmpty) return replacement;
+
+    final hasLetters = RegExp(r'[A-Za-z]').hasMatch(original);
+    if (hasLetters && original == original.toUpperCase()) {
+      return replacement.toUpperCase();
+    }
+
+    final firstLetterMatch = RegExp(r'[A-Za-z]').firstMatch(original);
+    if (firstLetterMatch != null) {
+      final firstChar = firstLetterMatch.group(0)!;
+      if (firstChar == firstChar.toUpperCase() && firstChar != firstChar.toLowerCase()) {
+        final prefix = original.substring(0, firstLetterMatch.start);
+        return '$prefix${replacement[0].toUpperCase()}${replacement.substring(1)}';
+      }
+    }
+
+    return replacement.toLowerCase();
+  }
+
+  /// Ordered rulebook for the Cinematic NLP Post-Processing Engine:
+  /// Transforms stiff, literal machine translations into natural film conversational dialogue.
+  static final List<({RegExp pattern, String replacement})> _cinematicRules = [
+    // --- 1. POLICE, ACTION & CRIME SHOWS (The Rookie, SWAT, FBI, Chicago PD) ---
+    (
+      pattern: RegExp(r'\b(salin itu|salinan itu)\b', caseSensitive: false),
+      replacement: 'dimengerti',
+    ),
+    (
+      pattern: RegExp(r'\b(tahan apimu|pegang apimu|tahan tembakanmu)\b', caseSensitive: false),
+      replacement: 'tahan tembakan',
+    ),
+    (
+      pattern: RegExp(r'\b(tembak sesuka hati)\b', caseSensitive: false),
+      replacement: 'bebas menembak',
+    ),
+    (
+      pattern: RegExp(r'\b(tembakan dilepaskan|tembakan dilepas)\b', caseSensitive: false),
+      replacement: 'ada tembakan',
+    ),
+    (
+      pattern: RegExp(r'\b(pria jatuh|orang jatuh)\b', caseSensitive: false),
+      replacement: 'ada korban jatuh',
+    ),
+    (
+      pattern: RegExp(r'\b(butuh cadangan|membutuhkan cadangan)\b', caseSensitive: false),
+      replacement: 'butuh bantuan',
+    ),
+    (
+      pattern: RegExp(r'\b(tersangka dalam tahanan)\b', caseSensitive: false),
+      replacement: 'tersangka sudah diamankan',
+    ),
+    (
+      pattern: RegExp(r'\b(tersangka melarikan diri|pelaku melarikan diri)\b', caseSensitive: false),
+      replacement: 'tersangka kabur',
+    ),
+    (
+      pattern: RegExp(r'\b(angkat kedua tanganmu|angkat tanganmu)\b', caseSensitive: false),
+      replacement: 'angkat tangan',
+    ),
+    (
+      pattern: RegExp(r'\b(jatuhkan senjatamu|taruh senjatamu)\b', caseSensitive: false),
+      replacement: 'jatuhkan senjatamu',
+    ),
+    (
+      pattern: RegExp(r'\b(jangan bergerak|jangan berpindah)\b', caseSensitive: false),
+      replacement: 'jangan bergerak',
+    ),
+    (
+      pattern: RegExp(r'\b(tetap di belakang|berdiri di belakang)\b', caseSensitive: false),
+      replacement: 'jangan mendekat',
+    ),
+    (
+      pattern: RegExp(r'\b(tetaplah di sana|tetap di sana)\b', caseSensitive: false),
+      replacement: 'tetap di tempatmu',
+    ),
+    (
+      pattern: RegExp(r'\b(dalam perjalanan saya|dalam perjalanan kita)\b', caseSensitive: false),
+      replacement: 'aku segera ke sana',
+    ),
+    (
+      pattern: RegExp(r'\b(semua bersih|semuanya bersih)\b', caseSensitive: false),
+      replacement: 'area aman',
+    ),
+    (
+      pattern: RegExp(r'\b(kamar darurat|ruang darurat)\b', caseSensitive: false),
+      replacement: 'ruang gawat darurat',
+    ),
+    (
+      pattern: RegExp(r'\b(adegan kejahatan)\b', caseSensitive: false),
+      replacement: 'TKP',
+    ),
+    (
+      pattern: RegExp(r'\b(panggilan darurat 911|panggilan 911)\b', caseSensitive: false),
+      replacement: 'panggilan darurat',
+    ),
+    (
+      pattern: RegExp(r'\b(tiarap di lantai|ke lantai sekarang|di lantai sekarang)\b', caseSensitive: false),
+      replacement: 'tiarap',
+    ),
+
+    // --- 2. ENGLISH IDIOMS LITERALLY TRANSLATED BY GTX ---
+    (
+      pattern: RegExp(r'\b(punya punggungmu|memiliki punggungmu|dapat punggungmu|menjaga punggungmu)\b', caseSensitive: false),
+      replacement: 'melindungimu',
+    ),
+    (
+      pattern: RegExp(r'\b(punya punggungku|memiliki punggungku|dapat punggungku|menjaga punggungku)\b', caseSensitive: false),
+      replacement: 'melindungiku',
+    ),
+    (
+      pattern: RegExp(r'\b(punya punggung kita|memiliki punggung kita)\b', caseSensitive: false),
+      replacement: 'melindungi kita',
+    ),
+    (
+      pattern: RegExp(r'\b(beri aku istirahat|berikan aku istirahat)\b', caseSensitive: false),
+      replacement: 'yang benar saja',
+    ),
+    (
+      pattern: RegExp(r'\b(kepala ke atas|kepala di atas)\b', caseSensitive: false),
+      replacement: 'awas',
+    ),
+    (
+      pattern: RegExp(r'\b(sebut itu sehari|menyebutnya sehari|sebutlah sehari)\b', caseSensitive: false),
+      replacement: 'cukup untuk hari ini',
+    ),
+    (
+      pattern: RegExp(r'\b(bukan sepotong kue)\b', caseSensitive: false),
+      replacement: 'tidak mudah',
+    ),
+    (
+      pattern: RegExp(r'\b(sepotong kue)\b', caseSensitive: false),
+      replacement: 'sangat mudah',
+    ),
+    (
+      pattern: RegExp(r'\b(gigit peluru|menggigit peluru)\b', caseSensitive: false),
+      replacement: 'hadapi saja',
+    ),
+    (
+      pattern: RegExp(r'\b(keluar dari pertanyaan)\b', caseSensitive: false),
+      replacement: 'mustahil',
+    ),
+    (
+      pattern: RegExp(r'\b(berada di perahu yang sama|di perahu yang sama|berada di kapal yang sama|di kapal yang sama)\b', caseSensitive: false),
+      replacement: 'senasib',
+    ),
+    (
+      pattern: RegExp(r'\b(di bawah cuaca)\b', caseSensitive: false),
+      replacement: 'kurang enak badan',
+    ),
+    (
+      pattern: RegExp(r'\b(hanya tarik kakimu|hanya menarik kakimu|tarik kakimu|menarik kakimu)\b', caseSensitive: false),
+      replacement: 'hanya bercanda',
+    ),
+    (
+      pattern: RegExp(r'\b(kehilangan akalmu|kehilangan kepalamu)\b', caseSensitive: false),
+      replacement: 'kehilangan akal sehat',
+    ),
+    (
+      pattern: RegExp(r'\b(buat pikiranmu|membuat pikiranmu)\b', caseSensitive: false),
+      replacement: 'tentukan pilihanmu',
+    ),
+    (
+      pattern: RegExp(r'\b(ujung gunung es)\b', caseSensitive: false),
+      replacement: 'puncak gunung es',
+    ),
+    (
+      pattern: RegExp(r'\b(tetesan terakhir|sedotan terakhir)\b', caseSensitive: false),
+      replacement: 'batas kesabaran',
+    ),
+    (
+      pattern: RegExp(r'\b(memotong sudut)\b', caseSensitive: false),
+      replacement: 'mengambil jalan pintas',
+    ),
+    (
+      pattern: RegExp(r'\b(dalam kulit kacang|singkatnya dalam cangkang)\b', caseSensitive: false),
+      replacement: 'singkatnya',
+    ),
+    (
+      pattern: RegExp(r'\b(tangan ke bawah)\b', caseSensitive: false),
+      replacement: 'tanpa ragu',
+    ),
+
+    // --- 3. CONVERSATIONAL SMOOTHING (Film Dialogue) ---
+    (
+      pattern: RegExp(r'\b(apa yang sedang kau bicarakan|apa yang sedang kamu bicarakan|apa yang kau bicarakan|apa yang kamu bicarakan)\b', caseSensitive: false),
+      replacement: 'kau bicara apa',
+    ),
+    (
+      pattern: RegExp(r'\b(apa yang sedang terjadi)\b', caseSensitive: false),
+      replacement: 'apa yang terjadi',
+    ),
+    (
+      pattern: RegExp(r'\b(apa yang kau maksudkan|apa yang kamu maksudkan|apa yang kau maksud|apa yang kamu maksud)\b', caseSensitive: false),
+      replacement: 'apa maksudmu',
+    ),
+    (
+      pattern: RegExp(r'\b(di sanalah kau berada|di sanalah kamu berada|di sana kau berada|di sana kamu berada)\b', caseSensitive: false),
+      replacement: 'rupanya kau di sana',
+    ),
+    (
+      pattern: RegExp(r'\b(apa yang kau tunggu|apa yang kamu tunggu)\b', caseSensitive: false),
+      replacement: 'tunggu apa lagi',
+    ),
+    (
+      pattern: RegExp(r'\b(aku tidak berpikir begitu|aku tak berpikir begitu|saya tidak berpikir begitu)\b', caseSensitive: false),
+      replacement: 'kurasa tidak',
+    ),
+    (
+      pattern: RegExp(r'\b(aku pikir begitu|aku rasa begitu|saya pikir begitu)\b', caseSensitive: false),
+      replacement: 'kurasa begitu',
+    ),
+    (
+      pattern: RegExp(r'\b(aku pikir bahwa|aku berpikir bahwa|saya pikir bahwa)\b', caseSensitive: false),
+      replacement: 'kurasa',
+    ),
+    (
+      pattern: RegExp(r'\b(aku pikir|aku berpikir|saya pikir)\b', caseSensitive: false),
+      replacement: 'kurasa',
+    ),
+    (
+      pattern: RegExp(r'\b(itu tidak masuk akal|itu tak masuk akal)\b', caseSensitive: false),
+      replacement: 'tak masuk akal',
+    ),
+    (
+      pattern: RegExp(r'\b(tidak masuk akal)\b', caseSensitive: false),
+      replacement: 'tak masuk akal',
+    ),
+    (
+      pattern: RegExp(r'\b(itu masuk akal)\b', caseSensitive: false),
+      replacement: 'masuk akal',
+    ),
+    (
+      pattern: RegExp(r'\b(itu tidak apa-apa|itu tak apa-apa)\b', caseSensitive: false),
+      replacement: 'tak apa',
+    ),
+    (
+      pattern: RegExp(r'\b(tidak apa-apa|tidak apa apa)\b', caseSensitive: false),
+      replacement: 'tak apa',
+    ),
+    (
+      pattern: RegExp(r'\b(jangan khawatir tentang itu|jangan khawatir tentang hal itu)\b', caseSensitive: false),
+      replacement: 'jangan khawatir',
+    ),
+    (
+      pattern: RegExp(r'\b(jangan khawatirkan aku|jangan khawatir tentang aku)\b', caseSensitive: false),
+      replacement: 'jangan cemaskan aku',
+    ),
+    (
+      pattern: RegExp(r'\b(aku harus pergi sekarang|saya harus pergi sekarang)\b', caseSensitive: false),
+      replacement: 'aku harus pergi',
+    ),
+    (
+      pattern: RegExp(r'\b(mari kita lakukan ini|ayo kita lakukan ini)\b', caseSensitive: false),
+      replacement: 'ayo kita mulai',
+    ),
+    (
+      pattern: RegExp(r'\b(tunggu satu menit|tunggu sebentar satu menit)\b', caseSensitive: false),
+      replacement: 'tunggu sebentar',
+    ),
+    (
+      pattern: RegExp(r'\b(tidak ada cara|tidak ada jalan)\b', caseSensitive: false),
+      replacement: 'mustahil',
+    ),
+    (
+      pattern: RegExp(r'\b(kamu dipersilakan|kau dipersilakan|anda dipersilakan)\b', caseSensitive: false),
+      replacement: 'sama-sama',
+    ),
+    (
+      pattern: RegExp(r'\b(aku tidak sabar menunggu|aku tak sabar menunggu)\b', caseSensitive: false),
+      replacement: 'aku tak sabar',
+    ),
+    (
+      pattern: RegExp(r'\b(aku tidak sabar untuk|aku tak sabar untuk)\b', caseSensitive: false),
+      replacement: 'aku tak sabar ingin',
+    ),
+    (
+      pattern: RegExp(r'\b(aku tidak peduli tentang itu|aku tidak peduli tentang hal itu)\b', caseSensitive: false),
+      replacement: 'aku tak peduli soal itu',
+    ),
+    (
+      pattern: RegExp(r'\b(hati-hati di luar sana)\b', caseSensitive: false),
+      replacement: 'hati-hati di sana',
+    ),
+
+    // --- 4. EXCLAMATIONS, SWEARING & EMOTIONAL DIALOGUE ---
+    (
+      pattern: RegExp(r'\b(apa neraka|apa-apaan ini)\b', caseSensitive: false),
+      replacement: 'apa-apaan ini',
+    ),
+    (
+      pattern: RegExp(r'\b(persetan denganmu|sekrup kamu|sekrup kau)\b', caseSensitive: false),
+      replacement: 'persetan denganmu',
+    ),
+    (
+      pattern: RegExp(r'\b(anak jalang)\b', caseSensitive: false),
+      replacement: 'brengsek',
+    ),
+    (
+      pattern: RegExp(r'\b(sialan itu)\b', caseSensitive: false),
+      replacement: 'sialan',
+    ),
+    (
+      pattern: RegExp(r'\b(demi tuhan saya|demi tuhan)\b', caseSensitive: false),
+      replacement: 'demi Tuhan',
+    ),
+    (
+      pattern: RegExp(r'\b(oh tuhan saya|oh tuhan)\b', caseSensitive: false),
+      replacement: 'ya Tuhan',
+    ),
+    (
+      pattern: RegExp(r'\b(ya tuhan saya)\b', caseSensitive: false),
+      replacement: 'ya Tuhan',
+    ),
+
+    // --- 5. STIFF CONNECTORS & CLUNKY FILLERS ---
+    (
+      pattern: RegExp(r'\b(oleh karena itu)\b', caseSensitive: false),
+      replacement: 'karena itu',
+    ),
+    (
+      pattern: RegExp(r'\b(pada saat ini)\b', caseSensitive: false),
+      replacement: 'saat ini',
+    ),
+    (
+      pattern: RegExp(r'\b(di dalam rangka)\b', caseSensitive: false),
+      replacement: 'untuk',
+    ),
+    (
+      pattern: RegExp(r'\b(sehubungan dengan)\b', caseSensitive: false),
+      replacement: 'soal',
+    ),
+    (
+      pattern: RegExp(r'\b(melakukan hal itu)\b', caseSensitive: false),
+      replacement: 'melakukannya',
+    ),
+    (
+      pattern: RegExp(r'\b(mengatakan hal itu)\b', caseSensitive: false),
+      replacement: 'mengatakannya',
+    ),
+    (
+      pattern: RegExp(r'\b(melihat hal itu)\b', caseSensitive: false),
+      replacement: 'melihatnya',
+    ),
+  ];
+
+  /// Transforms stiff, literal machine-translated Indonesian text into crisp,
+  /// natural conversational cinema dialogue (Lebah Ganteng / Netflix ID style).
+  ///
+  /// - Normalizes literal idioms (e.g., "punya punggungmu" -> "melindungimu", "beri aku istirahat" -> "yang benar saja")
+  /// - Smooths stiff robotic phrasing (e.g., "aku tidak berpikir begitu" -> "kurasa tidak")
+  /// - Enhances police, crime and action show dialogue (e.g., "salin itu" -> "dimengerti", "pegang apimu" -> "tahan tembakan")
+  /// - Preserves case (TitleCase, lowercase, UPPERCASE) and sentence flow seamlessly.
+  static String applyCinematicIndonesianNaturalizer(String text) {
+    if (text.isEmpty) return text;
+
+    var result = text;
+    for (final rule in _cinematicRules) {
+      result = result.replaceAllMapped(rule.pattern, (match) {
+        final original = match.group(0)!;
+        return _matchCase(original, rule.replacement);
+      });
+    }
+
+    return result;
+  }
+
   /// Normalizes spaced single letters with dots, e.g. "l. a. p. d." -> "l.a.p.d." or "i. a." -> "i.a."
   static String _normalizeSpacedAbbreviations(String text) {
     if (text.isEmpty) return text;
@@ -273,7 +644,7 @@ class SubtitleTranslatorService {
 
     // Indonesian Security & Government Agencies
     'POLRI', 'TNI', 'KPK', 'BNN', 'BMKG', 'BPBD', 'BASARNAS', 'BIN',
-    'POLDA', 'POLRES', 'POLSEK',
+    'POLDA', 'POLRES', 'POLSEK', 'TKP',
 
     // Medical & Emergency
     'EMS', 'EMT', 'CPR', 'ICU', 'UGD', 'IGD', 'EKG', 'ECG', 'MRI',
@@ -364,7 +735,11 @@ class SubtitleTranslatorService {
   static String smartFormatIndonesianSubtitle(String text) {
     if (text.isEmpty) return text;
 
-    final lines = text.split('\n');
+    // 1. Naturalize stiff literal machine phrases into cinematic dialogue
+    final naturalized = applyCinematicIndonesianNaturalizer(text);
+
+    // 2. Format line by line: casing, abbreviations, sentence starts, acronyms
+    final lines = naturalized.split('\n');
     final formattedLines = lines.map(_formatSingleLine).toList();
     return formattedLines.join('\n');
   }

@@ -28,8 +28,8 @@ class DownloadSubtitlePipeline {
   DownloadSubtitlePipeline({
     SubtitleService? subtitleService,
     SubtitleTranslatorService? translatorService,
-  })  : _subtitleService = subtitleService ?? SubtitleService(),
-        _translatorService = translatorService ?? SubtitleTranslatorService();
+  }) : _subtitleService = subtitleService ?? SubtitleService(),
+       _translatorService = translatorService ?? SubtitleTranslatorService();
 
   /// Converts a list of SubtitleCues back to standard SRT format.
   static String cuesToSrt(List<SubtitleCue> cues) {
@@ -37,7 +37,9 @@ class DownloadSubtitlePipeline {
     for (int i = 0; i < cues.length; i++) {
       final cue = cues[i];
       sb.writeln('${i + 1}');
-      sb.writeln('${_formatDuration(cue.start)} --> ${_formatDuration(cue.end)}');
+      sb.writeln(
+        '${_formatDuration(cue.start)} --> ${_formatDuration(cue.end)}',
+      );
       sb.writeln(cue.text);
       sb.writeln();
     }
@@ -53,7 +55,10 @@ class DownloadSubtitlePipeline {
   }
 
   /// Finds stream subtitle URI from master playlist if available.
-  Future<String?> _findStreamSubtitleUri(String masterPlaylistUrl, String langCode) async {
+  Future<String?> _findStreamSubtitleUri(
+    String masterPlaylistUrl,
+    String langCode,
+  ) async {
     if (masterPlaylistUrl.isEmpty) return null;
     try {
       final client = HttpClient();
@@ -70,7 +75,8 @@ class DownloadSubtitlePipeline {
           final langMatch = RegExp(r'LANGUAGE="([^"]+)"').firstMatch(trimmed);
           final nameMatch = RegExp(r'NAME="([^"]+)"').firstMatch(trimmed);
 
-          final subLang = (langMatch?.group(1) ?? nameMatch?.group(1) ?? '').toLowerCase();
+          final subLang = (langMatch?.group(1) ?? nameMatch?.group(1) ?? '')
+              .toLowerCase();
           bool matches = false;
           if (langCode == 'id') {
             matches = subLang.contains('id') || subLang.contains('ind');
@@ -87,7 +93,9 @@ class DownloadSubtitlePipeline {
         }
       }
     } catch (e) {
-      debugPrint('[DownloadSubtitlePipeline] Stream subtitle inspection note: $e');
+      debugPrint(
+        '[DownloadSubtitlePipeline] Stream subtitle inspection note: $e',
+      );
     }
     return null;
   }
@@ -114,21 +122,30 @@ class DownloadSubtitlePipeline {
     try {
       // 0. If user explicitly picked a subtitle track from the bottom sheet:
       if (selectedSubtitle != null) {
-        onProgress?.call(0.2, 'Mengunduh subtitle ${selectedSubtitle.languageName}...');
-        final downloadUrl = (selectedSubtitle.downloadUrl != null &&
+        onProgress?.call(
+          0.2,
+          'Mengunduh subtitle ${selectedSubtitle.languageName}...',
+        );
+        final downloadUrl =
+            (selectedSubtitle.downloadUrl != null &&
                 selectedSubtitle.downloadUrl!.isNotEmpty)
             ? selectedSubtitle.downloadUrl
             : await _subtitleService.getDownloadUrl(selectedSubtitle.id);
 
         if (downloadUrl != null && downloadUrl.isNotEmpty) {
-          final content = await _subtitleService.downloadSubtitleContent(downloadUrl);
+          final content = await _subtitleService.downloadSubtitleContent(
+            downloadUrl,
+          );
           if (content != null && content.isNotEmpty) {
             final cues = SubtitleCue.parseSrt(content);
             if (cues.isNotEmpty) {
               final srcLang = selectedSubtitle.language.toLowerCase().trim();
               final dstLang = targetTranslateLang.toLowerCase().trim();
               final needsTranslation =
-                  autoTranslate && dstLang.isNotEmpty && dstLang != 'off' && srcLang != dstLang;
+                  autoTranslate &&
+                  dstLang.isNotEmpty &&
+                  dstLang != 'off' &&
+                  srcLang != dstLang;
 
               List<SubtitleCue> finalCues;
               String resultStatus = 'ready';
@@ -162,7 +179,9 @@ class DownloadSubtitlePipeline {
                     text: srcLang == 'id'
                         ? SubtitleTranslatorService.balanceSubtitleLines(
                             SubtitleTranslatorService.smartFormatIndonesianSubtitle(
-                              SubtitleTranslatorService.refineIndonesianPronouns(c.text),
+                              SubtitleTranslatorService.refineIndonesianPronouns(
+                                c.text,
+                              ),
                             ),
                           )
                         : SubtitleTranslatorService.balanceSubtitleLines(
@@ -211,9 +230,13 @@ class DownloadSubtitlePipeline {
       // If preferred subtitle found directly from OpenSubtitles:
       if (subs.isNotEmpty) {
         onProgress?.call(0.5, 'Mengunduh subtitle $preferredLang...');
-        final downloadUrl = await _subtitleService.getDownloadUrl(subs.first.id);
+        final downloadUrl = await _subtitleService.getDownloadUrl(
+          subs.first.id,
+        );
         if (downloadUrl != null) {
-          final content = await _subtitleService.downloadSubtitleContent(downloadUrl);
+          final content = await _subtitleService.downloadSubtitleContent(
+            downloadUrl,
+          );
           if (content != null && content.isNotEmpty) {
             final cues = SubtitleCue.parseSrt(content);
             final refinedCues = cues.map((c) {
@@ -243,9 +266,13 @@ class DownloadSubtitlePipeline {
 
       // If preferred is Indonesian and not found in OpenSubtitles, check embedded stream subtitles
       if (preferredLang == 'id') {
-        final streamIdSubUri = await _findStreamSubtitleUri(masterPlaylistUrl, 'id');
+        final streamIdSubUri = await _findStreamSubtitleUri(
+          masterPlaylistUrl,
+          'id',
+        );
         if (streamIdSubUri != null) {
-          final streamContent = await VixSrcStreamService.downloadSubtitleContent(streamIdSubUri);
+          final streamContent =
+              await VixSrcStreamService.downloadSubtitleContent(streamIdSubUri);
           if (streamContent != null && streamContent.isNotEmpty) {
             final cues = SubtitleCue.parseSrt(streamContent);
             if (cues.isNotEmpty) {
@@ -255,7 +282,9 @@ class DownloadSubtitlePipeline {
                   end: c.end,
                   text: SubtitleTranslatorService.balanceSubtitleLines(
                     SubtitleTranslatorService.smartFormatIndonesianSubtitle(
-                      SubtitleTranslatorService.refineIndonesianPronouns(c.text),
+                      SubtitleTranslatorService.refineIndonesianPronouns(
+                        c.text,
+                      ),
                     ),
                   ),
                 );
@@ -276,7 +305,10 @@ class DownloadSubtitlePipeline {
 
         // Fallback: If autoTranslate is enabled, fetch English subtitle and translate to targetTranslateLang
         if (autoTranslate) {
-          onProgress?.call(0.3, 'Subtitle Indonesia tidak ditemukan. Mengunduh subtitle English...');
+          onProgress?.call(
+            0.3,
+            'Subtitle Indonesia tidak ditemukan. Mengunduh subtitle English...',
+          );
           String? enContent;
 
           // Try OpenSubtitles English first
@@ -299,33 +331,51 @@ class DownloadSubtitlePipeline {
           }
 
           if (enSubs.isNotEmpty) {
-            final downloadUrl = await _subtitleService.getDownloadUrl(enSubs.first.id);
+            final downloadUrl = await _subtitleService.getDownloadUrl(
+              enSubs.first.id,
+            );
             if (downloadUrl != null) {
-              enContent = await _subtitleService.downloadSubtitleContent(downloadUrl);
+              enContent = await _subtitleService.downloadSubtitleContent(
+                downloadUrl,
+              );
             }
           }
 
           // If OpenSubtitles English failed, try embedded stream English subtitle
           if (enContent == null || enContent.isEmpty) {
-            final streamEnUri = await _findStreamSubtitleUri(masterPlaylistUrl, 'en');
+            final streamEnUri = await _findStreamSubtitleUri(
+              masterPlaylistUrl,
+              'en',
+            );
             if (streamEnUri != null) {
-              enContent = await VixSrcStreamService.downloadSubtitleContent(streamEnUri);
+              enContent = await VixSrcStreamService.downloadSubtitleContent(
+                streamEnUri,
+              );
             }
           }
 
           // Translate English content to targetTranslateLang
           if (enContent != null && enContent.isNotEmpty) {
-            final dstLang = targetTranslateLang.isNotEmpty ? targetTranslateLang : 'id';
-            onProgress?.call(0.5, 'Menerjemahkan subtitle ke ${dstLang.toUpperCase()}...');
+            final dstLang = targetTranslateLang.isNotEmpty
+                ? targetTranslateLang
+                : 'id';
+            onProgress?.call(
+              0.5,
+              'Menerjemahkan subtitle ke ${dstLang.toUpperCase()}...',
+            );
             final cues = SubtitleCue.parseSrt(enContent);
-            final cacheKey = 'sub_${tmdbId ?? 0}_${season ?? 0}_${episode ?? 0}_$dstLang';
+            final cacheKey =
+                'sub_${tmdbId ?? 0}_${season ?? 0}_${episode ?? 0}_$dstLang';
 
             final translatedCues = await _translatorService.translateCues(
               cues: cues,
               cacheKey: cacheKey,
               targetLang: dstLang,
               onProgress: (p) {
-                onProgress?.call(0.5 + (p * 0.45), 'Menerjemahkan (${(p * 100).toInt()}%)...');
+                onProgress?.call(
+                  0.5 + (p * 0.45),
+                  'Menerjemahkan (${(p * 100).toInt()}%)...',
+                );
               },
             );
 
@@ -342,9 +392,13 @@ class DownloadSubtitlePipeline {
         }
       } else if (preferredLang == 'en') {
         // Fallback for English: Stream subtitle
-        final streamEnUri = await _findStreamSubtitleUri(masterPlaylistUrl, 'en');
+        final streamEnUri = await _findStreamSubtitleUri(
+          masterPlaylistUrl,
+          'en',
+        );
         if (streamEnUri != null) {
-          final streamContent = await VixSrcStreamService.downloadSubtitleContent(streamEnUri);
+          final streamContent =
+              await VixSrcStreamService.downloadSubtitleContent(streamEnUri);
           if (streamContent != null && streamContent.isNotEmpty) {
             final cues = SubtitleCue.parseSrt(streamContent);
             if (cues.isNotEmpty) {
@@ -368,10 +422,7 @@ class DownloadSubtitlePipeline {
       );
     } catch (e) {
       debugPrint('[DownloadSubtitlePipeline] Error: $e');
-      return SubtitlePipelineResult(
-        status: 'failed',
-        note: e.toString(),
-      );
+      return SubtitlePipelineResult(status: 'failed', note: e.toString());
     }
   }
 }
