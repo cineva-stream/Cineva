@@ -1,3 +1,5 @@
+import '../services/subtitle_translator_service.dart';
+
 /// Represents a single timestamped subtitle entry.
 class SubtitleCue {
   final Duration start;
@@ -97,6 +99,7 @@ class SubtitleCue {
 
   static String _cleanSubtitleText(String text) {
     // Remove HTML tags like <i>, <b>, <font color="...">, etc.
-    return text.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    final stripped = text.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    return SubtitleTranslatorService.fixAbbreviations(stripped);
   }
 }

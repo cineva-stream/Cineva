@@ -60,7 +60,7 @@ class SubtitleTranslatorService {
           final rawText = translatedLine.isNotEmpty ? translatedLine : batch[j].text;
           final refinedText = targetLang.toLowerCase() == 'id'
               ? balanceSubtitleLines(smartFormatIndonesianSubtitle(refineIndonesianPronouns(rawText)))
-              : balanceSubtitleLines(rawText);
+              : balanceSubtitleLines(fixAbbreviations(rawText));
 
           translatedCues.add(SubtitleCue(
             start: batch[j].start,
@@ -213,12 +213,109 @@ class SubtitleTranslatorService {
     );
   }
 
+  /// Normalizes spaced single letters with dots, e.g. "l. a. p. d." -> "l.a.p.d." or "i. a." -> "i.a."
+  static String _normalizeSpacedAbbreviations(String text) {
+    if (text.isEmpty) return text;
+    var prev = text;
+    while (true) {
+      final next = prev.replaceAllMapped(
+        RegExp(r'\b([A-Za-z])\.\s+([A-Za-z](?:\.|\b))'),
+        (m) => '${m[1]}.${m[2]}',
+      );
+      if (next == prev) break;
+      prev = next;
+    }
+    return prev;
+  }
+
+  /// Normalizes messy abbreviation and acronym casing across any subtitle text:
+  /// - Dotted abbreviations: "l.A.P.D" -> "L.A.P.D", "i.A" -> "I.A", "t.O" -> "T.O", "t.O.-ku" -> "T.O.-ku"
+  /// - Spaced abbreviations: "l. a. p. d." -> "L.A.P.D.", "i. a." -> "I.A."
+  /// - Standalone acronyms: "lapd", "nypd", "swat", "cpr", etc. -> "LAPD", "NYPD", etc.
+  /// - Leaves common Indonesian words ("ia", "doa", "to") unaffected when written without dots.
+  static String fixAbbreviations(String text) {
+    if (text.isEmpty) return text;
+
+    // 1. Normalize spaced abbreviations
+    var normalized = _normalizeSpacedAbbreviations(text);
+
+    // 2. Normalize dotted abbreviations (letters separated by dots, optional trailing dot and hyphenated suffix)
+    normalized = normalized.replaceAllMapped(
+      RegExp(r'\b([A-Za-z](?:\.[A-Za-z0-9])+\.?)(-[A-Za-z0-9\u00C0-\u024F]+)?\b'),
+      (match) {
+        final abbr = match.group(1)!.toUpperCase();
+        final suffix = match.group(2);
+        if (suffix != null && suffix.isNotEmpty) {
+          return '$abbr${suffix.toLowerCase()}';
+        }
+        return abbr;
+      },
+    );
+
+    // 3. Normalize safe standalone acronyms (that do not collide with Indonesian or English words)
+    normalized = normalized.replaceAllMapped(
+      RegExp(
+        r'\b(lapd|nypd|cpd|sfpd|swat|dea|atf|dhs|doj|nsa|tsa|fbi|cia|ems|emt|cpr|bolo|apb|polri|tni|kpk|bnn|bmkg|bpbd|basarnas)\b',
+        caseSensitive: false,
+      ),
+      (match) => match.group(0)!.toUpperCase(),
+    );
+
+    return normalized;
+  }
+
   static const Set<String> _knownAcronyms = {
-    'FBI', 'CIA', 'NASA', 'DNA', 'RNA', 'TV', 'ID', 'OK', 'AS', 'PBB',
-    'RS', 'UGD', 'ICU', 'SWAT', 'CEO', 'CFO', 'CTO', 'VIP', 'VVIP',
+    // Law Enforcement / Military / Intelligence
+    'FBI', 'CIA', 'NSA', 'DHS', 'DOJ', 'ATF', 'DEA', 'TSA', 'SWAT',
+    'LAPD', 'NYPD', 'CPD', 'SFPD', 'CID', 'CSI', 'NCIS', 'MI6', 'MI5',
+    'KGB', 'INTERPOL', 'BOLO', 'APB', 'MIA', 'KIA', 'POW', 'AWOL', 'K9',
+    'UAV', 'RPG', 'IED', 'EMP',
+
+    // Indonesian Security & Government Agencies
+    'POLRI', 'TNI', 'KPK', 'BNN', 'BMKG', 'BPBD', 'BASARNAS', 'BIN',
+    'POLDA', 'POLRES', 'POLSEK',
+
+    // Medical & Emergency
+    'EMS', 'EMT', 'CPR', 'ICU', 'UGD', 'IGD', 'EKG', 'ECG', 'MRI',
+    'CT', 'IV', 'OD', 'DNA', 'RNA', 'RS',
+
+    // Tech, Media & Corporate
+    'NASA', 'CEO', 'CFO', 'CTO', 'COO', 'CMO', 'CIO', 'VIP', 'VVIP',
     'DJ', 'PC', 'AI', 'GPS', 'USB', 'PIN', 'ATM', 'SIM', 'KTP', 'BOM',
-    'UFO', 'AC', 'CD', 'DVD', 'HD', 'FHD', '4K', 'CSI', 'NCIS', 'MI6',
-    'KGB', 'UN', 'EU', 'US', 'UK', 'USA', 'SOS', 'HQ', 'WIB', 'WITA', 'WIT',
+    'UFO', 'AC', 'CD', 'DVD', 'HD', 'FHD', '4K', 'TV', 'ID', 'OK',
+    'HQ', 'WIB', 'WITA', 'WIT', 'SOS', 'RIP', 'ETA', 'ASAP', 'AKA',
+    'FYI', 'DIY', 'POV', 'FAQ', 'HRD', 'PR',
+
+    // International Organizations & Countries
+    'UN', 'EU', 'US', 'UK', 'USA', 'AS', 'PBB', 'NATO', 'ASEAN', 'APEC',
+    'FIFA', 'UEFA', 'NBA', 'UFC', 'WWE',
+  };
+
+  static const Set<String> _continuationWords = {
+    // Demonstratives & Pronouns
+    'itu', 'ini', 'tersebut', 'begini', 'begitu',
+    'nya', 'ku', 'mu',
+
+    // Conjunctions & Relative pronouns
+    'yang', 'dan', 'atau', 'serta', 'tetapi', 'tapi', 'namun',
+    'melainkan', 'padahal', 'sedangkan', 'karena', 'sebab',
+    'sehingga', 'sampai', 'hingga', 'agar', 'supaya', 'untuk',
+    'bagi', 'demi', 'jika', 'kalau', 'bila', 'apabila', 'walaupun',
+    'meskipun', 'kendati', 'seperti', 'bagai', 'bagaikan', 'laksana',
+
+    // Prepositions
+    'di', 'ke', 'dari', 'pada', 'kepada', 'dalam', 'atas', 'oleh',
+    'dengan', 'bersama', 'tentang', 'mengenai', 'tanpa', 'antara',
+
+    // Auxiliaries / Modals / Aspects
+    'adalah', 'ialah', 'merupakan', 'yaitu', 'yakni',
+    'akan', 'sedang', 'telah', 'sudah', 'pernah', 'belum', 'tidak',
+    'tak', 'bukan', 'bisa', 'dapat', 'boleh', 'harus', 'mesti', 'wajib',
+
+    // Particles & Adverbs
+    'pun', 'lah', 'kah', 'tah', 'juga', 'saja', 'hanya', 'lagi',
+    'pula', 'sekali', 'sangat', 'amat', 'terlalu', 'paling',
+    'sendiri', 'kembali', 'segera', 'langsung',
   };
 
   static const Set<String> _sacredNames = {
@@ -246,8 +343,9 @@ class SubtitleTranslatorService {
     // Titles / Honorifics
     'pak', 'bapak', 'bu', 'ibu', 'tuan', 'nyonya', 'nona', 'dokter', 'dok',
     'profesor', 'prof', 'kapten', 'detektif', 'sersan', 'mayor', 'jenderal',
+    'letnan', 'kopral', 'kolonel', 'perwira', 'opsir',
     'inspektur', 'komandan', 'paman', 'bibi', 'kakek', 'nenek', 'raja', 'ratu',
-    'pangeran', 'putri', 'presiden',
+    'pangeran', 'putri', 'presiden', 'santo', 'santa',
 
     // Places / Geographic markers
     'jalan', 'jl', 'gang', 'gg', 'kota', 'provinsi', 'pulau',
@@ -274,14 +372,29 @@ class SubtitleTranslatorService {
   static String _formatSingleLine(String line) {
     if (line.trim().isEmpty) return line;
 
-    final tokenRegex = RegExp(r'([A-Za-z0-9\u00C0-\u024F]+(?:-[A-Za-z0-9\u00C0-\u024F]+)*|[^\sA-Za-z0-9\u00C0-\u024F]+|\s+)');
-    final matches = tokenRegex.allMatches(line);
+    // 1. Normalize spaced abbreviations before tokenizing: e.g. "l. a. p. d." -> "l.a.p.d."
+    final preprocessedLine = _normalizeSpacedAbbreviations(line);
+
+    // 2. Tokenize: dotted abbreviations, standard words, punctuation, whitespace
+    final tokenRegex = RegExp(
+      r'('
+      r'[A-Za-z](?:\.[A-Za-z0-9])+\.?(?:-[A-Za-z0-9\u00C0-\u024F]+)?' // Dotted abbreviation (e.g. L.A.P.D., l.a.p.d, i.A, t.O.-ku)
+      r'|[A-Za-z0-9\u00C0-\u024F]+(?:-[A-Za-z0-9\u00C0-\u024F]+)*'     // Standard word
+      r'|[^\sA-Za-z0-9\u00C0-\u024F]+'                                 // Punctuation
+      r'|\s+'                                                          // Whitespace
+      r')',
+    );
+    final matches = tokenRegex.allMatches(preprocessedLine);
 
     final tokens = matches.map((m) => m.group(0)!).toList();
     final result = <String>[];
 
     bool isStartOfSentence = true;
     bool capitalizeNextWord = false;
+
+    final dottedAbbrRegex = RegExp(
+      r'^[A-Za-z](?:\.[A-Za-z0-9])+\.?(?:-[A-Za-z0-9\u00C0-\u024F]+)?$',
+    );
 
     for (int i = 0; i < tokens.length; i++) {
       final token = tokens[i];
@@ -307,11 +420,74 @@ class SubtitleTranslatorService {
         continue;
       }
 
+      // Dotted abbreviations (e.g. L.A.P.D., l.A.P.D, i.A, t.O, t.O.-ku)
+      if (dottedAbbrRegex.hasMatch(token)) {
+        String formatted;
+        if (token.contains('-')) {
+          final dashIdx = token.indexOf('-');
+          final abbrPart = token.substring(0, dashIdx).toUpperCase();
+          final suffix = token.substring(dashIdx).toLowerCase();
+          formatted = '$abbrPart$suffix';
+        } else {
+          formatted = token.toUpperCase();
+        }
+        result.add(formatted);
+
+        // Determine whether the next word should start a new sentence.
+        // In subtitles, abbreviations like L.A.P.D., I.A., T.O. often appear before
+        // nouns or continuation words (e.g. "L.A.P.D. itu", "Divisi I.A. sedang", "T.O.-ku adalah").
+        // A dot in an abbreviation only terminates the sentence if the next word was
+        // originally capitalized and is not an Indonesian continuation word.
+        bool nextIsNewSentence = false;
+        if (token.endsWith('.')) {
+          for (int j = i + 1; j < tokens.length; j++) {
+            final nextToken = tokens[j];
+            if (RegExp(r'^\s+$').hasMatch(nextToken)) continue;
+
+            if (nextToken.contains('-') ||
+                nextToken.contains('—') ||
+                nextToken.contains('"') ||
+                nextToken.contains('“')) {
+              nextIsNewSentence = true;
+              break;
+            }
+
+            final firstChar = nextToken.isNotEmpty ? nextToken[0] : '';
+            final isOriginalCapital = firstChar == firstChar.toUpperCase() &&
+                firstChar != firstChar.toLowerCase();
+            final nextLower = nextToken.toLowerCase();
+
+            if (isOriginalCapital && !_continuationWords.contains(nextLower)) {
+              nextIsNewSentence = true;
+            }
+            break;
+          }
+        }
+
+        isStartOfSentence = nextIsNewSentence;
+        capitalizeNextWord = false;
+        continue;
+      }
+
       // Word token
       final lower = token.toLowerCase();
       final upper = token.toUpperCase();
 
-      // 1. Acronyms (FBI, CIA, TV, etc.)
+      // 0. Hyphenated word with known acronym prefix (e.g. "LAPD-nya", "FBI-ku", "SWAT-nya")
+      if (token.contains('-')) {
+        final dashIdx = token.indexOf('-');
+        final basePart = token.substring(0, dashIdx);
+        final suffixPart = token.substring(dashIdx);
+        final upperBase = basePart.toUpperCase();
+        if (_knownAcronyms.contains(upperBase)) {
+          result.add('$upperBase${suffixPart.toLowerCase()}');
+          isStartOfSentence = false;
+          capitalizeNextWord = false;
+          continue;
+        }
+      }
+
+      // 1. Acronyms (FBI, CIA, LAPD, NYPD, CPR, etc.)
       if (_knownAcronyms.contains(upper)) {
         result.add(upper);
         isStartOfSentence = false;
@@ -390,7 +566,7 @@ class SubtitleTranslatorService {
           final rawText = item['text'] as String;
           final textWithPronouns = targetLang.toLowerCase() == 'id'
               ? smartFormatIndonesianSubtitle(refineIndonesianPronouns(rawText))
-              : rawText;
+              : fixAbbreviations(rawText);
           return SubtitleCue(
             start: Duration(milliseconds: item['startMs'] as int),
             end: Duration(milliseconds: item['endMs'] as int),

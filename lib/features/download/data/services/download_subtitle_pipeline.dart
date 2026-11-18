@@ -165,7 +165,9 @@ class DownloadSubtitlePipeline {
                               SubtitleTranslatorService.refineIndonesianPronouns(c.text),
                             ),
                           )
-                        : SubtitleTranslatorService.balanceSubtitleLines(c.text),
+                        : SubtitleTranslatorService.balanceSubtitleLines(
+                            SubtitleTranslatorService.fixAbbreviations(c.text),
+                          ),
                   );
                 }).toList();
               }

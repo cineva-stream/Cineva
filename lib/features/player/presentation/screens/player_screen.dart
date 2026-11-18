@@ -1392,7 +1392,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             ),
                           )
                         : SubtitleTranslatorService.balanceSubtitleLines(
-                            c.text,
+                            SubtitleTranslatorService.fixAbbreviations(c.text),
                           ),
                   ),
                 )
@@ -1429,7 +1429,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             ),
                           )
                         : SubtitleTranslatorService.balanceSubtitleLines(
-                            c.text,
+                            SubtitleTranslatorService.fixAbbreviations(c.text),
                           ),
                   ),
                 )
@@ -1575,7 +1575,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 start: c.start,
                 end: c.end,
                 text: SubtitleTranslatorService.balanceSubtitleLines(
-                  c.text,
+                  SubtitleTranslatorService.fixAbbreviations(c.text),
                 ),
               ),
             )

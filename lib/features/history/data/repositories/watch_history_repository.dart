@@ -20,7 +20,10 @@ class WatchHistoryRepository {
           // Normalized unique identification:
           // For TV episodes: tv_<id>_s<season>_e<episode>
           // For movies: movie_<id>
-          final uniqueKey = (item.mediaType == 'tv' && item.season != null && item.episode != null)
+          final uniqueKey =
+              (item.mediaType == 'tv' &&
+                  item.season != null &&
+                  item.episode != null)
               ? 'tv_${item.id}_s${item.season}_e${item.episode}'
               : '${item.mediaType}_${item.id}';
 
@@ -46,13 +49,16 @@ class WatchHistoryRepository {
     // Filter out obsolete generic TV entries ('tv_<id>') if specific episode entries exist
     final specificTvIds = <int>{};
     for (final item in map.values) {
-      if (item.mediaType == 'tv' && item.season != null && item.episode != null) {
+      if (item.mediaType == 'tv' &&
+          item.season != null &&
+          item.episode != null) {
         specificTvIds.add(item.id);
       }
     }
 
     final list = map.values.where((item) {
-      if (item.mediaType == 'tv' && (item.season == null || item.episode == null)) {
+      if (item.mediaType == 'tv' &&
+          (item.season == null || item.episode == null)) {
         // If a specific episode entry exists for this series, drop the generic entry
         if (specificTvIds.contains(item.id)) return false;
       }
@@ -69,7 +75,12 @@ class WatchHistoryRepository {
   }
 
   /// Finds a specific history item by media type and ID, optionally with season & episode for TV series.
-  WatchHistoryItem? getItem(String mediaType, int id, {int? season, int? episode}) {
+  WatchHistoryItem? getItem(
+    String mediaType,
+    int id, {
+    int? season,
+    int? episode,
+  }) {
     try {
       if (mediaType == 'tv' && season != null && episode != null) {
         final epRaw = _box.get('${mediaType}_${id}_s${season}_e$episode');
@@ -187,10 +198,11 @@ class WatchHistoryNotifier extends StateNotifier<List<WatchHistoryItem>> {
   }
 }
 
-final watchHistoryProvider = StateNotifierProvider<WatchHistoryNotifier, List<WatchHistoryItem>>((ref) {
-  final repo = ref.watch(watchHistoryRepositoryProvider);
-  return WatchHistoryNotifier(repo, ref);
-});
+final watchHistoryProvider =
+    StateNotifierProvider<WatchHistoryNotifier, List<WatchHistoryItem>>((ref) {
+      final repo = ref.watch(watchHistoryRepositoryProvider);
+      return WatchHistoryNotifier(repo, ref);
+    });
 
 /// Real-time provider for in-progress items (for Home Screen "Lanjutkan Menonton").
 final inProgressWatchHistoryProvider = Provider<List<WatchHistoryItem>>((ref) {

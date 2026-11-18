@@ -130,9 +130,8 @@ void main() {
       final serverTimestamp = DateTime.now().millisecondsSinceEpoch - 2500; // 2.5s ago
 
       // If video was playing, elapsed time must be added
-      final isPlaying = true;
       final elapsed = (DateTime.now().millisecondsSinceEpoch - serverTimestamp) / 1000.0;
-      final targetSeconds = isPlaying ? (initialSeconds + elapsed) : initialSeconds;
+      final targetSeconds = initialSeconds + elapsed;
 
       expect(targetSeconds, greaterThanOrEqualTo(122.4));
       expect(targetSeconds, lessThanOrEqualTo(122.7));

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cineva/features/sync/domain/models/device_playback_session.dart';
 import 'package:cineva/features/sync/data/services/device_handoff_service.dart';
 import 'package:cineva/features/sync/presentation/widgets/handoff_top_capsule.dart';
-import 'package:cineva/core/localization/app_language_provider.dart';
 
 class _FakeHandoffService extends DeviceHandoffService {
   _FakeHandoffService(DevicePlaybackSession? initial) : super(null) {
