@@ -16,6 +16,10 @@ Pembaruan besar Cineva versi 1.1.9 menghadirkan **Lanjutkan Menonton Cerdas (Sea
 ### 2. Nonton Bareng Jarak Jauh (Watch Party / Sync Play Engine) dengan Live Chat
 * **Kamar Nobar Berbasis Room Code (`WatchPartyService` & `WatchPartyRoom`)**:
   * Pengguna dapat membuat Room Code 8 digit unik (contoh: `CNV-XXXX`) atau bergabung ke ruangan teman untuk menonton film dan serial TV yang sama secara bersamaan dari jarak jauh.
+  * **Arsitektur Dual-Engine Cloud Relay**: Didukung integrasi Firebase Realtime Database dan otomatis failover ke zero-config Cloud Relay, menjamin pembuatan room 100% berhasil di semua perangkat (Desktop, Android, Smart TV) dan mode Guest tanpa hambatan perizinan.
+* **Integrasi Side Panel Pemutar Video & Cover Media Asli**:
+  * Pembuatan dan pencarian room kini hadir dalam Side Panel sisi kanan yang elegan dan responsif—aliran pemutaran video menyusut mulus tanpa jeda (*no freeze/dim*).
+  * Menampilkan cover poster asli dan format judul episode serial TV yang rapi: `Season X - Episode Y (Judul Episode)`.
 * **Sinkronisasi Playback Presisi (*Play, Pause, & Seek*)**:
   * Seluruh aksi pemutaran video, jeda, maupun pergeseran durasi tersinkronisasi secara *real-time*.
   * Dilengkapi algoritma **Kompensasi Latensi Jaringan (*Clock Skew Compensation*)** sehingga perbedaan koneksi antar pengguna tidak membuat video terputus atau tidak sinkron.
@@ -25,7 +29,7 @@ Pembaruan besar Cineva versi 1.1.9 menghadirkan **Lanjutkan Menonton Cerdas (Sea
   * Panel percakapan interaktif di sisi kanan pemutar video untuk saling berkirim pesan teks secara langsung saat menonton.
   * Tombol reaksi emoji cepat (❤️, 😂, 😮, 👏, 🔥) yang memunculkan partikel animasi emoji melayang (*Floating Emoji Particles*) di atas layar.
 * **Dukungan Guest Mode**:
-  * Pengguna yang belum atau tidak ingin masuk ke akun Google tetap dapat bergabung ke dalam Watch Party cukup dengan memasukkan nama panggilan (*Display Name*).
+  * Pengguna yang belum atau tidak ingin masuk ke akun Google tetap dapat membuat dan bergabung ke dalam Watch Party cukup dengan memasukkan nama panggilan (*Display Name*).
 
 ### 3. Sinkronisasi Cloud Otomatis Real-Time (Google Account)
 * **Sinkronisasi Otomatis Tanpa Perlu Menekan Tombol Sync**:

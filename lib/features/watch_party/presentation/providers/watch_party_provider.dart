@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/services/watch_party_service.dart';
@@ -130,7 +131,8 @@ class WatchPartyNotifier extends StateNotifier<WatchPartyState> {
         myName: _service.myName,
       );
       return code;
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('[WatchPartyNotifier] createRoom error: $e\n$stack');
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Gagal membuat ruang Nonton Bareng: $e',

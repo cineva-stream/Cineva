@@ -139,6 +139,23 @@ void main() {
       expect(targetSeconds, greaterThanOrEqualTo(122.4));
       expect(targetSeconds, lessThanOrEqualTo(122.7));
     });
+
+    test('createRoom safely creates room and falls back to relay without throwing', () async {
+      final service = WatchPartyService();
+      final code = await service.createRoom(
+        hostName: 'Test Host',
+        media: const WatchPartyMedia(
+          title: 'Test Movie',
+          mediaType: 'movie',
+          tmdbId: 100,
+        ),
+      );
+      expect(code.startsWith('CNV-'), isTrue);
+      expect(service.currentRoom, isNotNull);
+      expect(service.isHost, isTrue);
+      expect(service.currentRoom?.hostName, 'Test Host');
+      service.dispose();
+    });
   });
 
   group('WatchPartyState & Host Control Logic', () {

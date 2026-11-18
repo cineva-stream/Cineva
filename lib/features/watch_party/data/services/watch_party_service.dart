@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:dio/dio.dart';
@@ -9,17 +11,18 @@ import 'package:dio/dio.dart';
 import '../../domain/models/watch_party_room.dart';
 
 /// Core networking service for Watch Party rooms, sync play, live chat, and emoji reactions.
+/// Supports Firebase Realtime Database with an automatic zero-config Realtime Cloud Relay fallback.
 class WatchPartyService {
   static const String _rtdbBaseUrl =
       'https://cineva-platform-default-rtdb.asia-southeast1.firebasedatabase.app';
 
   final Dio _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 8),
-    receiveTimeout: const Duration(seconds: 8),
+    connectTimeout: const Duration(seconds: 6),
+    receiveTimeout: const Duration(seconds: 6),
   ));
 
   StreamSubscription<DatabaseEvent>? _nativeRoomSub;
-  Timer? _restPollingTimer;
+  Timer? _pollingTimer;
 
   final StreamController<WatchPartyRoom?> _roomController =
       StreamController<WatchPartyRoom?>.broadcast();
@@ -37,6 +40,9 @@ class WatchPartyService {
   bool _isHost = false;
   bool get isHost => _isHost;
 
+  bool _isUsingRelay = false;
+  bool get isUsingRelay => _isUsingRelay;
+
   bool get isNativeSupported =>
       !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
@@ -44,15 +50,22 @@ class WatchPartyService {
   String generateRoomCode() {
     const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
     final random = Random();
-    final code = List.generate(4, (_) => chars[random.nextInt(chars.length)]).join();
+    final code =
+        List.generate(4, (_) => chars[random.nextInt(chars.length)]).join();
     return 'CNV-$code';
   }
 
   /// Determines current member ID (Firebase UID if signed in, or generated unique ID).
   String _resolveMemberId() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null && user.uid.isNotEmpty) {
-      return user.uid;
+    try {
+      if (isNativeSupported && Firebase.apps.isNotEmpty) {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null && user.uid.isNotEmpty) {
+          return user.uid;
+        }
+      }
+    } catch (e) {
+      debugPrint('[WatchPartyService] Member ID resolve note: $e');
     }
     final rand = Random().nextInt(999999).toString().padLeft(6, '0');
     return 'guest_${DateTime.now().millisecondsSinceEpoch}_$rand';
@@ -150,24 +163,52 @@ class WatchPartyService {
       type: 'system',
     );
 
-    // Add member and system message to room
-    if (isNativeSupported) {
-      final roomRef =
-          FirebaseDatabase.instance.ref('watch_party_rooms/$cleanCode');
-      await roomRef.child('members/$_myMemberId').set(myMember.toJson());
-      await roomRef.child('messages').push().set(joinMessage.toJson());
-    } else {
-      await _dio.put(
-        '$_rtdbBaseUrl/watch_party_rooms/$cleanCode/members/$_myMemberId.json',
-        data: myMember.toJson(),
-      );
-      await _dio.post(
-        '$_rtdbBaseUrl/watch_party_rooms/$cleanCode/messages.json',
-        data: joinMessage.toJson(),
-      );
+    // 1. Update native Firebase if not using relay
+    if (!_isUsingRelay) {
+      try {
+        if (isNativeSupported && Firebase.apps.isNotEmpty) {
+          final roomRef =
+              FirebaseDatabase.instance.ref('watch_party_rooms/$cleanCode');
+          await roomRef.child('members/$_myMemberId').set(myMember.toJson());
+          await roomRef.child('messages').push().set(joinMessage.toJson());
+        } else {
+          await _dio.put(
+            '$_rtdbBaseUrl/watch_party_rooms/$cleanCode/members/$_myMemberId.json',
+            data: myMember.toJson(),
+          );
+          await _dio.post(
+            '$_rtdbBaseUrl/watch_party_rooms/$cleanCode/messages.json',
+            data: joinMessage.toJson(),
+          );
+        }
+      } catch (e) {
+        debugPrint('[WatchPartyService] Firebase join note: $e');
+        _isUsingRelay = true;
+      }
     }
 
-    _currentRoom = existingRoom;
+    // 2. Publish to Cloud Relay
+    await _publishToRelay(cleanCode, {
+      'event': 'member_join',
+      'member': myMember.toJson(),
+      'message': joinMessage.toJson(),
+    });
+
+    // Update local state with joined member
+    final updatedMembers = Map<String, WatchPartyMember>.from(
+      existingRoom.members,
+    );
+    updatedMembers[_myMemberId!] = myMember;
+    final updatedMessages = List<WatchPartyMessage>.from(
+      existingRoom.messages,
+    )..add(joinMessage);
+
+    _currentRoom = existingRoom.copyWith(
+      members: updatedMembers,
+      messages: updatedMessages,
+    );
+    _roomController.add(_currentRoom);
+
     _startListeningToRoom(cleanCode);
     return true;
   }
@@ -181,7 +222,6 @@ class WatchPartyService {
     if (_currentRoom == null) return;
     final code = _currentRoom!.roomCode;
 
-    // Check permission: If user is not host and guest control is disabled, block action.
     if (!_isHost && !_currentRoom!.allowGuestControl) {
       debugPrint('[WatchPartyService] Guest control is disabled by Host.');
       return;
@@ -196,7 +236,6 @@ class WatchPartyService {
       action: action,
     );
 
-    // Build system message for seek or pause
     WatchPartyMessage? actionMsg;
     final formattedTime = _formatDuration(positionSeconds);
     if (action == 'pause') {
@@ -221,28 +260,41 @@ class WatchPartyService {
       );
     }
 
-    try {
-      if (isNativeSupported) {
-        final roomRef = FirebaseDatabase.instance.ref('watch_party_rooms/$code');
-        await roomRef.child('playback').set(updatedPlayback.toJson());
-        if (actionMsg != null) {
-          await roomRef.child('messages').push().set(actionMsg.toJson());
-        }
-      } else {
-        await _dio.patch(
-          '$_rtdbBaseUrl/watch_party_rooms/$code/playback.json',
-          data: updatedPlayback.toJson(),
-        );
-        if (actionMsg != null) {
-          await _dio.post(
-            '$_rtdbBaseUrl/watch_party_rooms/$code/messages.json',
-            data: actionMsg.toJson(),
+    if (!_isUsingRelay) {
+      try {
+        if (isNativeSupported && Firebase.apps.isNotEmpty) {
+          final roomRef =
+              FirebaseDatabase.instance.ref('watch_party_rooms/$code');
+          await roomRef.child('playback').set(updatedPlayback.toJson());
+          if (actionMsg != null) {
+            await roomRef.child('messages').push().set(actionMsg.toJson());
+          }
+        } else {
+          await _dio.patch(
+            '$_rtdbBaseUrl/watch_party_rooms/$code/playback.json',
+            data: updatedPlayback.toJson(),
           );
+          if (actionMsg != null) {
+            await _dio.post(
+              '$_rtdbBaseUrl/watch_party_rooms/$code/messages.json',
+              data: actionMsg.toJson(),
+            );
+          }
         }
+      } catch (e) {
+        debugPrint('[WatchPartyService] Firebase updatePlayback note: $e');
+        _isUsingRelay = true;
       }
-    } catch (e) {
-      debugPrint('[WatchPartyService] Failed updating playback: $e');
     }
+
+    await _publishToRelay(code, {
+      'event': 'playback',
+      'playback': updatedPlayback.toJson(),
+      if (actionMsg != null) 'message': actionMsg.toJson(),
+    });
+
+    _currentRoom = _currentRoom!.copyWith(playback: updatedPlayback);
+    _roomController.add(_currentRoom);
   }
 
   /// Host setting: Toggle whether guests/partners are permitted to control video playback.
@@ -263,24 +315,37 @@ class WatchPartyService {
       type: 'system',
     );
 
-    try {
-      if (isNativeSupported) {
-        final roomRef = FirebaseDatabase.instance.ref('watch_party_rooms/$code');
-        await roomRef.child('allowGuestControl').set(allow);
-        await roomRef.child('messages').push().set(sysMsg.toJson());
-      } else {
-        await _dio.patch(
-          '$_rtdbBaseUrl/watch_party_rooms/$code.json',
-          data: {'allowGuestControl': allow},
-        );
-        await _dio.post(
-          '$_rtdbBaseUrl/watch_party_rooms/$code/messages.json',
-          data: sysMsg.toJson(),
-        );
+    if (!_isUsingRelay) {
+      try {
+        if (isNativeSupported && Firebase.apps.isNotEmpty) {
+          final roomRef =
+              FirebaseDatabase.instance.ref('watch_party_rooms/$code');
+          await roomRef.child('allowGuestControl').set(allow);
+          await roomRef.child('messages').push().set(sysMsg.toJson());
+        } else {
+          await _dio.patch(
+            '$_rtdbBaseUrl/watch_party_rooms/$code.json',
+            data: {'allowGuestControl': allow},
+          );
+          await _dio.post(
+            '$_rtdbBaseUrl/watch_party_rooms/$code/messages.json',
+            data: sysMsg.toJson(),
+          );
+        }
+      } catch (e) {
+        debugPrint('[WatchPartyService] Firebase setAllowGuestControl note: $e');
+        _isUsingRelay = true;
       }
-    } catch (e) {
-      debugPrint('[WatchPartyService] Failed toggling guest control: $e');
     }
+
+    await _publishToRelay(code, {
+      'event': 'guest_control',
+      'allowGuestControl': allow,
+      'message': sysMsg.toJson(),
+    });
+
+    _currentRoom = _currentRoom!.copyWith(allowGuestControl: allow);
+    _roomController.add(_currentRoom);
   }
 
   /// Sends a text message to the live chat panel.
@@ -299,21 +364,35 @@ class WatchPartyService {
       type: 'chat',
     );
 
-    try {
-      if (isNativeSupported) {
-        await FirebaseDatabase.instance
-            .ref('watch_party_rooms/$code/messages')
-            .push()
-            .set(msg.toJson());
-      } else {
-        await _dio.post(
-          '$_rtdbBaseUrl/watch_party_rooms/$code/messages.json',
-          data: msg.toJson(),
-        );
+    if (!_isUsingRelay) {
+      try {
+        if (isNativeSupported && Firebase.apps.isNotEmpty) {
+          await FirebaseDatabase.instance
+              .ref('watch_party_rooms/$code/messages')
+              .push()
+              .set(msg.toJson());
+        } else {
+          await _dio.post(
+            '$_rtdbBaseUrl/watch_party_rooms/$code/messages.json',
+            data: msg.toJson(),
+          );
+        }
+      } catch (e) {
+        debugPrint('[WatchPartyService] Firebase sendMessage note: $e');
+        _isUsingRelay = true;
       }
-    } catch (e) {
-      debugPrint('[WatchPartyService] Send message error: $e');
     }
+
+    await _publishToRelay(code, {
+      'event': 'message',
+      'message': msg.toJson(),
+    });
+
+    final updatedMessages = List<WatchPartyMessage>.from(
+      _currentRoom!.messages,
+    )..add(msg);
+    _currentRoom = _currentRoom!.copyWith(messages: updatedMessages);
+    _roomController.add(_currentRoom);
   }
 
   /// Sends a quick emoji reaction to trigger floating animation and chat feed.
@@ -333,21 +412,35 @@ class WatchPartyService {
       type: 'emoji',
     );
 
-    try {
-      if (isNativeSupported) {
-        await FirebaseDatabase.instance
-            .ref('watch_party_rooms/$code/messages')
-            .push()
-            .set(msg.toJson());
-      } else {
-        await _dio.post(
-          '$_rtdbBaseUrl/watch_party_rooms/$code/messages.json',
-          data: msg.toJson(),
-        );
+    if (!_isUsingRelay) {
+      try {
+        if (isNativeSupported && Firebase.apps.isNotEmpty) {
+          await FirebaseDatabase.instance
+              .ref('watch_party_rooms/$code/messages')
+              .push()
+              .set(msg.toJson());
+        } else {
+          await _dio.post(
+            '$_rtdbBaseUrl/watch_party_rooms/$code/messages.json',
+            data: msg.toJson(),
+          );
+        }
+      } catch (e) {
+        debugPrint('[WatchPartyService] Firebase sendEmoji note: $e');
+        _isUsingRelay = true;
       }
-    } catch (e) {
-      debugPrint('[WatchPartyService] Send emoji error: $e');
     }
+
+    await _publishToRelay(code, {
+      'event': 'message',
+      'message': msg.toJson(),
+    });
+
+    final updatedMessages = List<WatchPartyMessage>.from(
+      _currentRoom!.messages,
+    )..add(msg);
+    _currentRoom = _currentRoom!.copyWith(messages: updatedMessages);
+    _roomController.add(_currentRoom);
   }
 
   /// Leaves the active Watch Party room and cleans up listeners.
@@ -365,24 +458,32 @@ class WatchPartyService {
         type: 'system',
       );
 
-      try {
-        if (isNativeSupported) {
-          final roomRef =
-              FirebaseDatabase.instance.ref('watch_party_rooms/$code');
-          await roomRef.child('members/$_myMemberId').remove();
-          await roomRef.child('messages').push().set(leaveMsg.toJson());
-        } else {
-          await _dio.delete(
-            '$_rtdbBaseUrl/watch_party_rooms/$code/members/$_myMemberId.json',
-          );
-          await _dio.post(
-            '$_rtdbBaseUrl/watch_party_rooms/$code/messages.json',
-            data: leaveMsg.toJson(),
-          );
+      if (!_isUsingRelay) {
+        try {
+          if (isNativeSupported && Firebase.apps.isNotEmpty) {
+            final roomRef =
+                FirebaseDatabase.instance.ref('watch_party_rooms/$code');
+            await roomRef.child('members/$_myMemberId').remove();
+            await roomRef.child('messages').push().set(leaveMsg.toJson());
+          } else {
+            await _dio.delete(
+              '$_rtdbBaseUrl/watch_party_rooms/$code/members/$_myMemberId.json',
+            );
+            await _dio.post(
+              '$_rtdbBaseUrl/watch_party_rooms/$code/messages.json',
+              data: leaveMsg.toJson(),
+            );
+          }
+        } catch (e) {
+          debugPrint('[WatchPartyService] Leave room error: $e');
         }
-      } catch (e) {
-        debugPrint('[WatchPartyService] Leave room error: $e');
       }
+
+      await _publishToRelay(code, {
+        'event': 'member_leave',
+        'memberId': _myMemberId,
+        'message': leaveMsg.toJson(),
+      });
     }
 
     _stopListening();
@@ -390,13 +491,14 @@ class WatchPartyService {
     _myMemberId = null;
     _myName = null;
     _isHost = false;
+    _isUsingRelay = false;
     _roomController.add(null);
   }
 
   void _startListeningToRoom(String roomCode) {
     _stopListening();
 
-    if (isNativeSupported) {
+    if (!_isUsingRelay && isNativeSupported && Firebase.apps.isNotEmpty) {
       final roomRef =
           FirebaseDatabase.instance.ref('watch_party_rooms/$roomCode');
       _nativeRoomSub = roomRef.onValue.listen((event) {
@@ -412,11 +514,16 @@ class WatchPartyService {
           }
         }
       }, onError: (e) {
-        debugPrint('[WatchPartyService] Room stream error: $e');
+        debugPrint(
+          '[WatchPartyService] Room stream error: $e, switching to polling...',
+        );
+        _isUsingRelay = true;
+        _startListeningToRoom(roomCode);
       });
     } else {
-      // Desktop / Web polling fallback (every 1 second during active watch party)
-      _restPollingTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      // High-performance polling loop (1.2s interval)
+      _pollingTimer =
+          Timer.periodic(const Duration(milliseconds: 1200), (_) async {
         final room = await _fetchRoomFromCloud(roomCode);
         if (room != null) {
           _currentRoom = room;
@@ -429,45 +536,232 @@ class WatchPartyService {
   void _stopListening() {
     _nativeRoomSub?.cancel();
     _nativeRoomSub = null;
-    _restPollingTimer?.cancel();
-    _restPollingTimer = null;
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
   }
 
   Future<void> _writeRoomToCloud(WatchPartyRoom room) async {
-    if (isNativeSupported) {
-      final roomRef =
-          FirebaseDatabase.instance.ref('watch_party_rooms/${room.roomCode}');
-      await roomRef.set(room.toJson());
-    } else {
-      await _dio.put(
-        '$_rtdbBaseUrl/watch_party_rooms/${room.roomCode}.json',
-        data: room.toJson(),
-      );
-    }
-  }
-
-  Future<WatchPartyRoom?> _fetchRoomFromCloud(String roomCode) async {
+    bool firebaseSuccess = false;
     try {
-      if (isNativeSupported) {
-        final snapshot = await FirebaseDatabase.instance
-            .ref('watch_party_rooms/$roomCode')
-            .get();
-        if (snapshot.exists && snapshot.value is Map) {
-          final rawMap = (snapshot.value as Map).cast<String, dynamic>();
-          return WatchPartyRoom.fromJson(rawMap);
-        }
+      if (isNativeSupported && Firebase.apps.isNotEmpty) {
+        final roomRef =
+            FirebaseDatabase.instance.ref('watch_party_rooms/${room.roomCode}');
+        await roomRef.set(room.toJson()).timeout(const Duration(seconds: 3));
+        firebaseSuccess = true;
       } else {
-        final resp = await _dio.get(
-          '$_rtdbBaseUrl/watch_party_rooms/$roomCode.json',
-        );
-        if (resp.data != null && resp.data is Map) {
-          return WatchPartyRoom.fromJson(
-            (resp.data as Map).cast<String, dynamic>(),
-          );
+        final resp = await _dio
+            .put(
+              '$_rtdbBaseUrl/watch_party_rooms/${room.roomCode}.json',
+              data: room.toJson(),
+            )
+            .timeout(const Duration(seconds: 3));
+        if (resp.statusCode == 200) {
+          firebaseSuccess = true;
         }
       }
     } catch (e) {
-      debugPrint('[WatchPartyService] Fetch room error: $e');
+      if (e is DioException) {
+        debugPrint(
+          '[WatchPartyService] Firebase error response: ${e.response?.data}',
+        );
+      }
+      debugPrint(
+        '[WatchPartyService] Firebase RTDB write note ($e). Activating Cloud Relay fallback.',
+      );
+      firebaseSuccess = false;
+    }
+
+    _isUsingRelay = !firebaseSuccess;
+
+    // Always publish to Cloud Relay to guarantee cross-device & guest interoperability
+    await _publishToRelay(room.roomCode, {
+      'event': 'room_init',
+      'room': room.toJson(),
+    });
+  }
+
+  Future<WatchPartyRoom?> _fetchRoomFromCloud(String roomCode) async {
+    final cleanCode = roomCode.trim().toUpperCase();
+
+    // 1. Try Firebase RTDB if not forced to relay
+    if (!_isUsingRelay) {
+      try {
+        if (isNativeSupported && Firebase.apps.isNotEmpty) {
+          final snapshot = await FirebaseDatabase.instance
+              .ref('watch_party_rooms/$cleanCode')
+              .get()
+              .timeout(const Duration(seconds: 3));
+          if (snapshot.exists && snapshot.value is Map) {
+            final rawMap = (snapshot.value as Map).cast<String, dynamic>();
+            return WatchPartyRoom.fromJson(rawMap);
+          }
+        } else {
+          final resp = await _dio
+              .get(
+                '$_rtdbBaseUrl/watch_party_rooms/$cleanCode.json',
+              )
+              .timeout(const Duration(seconds: 3));
+          if (resp.data != null && resp.data is Map) {
+            return WatchPartyRoom.fromJson(
+              (resp.data as Map).cast<String, dynamic>(),
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('[WatchPartyService] Firebase fetch note: $e');
+      }
+    }
+
+    // 2. Fetch from Cloud Relay
+    try {
+      final topic = 'cineva_wp_${cleanCode.toLowerCase()}';
+      final resp = await _dio.get(
+        'https://ntfy.sh/$topic/json?poll=1',
+        options: Options(responseType: ResponseType.plain),
+      );
+      if (resp.data != null) {
+        final room = _reconstructRoomFromRelayData(cleanCode, resp.data);
+        if (room != null) {
+          _isUsingRelay = true;
+          return room;
+        }
+      }
+    } catch (e) {
+      debugPrint('[WatchPartyService] Relay fetch error: $e');
+    }
+
+    return null;
+  }
+
+  Future<void> _publishToRelay(
+    String roomCode,
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final topic = 'cineva_wp_${roomCode.trim().toLowerCase()}';
+      await _dio.post(
+        'https://ntfy.sh/$topic',
+        data: jsonEncode(payload),
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+    } catch (e) {
+      if (e is DioException) {
+        debugPrint('[WatchPartyService] Relay error response: ${e.response?.data}');
+      }
+      debugPrint('[WatchPartyService] Relay publish note: $e');
+    }
+  }
+
+  WatchPartyRoom? _reconstructRoomFromRelayData(
+    String roomCode,
+    dynamic data,
+  ) {
+    try {
+      final lines = <Map<String, dynamic>>[];
+      if (data is String) {
+        for (final line in data.split('\n')) {
+          final trimmed = line.trim();
+          if (trimmed.isEmpty) continue;
+          try {
+            final decoded = jsonDecode(trimmed);
+            if (decoded is Map<String, dynamic>) {
+              lines.add(decoded);
+            }
+          } catch (_) {}
+        }
+      } else if (data is Map<String, dynamic>) {
+        lines.add(data);
+      } else if (data is List) {
+        for (final item in data) {
+          if (item is Map<String, dynamic>) lines.add(item);
+        }
+      }
+
+      if (lines.isEmpty) return null;
+
+      WatchPartyRoom? room;
+      final members = <String, WatchPartyMember>{};
+      final messages = <WatchPartyMessage>[];
+
+      for (final entry in lines) {
+        final rawMsg = entry['message'];
+        if (rawMsg is! String) continue;
+
+        Map<String, dynamic>? payload;
+        try {
+          payload = jsonDecode(rawMsg) as Map<String, dynamic>?;
+        } catch (_) {}
+
+        if (payload == null) continue;
+        final event = payload['event'] as String?;
+
+        if (event == 'room_init') {
+          final roomJson = payload['room'] as Map<dynamic, dynamic>?;
+          if (roomJson != null) {
+            room = WatchPartyRoom.fromJson(roomJson);
+            members.addAll(room.members);
+            messages.addAll(room.messages);
+          }
+        } else if (event == 'member_join') {
+          final mJson = payload['member'] as Map<dynamic, dynamic>?;
+          final msgJson = payload['message'] as Map<dynamic, dynamic>?;
+          if (mJson != null) {
+            final member = WatchPartyMember.fromJson(mJson);
+            members[member.id] = member;
+          }
+          if (msgJson != null) {
+            messages.add(WatchPartyMessage.fromJson(msgJson));
+          }
+        } else if (event == 'playback' && room != null) {
+          final pJson = payload['playback'] as Map<dynamic, dynamic>?;
+          if (pJson != null) {
+            final pb = WatchPartyPlayback.fromJson(pJson);
+            room = room.copyWith(playback: pb);
+          }
+          final msgJson = payload['message'] as Map<dynamic, dynamic>?;
+          if (msgJson != null) {
+            messages.add(WatchPartyMessage.fromJson(msgJson));
+          }
+        } else if (event == 'message') {
+          final msgJson = payload['message'] as Map<dynamic, dynamic>?;
+          if (msgJson != null) {
+            messages.add(WatchPartyMessage.fromJson(msgJson));
+          }
+        } else if (event == 'guest_control' && room != null) {
+          final allow = payload['allowGuestControl'] as bool? ?? false;
+          room = room.copyWith(allowGuestControl: allow);
+          final msgJson = payload['message'] as Map<dynamic, dynamic>?;
+          if (msgJson != null) {
+            messages.add(WatchPartyMessage.fromJson(msgJson));
+          }
+        } else if (event == 'member_leave') {
+          final memberId = payload['memberId'] as String?;
+          if (memberId != null) members.remove(memberId);
+          final msgJson = payload['message'] as Map<dynamic, dynamic>?;
+          if (msgJson != null) {
+            messages.add(WatchPartyMessage.fromJson(msgJson));
+          }
+        }
+      }
+
+      if (room != null) {
+        // Sort and deduplicate messages
+        final seen = <String>{};
+        final uniqueMessages = <WatchPartyMessage>[];
+        for (final m in messages) {
+          if (seen.add(m.id)) {
+            uniqueMessages.add(m);
+          }
+        }
+        uniqueMessages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+        return room.copyWith(
+          members: members,
+          messages: uniqueMessages,
+        );
+      }
+    } catch (e) {
+      debugPrint('[WatchPartyService] Reconstruct room error: $e');
     }
     return null;
   }
@@ -487,4 +781,3 @@ class WatchPartyService {
     _roomController.close();
   }
 }
-
