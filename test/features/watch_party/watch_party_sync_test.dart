@@ -232,6 +232,54 @@ void main() {
       );
       expect(guestStateUnlocked.canControlVideo, isTrue);
     });
+
+    test('Sending chat message preserves playback state and updatedAt exactly', () {
+      const initialPlayback = WatchPartyPlayback(
+        isPlaying: true,
+        positionSeconds: 754.0, // 12:34
+        updatedAt: 1794900000000,
+        updatedBy: 'Host',
+        action: 'play',
+      );
+
+      final room = WatchPartyRoom(
+        roomCode: 'CNV-1234',
+        hostId: 'host_id',
+        hostName: 'Host',
+        media: const WatchPartyMedia(title: 'Movie', mediaType: 'movie', tmdbId: 100),
+        playback: initialPlayback,
+        createdAt: 1794900000000,
+      );
+
+      // Add a message as guest
+      final newMsg = WatchPartyMessage(
+        id: 'msg_1',
+        senderId: 'guest_id',
+        senderName: 'Guest',
+        isHost: false,
+        text: 'Halo!',
+        timestamp: 1794900103000,
+      );
+      final updatedRoom = room.copyWith(messages: [newMsg]);
+
+      // Playback properties must remain completely untouched
+      expect(updatedRoom.playback.positionSeconds, 754.0);
+      expect(updatedRoom.playback.updatedAt, 1794900000000);
+      expect(updatedRoom.playback.isPlaying, isTrue);
+      expect(updatedRoom.playback.action, 'play');
+      expect(updatedRoom.playback.updatedBy, 'Host');
+
+      // The playback change detection condition evaluates to false
+      final prevPlayback = room.playback;
+      final currentPlayback = updatedRoom.playback;
+      final hasPlaybackChanged =
+          prevPlayback.updatedAt != currentPlayback.updatedAt ||
+          prevPlayback.isPlaying != currentPlayback.isPlaying ||
+          prevPlayback.positionSeconds != currentPlayback.positionSeconds ||
+          prevPlayback.action != currentPlayback.action;
+
+      expect(hasPlaybackChanged, isFalse);
+    });
   });
 
   group('TV Series Episode Subtitle & Formatting Helper Tests', () {

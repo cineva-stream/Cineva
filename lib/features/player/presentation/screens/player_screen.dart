@@ -256,6 +256,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   // ── Controls & Mini Popups State ──
   bool _showControls = false;
   Timer? _controlsTimer;
+  Timer? _watchPartyHostSyncTimer;
   _PlayerMiniPopup _activePopup = _PlayerMiniPopup.none;
   int _subtitleSettingsTab = 0; // 0: Waktu (Sync), 1: Tampilan
   bool _isShowingSubtitleSettingsInPopup = false;
@@ -713,6 +714,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _brightnessIndicatorTimer?.cancel();
     _lockedOverlayTimer?.cancel();
     _sleepTimer?.cancel();
+    _watchPartyHostSyncTimer?.cancel();
+    _watchPartyHostSyncTimer = null;
     await _posSub?.cancel();
     await _durSub?.cancel();
     await _playingSub?.cancel();
@@ -890,6 +893,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _brightnessIndicatorTimer?.cancel();
     _lockedOverlayTimer?.cancel();
     _sleepTimer?.cancel();
+    _watchPartyHostSyncTimer?.cancel();
+    _watchPartyHostSyncTimer = null;
     _posSub?.cancel();
     _durSub?.cancel();
     _playingSub?.cancel();
@@ -2736,6 +2741,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           _showControls = false;
           _activePopup = _PlayerMiniPopup.none;
         });
+      }
+    });
+  }
+
+  void _startWatchPartyHostSyncTimer() {
+    _watchPartyHostSyncTimer?.cancel();
+    _watchPartyHostSyncTimer =
+        Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!mounted) return;
+      final wp = ref.read(watchPartyProvider);
+      if (wp.isInRoom && wp.isHost && _isPlaying && !_isLoading) {
+        ref.read(watchPartyProvider.notifier).updatePlayback(
+              isPlaying: true,
+              positionSeconds: _position.inMilliseconds / 1000.0,
+              action: 'sync',
+            );
       }
     });
   }
@@ -7488,7 +7509,30 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     ref.listen<WatchPartyState>(watchPartyProvider, (prev, next) {
       if (next.isInRoom && next.room != null) {
+        // Manage Host periodic sync heartbeat timer
+        if (next.isHost && _watchPartyHostSyncTimer == null) {
+          _startWatchPartyHostSyncTimer();
+        } else if (!next.isHost && _watchPartyHostSyncTimer != null) {
+          _watchPartyHostSyncTimer?.cancel();
+          _watchPartyHostSyncTimer = null;
+        }
+
         final playback = next.room!.playback;
+        final prevPlayback = prev?.room?.playback;
+
+        // CRITICAL FIX: Only synchronize video playback when playback state actually
+        // changed or upon initial room entry.
+        // Chat messages, emoji reactions, unread badges, or member list updates
+        // must NEVER re-trigger playback seeks or reset active video position!
+        final isInitialSync = prev?.isInRoom != true || prevPlayback == null;
+        final hasPlaybackChanged = isInitialSync ||
+            prevPlayback.updatedAt != playback.updatedAt ||
+            prevPlayback.isPlaying != playback.isPlaying ||
+            prevPlayback.positionSeconds != playback.positionSeconds ||
+            prevPlayback.action != playback.action;
+
+        if (!hasPlaybackChanged) return;
+
         // Ignore events triggered by ourselves
         if (playback.updatedBy == next.myName) return;
 
@@ -7522,13 +7566,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         // Sync Seek position with latency compensation
         final now = DateTime.now().millisecondsSinceEpoch;
         final elapsed = (now - playback.updatedAt) / 1000.0;
+        final safeElapsed = elapsed > 0 ? elapsed : 0.0;
         final targetSec = playback.isPlaying
-            ? (playback.positionSeconds +
-                (elapsed > 0 && elapsed < 30 ? elapsed : 0))
+            ? (playback.positionSeconds + safeElapsed)
             : playback.positionSeconds;
 
         final currentSec = _position.inMilliseconds / 1000.0;
-        if ((currentSec - targetSec).abs() > 2.0 && !_isLoading) {
+        // Avoid seeking on minor network jitter (threshold 3.0s)
+        if ((currentSec - targetSec).abs() > 3.0 && !_isLoading) {
           final targetDuration =
               Duration(milliseconds: (targetSec * 1000).toInt());
           _position = targetDuration;
@@ -7539,6 +7584,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             _webViewController?.runJavaScript(
                 'var v = document.querySelector("video"); if (v) v.currentTime = $targetSec;');
           }
+        }
+      } else {
+        if (_watchPartyHostSyncTimer != null) {
+          _watchPartyHostSyncTimer?.cancel();
+          _watchPartyHostSyncTimer = null;
         }
       }
     });
