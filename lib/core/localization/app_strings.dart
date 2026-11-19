@@ -1350,4 +1350,63 @@ class AppStrings {
       isIndonesian ? 'Copot Versi Lama Ini' : 'Uninstall This Legacy Version';
   String get migrationDismissLaterBtn =>
       isIndonesian ? 'Nanti Saja' : 'Later';
+
+  // ── Feedback & Bug Report Strings ──
+  String get feedbackMenuTitle =>
+      isIndonesian ? 'Kirim Masukan' : 'Share Your Thoughts';
+  String get feedbackMenuSubtitle => isIndonesian
+      ? 'Beri saran fitur, laporkan kendala, atau ulasan tayangan'
+      : 'Submit suggestions, report bugs, or media issues';
+  String get feedbackScreenTitle =>
+      isIndonesian ? 'Kirim Masukan' : 'Share Your Thoughts';
+  String get feedbackScreenSubtitle => isIndonesian
+      ? 'Pendapat dan laporan Anda sangat berharga untuk membuat Cineva semakin baik.'
+      : 'Your voice and reports directly help make Cineva better for everyone.';
+  String get feedbackNameLabel =>
+      isIndonesian ? 'Nama / Panggilan' : 'Your Name / Nickname';
+  String get feedbackNameHint =>
+      isIndonesian ? 'Masukkan nama atau anonim' : 'Enter name or leave anonymous';
+  String get feedbackCategoryLabel =>
+      isIndonesian ? 'Kategori Masukan' : 'Feedback Category';
+  String get feedbackCategoryBugs =>
+      isIndonesian ? 'Bug & Masalah Teknis' : 'Bugs & Technical Issues';
+  String get feedbackCategoryFeatures =>
+      isIndonesian ? 'Saran Fitur Baru' : 'Feature Suggestions';
+  String get feedbackCategoryReport =>
+      isIndonesian ? 'Lapor Konten / Tayangan' : 'Report Media / Subtitles';
+  String get feedbackCategoryGeneral =>
+      isIndonesian ? 'Lainnya / Umum' : 'General & Other';
+  String get feedbackTitleLabel =>
+      isIndonesian ? 'Judul Masukan' : 'Subject / Title';
+  String get feedbackTitleHint => isIndonesian
+      ? 'Contoh: Subtitle film delay di menit 14'
+      : 'E.g., Subtitle out of sync on episode 2';
+  String get feedbackDescLabel =>
+      isIndonesian ? 'Deskripsi Lengkap' : 'Detailed Description';
+  String get feedbackDescHint => isIndonesian
+      ? 'Jelaskan kendala atau saran Anda secara rinci...'
+      : 'Describe what happened or your suggestion in detail...';
+  String get feedbackIncludeDeviceInfo => isIndonesian
+      ? 'Sertakan info teknis perangkat (membantu perbaikan bug)'
+      : 'Include technical device info (helps diagnose issues)';
+  String get feedbackSubmitBtn =>
+      isIndonesian ? 'Kirim Masukan' : 'Send Feedback';
+  String get feedbackSendingBtn =>
+      isIndonesian ? 'Mengirim Masukan...' : 'Sending...';
+  String get feedbackSuccessTitle =>
+      isIndonesian ? 'Masukan Berhasil Terkirim!' : 'Feedback Sent!';
+  String get feedbackSuccessDesc => isIndonesian
+      ? 'Terima kasih banyak atas partisipasi Anda. Laporan Anda telah kami terima untuk ditindaklanjuti.'
+      : 'Thank you for your feedback! Your report has been submitted to the Cineva team.';
+  String get feedbackErrorTitle =>
+      isIndonesian ? 'Gagal Mengirim' : 'Submission Failed';
+  String get feedbackErrorDesc => isIndonesian
+      ? 'Terjadi kendala saat mengirim masukan. Pastikan koneksi internet stabil dan coba lagi.'
+      : 'Could not send feedback. Please check your internet connection and try again.';
+  String get feedbackValidationTitleRequired => isIndonesian
+      ? 'Mohon masukkan judul masukan terlebih dahulu'
+      : 'Please enter a subject title';
+  String get feedbackValidationDescRequired => isIndonesian
+      ? 'Mohon tuliskan deskripsi masukan Anda'
+      : 'Please enter a description';
 }

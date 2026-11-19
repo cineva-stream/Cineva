@@ -17,6 +17,7 @@ import '../../features/download/presentation/screens/download_list_screen.dart';
 import '../../features/settings/data/legal_content.dart';
 import '../../features/settings/presentation/screens/legal_document_screen.dart';
 import '../../features/settings/presentation/screens/about_info_screen.dart';
+import '../../features/feedback/presentation/screens/feedback_screen.dart';
 import '../../features/profile/presentation/screens/onboarding_profile_screen.dart';
 import '../../features/profile/presentation/screens/legal_agreement_screen.dart';
 import '../../features/profile/presentation/screens/edit_profile_screen.dart';
@@ -414,6 +415,27 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const AboutInfoScreen(),
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 250),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.06, 0),
+              end: Offset.zero,
+            ).animate(curved),
+            child: FadeTransition(opacity: curved, child: child),
+          );
+        },
+      ),
+    ),
+
+    GoRoute(
+      path: '/feedback',
+      name: 'feedback',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const FeedbackScreen(),
         transitionDuration: const Duration(milliseconds: 300),
         reverseTransitionDuration: const Duration(milliseconds: 250),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {

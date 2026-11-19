@@ -1371,6 +1371,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _buildSectionHeader(s.settingsAboutSection, Iconsax.info_circle),
             _buildSettingsCard([
               _SettingsTileItem(
+                icon: Iconsax.message_favorite,
+                title: s.feedbackMenuTitle,
+                subtitle: s.feedbackMenuSubtitle,
+                trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
+                onTap: () => context.push('/feedback'),
+              ),
+              _buildCardDivider(),
+              _SettingsTileItem(
                 icon: Icons.info_outline_rounded,
                 title: s.settingsInfoTitle,
                 subtitle: '$_appVersion ($_buildNumber) • ${s.settingsInfoSubtitle}',
