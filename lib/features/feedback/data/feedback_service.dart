@@ -45,7 +45,7 @@ enum FeedbackCategory {
 /// developer's Telegram Bot and logs them in Google Sheets.
 class FeedbackService {
   static const String defaultWebhookUrl =
-      'https://script.google.com/macros/s/AKfycbxLdsZB4ni3BKTqzVv_T_xK2FbtnsHsp7NvpIFm0tbx4swZKlWEhqoj3Ws3bGEQHIiR3Q/exec';
+      'https://script.google.com/macros/s/AKfycbz9b43oU7_URzpCGGG337pf2yDU7-VObkAB9dXHYg8fWHob0fcyEbKH0tdQaSC-YeLh/exec';
 
   final Dio _dio;
   final String webhookUrl;
