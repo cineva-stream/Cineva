@@ -374,6 +374,26 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                 }
+                "openPackage" -> {
+                    val targetPackage = call.argument<String>("packageName") ?: ""
+                    if (targetPackage.isEmpty()) {
+                        result.success(false)
+                    } else {
+                        try {
+                            val launchIntent = packageManager.getLaunchIntentForPackage(targetPackage)
+                            if (launchIntent != null) {
+                                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                startActivity(launchIntent)
+                                result.success(true)
+                            } else {
+                                result.success(false)
+                            }
+                        } catch (t: Throwable) {
+                            Log.e(TAG, "Failed to open package $targetPackage: ${t.message}")
+                            result.success(false)
+                        }
+                    }
+                }
                 "uninstallPackage" -> {
                     val targetPackage = call.argument<String>("packageName") ?: ""
                     if (targetPackage.isEmpty()) {

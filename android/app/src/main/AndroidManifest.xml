@@ -34,9 +34,10 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
-    <!-- Package visibility queries for detecting legacy Cineva packages -->
+    <!-- Package visibility queries for detecting legacy & new official Cineva packages -->
     <queries>
         <package android:name="com.primadev.cineva" />
+        <package android:name="com.cinevagroup.cinevastream" />
     </queries>
 
     <application

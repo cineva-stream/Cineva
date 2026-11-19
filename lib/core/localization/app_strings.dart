@@ -1334,4 +1334,20 @@ class AppStrings {
       isIndonesian ? 'Copot Versi Lama Sekarang' : 'Uninstall Previous Version';
   String get migrationDismissBtn =>
       isIndonesian ? 'Gunakan Versi Ini' : 'Continue with This Version';
+
+  // ── Old App -> New App Transition Strings ──
+  String get migrationOldAppBadge =>
+      isIndonesian ? 'VERSI RESMI TERPASANG' : 'OFFICIAL APP INSTALLED';
+  String get migrationOldAppTitle => isIndonesian
+      ? 'Aplikasi Cineva Terbaru Telah Terpasang'
+      : 'Latest Cineva App is Already Installed';
+  String get migrationOldAppDesc => isIndonesian
+      ? 'Cineva dengan identitas resmi baru telah terpasang di perangkat Anda. Seluruh riwayat dan profil otomatis aman. Buka aplikasi terbaru dan copot versi lama ini agar tidak memakan ruang memori.'
+      : 'Cineva with the new official identity is already installed on your device. All your history and profile are safe. Open the latest app and uninstall this legacy version to free up storage.';
+  String get migrationOpenNewAppBtn =>
+      isIndonesian ? 'Buka Cineva Terbaru' : 'Open Latest Cineva';
+  String get migrationUninstallThisAppBtn =>
+      isIndonesian ? 'Copot Versi Lama Ini' : 'Uninstall This Legacy Version';
+  String get migrationDismissLaterBtn =>
+      isIndonesian ? 'Nanti Saja' : 'Later';
 }
