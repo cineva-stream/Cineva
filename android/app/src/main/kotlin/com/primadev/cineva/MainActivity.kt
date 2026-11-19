@@ -351,6 +351,57 @@ class MainActivity : FlutterActivity() {
                     }
                     result.success(abis)
                 }
+                "isPackageInstalled" -> {
+                    val targetPackage = call.argument<String>("packageName") ?: ""
+                    if (targetPackage.isEmpty()) {
+                        result.success(false)
+                    } else {
+                        try {
+                            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                packageManager.getPackageInfo(
+                                    targetPackage,
+                                    android.content.pm.PackageManager.PackageInfoFlags.of(0)
+                                )
+                            } else {
+                                @Suppress("DEPRECATION")
+                                packageManager.getPackageInfo(targetPackage, 0)
+                            }
+                            result.success(info != null)
+                        } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+                            result.success(false)
+                        } catch (t: Throwable) {
+                            result.success(false)
+                        }
+                    }
+                }
+                "uninstallPackage" -> {
+                    val targetPackage = call.argument<String>("packageName") ?: ""
+                    if (targetPackage.isEmpty()) {
+                        result.success(false)
+                    } else {
+                        try {
+                            val intent = Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply {
+                                data = Uri.parse("package:$targetPackage")
+                                putExtra(Intent.EXTRA_RETURN_RESULT, true)
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (t: Throwable) {
+                            try {
+                                val intent = Intent(Intent.ACTION_DELETE).apply {
+                                    data = Uri.parse("package:$targetPackage")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                startActivity(intent)
+                                result.success(true)
+                            } catch (e: Throwable) {
+                                Log.e(TAG, "Failed to launch uninstall intent: ${e.message}", e)
+                                result.error("UNINSTALL_ERROR", e.message, null)
+                            }
+                        }
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

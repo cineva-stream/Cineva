@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -32,6 +34,7 @@ import '../../../../core/platform/device_form_factor.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
 import '../../../download/presentation/widgets/download_feature_announcement_dialog.dart';
 import '../../../settings/data/settings_service.dart';
+import '../../../updater/data/legacy_migration_service.dart';
 
 /// Active category filter on the Home Screen.
 enum HomeCategoryFilter {
@@ -76,6 +79,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         Future.delayed(const Duration(milliseconds: 900), () {
           if (!mounted) return;
           DownloadFeatureAnnouncementDialog.show(context);
+        });
+      }
+
+      // Check if user has a legacy Cineva package that should be migrated / uninstalled
+      if (!kIsWeb &&
+          Platform.isAndroid &&
+          !Platform.environment.containsKey('FLUTTER_TEST')) {
+        Future.delayed(const Duration(milliseconds: 1400), () {
+          if (!mounted) return;
+          LegacyMigrationService.checkAndShow(context);
         });
       }
     });

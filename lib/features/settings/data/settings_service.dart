@@ -326,4 +326,24 @@ class SettingsService {
       }
     }
   }
+
+  // ── Legacy Package Migration Announcement Modal ──
+  static const String keyLegacyMigrationDismissed =
+      'legacy_migration_dismissed';
+
+  static bool hasDismissedLegacyMigration() {
+    try {
+      if (!Hive.isBoxOpen(AppConstants.settingsBox)) return false;
+      return _box.get(keyLegacyMigrationDismissed, defaultValue: false) as bool;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> setDismissedLegacyMigration(bool dismissed) async {
+    try {
+      if (!Hive.isBoxOpen(AppConstants.settingsBox)) return;
+      await _box.put(keyLegacyMigrationDismissed, dismissed);
+    } catch (_) {}
+  }
 }

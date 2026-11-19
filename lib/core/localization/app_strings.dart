@@ -1302,4 +1302,36 @@ class AppStrings {
       : 'Room code & PIN copied!';
   String get watchPartyRoomProtected =>
       isIndonesian ? 'Ruangan Terkunci PIN' : 'PIN Protected Room';
+
+  // ── Package Identity & Legacy Migration Modal ──
+  String get migrationDialogBadge =>
+      isIndonesian ? 'IDENTITAS RESMI' : 'OFFICIAL IDENTITY';
+  String get migrationDialogTitle => isIndonesian
+      ? 'Pembaruan Identitas & Keamanan Resmi'
+      : 'Official Identity & Security Update';
+  String get migrationDialogDesc => isIndonesian
+      ? 'Aplikasi Cineva telah berganti identitas paket dan tanda tangan keamanan baru. Kami sarankan uninstall aplikasi lama dan gunakan terbaru, seluruh data akan otomatis migrasi pada aplikasi terbaru.'
+      : 'Cineva has been updated with a new official package identity and security signing key. We recommend uninstalling the previous version and using this latest one, all your data will automatically migrate to this version.';
+  String get migrationDataPreservedNotice => isIndonesian
+      ? 'Seluruh data riwayat tontonan, watchlist, dan profil Anda otomatis termigrasi pada versi terbaru ini.'
+      : 'All your watch history, watchlist, and profile data are automatically preserved in this new version.';
+  String get migrationFeature1Title =>
+      isIndonesian ? 'Migrasi Data Otomatis' : 'Automatic Data Migration';
+  String get migrationFeature1Desc => isIndonesian
+      ? 'Riwayat tontonan, watchlist, dan profil Anda tetap aman dan terhubung'
+      : 'Your watch history, watchlist, and profile remain completely intact';
+  String get migrationFeature2Title =>
+      isIndonesian ? 'Bebas Aplikasi Ganda' : 'No Duplicate Apps';
+  String get migrationFeature2Desc => isIndonesian
+      ? 'Copot aplikasi versi lama agar tidak memakan ruang memori HP'
+      : 'Uninstall the previous version to free up device storage';
+  String get migrationFeature3Title =>
+      isIndonesian ? 'Tanda Tangan Terverifikasi' : 'Official Verified Key';
+  String get migrationFeature3Desc => isIndonesian
+      ? 'Bebas peringatan keamanan dan pembaruan masa depan lebih cepat'
+      : 'Protected against security warnings with seamless future updates';
+  String get migrationUninstallBtn =>
+      isIndonesian ? 'Copot Versi Lama Sekarang' : 'Uninstall Previous Version';
+  String get migrationDismissBtn =>
+      isIndonesian ? 'Gunakan Versi Ini' : 'Continue with This Version';
 }
