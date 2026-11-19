@@ -10,8 +10,9 @@ import '../presentation/widgets/legacy_migration_dialog.dart';
 /// Service responsible for detecting legacy Cineva packages and coordinating
 /// seamless identity migration and uninstallation.
 class LegacyMigrationService {
-  static const MethodChannel _updaterChannel =
-      MethodChannel('com.primadev.cineva/updater');
+  static const MethodChannel _updaterChannel = MethodChannel(
+    'com.primadev.cineva/updater',
+  );
 
   /// Previous baseline package name of Cineva
   static const String legacyPackageName = 'com.primadev.cineva';
@@ -42,10 +43,9 @@ class LegacyMigrationService {
   static Future<bool> uninstallPackage(String packageName) async {
     if (kIsWeb || !Platform.isAndroid) return false;
     try {
-      final res = await _updaterChannel.invokeMethod<bool>(
-        'uninstallPackage',
-        {'packageName': packageName},
-      );
+      final res = await _updaterChannel.invokeMethod<bool>('uninstallPackage', {
+        'packageName': packageName,
+      });
       return res == true;
     } catch (e) {
       debugPrint('[LegacyMigrationService] uninstallPackage note: $e');
@@ -55,7 +55,9 @@ class LegacyMigrationService {
 
   /// Finds which legacy package (if any) is currently installed on the device
   /// while running under a different package name.
-  static Future<String?> findInstalledLegacyPackage({bool force = false}) async {
+  static Future<String?> findInstalledLegacyPackage({
+    bool force = false,
+  }) async {
     if (kIsWeb || !Platform.isAndroid) {
       if (force) return legacyPackageName;
       return null;
@@ -75,7 +77,9 @@ class LegacyMigrationService {
         }
       }
     } catch (e) {
-      debugPrint('[LegacyMigrationService] findInstalledLegacyPackage note: $e');
+      debugPrint(
+        '[LegacyMigrationService] findInstalledLegacyPackage note: $e',
+      );
     }
 
     if (force) return legacyPackageName;
@@ -93,7 +97,10 @@ class LegacyMigrationService {
   }
 
   /// Checks and automatically presents the modern borderless migration dialog if applicable.
-  static Future<void> checkAndShow(BuildContext context, {bool force = false}) async {
+  static Future<void> checkAndShow(
+    BuildContext context, {
+    bool force = false,
+  }) async {
     if (!context.mounted) return;
     if (!force && SettingsService.hasDismissedLegacyMigration()) return;
     final legacyPackage = await findInstalledLegacyPackage(force: force);
