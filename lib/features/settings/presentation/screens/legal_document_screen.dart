@@ -79,6 +79,15 @@ class LegalDocumentScreen extends ConsumerWidget {
                 height: 1.45,
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              s.legalLastUpdated(doc.lastUpdated),
+              style: GoogleFonts.jetBrainsMono(
+                color: AppColors.primaryLight,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
 
             const SizedBox(height: 20),
 

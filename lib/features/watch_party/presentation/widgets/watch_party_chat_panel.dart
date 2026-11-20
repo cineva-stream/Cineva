@@ -87,17 +87,29 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
   }
 
   void _confirmLeaveRoom(AppStrings s) {
+    final isHost = ref.read(watchPartyProvider).isHost;
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E26),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Text(
-          s.watchPartyLeaveConfirm,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          isHost
+              ? (s.isIndonesian
+                  ? 'Tutup Ruangan Nonton Bersama?'
+                  : 'End Watch Party Room?')
+              : s.watchPartyLeaveConfirm,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         content: Text(
-          s.watchPartyLeaveConfirmDesc,
+          isHost
+              ? (s.isIndonesian
+                  ? 'Sebagai Host, keluar dari ruangan akan otomatis menghapus ruangan, kode akses, dan seluruh data percakapan.'
+                  : 'As the Host, leaving will automatically delete the room, access code, and all conversation data.')
+              : s.watchPartyLeaveConfirmDesc,
           style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
         ),
         actions: [
@@ -115,9 +127,17 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
             ),
             onPressed: () {
               Navigator.of(ctx).pop();
-              ref.read(watchPartyProvider.notifier).leaveRoom();
+              if (isHost) {
+                ref.read(watchPartyProvider.notifier).deleteRoom();
+              } else {
+                ref.read(watchPartyProvider.notifier).leaveRoom();
+              }
             },
-            child: Text(s.watchPartyLeaveBtn),
+            child: Text(
+              isHost
+                  ? (s.isIndonesian ? 'Hapus & Keluar' : 'Delete & Leave')
+                  : s.watchPartyLeaveBtn,
+            ),
           ),
         ],
       ),
@@ -144,8 +164,8 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
         filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: Container(
           width: 340,
-          color: const Color(0xFF121217).withValues(alpha: 0.94),
           decoration: BoxDecoration(
+            color: const Color(0xFF121217).withValues(alpha: 0.94),
             border: Border(
               left: BorderSide(
                 color: Colors.white.withValues(alpha: 0.1),

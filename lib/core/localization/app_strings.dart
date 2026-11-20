@@ -587,9 +587,9 @@ class AppStrings {
       : 'Cineva is a decentralized P2P media player that accesses publicly available content on the internet. Users are fully responsible for the media accessed in compliance with applicable local laws.';
 
   // ── Legal & About Screens ──
-  String get legalLastUpdated => isIndonesian
-      ? 'Pembaruan Terakhir: Oktober 2026'
-      : 'Last Updated: October 2026';
+  String legalLastUpdated(String date) => isIndonesian
+      ? 'Terakhir diperbarui: $date'
+      : 'Last updated: $date';
   String get legalNoticeBadge =>
       isIndonesian ? 'PEMBERITAHUAN HUKUM RESMI' : 'OFFICIAL LEGAL NOTICE';
   String get legalJurisdictionNotice => isIndonesian

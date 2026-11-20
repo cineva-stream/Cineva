@@ -10,96 +10,289 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('LegalContentRepository Unit Tests', () {
-    test('Privacy Policy contains comprehensive global privacy clauses in ID and EN', () {
-      final docId = LegalContentRepository.getDocument(LegalDocType.privacyPolicy, true);
-      expect(docId.title, 'Kebijakan Privasi');
-      expect(docId.calloutSummary, contains('Zero Data Collection'));
-      expect(docId.sections.length, 6);
-      expect(docId.sections.any((s) => s.title.contains('P2P') || s.body.contains('P2P')), isTrue);
-      expect(docId.sections.any((s) => s.body.contains('Hive') || s.bulletPoints.any((b) => b.contains('Hive'))), isTrue);
-      expect(docId.sections.any((s) => s.body.contains('TMDB') || s.bulletPoints.any((b) => b.contains('TMDB'))), isTrue);
+    test(
+      'All legal documents expose a last-updated date and a legal version',
+      () {
+        expect(LegalContentRepository.currentVersion, greaterThanOrEqualTo(2));
+        for (final type in LegalDocType.values) {
+          for (final isId in [true, false]) {
+            final doc = LegalContentRepository.getDocument(type, isId);
+            expect(doc.lastUpdated.trim(), isNotEmpty);
+          }
+        }
+      },
+    );
+    test(
+      'Privacy Policy contains comprehensive global privacy clauses in ID and EN',
+      () {
+        final docId = LegalContentRepository.getDocument(
+          LegalDocType.privacyPolicy,
+          true,
+        );
+        expect(docId.title, 'Kebijakan Privasi');
+        expect(docId.calloutSummary, contains('Local-first'));
+        expect(docId.sections.length, 9);
+        expect(
+          docId.sections.any(
+            (s) => s.title.contains('P2P') || s.body.contains('P2P'),
+          ),
+          isTrue,
+        );
+        expect(
+          docId.sections.any(
+            (s) =>
+                s.body.contains('Hive') ||
+                s.bulletPoints.any((b) => b.contains('Hive')),
+          ),
+          isTrue,
+        );
+        expect(
+          docId.sections.any(
+            (s) =>
+                s.body.contains('TMDB') ||
+                s.bulletPoints.any((b) => b.contains('TMDB')),
+          ),
+          isTrue,
+        );
 
-      final docEn = LegalContentRepository.getDocument(LegalDocType.privacyPolicy, false);
-      expect(docEn.title, 'Privacy Policy');
-      expect(docEn.calloutSummary, contains('Zero-Data-Collection'));
-      expect(docEn.sections.length, 6);
-      expect(docEn.sections.any((s) => s.title.contains('P2P') || s.body.contains('P2P')), isTrue);
-    });
+        final docEn = LegalContentRepository.getDocument(
+          LegalDocType.privacyPolicy,
+          false,
+        );
+        expect(docEn.title, 'Privacy Policy');
+        expect(docEn.calloutSummary, contains('Local-first'));
+        expect(docEn.sections.length, 9);
+        expect(
+          docEn.sections.any((s) => s.title.contains('Watch Party')),
+          isTrue,
+        );
+        expect(
+          docEn.sections.any(
+            (s) => s.bulletPoints.any(
+              (b) => b.contains('Google Analytics for Firebase'),
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          docEn.sections.any(
+            (s) => s.bulletPoints.any((b) => b.contains('ntfy.sh')),
+          ),
+          isTrue,
+        );
+        expect(
+          docId.sections.any((s) => s.title.contains('Nonton Bareng')),
+          isTrue,
+        );
+        expect(
+          docId.sections.any(
+            (s) => s.bulletPoints.any(
+              (b) => b.contains('Google Analytics for Firebase'),
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          docId.sections.any((s) => s.body.contains('cineva.dev@gmail.com')),
+          isTrue,
+        );
+        // Klaim lama yang sudah tidak akurat tidak boleh muncul lagi.
+        for (final d in [docId, docEn]) {
+          final all = [
+            d.calloutSummary,
+            ...d.sections.expand((s) => [s.title, s.body, ...s.bulletPoints]),
+          ].join(' ');
+          expect(
+            all.contains('Zero Data Collection') ||
+                all.contains('Zero-Data-Collection'),
+            isFalse,
+          );
+        }
+        expect(
+          docEn.sections.any(
+            (s) => s.title.contains('P2P') || s.body.contains('P2P'),
+          ),
+          isTrue,
+        );
+      },
+    );
 
-    test('Terms & Conditions contains all required clauses (As-Is, Third-Party, Non-Commercial, Availability) in ID and EN', () {
-      final docId = LegalContentRepository.getDocument(LegalDocType.termsAndConditions, true);
-      expect(docId.title, 'Syarat dan Ketentuan');
-      expect(docId.calloutSummary, contains('sebagaimana adanya'));
-      expect(docId.calloutSummary, contains('BUKAN layanan komersial'));
-      expect(docId.sections.length, 6);
+    test(
+      'Terms & Conditions contains all required clauses (As-Is, Third-Party, Non-Commercial, Availability) in ID and EN',
+      () {
+        final docId = LegalContentRepository.getDocument(
+          LegalDocType.termsAndConditions,
+          true,
+        );
+        expect(docId.title, 'Syarat dan Ketentuan');
+        expect(docId.calloutSummary, contains('sebagaimana adanya'));
+        expect(docId.calloutSummary, contains('BUKAN layanan komersial'));
+        expect(docId.sections.length, 7);
+        expect(
+          docId.sections.any((s) => s.title.contains('Nonton Bareng')),
+          isTrue,
+        );
 
-      // 1. As-Is clause and GPL-3.0 license
-      expect(docId.sections.any((s) => s.body.contains('SEBAGAIMANA ADANYA')), isTrue);
-      expect(docId.sections.any((s) => s.body.contains('GPL-3.0')), isTrue);
-      // 2. Third-party content ownership
-      expect(docId.sections.any((s) => s.bulletPoints.any((b) => b.contains('BUKAN merupakan milik aplikasi Cineva'))), isTrue);
-      // 3. Not commercial & not a substitute for official streaming
-      expect(docId.sections.any((s) => s.bulletPoints.any((b) => b.contains('BUKAN merupakan pengganti layanan streaming resmi'))), isTrue);
-      // 4. Content availability not guaranteed
-      expect(docId.sections.any((s) => s.body.contains('TIDAK SELURUH film atau serial TV dijamin tersedia')), isTrue);
-      // 5. Worldwide user responsibility
-      expect(docId.sections.any((s) => s.title.contains('Tanggung Jawab Hukum')), isTrue);
+        // 1. As-Is clause and GPL-3.0 license
+        expect(
+          docId.sections.any((s) => s.body.contains('SEBAGAIMANA ADANYA')),
+          isTrue,
+        );
+        expect(docId.sections.any((s) => s.body.contains('GPL-3.0')), isTrue);
+        // 2. Third-party content ownership
+        expect(
+          docId.sections.any(
+            (s) => s.bulletPoints.any(
+              (b) => b.contains('BUKAN merupakan milik aplikasi Cineva'),
+            ),
+          ),
+          isTrue,
+        );
+        // 3. Not commercial & not a substitute for official streaming
+        expect(
+          docId.sections.any(
+            (s) => s.bulletPoints.any(
+              (b) => b.contains(
+                'BUKAN merupakan pengganti layanan streaming resmi',
+              ),
+            ),
+          ),
+          isTrue,
+        );
+        // 4. Content availability not guaranteed
+        expect(
+          docId.sections.any(
+            (s) => s.body.contains(
+              'TIDAK SELURUH film atau serial TV dijamin tersedia',
+            ),
+          ),
+          isTrue,
+        );
+        // 5. Worldwide user responsibility
+        expect(
+          docId.sections.any((s) => s.title.contains('Tanggung Jawab Hukum')),
+          isTrue,
+        );
 
-      final docEn = LegalContentRepository.getDocument(LegalDocType.termsAndConditions, false);
-      expect(docEn.title, 'Terms and Conditions');
-      expect(docEn.calloutSummary, contains('as-is'));
-      expect(docEn.calloutSummary, contains('NOT a substitute'));
-      expect(docEn.sections.length, 6);
-      expect(docEn.sections.any((s) => s.body.contains('AS IS')), isTrue);
-      expect(docEn.sections.any((s) => s.body.contains('GPL-3.0')), isTrue);
-      expect(docEn.sections.any((s) => s.bulletPoints.any((b) => b.contains('NOT the property of Cineva'))), isTrue);
-      expect(docEn.sections.any((s) => s.bulletPoints.any((b) => b.contains('NOT a substitute or alternative for licensed commercial streaming'))), isTrue);
-      expect(docEn.sections.any((s) => s.body.contains('NOT ALL movies or TV series are guaranteed')), isTrue);
-    });
+        final docEn = LegalContentRepository.getDocument(
+          LegalDocType.termsAndConditions,
+          false,
+        );
+        expect(docEn.title, 'Terms and Conditions');
+        expect(docEn.calloutSummary, contains('as-is'));
+        expect(docEn.calloutSummary, contains('NOT a substitute'));
+        expect(docEn.sections.length, 7);
+        expect(docEn.sections.any((s) => s.body.contains('AS IS')), isTrue);
+        expect(docEn.sections.any((s) => s.body.contains('GPL-3.0')), isTrue);
+        expect(
+          docEn.sections.any(
+            (s) => s.bulletPoints.any(
+              (b) => b.contains('NOT the property of Cineva'),
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          docEn.sections.any(
+            (s) => s.bulletPoints.any(
+              (b) => b.contains(
+                'NOT a substitute or alternative for licensed commercial streaming',
+              ),
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          docEn.sections.any(
+            (s) =>
+                s.body.contains('NOT ALL movies or TV series are guaranteed'),
+          ),
+          isTrue,
+        );
+      },
+    );
 
-    test('Disclaimer contains Copyright, DMCA, Non-Hosting, and Liability limits in ID and EN', () {
-      final docId = LegalContentRepository.getDocument(LegalDocType.disclaimer, true);
-      expect(docId.title, 'Disclaimer');
-      expect(docId.sections.length, 5);
-      expect(docId.sections.any((s) => s.body.contains('TIDAK meng-host')), isTrue);
-      expect(docId.sections.any((s) => s.title.contains('DMCA')), isTrue);
-      expect(docId.sections.any((s) => s.title.contains('Ketiadaan Jaminan Ketersediaan')), isTrue);
-      expect(docId.sections.any((s) => s.title.contains('Pembatasan Tanggung Jawab')), isTrue);
+    test(
+      'Disclaimer contains Copyright, DMCA, Non-Hosting, and Liability limits in ID and EN',
+      () {
+        final docId = LegalContentRepository.getDocument(
+          LegalDocType.disclaimer,
+          true,
+        );
+        expect(docId.title, 'Disclaimer');
+        expect(docId.sections.length, 6);
+        expect(
+          docId.sections.any((s) => s.body.contains('TIDAK meng-host')),
+          isTrue,
+        );
+        expect(docId.sections.any((s) => s.title.contains('DMCA')), isTrue);
+        expect(
+          docId.sections.any(
+            (s) => s.title.contains('Ketiadaan Jaminan Ketersediaan'),
+          ),
+          isTrue,
+        );
+        expect(
+          docId.sections.any(
+            (s) => s.title.contains('Pembatasan Tanggung Jawab'),
+          ),
+          isTrue,
+        );
 
-      final docEn = LegalContentRepository.getDocument(LegalDocType.disclaimer, false);
-      expect(docEn.title, 'Disclaimer');
-      expect(docEn.sections.length, 5);
-      expect(docEn.sections.any((s) => s.body.contains('DOES NOT host')), isTrue);
-      expect(docEn.sections.any((s) => s.title.contains('DMCA')), isTrue);
-      expect(docEn.sections.any((s) => s.title.contains('Zero Guarantee on Catalog Availability')), isTrue);
-      expect(docEn.sections.any((s) => s.title.contains('Limitation of Liability')), isTrue);
-    });
+        final docEn = LegalContentRepository.getDocument(
+          LegalDocType.disclaimer,
+          false,
+        );
+        expect(docEn.title, 'Disclaimer');
+        expect(docEn.sections.length, 6);
+        expect(
+          docEn.sections.any((s) => s.body.contains('DOES NOT host')),
+          isTrue,
+        );
+        expect(docEn.sections.any((s) => s.title.contains('DMCA')), isTrue);
+        expect(
+          docEn.sections.any(
+            (s) => s.title.contains('Zero Guarantee on Catalog Availability'),
+          ),
+          isTrue,
+        );
+        expect(
+          docEn.sections.any(
+            (s) => s.title.contains('Limitation of Liability'),
+          ),
+          isTrue,
+        );
+      },
+    );
   });
 
   group('AppStrings Settings & About Localization Tests', () {
-    test('Settings menu tile strings are distinct and non-empty in Indonesian and English', () {
-      const sId = AppStrings(AppLanguage.id);
-      expect(sId.settingsPrivacyPolicyTitle, 'Kebijakan Privasi');
-      expect(sId.settingsPrivacyPolicySubtitle, isNotEmpty);
-      expect(sId.settingsTermsTitle, 'Syarat dan Ketentuan');
-      expect(sId.settingsTermsSubtitle, isNotEmpty);
-      expect(sId.settingsDisclaimerMenuTitle, 'Disclaimer');
-      expect(sId.settingsDisclaimerTitle, 'Disclaimer & Hak Cipta');
-      expect(sId.settingsDisclaimerSubtitle, isNotEmpty);
-      expect(sId.settingsInfoTitle, 'Info');
-      expect(sId.settingsInfoSubtitle, isNotEmpty);
+    test(
+      'Settings menu tile strings are distinct and non-empty in Indonesian and English',
+      () {
+        const sId = AppStrings(AppLanguage.id);
+        expect(sId.settingsPrivacyPolicyTitle, 'Kebijakan Privasi');
+        expect(sId.settingsPrivacyPolicySubtitle, isNotEmpty);
+        expect(sId.settingsTermsTitle, 'Syarat dan Ketentuan');
+        expect(sId.settingsTermsSubtitle, isNotEmpty);
+        expect(sId.settingsDisclaimerMenuTitle, 'Disclaimer');
+        expect(sId.settingsDisclaimerTitle, 'Disclaimer & Hak Cipta');
+        expect(sId.settingsDisclaimerSubtitle, isNotEmpty);
+        expect(sId.settingsInfoTitle, 'Info');
+        expect(sId.settingsInfoSubtitle, isNotEmpty);
 
-      const sEn = AppStrings(AppLanguage.en);
-      expect(sEn.settingsPrivacyPolicyTitle, 'Privacy Policy');
-      expect(sEn.settingsPrivacyPolicySubtitle, isNotEmpty);
-      expect(sEn.settingsTermsTitle, 'Terms and Conditions');
-      expect(sEn.settingsTermsSubtitle, isNotEmpty);
-      expect(sEn.settingsDisclaimerMenuTitle, 'Disclaimer');
-      expect(sEn.settingsDisclaimerTitle, 'Disclaimer & Copyright');
-      expect(sEn.settingsDisclaimerSubtitle, isNotEmpty);
-      expect(sEn.settingsInfoTitle, 'Info');
-      expect(sEn.settingsInfoSubtitle, isNotEmpty);
-    });
+        const sEn = AppStrings(AppLanguage.en);
+        expect(sEn.settingsPrivacyPolicyTitle, 'Privacy Policy');
+        expect(sEn.settingsPrivacyPolicySubtitle, isNotEmpty);
+        expect(sEn.settingsTermsTitle, 'Terms and Conditions');
+        expect(sEn.settingsTermsSubtitle, isNotEmpty);
+        expect(sEn.settingsDisclaimerMenuTitle, 'Disclaimer');
+        expect(sEn.settingsDisclaimerTitle, 'Disclaimer & Copyright');
+        expect(sEn.settingsDisclaimerSubtitle, isNotEmpty);
+        expect(sEn.settingsInfoTitle, 'Info');
+        expect(sEn.settingsInfoSubtitle, isNotEmpty);
+      },
+    );
 
     test('About screen detailed strings are non-empty in ID and EN', () {
       const sId = AppStrings(AppLanguage.id);
@@ -123,51 +316,60 @@ void main() {
   });
 
   group('LegalDocumentScreen Widget Tests', () {
-    testWidgets('Renders Privacy Policy full width without cards and with back button', (tester) async {
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: LegalDocumentScreen(type: LegalDocType.privacyPolicy),
+    testWidgets(
+      'Renders Privacy Policy full width without cards and with back button',
+      (tester) async {
+        await tester.pumpWidget(
+          const ProviderScope(
+            child: MaterialApp(
+              home: LegalDocumentScreen(type: LegalDocType.privacyPolicy),
+            ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      // Title & callout summary
-      expect(find.text('Kebijakan Privasi'), findsWidgets);
-      expect(find.byType(SingleChildScrollView), findsOneWidget);
-      // No Card widget should wrap the legal document (user strictly requested cardless/full-width)
-      expect(find.byType(Card), findsNothing);
+        // Title & callout summary
+        expect(find.text('Kebijakan Privasi'), findsWidgets);
+        expect(find.byType(SingleChildScrollView), findsOneWidget);
+        // No Card widget should wrap the legal document (user strictly requested cardless/full-width)
+        expect(find.byType(Card), findsNothing);
 
-      // Section paragraphs
-      expect(find.textContaining('Zero Data Collection'), findsOneWidget);
-      // Official notice badge and last updated were removed per user request
-      expect(find.text('PEMBERITAHUAN HUKUM RESMI'), findsNothing);
+        // Section paragraphs
+        expect(find.textContaining('Local-first'), findsOneWidget);
+        // Official notice badge and last updated were removed per user request
+        expect(find.text('PEMBERITAHUAN HUKUM RESMI'), findsNothing);
 
-      // Back button
-      expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
-    });
+        // Back button
+        expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
+      },
+    );
 
-    testWidgets('Renders Terms and Conditions with all 6 numbered section headers', (tester) async {
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: LegalDocumentScreen(type: LegalDocType.termsAndConditions),
+    testWidgets(
+      'Renders Terms and Conditions with all 7 numbered section headers',
+      (tester) async {
+        await tester.pumpWidget(
+          const ProviderScope(
+            child: MaterialApp(
+              home: LegalDocumentScreen(type: LegalDocType.termsAndConditions),
+            ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('Syarat dan Ketentuan'), findsWidgets);
-      expect(find.text('§1'), findsOneWidget);
-      expect(find.text('§2'), findsOneWidget);
-      expect(find.text('§3'), findsOneWidget);
-      expect(find.text('§4'), findsOneWidget);
-      expect(find.text('§5'), findsOneWidget);
-      expect(find.text('§6'), findsOneWidget);
-    });
+        expect(find.text('Syarat dan Ketentuan'), findsWidgets);
+        expect(find.text('§1'), findsOneWidget);
+        expect(find.text('§2'), findsOneWidget);
+        expect(find.text('§3'), findsOneWidget);
+        expect(find.text('§4'), findsOneWidget);
+        expect(find.text('§5'), findsOneWidget);
+        expect(find.text('§6'), findsOneWidget);
+        expect(find.text('§7'), findsOneWidget);
+      },
+    );
 
-    testWidgets('Renders Disclaimer with DMCA and limitation clauses', (tester) async {
+    testWidgets('Renders Disclaimer with DMCA and limitation clauses', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -185,41 +387,40 @@ void main() {
   });
 
   group('AboutInfoScreen Widget Tests', () {
-    testWidgets('Renders poster collage mosaic, app name, badges, description, and feature tiles', (tester) async {
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: AboutInfoScreen(),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
+    testWidgets(
+      'Renders poster collage mosaic, app name, badges, description, and feature tiles',
+      (tester) async {
+        await tester.pumpWidget(
+          const ProviderScope(child: MaterialApp(home: AboutInfoScreen())),
+        );
+        await tester.pumpAndSettle();
 
-      // App name & tagline
-      expect(find.text(AppConstants.appName), findsOneWidget);
-      expect(find.text('Modern Decentralized Media Player'), findsOneWidget);
+        // App name & tagline
+        expect(find.text(AppConstants.appName), findsOneWidget);
+        expect(find.text('Modern Decentralized Media Player'), findsOneWidget);
 
-      // Poster mosaic (multiple images from assets/images/)
-      expect(find.byType(Image), findsWidgets);
+        // Poster mosaic (multiple images from assets/images/)
+        expect(find.byType(Image), findsWidgets);
 
-      // Feature pills / tiles
-      expect(find.text('Streaming P2P Cerdas'), findsOneWidget);
-      expect(find.text('Akselerasi Perangkat Keras'), findsOneWidget);
-      expect(find.text('Katalog 65+ Bahasa Subtitle'), findsOneWidget);
-      expect(find.text('Manajer Unduhan Offline'), findsOneWidget);
-      expect(find.text('Non-Profit & Bebas Iklan'), findsOneWidget);
+        // Feature pills / tiles
+        expect(find.text('Streaming P2P Cerdas'), findsOneWidget);
+        expect(find.text('Akselerasi Perangkat Keras'), findsOneWidget);
+        expect(find.text('Katalog 65+ Bahasa Subtitle'), findsOneWidget);
+        expect(find.text('Manajer Unduhan Offline'), findsOneWidget);
+        expect(find.text('Non-Profit & Bebas Iklan'), findsOneWidget);
 
-      // Extra badges removed per user request
-      expect(find.text('Edisi Publik Gratis'), findsNothing);
-      expect(find.text('Android Native'), findsNothing);
+        // Extra badges removed per user request
+        expect(find.text('Edisi Publik Gratis'), findsNothing);
+        expect(find.text('Android Native'), findsNothing);
 
-      // Footer signature
-      expect(find.textContaining('Made With'), findsOneWidget);
-      expect(find.textContaining('by Cineva Group'), findsOneWidget);
-      expect(find.byIcon(Icons.favorite_rounded), findsWidgets);
+        // Footer signature
+        expect(find.textContaining('Made With'), findsOneWidget);
+        expect(find.textContaining('by Cineva Group'), findsOneWidget);
+        expect(find.byIcon(Icons.favorite_rounded), findsWidgets);
 
-      // Back button
-      expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
-    });
+        // Back button
+        expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
+      },
+    );
   });
 }

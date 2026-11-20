@@ -875,7 +875,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // 5. Restore default system brightness
     _resetBrightness();
 
-    // 6. Pop player route safely
+    // 6. Cleanup Watch Party: Auto-delete room if Host, or leave if Member
+    try {
+      final wp = ref.read(watchPartyProvider);
+      if (wp.isInRoom) {
+        if (wp.isHost) {
+          await ref.read(watchPartyProvider.notifier).deleteRoom();
+        } else {
+          await ref.read(watchPartyProvider.notifier).leaveRoom();
+        }
+      }
+    } catch (e) {
+      debugPrint('[PlayerScreen] Watch Party exit error: $e');
+    }
+
+    // 7. Pop player route safely
     if (mounted) {
       context.pop();
     }
@@ -888,6 +902,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _saveWatchHistory(force: true);
     }
     _resetBrightness();
+
+    // Safety net: ensure host watch party room is cleaned up
+    try {
+      final wp = ref.read(watchPartyProvider);
+      if (wp.isInRoom) {
+        if (wp.isHost) {
+          ref.read(watchPartyProvider.notifier).deleteRoom();
+        } else {
+          ref.read(watchPartyProvider.notifier).leaveRoom();
+        }
+      }
+    } catch (_) {}
+
     _controlsTimer?.cancel();
     _volumeIndicatorTimer?.cancel();
     _brightnessIndicatorTimer?.cancel();
@@ -7508,6 +7535,29 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final activeCues = ref.watch(activeSubtitleCuesProvider);
 
     ref.listen<WatchPartyState>(watchPartyProvider, (prev, next) {
+      if (!next.isInRoom) {
+        if (_watchPartyHostSyncTimer != null) {
+          _watchPartyHostSyncTimer?.cancel();
+          _watchPartyHostSyncTimer = null;
+        }
+        if (prev?.isInRoom == true && prev?.isHost == false) {
+          // Guest notification: room closed by host
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                s.isIndonesian
+                    ? 'Ruangan Nonton Bersama telah ditutup oleh Host.'
+                    : 'The Watch Party room has been closed by the Host.',
+              ),
+              backgroundColor: AppColors.primary,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
       if (next.isInRoom && next.room != null) {
         // Manage Host periodic sync heartbeat timer
         if (next.isHost && _watchPartyHostSyncTimer == null) {

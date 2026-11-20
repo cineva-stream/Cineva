@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/constants/app_constants.dart';
+import 'legal_content.dart';
 
 /// Centralized service for user preferences stored in Hive.
 class SettingsService {
@@ -232,6 +233,13 @@ class SettingsService {
 
   // ── Legal Terms & Privacy Acceptance ──
   static const String keyLegalAccepted = 'legal_terms_accepted';
+  static const String keyLegalVersion = 'legal_terms_version';
+
+  /// Versi dokumen legal yang terakhir disetujui pengguna (0 jika belum tercatat).
+  /// Disimpan untuk keperluan audit; perubahan versi TIDAK memicu persetujuan ulang.
+  static int acceptedLegalVersion() {
+    return (_box.get(keyLegalVersion, defaultValue: 0) as num).toInt();
+  }
 
   static bool hasAcceptedLegal() {
     return _box.get(keyLegalAccepted, defaultValue: false) as bool;
@@ -239,6 +247,9 @@ class SettingsService {
 
   static Future<void> setLegalAccepted(bool accepted) async {
     await _box.put(keyLegalAccepted, accepted);
+    if (accepted) {
+      await _box.put(keyLegalVersion, LegalContentRepository.currentVersion);
+    }
   }
 
   // ── Download Feature Announcement Modal ──

@@ -467,7 +467,15 @@ class WatchPartyService {
   }
 
   /// Leaves the active Watch Party room and cleans up listeners.
+  /// If current user is the Host, this automatically deletes the entire room
+  /// (wiping the room code, member list, and all conversation messages).
+  /// If current user is a guest/member, only removes this member from the room.
   Future<void> leaveRoom() async {
+    if (_isHost) {
+      await deleteRoom();
+      return;
+    }
+
     if (_currentRoom != null && _myMemberId != null) {
       final code = _currentRoom!.roomCode;
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -518,6 +526,54 @@ class WatchPartyService {
     _roomController.add(null);
   }
 
+  /// Completely deletes the active Watch Party room from Firebase and Relay.
+  /// Wipes out the room code, all members, and all conversation messages.
+  Future<void> deleteRoom() async {
+    if (_currentRoom != null) {
+      final code = _currentRoom!.roomCode;
+
+      if (!_isUsingRelay) {
+        try {
+          if (isNativeSupported && Firebase.apps.isNotEmpty) {
+            final roomRef =
+                FirebaseDatabase.instance.ref('watch_party_rooms/$code');
+            await roomRef.remove();
+          } else {
+            await _dio.delete(
+              '$_rtdbBaseUrl/watch_party_rooms/$code.json',
+            );
+          }
+        } catch (e) {
+          debugPrint('[WatchPartyService] Firebase deleteRoom error: $e');
+        }
+      }
+
+      // Broadcast room_deleted to Cloud Relay so any connected guests are notified immediately
+      await _publishToRelay(code, {
+        'event': 'room_deleted',
+        'roomCode': code,
+        'hostId': _myMemberId,
+        'message': {
+          'id': 'del_${DateTime.now().millisecondsSinceEpoch}',
+          'senderId': 'system',
+          'senderName': 'Cineva',
+          'isHost': true,
+          'text': 'Ruangan telah ditutup dan dihapus oleh Host',
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          'type': 'system',
+        },
+      });
+    }
+
+    _stopListening();
+    _currentRoom = null;
+    _myMemberId = null;
+    _myName = null;
+    _isHost = false;
+    _isUsingRelay = false;
+    _roomController.add(null);
+  }
+
   void _startListeningToRoom(String roomCode) {
     _stopListening();
 
@@ -535,6 +591,11 @@ class WatchPartyService {
           } catch (e) {
             debugPrint('[WatchPartyService] Parse room update error: $e');
           }
+        } else if (val == null) {
+          debugPrint('[WatchPartyService] Room $roomCode was deleted from database.');
+          _stopListening();
+          _currentRoom = null;
+          _roomController.add(null);
         }
       }, onError: (e) {
         debugPrint(
@@ -551,6 +612,11 @@ class WatchPartyService {
         if (room != null) {
           _currentRoom = room;
           _roomController.add(room);
+        } else {
+          debugPrint('[WatchPartyService] Room $roomCode not found / deleted during polling.');
+          _stopListening();
+          _currentRoom = null;
+          _roomController.add(null);
         }
       });
     }
@@ -717,6 +783,11 @@ class WatchPartyService {
 
         if (payload == null) continue;
         final event = payload['event'] as String?;
+
+        if (event == 'room_deleted') {
+          // Room was completely deleted by the Host
+          return null;
+        }
 
         if (event == 'room_init') {
           final roomJson = payload['room'] as Map<dynamic, dynamic>?;

@@ -278,9 +278,20 @@ class WatchPartyNotifier extends StateNotifier<WatchPartyState> {
     );
   }
 
+  /// Completely deletes the room (purging room code and all messages).
+  Future<void> deleteRoom() async {
+    await _service.deleteRoom();
+    state = const WatchPartyState();
+  }
+
   /// Disconnects from current room.
+  /// If current user is Host, auto-deletes the room and all conversation data.
   Future<void> leaveRoom() async {
-    await _service.leaveRoom();
+    if (state.isHost) {
+      await _service.deleteRoom();
+    } else {
+      await _service.leaveRoom();
+    }
     state = const WatchPartyState();
   }
 

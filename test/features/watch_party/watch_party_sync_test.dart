@@ -6,6 +6,7 @@ import 'package:cineva/features/watch_party/data/services/watch_party_service.da
 import 'package:cineva/features/watch_party/presentation/providers/watch_party_provider.dart';
 import 'package:cineva/features/watch_party/presentation/widgets/watch_party_side_view.dart';
 import 'package:cineva/features/watch_party/presentation/widgets/watch_party_join_banner.dart';
+import 'package:cineva/features/watch_party/presentation/widgets/watch_party_chat_panel.dart';
 
 void main() {
   group('WatchPartyRoom Models & Serialization', () {
@@ -185,6 +186,47 @@ void main() {
       expect(service.currentRoom?.pin, '1234');
       expect(service.currentRoom?.verifyPin('1234'), isTrue);
       expect(service.currentRoom?.verifyPin('9999'), isFalse);
+      service.dispose();
+    });
+
+    test('deleteRoom completely clears currentRoom, isHost, and notifies stream with null', () async {
+      final service = WatchPartyService();
+      final code = await service.createRoom(
+        hostName: 'Auto Delete Host',
+        media: const WatchPartyMedia(title: 'Delete Test', mediaType: 'movie', tmdbId: 200),
+      );
+      expect(service.currentRoom?.roomCode, code);
+      expect(service.isHost, isTrue);
+
+      WatchPartyRoom? streamValue = service.currentRoom;
+      final sub = service.roomStream.listen((room) {
+        streamValue = room;
+      });
+
+      await service.deleteRoom();
+      await Future<void>.delayed(Duration.zero);
+      expect(service.currentRoom, isNull);
+      expect(service.isHost, isFalse);
+      expect(service.myMemberId, isNull);
+      expect(streamValue, isNull);
+
+      await sub.cancel();
+      service.dispose();
+    });
+
+    test('leaveRoom auto-deletes room and purges all data when caller is Host', () async {
+      final service = WatchPartyService();
+      await service.createRoom(
+        hostName: 'Host Caller',
+        media: const WatchPartyMedia(title: 'Leave Auto Delete Test', mediaType: 'movie', tmdbId: 201),
+      );
+      expect(service.isHost, isTrue);
+      expect(service.currentRoom, isNotNull);
+
+      await service.leaveRoom();
+      expect(service.currentRoom, isNull);
+      expect(service.isHost, isFalse);
+      expect(service.myMemberId, isNull);
       service.dispose();
     });
   });
@@ -497,6 +539,78 @@ void main() {
       expect(find.text('PIN Ruangan (4 digit)'), findsOneWidget);
       expect(find.text('Nama Panggilan'), findsOneWidget);
       expect(find.text('Gabung & Tonton'), findsOneWidget);
+    });
+
+    testWidgets('WatchPartyChatPanel displays End Room and Delete & Leave dialog for Host', (tester) async {
+      const room = WatchPartyRoom(
+        roomCode: 'CNV-7777',
+        hostId: 'host_id',
+        hostName: 'TestHost',
+        allowGuestControl: false,
+        media: WatchPartyMedia(title: 'Panel Test Movie', mediaType: 'movie', tmdbId: 50),
+        playback: WatchPartyPlayback(
+          isPlaying: true,
+          positionSeconds: 0,
+          updatedAt: 0,
+          updatedBy: 'TestHost',
+          action: 'init',
+        ),
+        createdAt: 0,
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          watchPartyProvider.overrideWith((ref) {
+            final service = ref.watch(watchPartyServiceProvider);
+            final notifier = WatchPartyNotifier(service);
+            notifier.state = const WatchPartyState(
+              room: room,
+              isHost: true,
+              isChatPanelOpen: true,
+              myMemberId: 'host_id',
+              myName: 'TestHost',
+            );
+            return notifier;
+          }),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 340,
+                height: 800,
+                child: WatchPartyChatPanel(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('CNV-7777'), findsOneWidget);
+
+      // Tap leave room icon button
+      await tester.tap(find.byIcon(Icons.exit_to_app_rounded));
+      await tester.pumpAndSettle();
+
+      // Check Host leave dialog
+      expect(find.text('Tutup Ruangan Nonton Bersama?'), findsOneWidget);
+      expect(
+        find.text('Sebagai Host, keluar dari ruangan akan otomatis menghapus ruangan, kode akses, dan seluruh data percakapan.'),
+        findsOneWidget,
+      );
+      expect(find.text('Hapus & Keluar'), findsOneWidget);
+
+      // Tap Hapus & Keluar
+      await tester.tap(find.text('Hapus & Keluar'));
+      await tester.pumpAndSettle();
+
+      // Ensure room state is cleared
+      expect(container.read(watchPartyProvider).isInRoom, isFalse);
     });
   });
 }
