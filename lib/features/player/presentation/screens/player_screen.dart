@@ -2717,7 +2717,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       ref.read(watchPartyProvider.notifier).updatePlayback(
             isPlaying: _isPlaying,
             positionSeconds: clamped.inMilliseconds / 1000.0,
-            action: 'seek',
+            action: seconds > 0 ? 'forward' : 'rewind',
           );
     }
   }
@@ -8219,16 +8219,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                             mainAxisAlignment:
                                                 MainAxisAlignment.center,
                                             children: [
-                                              TvFocusable(
-                                                onTap: () => _seekRelative(-10),
-                                                borderRadius:
-                                                    BorderRadius.circular(28),
-                                                child: const Padding(
-                                                  padding: EdgeInsets.all(8),
-                                                  child: Icon(
-                                                    Icons.replay_10_rounded,
-                                                    color: Colors.white,
-                                                    size: 44,
+                                              Tooltip(
+                                                message: s.playerRewind10Tooltip,
+                                                child: TvFocusable(
+                                                  onTap: () => _seekRelative(-10),
+                                                  borderRadius:
+                                                      BorderRadius.circular(28),
+                                                  child: const Padding(
+                                                    padding: EdgeInsets.all(8),
+                                                    child: Icon(
+                                                      Icons.replay_10_rounded,
+                                                      color: Colors.white,
+                                                      size: 44,
+                                                    ),
                                                   ),
                                                 ),
                                               ),
@@ -8269,16 +8272,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                                 ),
                                               ),
                                               const SizedBox(width: 36),
-                                              TvFocusable(
-                                                onTap: () => _seekRelative(10),
-                                                borderRadius:
-                                                    BorderRadius.circular(28),
-                                                child: const Padding(
-                                                  padding: EdgeInsets.all(8),
-                                                  child: Icon(
-                                                    Icons.forward_10_rounded,
-                                                    color: Colors.white,
-                                                    size: 44,
+                                              Tooltip(
+                                                message: s.playerForward10Tooltip,
+                                                child: TvFocusable(
+                                                  onTap: () => _seekRelative(10),
+                                                  borderRadius:
+                                                      BorderRadius.circular(28),
+                                                  child: const Padding(
+                                                    padding: EdgeInsets.all(8),
+                                                    child: Icon(
+                                                      Icons.forward_10_rounded,
+                                                      color: Colors.white,
+                                                      size: 44,
+                                                    ),
                                                   ),
                                                 ),
                                               ),

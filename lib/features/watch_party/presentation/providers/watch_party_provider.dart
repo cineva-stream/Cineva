@@ -163,7 +163,7 @@ class WatchPartyNotifier extends StateNotifier<WatchPartyState> {
       debugPrint('[WatchPartyNotifier] createRoom error: $e\n$stack');
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Gagal membuat ruang Nonton Bareng: $e',
+        errorMessage: null,
       );
       return null;
     }
@@ -201,16 +201,14 @@ class WatchPartyNotifier extends StateNotifier<WatchPartyState> {
             room != null && room.isProtectedByPin && !room.verifyPin(pin);
         state = state.copyWith(
           isLoading: false,
-          errorMessage: isPinError
-              ? 'PIN ruangan salah. Periksa kembali dengan Host.'
-              : 'Ruangan tidak ditemukan. Periksa kembali kodenya.',
+          errorMessage: isPinError ? 'PIN_INCORRECT' : null,
         );
         return false;
       }
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Gagal bergabung ke ruangan: $e',
+        errorMessage: null,
       );
       return false;
     }

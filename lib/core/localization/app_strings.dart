@@ -1310,6 +1310,91 @@ class AppStrings {
       ? 'Fitur Tonton Bersama masih dalam tahap beta. Jika menemukan kendala atau bug, mohon dimaklumi dan Anda dapat melapor di halaman Pengaturan melalui menu "Kirim Masukan".'
       : 'Watch Party is currently in beta. If you encounter any issues or bugs, please understand and feel free to report them in Settings via the "Share Your Thoughts" menu.';
 
+  // ── Watch Party Dynamic Actions & System Messages ──
+  String watchPartyActionPause(String name, String time) => isIndonesian
+      ? '$name menjeda video di $time'
+      : '$name paused the video at $time';
+  String watchPartyActionPlay(String name, String time) => isIndonesian
+      ? '$name memutar video di $time'
+      : '$name resumed the video at $time';
+  String watchPartyActionForward(String name, String time) => isIndonesian
+      ? '$name memajukan video ke $time'
+      : '$name forwarded the video to $time';
+  String watchPartyActionRewind(String name, String time) => isIndonesian
+      ? '$name memundurkan video ke $time'
+      : '$name rewound the video to $time';
+  String watchPartyActionSeek(String name, String time) => isIndonesian
+      ? '$name melompat ke $time'
+      : '$name jumped to $time';
+  String watchPartyRoomCreated(String name) => isIndonesian
+      ? 'Ruang Nonton Bareng dibuat oleh $name'
+      : 'Watch Party room created by $name';
+  String watchPartyMemberJoined(String name) => isIndonesian
+      ? '$name telah bergabung ke ruangan'
+      : '$name joined the room';
+  String watchPartyMemberLeft(String name) => isIndonesian
+      ? '$name meninggalkan ruangan'
+      : '$name left the room';
+  String get watchPartyControlUnlocked => isIndonesian
+      ? 'Host mengizinkan peserta mengontrol video (Play/Pause/Seek)'
+      : 'Host allowed guests to control video (Play/Pause/Seek)';
+  String get watchPartyControlLocked => isIndonesian
+      ? 'Host mengunci kontrol video hanya untuk Host'
+      : 'Host locked video controls to Host only';
+
+  String get watchPartyGuest => isIndonesian ? 'Tamu' : 'Guest';
+  String get watchPartyHost => 'Host';
+  String get watchPartyCreatingRoom =>
+      isIndonesian ? 'Membuat Ruangan...' : 'Creating Room...';
+  String get watchPartyJoiningRoom =>
+      isIndonesian ? 'Menghubungkan...' : 'Connecting...';
+  String get watchPartySearchingRoom =>
+      isIndonesian ? 'Mencari Ruangan...' : 'Searching Room...';
+  String get watchPartyEnterCodePrompt => isIndonesian
+      ? 'Masukkan kode ruangan terlebih dahulu'
+      : 'Please enter the room code first';
+  String get watchPartyRoomNotFound => isIndonesian
+      ? 'Ruangan tidak ditemukan atau kode salah.'
+      : 'Room not found or invalid code.';
+  String get watchPartyRoomNotFoundOrNotReady => isIndonesian
+      ? 'Ruangan tidak ditemukan. Pastikan kode benar dan Host telah membuat ruangan.'
+      : 'Room not found. Make sure the code is correct and Host has created the room.';
+  String get watchPartyCreateFailed => isIndonesian
+      ? 'Gagal membuat ruangan. Silakan coba lagi.'
+      : 'Failed to create room. Please try again.';
+  String get watchPartyJoinFailed => isIndonesian
+      ? 'Gagal bergabung ke ruangan. Silakan coba lagi.'
+      : 'Failed to join room. Please try again.';
+  String get watchPartyPinDigitsRequirement => isIndonesian
+      ? 'PIN harus terdiri dari 4 digit angka.'
+      : 'PIN must be 4 numeric digits.';
+  String get watchPartyPinOptional =>
+      isIndonesian ? '(Jika dikunci PIN)' : '(If PIN protected)';
+  String get watchPartyOpenMediaFirst => isIndonesian
+      ? 'Buka film atau episode yang ingin ditonton terlebih dahulu untuk membuat ruangan.'
+      : 'Open a movie or episode first to create a watch party room.';
+  String get watchPartySubheader => isIndonesian
+      ? 'Tonton bersama teman secara realtime'
+      : 'Watch together in real-time sync';
+  String get watchPartyGuestMode =>
+      isIndonesian ? 'Mode Tamu' : 'Guest Mode';
+  String watchPartyCodeWithPin(String code, String pin) =>
+      isIndonesian ? 'Kode: $code | PIN: $pin' : 'Code: $code | PIN: $pin';
+  String get watchPartyEndRoomConfirmTitle => isIndonesian
+      ? 'Tutup Ruangan Nonton Bersama?'
+      : 'End Watch Party Room?';
+  String get watchPartyEndRoomConfirmDesc => isIndonesian
+      ? 'Sebagai Host, keluar dari ruangan akan otomatis menghapus ruangan, kode akses, dan seluruh data percakapan.'
+      : 'As the Host, leaving will automatically delete the room, access code, and all conversation data.';
+  String get watchPartyDeleteAndLeave =>
+      isIndonesian ? 'Hapus & Keluar' : 'Delete & Leave';
+  String get watchPartyTvSeries => isIndonesian ? 'Serial TV' : 'TV Show';
+  String get watchPartyMovie => isIndonesian ? 'Film' : 'Movie';
+  String get playerRewind10Tooltip =>
+      isIndonesian ? 'Mundurkan 10 detik' : 'Rewind 10 seconds';
+  String get playerForward10Tooltip =>
+      isIndonesian ? 'Majukan 10 detik' : 'Forward 10 seconds';
+
   // ── Package Identity & Legacy Migration Modal ──
   String get migrationDialogBadge =>
       isIndonesian ? 'IDENTITAS RESMI' : 'OFFICIAL IDENTITY';

@@ -263,6 +263,36 @@ class WatchPartyService {
         timestamp: now,
         type: 'system',
       );
+    } else if (action == 'play') {
+      actionMsg = WatchPartyMessage(
+        id: 'act_${now}_play',
+        senderId: _myMemberId ?? 'system',
+        senderName: _myName ?? 'User',
+        isHost: _isHost,
+        text: '$_myName memutar video di $formattedTime',
+        timestamp: now,
+        type: 'system',
+      );
+    } else if (action == 'forward') {
+      actionMsg = WatchPartyMessage(
+        id: 'act_${now}_forward',
+        senderId: _myMemberId ?? 'system',
+        senderName: _myName ?? 'User',
+        isHost: _isHost,
+        text: '$_myName memajukan video ke $formattedTime',
+        timestamp: now,
+        type: 'system',
+      );
+    } else if (action == 'rewind') {
+      actionMsg = WatchPartyMessage(
+        id: 'act_${now}_rewind',
+        senderId: _myMemberId ?? 'system',
+        senderName: _myName ?? 'User',
+        isHost: _isHost,
+        text: '$_myName memundurkan video ke $formattedTime',
+        timestamp: now,
+        type: 'system',
+      );
     } else if (action == 'seek') {
       actionMsg = WatchPartyMessage(
         id: 'act_${now}_seek',

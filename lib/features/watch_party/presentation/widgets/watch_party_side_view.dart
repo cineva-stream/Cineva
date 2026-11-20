@@ -54,7 +54,9 @@ class _WatchPartySideViewState extends ConsumerState<WatchPartySideView>
 
     final profile = ref.read(userProfileProvider);
     final defaultName =
-        profile.name.isNotEmpty && profile.name != 'Penikmat Film'
+        profile.name.isNotEmpty &&
+                profile.name != 'Penikmat Film' &&
+                profile.name != 'Movie Enthusiast'
             ? profile.name
             : '';
     _hostNameController.text = defaultName;
@@ -76,15 +78,13 @@ class _WatchPartySideViewState extends ConsumerState<WatchPartySideView>
     final s = ref.read(appStringsProvider);
     final hostName = _hostNameController.text.trim().isNotEmpty
         ? _hostNameController.text.trim()
-        : 'Host';
+        : s.watchPartyHost;
 
     if (_usePin) {
       final pin = _createPinController.text.trim();
       if (pin.length != 4 || int.tryParse(pin) == null) {
         setState(() {
-          _errorMessage = s.isIndonesian
-              ? 'PIN harus terdiri dari 4 digit angka.'
-              : 'PIN must be 4 numeric digits.';
+          _errorMessage = s.watchPartyPinDigitsRequirement;
         });
         return;
       }
@@ -109,9 +109,7 @@ class _WatchPartySideViewState extends ConsumerState<WatchPartySideView>
     } else {
       setState(() {
         _isSubmitting = false;
-        _errorMessage = s.isIndonesian
-            ? 'Gagal membuat ruangan. Silakan coba lagi.'
-            : 'Failed to create room. Please try again.';
+        _errorMessage = s.watchPartyCreateFailed;
       });
     }
   }
@@ -121,16 +119,14 @@ class _WatchPartySideViewState extends ConsumerState<WatchPartySideView>
     final code = _roomCodeController.text.trim();
     if (code.isEmpty) {
       setState(() {
-        _errorMessage = s.isIndonesian
-            ? 'Masukkan kode ruangan terlebih dahulu'
-            : 'Please enter the room code';
+        _errorMessage = s.watchPartyEnterCodePrompt;
       });
       return;
     }
 
     final guestName = _guestNameController.text.trim().isNotEmpty
         ? _guestNameController.text.trim()
-        : 'Tamu';
+        : s.watchPartyGuest;
 
     setState(() {
       _isSubmitting = true;
@@ -175,12 +171,12 @@ class _WatchPartySideViewState extends ConsumerState<WatchPartySideView>
       widget.onRoomCreatedOrJoined?.call(code, targetMedia);
     } else {
       final err = ref.read(watchPartyProvider).errorMessage;
+      final isPinErr = err != null && err.toLowerCase().contains('pin');
       setState(() {
         _isSubmitting = false;
-        _errorMessage = err ??
-            (s.isIndonesian
-                ? 'Ruangan tidak ditemukan atau kode salah.'
-                : 'Room not found or invalid code.');
+        _errorMessage = isPinErr
+            ? s.watchPartyPinIncorrect
+            : (err ?? s.watchPartyRoomNotFound);
       });
     }
   }
@@ -361,7 +357,9 @@ class _WatchPartySideViewState extends ConsumerState<WatchPartySideView>
                       ],
                       const SizedBox(height: 2),
                       Text(
-                        media.mediaType == 'tv' ? 'Serial TV' : 'Film',
+                        media.mediaType == 'tv'
+                            ? s.watchPartyTvSeries
+                            : s.watchPartyMovie,
                         style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 11,
@@ -580,7 +578,7 @@ class _WatchPartySideViewState extends ConsumerState<WatchPartySideView>
                   : const Icon(Icons.play_arrow_rounded, size: 20),
               label: Text(
                 _isSubmitting
-                    ? 'Membuat Ruangan...'
+                    ? s.watchPartyCreatingRoom
                     : s.watchPartyCreateAndStart,
                 style: const TextStyle(
                   fontSize: 12.5,
@@ -665,9 +663,7 @@ class _WatchPartySideViewState extends ConsumerState<WatchPartySideView>
               ),
               if (!_joinRequiresPin)
                 Text(
-                  s.isIndonesian
-                      ? '(Jika dikunci PIN)'
-                      : '(If PIN protected)',
+                  s.watchPartyPinOptional,
                   style: TextStyle(
                     color: AppColors.textSecondary.withValues(alpha: 0.7),
                     fontSize: 10.5,
@@ -819,7 +815,9 @@ class _WatchPartySideViewState extends ConsumerState<WatchPartySideView>
                     )
                   : const Icon(Icons.login_rounded, size: 20),
               label: Text(
-                _isSubmitting ? 'Bergabung...' : s.watchPartyJoinRoom,
+                _isSubmitting
+                    ? s.watchPartyJoiningRoom
+                    : s.watchPartyJoinRoom,
                 style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.bold,

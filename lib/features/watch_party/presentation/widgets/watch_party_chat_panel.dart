@@ -60,7 +60,7 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
 
   void _copyRoomCode(WatchPartyRoom room, AppStrings s) {
     final textToCopy = room.isProtectedByPin
-        ? 'Kode: ${room.roomCode} | PIN: ${room.pin}'
+        ? s.watchPartyCodeWithPin(room.roomCode, room.pin ?? '')
         : room.roomCode;
     Clipboard.setData(ClipboardData(text: textToCopy));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -86,9 +86,7 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Text(
           isHost
-              ? (s.isIndonesian
-                    ? 'Tutup Ruangan Nonton Bersama?'
-                    : 'End Watch Party Room?')
+              ? s.watchPartyEndRoomConfirmTitle
               : s.watchPartyLeaveConfirm,
           style: const TextStyle(
             color: Colors.white,
@@ -97,9 +95,7 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
         ),
         content: Text(
           isHost
-              ? (s.isIndonesian
-                    ? 'Sebagai Host, keluar dari ruangan akan otomatis menghapus ruangan, kode akses, dan seluruh data percakapan.'
-                    : 'As the Host, leaving will automatically delete the room, access code, and all conversation data.')
+              ? s.watchPartyEndRoomConfirmDesc
               : s.watchPartyLeaveConfirmDesc,
           style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
         ),
@@ -107,7 +103,7 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
-              s.isIndonesian ? 'Batal' : 'Cancel',
+              s.dialogCancel,
               style: const TextStyle(color: AppColors.textSecondary),
             ),
           ),
@@ -126,7 +122,7 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
             },
             child: Text(
               isHost
-                  ? (s.isIndonesian ? 'Hapus & Keluar' : 'Delete & Leave')
+                  ? s.watchPartyDeleteAndLeave
                   : s.watchPartyLeaveBtn,
             ),
           ),
@@ -447,6 +443,7 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                         return _buildMessageItem(
                           msg,
                           watchPartyState.myMemberId,
+                          s,
                         );
                       },
                     );
@@ -552,8 +549,117 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
     );
   }
 
-  Widget _buildMessageItem(WatchPartyMessage msg, String? myMemberId) {
+  String _localizeSystemMessage(String text, AppStrings s) {
+    // 1. Pause action
+    final pauseMatch = RegExp(
+      r'^(.+?)\s+(?:menjeda video di|paused the video at|paused video at)\s+(.+)$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (pauseMatch != null) {
+      return s.watchPartyActionPause(
+        pauseMatch.group(1)!.trim(),
+        pauseMatch.group(2)!.trim(),
+      );
+    }
+
+    // 2. Play / Resume action
+    final playMatch = RegExp(
+      r'^(.+?)\s+(?:memutar video di|resumed the video at|resumed video at|played video at)\s+(.+)$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (playMatch != null) {
+      return s.watchPartyActionPlay(
+        playMatch.group(1)!.trim(),
+        playMatch.group(2)!.trim(),
+      );
+    }
+
+    // 3. Forward action
+    final forwardMatch = RegExp(
+      r'^(.+?)\s+(?:memajukan video ke|forwarded the video to|forwarded video to)\s+(.+)$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (forwardMatch != null) {
+      return s.watchPartyActionForward(
+        forwardMatch.group(1)!.trim(),
+        forwardMatch.group(2)!.trim(),
+      );
+    }
+
+    // 4. Rewind action
+    final rewindMatch = RegExp(
+      r'^(.+?)\s+(?:memundurkan video ke|rewound the video to|rewound video to)\s+(.+)$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (rewindMatch != null) {
+      return s.watchPartyActionRewind(
+        rewindMatch.group(1)!.trim(),
+        rewindMatch.group(2)!.trim(),
+      );
+    }
+
+    // 5. Seek action
+    final seekMatch = RegExp(
+      r'^(.+?)\s+(?:melompat ke|jumped to|seeked to)\s+(.+)$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (seekMatch != null) {
+      return s.watchPartyActionSeek(
+        seekMatch.group(1)!.trim(),
+        seekMatch.group(2)!.trim(),
+      );
+    }
+
+    // 6. Room created
+    final createdMatch = RegExp(
+      r'^(?:Ruang Nonton Bareng dibuat oleh|Watch Party room created by)\s+(.+)$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (createdMatch != null) {
+      return s.watchPartyRoomCreated(createdMatch.group(1)!.trim());
+    }
+
+    // 7. Member joined
+    final joinMatch = RegExp(
+      r'^(.+?)\s+(?:telah bergabung ke ruangan|joined the room)$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (joinMatch != null) {
+      return s.watchPartyMemberJoined(joinMatch.group(1)!.trim());
+    }
+
+    // 8. Member left
+    final leaveMatch = RegExp(
+      r'^(.+?)\s+(?:meninggalkan ruangan|left the room)$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (leaveMatch != null) {
+      return s.watchPartyMemberLeft(leaveMatch.group(1)!.trim());
+    }
+
+    // 9. Host allowed guest control
+    if (text.contains('Host mengizinkan peserta mengontrol video') ||
+        text.toLowerCase().contains('allowed members to control') ||
+        text.toLowerCase().contains('allowed guests to control')) {
+      return s.watchPartyControlUnlocked;
+    }
+
+    // 10. Host locked guest control
+    if (text.contains('Host mengunci kontrol video hanya untuk Host') ||
+        text.toLowerCase().contains('locked video controls to host only')) {
+      return s.watchPartyControlLocked;
+    }
+
+    return text;
+  }
+
+  Widget _buildMessageItem(
+    WatchPartyMessage msg,
+    String? myMemberId,
+    AppStrings s,
+  ) {
     if (msg.type == 'system') {
+      final localizedText = _localizeSystemMessage(msg.text, s);
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Center(
@@ -564,7 +670,7 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              msg.text,
+              localizedText,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.textSecondary,

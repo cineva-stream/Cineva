@@ -222,8 +222,12 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
   void initState() {
     super.initState();
     final profile = ref.read(userProfileProvider);
-    _nameController.text =
-        profile.name.trim().isNotEmpty ? profile.name.trim() : 'Tamu';
+    final defaultName = profile.name.trim().isNotEmpty &&
+            profile.name != 'Penikmat Film' &&
+            profile.name != 'Movie Enthusiast'
+        ? profile.name.trim()
+        : '';
+    _nameController.text = defaultName;
   }
 
   @override
@@ -239,7 +243,7 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
     final rawCode = _codeController.text.trim();
     if (rawCode.isEmpty) {
       setState(() {
-        _errorMessage = 'Masukkan kode ruangan terlebih dahulu';
+        _errorMessage = s.watchPartyEnterCodePrompt;
       });
       return;
     }
@@ -250,7 +254,7 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
 
     final name = _nameController.text.trim().isNotEmpty
         ? _nameController.text.trim()
-        : 'Tamu';
+        : s.watchPartyGuest;
 
     setState(() {
       _isSearching = true;
@@ -265,8 +269,7 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
     if (room == null) {
       setState(() {
         _isSearching = false;
-        _errorMessage =
-            'Ruangan tidak ditemukan. Pastikan kode benar dan Host telah membuat ruangan.';
+        _errorMessage = s.watchPartyRoomNotFoundOrNotReady;
       });
       return;
     }
@@ -326,7 +329,7 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
       final err = ref.read(watchPartyProvider).errorMessage;
       setState(() {
         _isSearching = false;
-        _errorMessage = err ?? 'Gagal bergabung ke ruangan. Silakan coba lagi.';
+        _errorMessage = err ?? s.watchPartyJoinFailed;
       });
     }
   }
@@ -501,9 +504,7 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
                 ),
                 if (!_requiresPin)
                   Text(
-                    s.isIndonesian
-                        ? '(Jika dikunci PIN)'
-                        : '(If PIN protected)',
+                    s.watchPartyPinOptional,
                     style: GoogleFonts.inter(
                       fontSize: 10.5,
                       color: AppColors.textSecondary.withValues(alpha: 0.7),
@@ -692,7 +693,7 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
                     : const Icon(Icons.play_circle_fill_rounded, size: 20),
                 label: Text(
                   _isSearching
-                      ? 'Mencari Ruangan...'
+                      ? s.watchPartySearchingRoom
                       : s.watchPartyJoinAndStart,
                   style: GoogleFonts.inter(
                     fontSize: 13,

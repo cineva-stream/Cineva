@@ -7,6 +7,9 @@ import 'package:cineva/features/watch_party/presentation/providers/watch_party_p
 import 'package:cineva/features/watch_party/presentation/widgets/watch_party_side_view.dart';
 import 'package:cineva/features/watch_party/presentation/widgets/watch_party_join_banner.dart';
 import 'package:cineva/features/watch_party/presentation/widgets/watch_party_chat_panel.dart';
+import 'package:cineva/core/localization/app_strings.dart';
+import 'package:cineva/core/localization/app_language.dart';
+import 'package:cineva/core/localization/app_language_provider.dart';
 
 void main() {
   group('WatchPartyRoom Models & Serialization', () {
@@ -611,6 +614,208 @@ void main() {
 
       // Ensure room state is cleared
       expect(container.read(watchPartyProvider).isInRoom, isFalse);
+    });
+
+    testWidgets('WatchPartyChatPanel localizes system messages dynamically into English', (tester) async {
+      const room = WatchPartyRoom(
+        roomCode: 'CNV-9999',
+        hostId: 'host_id',
+        hostName: 'Alice',
+        allowGuestControl: true,
+        media: WatchPartyMedia(title: 'Localization Test', mediaType: 'movie', tmdbId: 77),
+        playback: WatchPartyPlayback(
+          isPlaying: false,
+          positionSeconds: 320,
+          updatedAt: 0,
+          updatedBy: 'Alice',
+          action: 'pause',
+        ),
+        messages: [
+          WatchPartyMessage(
+            id: 'sys_1',
+            senderId: 'system',
+            senderName: 'Cineva',
+            text: 'Ruang Nonton Bareng dibuat oleh Alice',
+            timestamp: 1000,
+            type: 'system',
+          ),
+          WatchPartyMessage(
+            id: 'sys_2',
+            senderId: 'bob_id',
+            senderName: 'Bob',
+            text: 'Bob telah bergabung ke ruangan',
+            timestamp: 2000,
+            type: 'system',
+          ),
+          WatchPartyMessage(
+            id: 'sys_3',
+            senderId: 'host_id',
+            senderName: 'Alice',
+            text: 'Alice menjeda video di 05:20',
+            timestamp: 3000,
+            type: 'system',
+          ),
+          WatchPartyMessage(
+            id: 'sys_4',
+            senderId: 'host_id',
+            senderName: 'Alice',
+            text: 'Alice memajukan video ke 05:30',
+            timestamp: 4000,
+            type: 'system',
+          ),
+          WatchPartyMessage(
+            id: 'sys_5',
+            senderId: 'host_id',
+            senderName: 'Alice',
+            text: 'Alice memundurkan video ke 05:10',
+            timestamp: 5000,
+            type: 'system',
+          ),
+        ],
+        createdAt: 0,
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          appLanguageProvider.overrideWith((ref) => AppLanguageNotifier(AppLanguage.en)),
+          watchPartyProvider.overrideWith((ref) {
+            final service = ref.watch(watchPartyServiceProvider);
+            final notifier = WatchPartyNotifier(service);
+            notifier.state = const WatchPartyState(
+              room: room,
+              isHost: true,
+              isChatPanelOpen: true,
+              myMemberId: 'host_id',
+              myName: 'Alice',
+            );
+            return notifier;
+          }),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 340,
+                height: 800,
+                child: WatchPartyChatPanel(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // System messages must render in English dynamically!
+      expect(find.text('Watch Party room created by Alice'), findsOneWidget);
+      expect(find.text('Bob joined the room'), findsOneWidget);
+      expect(find.text('Alice paused the video at 05:20'), findsOneWidget);
+      expect(find.text('Alice forwarded the video to 05:30'), findsOneWidget);
+      expect(find.text('Alice rewound the video to 05:10'), findsOneWidget);
+    });
+
+    testWidgets('WatchPartyChatPanel localizes system messages dynamically into Indonesian', (tester) async {
+      const room = WatchPartyRoom(
+        roomCode: 'CNV-8888',
+        hostId: 'host_id',
+        hostName: 'Alice',
+        allowGuestControl: true,
+        media: WatchPartyMedia(title: 'Localization Test ID', mediaType: 'movie', tmdbId: 78),
+        playback: WatchPartyPlayback(
+          isPlaying: false,
+          positionSeconds: 320,
+          updatedAt: 0,
+          updatedBy: 'Alice',
+          action: 'pause',
+        ),
+        messages: [
+          WatchPartyMessage(
+            id: 'sys_1',
+            senderId: 'system',
+            senderName: 'Cineva',
+            text: 'Watch Party room created by Alice', // Stored in English in cloud
+            timestamp: 1000,
+            type: 'system',
+          ),
+          WatchPartyMessage(
+            id: 'sys_2',
+            senderId: 'bob_id',
+            senderName: 'Bob',
+            text: 'Bob joined the room', // Stored in English in cloud
+            timestamp: 2000,
+            type: 'system',
+          ),
+          WatchPartyMessage(
+            id: 'sys_3',
+            senderId: 'host_id',
+            senderName: 'Alice',
+            text: 'Alice paused the video at 05:20', // Stored in English in cloud
+            timestamp: 3000,
+            type: 'system',
+          ),
+          WatchPartyMessage(
+            id: 'sys_4',
+            senderId: 'host_id',
+            senderName: 'Alice',
+            text: 'Alice forwarded the video to 05:30', // Stored in English in cloud
+            timestamp: 4000,
+            type: 'system',
+          ),
+          WatchPartyMessage(
+            id: 'sys_5',
+            senderId: 'host_id',
+            senderName: 'Alice',
+            text: 'Alice rewound the video to 05:10', // Stored in English in cloud
+            timestamp: 5000,
+            type: 'system',
+          ),
+        ],
+        createdAt: 0,
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          appLanguageProvider.overrideWith((ref) => AppLanguageNotifier(AppLanguage.id)),
+          watchPartyProvider.overrideWith((ref) {
+            final service = ref.watch(watchPartyServiceProvider);
+            final notifier = WatchPartyNotifier(service);
+            notifier.state = const WatchPartyState(
+              room: room,
+              isHost: true,
+              isChatPanelOpen: true,
+              myMemberId: 'host_id',
+              myName: 'Alice',
+            );
+            return notifier;
+          }),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 340,
+                height: 800,
+                child: WatchPartyChatPanel(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // System messages must render in Indonesian dynamically!
+      expect(find.text('Ruang Nonton Bareng dibuat oleh Alice'), findsOneWidget);
+      expect(find.text('Bob telah bergabung ke ruangan'), findsOneWidget);
+      expect(find.text('Alice menjeda video di 05:20'), findsOneWidget);
+      expect(find.text('Alice memajukan video ke 05:30'), findsOneWidget);
+      expect(find.text('Alice memundurkan video ke 05:10'), findsOneWidget);
     });
   });
 }

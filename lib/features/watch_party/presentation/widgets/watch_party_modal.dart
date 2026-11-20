@@ -64,7 +64,9 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
 
     final profile = ref.read(userProfileProvider);
     final defaultName =
-        profile.name.isNotEmpty && profile.name != 'Penikmat Film'
+        profile.name.isNotEmpty &&
+                profile.name != 'Penikmat Film' &&
+                profile.name != 'Movie Enthusiast'
             ? profile.name
             : '';
     _hostNameController.text = defaultName;
@@ -87,15 +89,13 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
     final s = ref.read(appStringsProvider);
     final hostName = _hostNameController.text.trim().isNotEmpty
         ? _hostNameController.text.trim()
-        : 'Host';
+        : s.watchPartyHost;
 
     if (_usePin) {
       final pin = _createPinController.text.trim();
       if (pin.length != 4 || int.tryParse(pin) == null) {
         setState(() {
-          _errorMessage = s.isIndonesian
-              ? 'PIN harus terdiri dari 4 digit angka.'
-              : 'PIN must be 4 numeric digits.';
+          _errorMessage = s.watchPartyPinDigitsRequirement;
         });
         return;
       }
@@ -137,9 +137,7 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
     } else {
       setState(() {
         _isSubmitting = false;
-        _errorMessage = s.isIndonesian
-            ? 'Gagal membuat ruangan. Silakan coba lagi.'
-            : 'Failed to create room. Please try again.';
+        _errorMessage = s.watchPartyCreateFailed;
       });
     }
   }
@@ -149,16 +147,14 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
     final code = _roomCodeController.text.trim();
     if (code.isEmpty) {
       setState(() {
-        _errorMessage = s.isIndonesian
-            ? 'Masukkan kode ruangan terlebih dahulu'
-            : 'Please enter the room code';
+        _errorMessage = s.watchPartyEnterCodePrompt;
       });
       return;
     }
 
     final guestName = _guestNameController.text.trim().isNotEmpty
         ? _guestNameController.text.trim()
-        : 'Tamu';
+        : s.watchPartyGuest;
 
     setState(() {
       _isSubmitting = true;
@@ -222,12 +218,12 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
       }
     } else {
       final err = ref.read(watchPartyProvider).errorMessage;
+      final isPinErr = err != null && err.toLowerCase().contains('pin');
       setState(() {
         _isSubmitting = false;
-        _errorMessage = err ??
-            (s.isIndonesian
-                ? 'Ruangan tidak ditemukan atau kode salah.'
-                : 'Room not found or invalid code.');
+        _errorMessage = isPinErr
+            ? s.watchPartyPinIncorrect
+            : (err ?? s.watchPartyRoomNotFound);
       });
     }
   }
@@ -295,9 +291,7 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
                               ),
                             ),
                             Text(
-                              s.isIndonesian
-                                  ? 'Tonton bersama teman secara realtime'
-                                  : 'Watch together in real-time sync',
+                              s.watchPartySubheader,
                               style: const TextStyle(
                                 color: AppColors.textSecondary,
                                 fontSize: 12,
@@ -402,9 +396,7 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Text(
-            s.isIndonesian
-                ? 'Buka film atau episode yang ingin ditonton terlebih dahulu untuk membuat ruangan.'
-                : 'Open a movie or episode first to create a watch party room.',
+            s.watchPartyOpenMediaFirst,
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
@@ -503,7 +495,9 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
                           ],
                           const SizedBox(height: 2),
                           Text(
-                            media.mediaType == 'tv' ? 'Serial TV' : 'Film',
+                            media.mediaType == 'tv'
+                                ? s.watchPartyTvSeries
+                                : s.watchPartyMovie,
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 11,
@@ -717,7 +711,9 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
                     )
                   : const Icon(Icons.play_arrow_rounded, size: 20),
               label: Text(
-                _isSubmitting ? 'Membuat Ruangan...' : s.watchPartyCreateAndStart,
+                _isSubmitting
+                    ? s.watchPartyCreatingRoom
+                    : s.watchPartyCreateAndStart,
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -795,9 +791,7 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
               ),
               if (!_joinRequiresPin)
                 Text(
-                  s.isIndonesian
-                      ? '(Jika dikunci PIN)'
-                      : '(If PIN protected)',
+                  s.watchPartyPinOptional,
                   style: TextStyle(
                     color: AppColors.textSecondary.withValues(alpha: 0.7),
                     fontSize: 10.5,
@@ -855,7 +849,7 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
 
           // Guest Mode / Display Name Input
           Text(
-            '${s.watchPartyNickname} (Guest Mode)',
+            '${s.watchPartyNickname} (${s.watchPartyGuestMode})',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
@@ -940,7 +934,9 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
                     )
                   : const Icon(Icons.login_rounded, size: 20),
               label: Text(
-                _isSubmitting ? 'Menghubungkan...' : s.watchPartyJoinAndStart,
+                _isSubmitting
+                    ? s.watchPartyJoiningRoom
+                    : s.watchPartyJoinAndStart,
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
