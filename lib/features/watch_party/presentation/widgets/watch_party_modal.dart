@@ -13,6 +13,7 @@ import '../../../../core/localization/app_language_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../domain/models/watch_party_room.dart';
 import '../providers/watch_party_provider.dart';
+import 'watch_party_beta_notice_card.dart';
 
 /// Modal dialog allowing users to Create a Watch Party room or Join an existing room with a code.
 /// Supports Host permission configuration and Guest Mode with custom display names.
@@ -724,6 +725,7 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
               ),
             ),
           ),
+          WatchPartyBetaNoticeCard(strings: s),
         ],
       ),
     );
@@ -946,6 +948,7 @@ class _WatchPartyModalState extends ConsumerState<WatchPartyModal>
               ),
             ),
           ),
+          WatchPartyBetaNoticeCard(strings: s),
         ],
       ),
     );

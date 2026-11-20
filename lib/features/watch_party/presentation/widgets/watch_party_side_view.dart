@@ -11,6 +11,7 @@ import '../../../../core/localization/app_language_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../domain/models/watch_party_room.dart';
 import '../providers/watch_party_provider.dart';
+import 'watch_party_beta_notice_card.dart';
 
 /// Right-side panel view for Watch Party (Create Room & Join Room) inside PlayerScreen.
 /// Allows users to manage Watch Party sessions without blocking or dimming the active video stream.
@@ -588,6 +589,7 @@ class _WatchPartySideViewState extends ConsumerState<WatchPartySideView>
               ),
             ),
           ),
+          WatchPartyBetaNoticeCard(strings: s),
         ],
       ),
     );
@@ -825,6 +827,7 @@ class _WatchPartySideViewState extends ConsumerState<WatchPartySideView>
               ),
             ),
           ),
+          WatchPartyBetaNoticeCard(strings: s),
         ],
       ),
     );

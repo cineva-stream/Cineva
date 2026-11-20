@@ -10,6 +10,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../providers/watch_party_provider.dart';
+import 'watch_party_beta_notice_card.dart';
 
 /// Modern minimalist banner displayed on the Home Screen allowing users to join
 /// a Watch Party room directly without needing to search for the movie or TV series manually.
@@ -700,6 +701,8 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
                 ),
               ),
             ),
+            const SizedBox(height: 6),
+            WatchPartyBetaNoticeCard(strings: s),
           ],
         ),
       ),

@@ -1302,6 +1302,13 @@ class AppStrings {
       : 'Room code & PIN copied!';
   String get watchPartyRoomProtected =>
       isIndonesian ? 'Ruangan Terkunci PIN' : 'PIN Protected Room';
+  String get watchPartyBetaBadge => 'BETA';
+  String get watchPartyBetaNoticeTitle => isIndonesian
+      ? 'Fitur Dalam Tahap Beta'
+      : 'Beta Feature Notice';
+  String get watchPartyBetaNoticeDesc => isIndonesian
+      ? 'Fitur Tonton Bersama masih dalam tahap beta. Jika menemukan kendala atau bug, mohon dimaklumi dan Anda dapat melapor di halaman Pengaturan melalui menu "Kirim Masukan".'
+      : 'Watch Party is currently in beta. If you encounter any issues or bugs, please understand and feel free to report them in Settings via the "Share Your Thoughts" menu.';
 
   // ── Package Identity & Legacy Migration Modal ──
   String get migrationDialogBadge =>
