@@ -777,7 +777,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     availableWidth,
                     isTv: isTv,
                   );
-                  final gridAspectRatio = isWide ? 0.62 : 0.58;
+                  final gridAspectRatio = adaptivePosterGridAspectRatio(
+                    availableWidth,
+                    isTv: isTv,
+                  );
                   final gridSpacing = isWide ? 14.0 : 10.0;
 
                   return SliverMainAxisGroup(
@@ -894,7 +897,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     availableWidth,
                     isTv: isTv,
                   );
-                  final gridAspectRatio = isWide ? 0.62 : 0.58;
+                  final gridAspectRatio = adaptivePosterGridAspectRatio(
+                    availableWidth,
+                    isTv: isTv,
+                  );
                   final gridSpacing = isWide ? 14.0 : 10.0;
 
                   return SliverMainAxisGroup(
@@ -1141,7 +1147,7 @@ class _Top10HorizontalList extends StatelessWidget {
 
     return RepaintBoundary(
       child: SizedBox(
-        height: 215,
+        height: 255,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           physics: const BouncingScrollPhysics(),
@@ -1169,7 +1175,7 @@ class _MovieHorizontalList extends StatelessWidget {
   Widget build(BuildContext context) {
     return RepaintBoundary(
       child: SizedBox(
-        height: 215,
+        height: 255,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           physics: const BouncingScrollPhysics(),
@@ -1197,7 +1203,7 @@ class _TvHorizontalList extends StatelessWidget {
   Widget build(BuildContext context) {
     return RepaintBoundary(
       child: SizedBox(
-        height: 215,
+        height: 255,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           physics: const BouncingScrollPhysics(),
@@ -1298,7 +1304,7 @@ class _MediaShimmerGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final crossAxisCount = adaptivePosterGridColumns(screenWidth);
-    final childAspectRatio = screenWidth >= 600 ? 0.62 : 0.58;
+    final childAspectRatio = adaptivePosterGridAspectRatio(screenWidth);
 
     return GridView.builder(
       shrinkWrap: true,
@@ -1312,7 +1318,7 @@ class _MediaShimmerGrid extends StatelessWidget {
       ),
       itemCount: 12,
       itemBuilder: (_, _) =>
-          const ShimmerLoading(width: 135, height: 205, borderRadius: 16),
+          const ShimmerLoading(width: 135, height: 245, borderRadius: 14),
     );
   }
 }

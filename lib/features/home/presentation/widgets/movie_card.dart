@@ -9,18 +9,18 @@ import '../../../../core/utils/tmdb_genres.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
 import '../../domain/entities/movie.dart';
 
-/// Modern, informative movie poster card for horizontal lists.
+/// Clean, modern movie poster card with metadata below the poster.
 ///
 /// Features:
-/// - 4K / HD resolution badge
-/// - Glassmorphic rating pill
-/// - Subtle bottom metadata (title, year, primary genre)
-/// - Polished border and shadow effects
+/// - 100% pure poster image without dark vignette or gradient overlays
+/// - Minimalist TMDb rating badge on the poster (semi-transparent black, borderless)
+/// - Movie title and genre/year positioned cleanly below the poster
 class MovieCard extends StatelessWidget {
   final Movie movie;
   final double width;
-  final double height;
-  final bool showBadge;
+  final double? height;
+  final bool showBadge; // Kept for backwards compatibility
+  final bool showRating;
   final bool isTv;
   final VoidCallback? onTap;
 
@@ -28,8 +28,9 @@ class MovieCard extends StatelessWidget {
     super.key,
     required this.movie,
     this.width = 135,
-    this.height = 205,
+    this.height = 245,
     this.showBadge = true,
+    this.showRating = true,
     this.isTv = false,
     this.onTap,
   });
@@ -40,12 +41,11 @@ class MovieCard extends StatelessWidget {
       movie.genreIds,
       fallback: isTv ? (movie.originCountry.contains('JP') ? 'Anime' : 'Serial TV') : 'Film',
     );
-    final isHighRating = movie.voteAverage >= 7.5;
 
     return RepaintBoundary(
       child: TvFocusable(
-        focusedScale: 1.11,
-        borderRadius: BorderRadius.circular(16),
+        focusedScale: 1.08,
+        borderRadius: BorderRadius.circular(14),
         onTap: onTap ??
             () {
               if (isTv) {
@@ -54,204 +54,155 @@ class MovieCard extends StatelessWidget {
                 context.push('/movie/${movie.id}');
               }
             },
-        child: Container(
+        child: SizedBox(
           width: width,
           height: height,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.08),
-              width: 0.8,
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // ── Poster Image ──
-                CachedNetworkImage(
-                  imageUrl: ApiConstants.imageUrl(
-                    movie.posterPath,
-                    size: ApiConstants.posterMedium,
-                  ),
-                  memCacheWidth: 270,
-                  memCacheHeight: 410,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: AppColors.surfaceVariant,
-                    child: Center(
-                      child: Icon(
-                        isTv ? Icons.tv_rounded : Icons.movie_outlined,
-                        color: AppColors.textMuted,
-                        size: 30,
-                      ),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: AppColors.surfaceVariant,
-                    child: Center(
-                      child: Icon(
-                        isTv ? Icons.tv_off_outlined : Icons.broken_image_outlined,
-                        color: AppColors.textMuted,
-                        size: 30,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // ── Bottom Multi-Stop Dark Vignette ──
-              Positioned.fill(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Pure Poster Image Container ──
+              Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: const [0.0, 0.45, 0.70, 1.0],
-                      colors: [
-                        Colors.transparent,
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.6),
-                        Colors.black.withValues(alpha: 0.95),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // ── Top-Left: Resolution Badge (4K / HD) ──
-              if (showBadge)
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.75),
-                      borderRadius: BorderRadius.circular(5),
-                      border: Border.all(
-                        color: isHighRating
-                            ? AppColors.primary.withValues(alpha: 0.6)
-                            : Colors.white.withValues(alpha: 0.2),
-                        width: 0.6,
-                      ),
-                    ),
-                    child: Text(
-                      isHighRating ? '4K' : 'HD',
-                      style: GoogleFonts.inter(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: isHighRating ? AppColors.primaryLight : Colors.white,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // ── Top-Right: Rating Badge ──
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      width: 0.6,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.star_rounded, color: AppColors.star, size: 12),
-                      const SizedBox(width: 3),
-                      Text(
-                        movie.voteAverage.toStringAsFixed(1),
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                ),
-              ),
-
-              // ── Bottom: Title & Year + Genre ──
-              Positioned(
-                bottom: 8,
-                left: 8,
-                right: 8,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      movie.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        if (movie.year.isNotEmpty) ...[
-                          Text(
-                            movie.year,
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textSecondary,
+                        // ── Pure Poster Image (No gradient / vignette) ──
+                        CachedNetworkImage(
+                          imageUrl: ApiConstants.imageUrl(
+                            movie.posterPath,
+                            size: ApiConstants.posterMedium,
+                          ),
+                          memCacheWidth: 270,
+                          memCacheHeight: 410,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: AppColors.surfaceVariant,
+                            child: Center(
+                              child: Icon(
+                                isTv ? Icons.tv_rounded : Icons.movie_outlined,
+                                color: AppColors.textMuted,
+                                size: 28,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          Container(
-                            width: 2.5,
-                            height: 2.5,
-                            decoration: const BoxDecoration(
-                              color: AppColors.textMuted,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                        ],
-                        Flexible(
-                          child: Text(
-                            primaryGenre,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.primaryLight,
+                          errorWidget: (context, url, error) => Container(
+                            color: AppColors.surfaceVariant,
+                            child: Center(
+                              child: Icon(
+                                isTv ? Icons.tv_off_outlined : Icons.broken_image_outlined,
+                                color: AppColors.textMuted,
+                                size: 28,
+                              ),
                             ),
                           ),
                         ),
+
+                        // ── TMDb Rating Badge (Clean, semi-transparent black, borderless) ──
+                        if (showRating && movie.voteAverage > 0)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.star_rounded, color: AppColors.star, size: 12),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    movie.voteAverage.toStringAsFixed(1),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
+              ),
+
+              const SizedBox(height: 6),
+
+              // ── Title Below Poster ──
+              Text(
+                movie.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.outfit(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: -0.2,
+                ),
+              ),
+
+              const SizedBox(height: 2),
+
+              // ── Year & Genre Below Title ──
+              Row(
+                children: [
+                  if (movie.year.isNotEmpty) ...[
+                    Text(
+                      movie.year,
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Container(
+                      width: 2.5,
+                      height: 2.5,
+                      decoration: const BoxDecoration(
+                        color: AppColors.textMuted,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  Flexible(
+                    child: Text(
+                      primaryGenre,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.primaryLight,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -270,76 +221,77 @@ class Top10MovieCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 175,
-      height: 205,
+      height: 245,
       child: Stack(
         alignment: Alignment.bottomLeft,
         children: [
-            // Giant Rank Number in the background/left
-            Positioned(
-              left: 0,
-              bottom: -14,
+          // Giant Rank Number in the background/left
+          Positioned(
+            left: 0,
+            bottom: 22,
+            child: Text(
+              '$rank',
+              style: GoogleFonts.outfit(
+                fontSize: 100,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -6.0,
+                color: AppColors.surfaceElevated.withValues(alpha: 0.8),
+                shadows: [
+                  Shadow(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Overlaid Movie Card offset to the right
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: MovieCard(
+              movie: movie,
+              width: 130,
+              height: 245,
+              showBadge: false,
+              showRating: false,
+            ),
+          ),
+
+          // Top Rank Badge on the poster
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF9500), Color(0xFFFF5E3A)],
+                ),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.4),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
               child: Text(
-                '$rank',
-                style: GoogleFonts.outfit(
-                  fontSize: 100,
+                'TOP $rank',
+                style: GoogleFonts.inter(
+                  fontSize: 9,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: -6.0,
-                  color: AppColors.surfaceElevated.withValues(alpha: 0.8),
-                  shadows: [
-                    Shadow(
-                      color: AppColors.primary.withValues(alpha: 0.35),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  color: Colors.black,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
-
-            // Overlaid Movie Card offset to the right
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              child: MovieCard(
-                movie: movie,
-                width: 130,
-                height: 205,
-                showBadge: false,
-              ),
-            ),
-
-            // Top Rank Badge on the poster
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFF9500), Color(0xFFFF5E3A)],
-                  ),
-                  borderRadius: BorderRadius.circular(6),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.4),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                child: Text(
-                  'TOP $rank',
-                  style: GoogleFonts.inter(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.black,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -80,7 +80,7 @@ void main() {
       genreIds: [878, 12],
     );
 
-    testWidgets('MovieCard renders title, rating, 4K badge, and genre', (tester) async {
+    testWidgets('MovieCard renders clean poster with rating, title, and genre', (tester) async {
       await tester.pumpWidget(
         const ProviderScope(
           child: MaterialApp(
@@ -93,7 +93,7 @@ void main() {
 
       expect(find.text('Dune: Part Two'), findsOneWidget);
       expect(find.text('8.5'), findsOneWidget);
-      expect(find.text('4K'), findsOneWidget);
+      expect(find.text('4K'), findsNothing);
       expect(find.text('Sci-Fi'), findsOneWidget);
     });
 
