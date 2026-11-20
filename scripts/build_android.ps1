@@ -66,7 +66,7 @@ Write-Host "[2/3] Mengonfigurasi parameter kompilasi (Target: $mode)..." -Foregr
 $apkOutputDir = "build\app\outputs\flutter-apk"
 $symbolsDir = "build\app\outputs\symbols"
 
-$flutterArgs = @("build", "apk", "--release")
+$flutterArgs = @("build", "apk", "--release", "--android-skip-build-dependency-validation")
 
 switch ($mode) {
     "universal" {
