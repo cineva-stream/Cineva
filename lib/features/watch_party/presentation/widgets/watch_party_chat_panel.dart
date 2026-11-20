@@ -15,13 +15,11 @@ import '../providers/watch_party_provider.dart';
 class WatchPartyChatPanel extends ConsumerStatefulWidget {
   final VoidCallback? onClose;
 
-  const WatchPartyChatPanel({
-    super.key,
-    this.onClose,
-  });
+  const WatchPartyChatPanel({super.key, this.onClose});
 
   @override
-  ConsumerState<WatchPartyChatPanel> createState() => _WatchPartyChatPanelState();
+  ConsumerState<WatchPartyChatPanel> createState() =>
+      _WatchPartyChatPanelState();
 }
 
 class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
@@ -29,14 +27,7 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
   final ScrollController _scrollController = ScrollController();
   int _lastMessageCount = 0;
 
-  static const List<String> _quickEmojis = [
-    '❤️',
-    '😂',
-    '😱',
-    '🔥',
-    '👏',
-    '🍿',
-  ];
+  static const List<String> _quickEmojis = ['❤️', '😂', '😱', '🔥', '👏', '🍿'];
 
   @override
   void dispose() {
@@ -96,8 +87,8 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
         title: Text(
           isHost
               ? (s.isIndonesian
-                  ? 'Tutup Ruangan Nonton Bersama?'
-                  : 'End Watch Party Room?')
+                    ? 'Tutup Ruangan Nonton Bersama?'
+                    : 'End Watch Party Room?')
               : s.watchPartyLeaveConfirm,
           style: const TextStyle(
             color: Colors.white,
@@ -107,8 +98,8 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
         content: Text(
           isHost
               ? (s.isIndonesian
-                  ? 'Sebagai Host, keluar dari ruangan akan otomatis menghapus ruangan, kode akses, dan seluruh data percakapan.'
-                  : 'As the Host, leaving will automatically delete the room, access code, and all conversation data.')
+                    ? 'Sebagai Host, keluar dari ruangan akan otomatis menghapus ruangan, kode akses, dan seluruh data percakapan.'
+                    : 'As the Host, leaving will automatically delete the room, access code, and all conversation data.')
               : s.watchPartyLeaveConfirmDesc,
           style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
         ),
@@ -247,13 +238,16 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                           borderRadius: BorderRadius.circular(8),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.18),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color:
-                                    AppColors.primary.withValues(alpha: 0.45),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.45,
+                                ),
                               ),
                             ),
                             child: Row(
@@ -282,7 +276,9 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                           const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 5),
+                              horizontal: 8,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.amber.withValues(alpha: 0.16),
                               borderRadius: BorderRadius.circular(8),
@@ -315,7 +311,9 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                         const Spacer(),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(6),
@@ -352,8 +350,10 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
               if (isHost)
                 Container(
                   margin: const EdgeInsets.fromLTRB(10, 8, 10, 4),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.04),
                     borderRadius: BorderRadius.circular(10),
@@ -369,8 +369,7 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                         value: room.allowGuestControl,
                         activeColor: AppColors.primary,
                         checkColor: Colors.white,
-                        materialTapTargetSize:
-                            MaterialTapTargetSize.shrinkWrap,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
                         onChanged: (val) {
                           ref
@@ -395,8 +394,10 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
               else if (!room.allowGuestControl)
                 Container(
                   margin: const EdgeInsets.fromLTRB(10, 6, 10, 2),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.amber.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -406,8 +407,11 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.lock_outline_rounded,
-                          size: 13, color: Colors.amberAccent),
+                      const Icon(
+                        Icons.lock_outline_rounded,
+                        size: 13,
+                        color: Colors.amberAccent,
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -440,7 +444,10 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                       itemCount: displayMessages.length,
                       itemBuilder: (context, index) {
                         final msg = displayMessages[index];
-                        return _buildMessageItem(msg, watchPartyState.myMemberId);
+                        return _buildMessageItem(
+                          msg,
+                          watchPartyState.myMemberId,
+                        );
                       },
                     );
                   },
@@ -449,8 +456,7 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
 
               // ── 4. Quick Emoji Reactions Bar ──
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.2),
                   border: Border(
@@ -471,7 +477,9 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                       borderRadius: BorderRadius.circular(20),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 4),
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
                         child: Text(
                           emoji,
                           style: const TextStyle(fontSize: 20),
@@ -498,8 +506,10 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                     Expanded(
                       child: TextField(
                         controller: _textController,
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 13),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                        ),
                         textInputAction: TextInputAction.send,
                         onSubmitted: (_) => _handleSendMessage(),
                         decoration: InputDecoration(
@@ -515,7 +525,9 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                             borderSide: BorderSide.none,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
                         ),
                       ),
                     ),
@@ -572,8 +584,9 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
         child: Align(
           alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
           child: Column(
-            crossAxisAlignment:
-                isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            crossAxisAlignment: isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
             children: [
               Text(
                 msg.senderName,
@@ -585,10 +598,7 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              Text(
-                msg.emoji ?? '🔥',
-                style: const TextStyle(fontSize: 28),
-              ),
+              Text(msg.emoji ?? '🔥', style: const TextStyle(fontSize: 28)),
             ],
           ),
         ),
@@ -622,8 +632,9 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
             ),
           ),
           child: Column(
-            crossAxisAlignment:
-                isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            crossAxisAlignment: isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
             children: [
               if (!isMe)
                 Row(
@@ -661,4 +672,3 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
     );
   }
 }
-
