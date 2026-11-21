@@ -268,11 +268,6 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                         label: 'GPL-3.0 License',
                         isPrimary: false,
                       ),
-                      _buildCleanBadge(
-                        icon: Icons.volunteer_activism_rounded,
-                        label: s.aboutBuildType,
-                        isPrimary: false,
-                      ),
                     ],
                   ),
 

@@ -414,7 +414,7 @@ void main() {
         expect(find.text('Android Native'), findsNothing);
 
         // Footer signature
-        expect(find.textContaining('Made With'), findsOneWidget);
+        expect(find.textContaining(RegExp(r'Made [Ww]ith')), findsOneWidget);
         expect(find.textContaining('by Cineva Group'), findsOneWidget);
         expect(find.byIcon(Icons.favorite_rounded), findsWidgets);
 
