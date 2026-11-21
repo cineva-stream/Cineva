@@ -133,198 +133,236 @@ void main() {
   });
 
   group('WatchPartyService Room Code Generation & Network Math', () {
-    test('generateRoomCode produces 8-char uppercase string formatted as CNV-XXXX', () {
-      final service = WatchPartyService();
-      for (int i = 0; i < 20; i++) {
-        final code = service.generateRoomCode();
+    test(
+      'generateRoomCode produces 8-char uppercase string formatted as CNV-XXXX',
+      () {
+        final service = WatchPartyService();
+        for (int i = 0; i < 20; i++) {
+          final code = service.generateRoomCode();
+          expect(code.startsWith('CNV-'), isTrue);
+          expect(code.length, 8);
+          expect(code, matches(RegExp(r'^CNV-[2-9A-Z]{4}$')));
+        }
+        service.dispose();
+      },
+    );
+
+    test(
+      'Clock Skew and Latency Compensation calculates accurate target seconds',
+      () {
+        const initialSeconds = 120.0;
+        final serverTimestamp =
+            DateTime.now().millisecondsSinceEpoch - 2500; // 2.5s ago
+
+        // If video was playing, elapsed time must be added
+        final elapsed =
+            (DateTime.now().millisecondsSinceEpoch - serverTimestamp) / 1000.0;
+        final targetSeconds = initialSeconds + elapsed;
+
+        expect(targetSeconds, greaterThanOrEqualTo(122.4));
+        expect(targetSeconds, lessThanOrEqualTo(122.7));
+      },
+    );
+
+    test(
+      'createRoom safely creates room and falls back to relay without throwing',
+      () async {
+        final service = WatchPartyService();
+        final code = await service.createRoom(
+          hostName: 'Test Host',
+          media: const WatchPartyMedia(
+            title: 'Test Movie',
+            mediaType: 'movie',
+            tmdbId: 100,
+          ),
+        );
         expect(code.startsWith('CNV-'), isTrue);
-        expect(code.length, 8);
-        expect(code, matches(RegExp(r'^CNV-[2-9A-Z]{4}$')));
-      }
-      service.dispose();
-    });
+        expect(service.currentRoom, isNotNull);
+        expect(service.isHost, isTrue);
+        expect(service.currentRoom?.hostName, 'Test Host');
+        service.dispose();
+      },
+    );
 
-    test('Clock Skew and Latency Compensation calculates accurate target seconds', () {
-      const initialSeconds = 120.0;
-      final serverTimestamp = DateTime.now().millisecondsSinceEpoch - 2500; // 2.5s ago
+    test(
+      'createRoom with pin sets isProtectedByPin to true and saves pin',
+      () async {
+        final service = WatchPartyService();
+        final code = await service.createRoom(
+          hostName: 'PIN Host',
+          pin: '1234',
+          media: const WatchPartyMedia(
+            title: 'Protected Movie',
+            mediaType: 'movie',
+            tmdbId: 101,
+          ),
+        );
+        expect(code.startsWith('CNV-'), isTrue);
+        expect(service.currentRoom?.isProtectedByPin, isTrue);
+        expect(service.currentRoom?.pin, '1234');
+        expect(service.currentRoom?.verifyPin('1234'), isTrue);
+        expect(service.currentRoom?.verifyPin('9999'), isFalse);
+        service.dispose();
+      },
+    );
 
-      // If video was playing, elapsed time must be added
-      final elapsed = (DateTime.now().millisecondsSinceEpoch - serverTimestamp) / 1000.0;
-      final targetSeconds = initialSeconds + elapsed;
+    test(
+      'deleteRoom completely clears currentRoom, isHost, and notifies stream with null',
+      () async {
+        final service = WatchPartyService();
+        final code = await service.createRoom(
+          hostName: 'Auto Delete Host',
+          media: const WatchPartyMedia(
+            title: 'Delete Test',
+            mediaType: 'movie',
+            tmdbId: 200,
+          ),
+        );
+        expect(service.currentRoom?.roomCode, code);
+        expect(service.isHost, isTrue);
 
-      expect(targetSeconds, greaterThanOrEqualTo(122.4));
-      expect(targetSeconds, lessThanOrEqualTo(122.7));
-    });
+        WatchPartyRoom? streamValue = service.currentRoom;
+        final sub = service.roomStream.listen((room) {
+          streamValue = room;
+        });
 
-    test('createRoom safely creates room and falls back to relay without throwing', () async {
-      final service = WatchPartyService();
-      final code = await service.createRoom(
-        hostName: 'Test Host',
-        media: const WatchPartyMedia(
-          title: 'Test Movie',
-          mediaType: 'movie',
-          tmdbId: 100,
-        ),
-      );
-      expect(code.startsWith('CNV-'), isTrue);
-      expect(service.currentRoom, isNotNull);
-      expect(service.isHost, isTrue);
-      expect(service.currentRoom?.hostName, 'Test Host');
-      service.dispose();
-    });
+        await service.deleteRoom();
+        await Future<void>.delayed(Duration.zero);
+        expect(service.currentRoom, isNull);
+        expect(service.isHost, isFalse);
+        expect(service.myMemberId, isNull);
+        expect(streamValue, isNull);
 
-    test('createRoom with pin sets isProtectedByPin to true and saves pin', () async {
-      final service = WatchPartyService();
-      final code = await service.createRoom(
-        hostName: 'PIN Host',
-        pin: '1234',
-        media: const WatchPartyMedia(
-          title: 'Protected Movie',
-          mediaType: 'movie',
-          tmdbId: 101,
-        ),
-      );
-      expect(code.startsWith('CNV-'), isTrue);
-      expect(service.currentRoom?.isProtectedByPin, isTrue);
-      expect(service.currentRoom?.pin, '1234');
-      expect(service.currentRoom?.verifyPin('1234'), isTrue);
-      expect(service.currentRoom?.verifyPin('9999'), isFalse);
-      service.dispose();
-    });
+        await sub.cancel();
+        service.dispose();
+      },
+    );
 
-    test('deleteRoom completely clears currentRoom, isHost, and notifies stream with null', () async {
-      final service = WatchPartyService();
-      final code = await service.createRoom(
-        hostName: 'Auto Delete Host',
-        media: const WatchPartyMedia(title: 'Delete Test', mediaType: 'movie', tmdbId: 200),
-      );
-      expect(service.currentRoom?.roomCode, code);
-      expect(service.isHost, isTrue);
+    test(
+      'leaveRoom auto-deletes room and purges all data when caller is Host',
+      () async {
+        final service = WatchPartyService();
+        await service.createRoom(
+          hostName: 'Host Caller',
+          media: const WatchPartyMedia(
+            title: 'Leave Auto Delete Test',
+            mediaType: 'movie',
+            tmdbId: 201,
+          ),
+        );
+        expect(service.isHost, isTrue);
+        expect(service.currentRoom, isNotNull);
 
-      WatchPartyRoom? streamValue = service.currentRoom;
-      final sub = service.roomStream.listen((room) {
-        streamValue = room;
-      });
-
-      await service.deleteRoom();
-      await Future<void>.delayed(Duration.zero);
-      expect(service.currentRoom, isNull);
-      expect(service.isHost, isFalse);
-      expect(service.myMemberId, isNull);
-      expect(streamValue, isNull);
-
-      await sub.cancel();
-      service.dispose();
-    });
-
-    test('leaveRoom auto-deletes room and purges all data when caller is Host', () async {
-      final service = WatchPartyService();
-      await service.createRoom(
-        hostName: 'Host Caller',
-        media: const WatchPartyMedia(title: 'Leave Auto Delete Test', mediaType: 'movie', tmdbId: 201),
-      );
-      expect(service.isHost, isTrue);
-      expect(service.currentRoom, isNotNull);
-
-      await service.leaveRoom();
-      expect(service.currentRoom, isNull);
-      expect(service.isHost, isFalse);
-      expect(service.myMemberId, isNull);
-      service.dispose();
-    });
+        await service.leaveRoom();
+        expect(service.currentRoom, isNull);
+        expect(service.isHost, isFalse);
+        expect(service.myMemberId, isNull);
+        service.dispose();
+      },
+    );
   });
 
   group('WatchPartyState & Host Control Logic', () {
-    test('canControlVideo allows Host always and restricts Guest when unchecked', () {
-      const roomLocked = WatchPartyRoom(
-        roomCode: 'CNV-0001',
-        hostId: 'host_id',
-        hostName: 'Host',
-        allowGuestControl: false,
-        media: WatchPartyMedia(title: 'T', mediaType: 'movie', tmdbId: 1),
-        playback: WatchPartyPlayback(
+    test(
+      'canControlVideo allows Host always and restricts Guest when unchecked',
+      () {
+        const roomLocked = WatchPartyRoom(
+          roomCode: 'CNV-0001',
+          hostId: 'host_id',
+          hostName: 'Host',
+          allowGuestControl: false,
+          media: WatchPartyMedia(title: 'T', mediaType: 'movie', tmdbId: 1),
+          playback: WatchPartyPlayback(
+            isPlaying: true,
+            positionSeconds: 10,
+            updatedAt: 0,
+            updatedBy: 'Host',
+            action: 'play',
+          ),
+          createdAt: 0,
+        );
+
+        // Host perspective: canControlVideo is ALWAYS true
+        final hostState = WatchPartyState(
+          room: roomLocked,
+          myMemberId: 'host_id',
+          isHost: true,
+        );
+        expect(hostState.canControlVideo, isTrue);
+
+        // Guest perspective with allowGuestControl == false: canControlVideo is FALSE
+        final guestStateLocked = WatchPartyState(
+          room: roomLocked,
+          myMemberId: 'guest_id',
+          isHost: false,
+        );
+        expect(guestStateLocked.canControlVideo, isFalse);
+
+        // Guest perspective with allowGuestControl == true: canControlVideo is TRUE
+        final roomUnlocked = roomLocked.copyWith(allowGuestControl: true);
+        final guestStateUnlocked = WatchPartyState(
+          room: roomUnlocked,
+          myMemberId: 'guest_id',
+          isHost: false,
+        );
+        expect(guestStateUnlocked.canControlVideo, isTrue);
+      },
+    );
+
+    test(
+      'Sending chat message preserves playback state and updatedAt exactly',
+      () {
+        const initialPlayback = WatchPartyPlayback(
           isPlaying: true,
-          positionSeconds: 10,
-          updatedAt: 0,
+          positionSeconds: 754.0, // 12:34
+          updatedAt: 1794900000000,
           updatedBy: 'Host',
           action: 'play',
-        ),
-        createdAt: 0,
-      );
+        );
 
-      // Host perspective: canControlVideo is ALWAYS true
-      final hostState = WatchPartyState(
-        room: roomLocked,
-        myMemberId: 'host_id',
-        isHost: true,
-      );
-      expect(hostState.canControlVideo, isTrue);
+        final room = WatchPartyRoom(
+          roomCode: 'CNV-1234',
+          hostId: 'host_id',
+          hostName: 'Host',
+          media: const WatchPartyMedia(
+            title: 'Movie',
+            mediaType: 'movie',
+            tmdbId: 100,
+          ),
+          playback: initialPlayback,
+          createdAt: 1794900000000,
+        );
 
-      // Guest perspective with allowGuestControl == false: canControlVideo is FALSE
-      final guestStateLocked = WatchPartyState(
-        room: roomLocked,
-        myMemberId: 'guest_id',
-        isHost: false,
-      );
-      expect(guestStateLocked.canControlVideo, isFalse);
+        // Add a message as guest
+        final newMsg = WatchPartyMessage(
+          id: 'msg_1',
+          senderId: 'guest_id',
+          senderName: 'Guest',
+          isHost: false,
+          text: 'Halo!',
+          timestamp: 1794900103000,
+        );
+        final updatedRoom = room.copyWith(messages: [newMsg]);
 
-      // Guest perspective with allowGuestControl == true: canControlVideo is TRUE
-      final roomUnlocked = roomLocked.copyWith(allowGuestControl: true);
-      final guestStateUnlocked = WatchPartyState(
-        room: roomUnlocked,
-        myMemberId: 'guest_id',
-        isHost: false,
-      );
-      expect(guestStateUnlocked.canControlVideo, isTrue);
-    });
+        // Playback properties must remain completely untouched
+        expect(updatedRoom.playback.positionSeconds, 754.0);
+        expect(updatedRoom.playback.updatedAt, 1794900000000);
+        expect(updatedRoom.playback.isPlaying, isTrue);
+        expect(updatedRoom.playback.action, 'play');
+        expect(updatedRoom.playback.updatedBy, 'Host');
 
-    test('Sending chat message preserves playback state and updatedAt exactly', () {
-      const initialPlayback = WatchPartyPlayback(
-        isPlaying: true,
-        positionSeconds: 754.0, // 12:34
-        updatedAt: 1794900000000,
-        updatedBy: 'Host',
-        action: 'play',
-      );
+        // The playback change detection condition evaluates to false
+        final prevPlayback = room.playback;
+        final currentPlayback = updatedRoom.playback;
+        final hasPlaybackChanged =
+            prevPlayback.updatedAt != currentPlayback.updatedAt ||
+            prevPlayback.isPlaying != currentPlayback.isPlaying ||
+            prevPlayback.positionSeconds != currentPlayback.positionSeconds ||
+            prevPlayback.action != currentPlayback.action;
 
-      final room = WatchPartyRoom(
-        roomCode: 'CNV-1234',
-        hostId: 'host_id',
-        hostName: 'Host',
-        media: const WatchPartyMedia(title: 'Movie', mediaType: 'movie', tmdbId: 100),
-        playback: initialPlayback,
-        createdAt: 1794900000000,
-      );
-
-      // Add a message as guest
-      final newMsg = WatchPartyMessage(
-        id: 'msg_1',
-        senderId: 'guest_id',
-        senderName: 'Guest',
-        isHost: false,
-        text: 'Halo!',
-        timestamp: 1794900103000,
-      );
-      final updatedRoom = room.copyWith(messages: [newMsg]);
-
-      // Playback properties must remain completely untouched
-      expect(updatedRoom.playback.positionSeconds, 754.0);
-      expect(updatedRoom.playback.updatedAt, 1794900000000);
-      expect(updatedRoom.playback.isPlaying, isTrue);
-      expect(updatedRoom.playback.action, 'play');
-      expect(updatedRoom.playback.updatedBy, 'Host');
-
-      // The playback change detection condition evaluates to false
-      final prevPlayback = room.playback;
-      final currentPlayback = updatedRoom.playback;
-      final hasPlaybackChanged =
-          prevPlayback.updatedAt != currentPlayback.updatedAt ||
-          prevPlayback.isPlaying != currentPlayback.isPlaying ||
-          prevPlayback.positionSeconds != currentPlayback.positionSeconds ||
-          prevPlayback.action != currentPlayback.action;
-
-      expect(hasPlaybackChanged, isFalse);
-    });
+        expect(hasPlaybackChanged, isFalse);
+      },
+    );
   });
 
   group('TV Series Episode Subtitle & Formatting Helper Tests', () {
@@ -353,7 +391,11 @@ void main() {
       return cleaned.trim();
     }
 
-    String formattedEpisodeSubtitle(int season, int episode, String? episodeTitle) {
+    String formattedEpisodeSubtitle(
+      int season,
+      int episode,
+      String? episodeTitle,
+    ) {
       final base = 'Season $season - Episode $episode';
       final epName = cleanEpisodeName(episodeTitle);
       if (epName.isNotEmpty) {
@@ -382,14 +424,8 @@ void main() {
     });
 
     test('Omits parentheses when episodeTitle contains no distinct name', () {
-      expect(
-        formattedEpisodeSubtitle(3, 10, null),
-        'Season 3 - Episode 10',
-      );
-      expect(
-        formattedEpisodeSubtitle(3, 10, ''),
-        'Season 3 - Episode 10',
-      );
+      expect(formattedEpisodeSubtitle(3, 10, null), 'Season 3 - Episode 10');
+      expect(formattedEpisodeSubtitle(3, 10, ''), 'Season 3 - Episode 10');
       expect(
         formattedEpisodeSubtitle(3, 10, 'Episode 10'),
         'Season 3 - Episode 10',
@@ -398,468 +434,515 @@ void main() {
         formattedEpisodeSubtitle(3, 10, 'Season 3 Episode 10'),
         'Season 3 - Episode 10',
       );
-      expect(
-        formattedEpisodeSubtitle(3, 10, '10'),
-        'Season 3 - Episode 10',
-      );
+      expect(formattedEpisodeSubtitle(3, 10, '10'), 'Season 3 - Episode 10');
     });
-    test('WatchPartyRoom.fromJson preserves message id and deduplicates properly', () {
-      final json = {
-        'roomCode': 'CNV-1234',
-        'hostId': 'host_1',
-        'hostName': 'Host',
-        'allowGuestControl': true,
-        'createdAt': 1000,
-        'media': {
-          'title': 'The Hunger Games',
-          'mediaType': 'movie',
-          'tmdbId': 100,
-        },
-        'playback': {
-          'isPlaying': true,
-          'positionSeconds': 0.0,
-          'updatedAt': 1000,
-          'updatedBy': 'Host',
-          'action': 'init',
-        },
-        'messages': {
-          'push_key_1': {
-            'id': 'msg_custom_id_1',
-            'senderId': 'user_1',
-            'senderName': 'Alice',
-            'text': 'Halo',
-            'timestamp': 1001,
-            'type': 'chat',
+    test(
+      'WatchPartyRoom.fromJson preserves message id and deduplicates properly',
+      () {
+        final json = {
+          'roomCode': 'CNV-1234',
+          'hostId': 'host_1',
+          'hostName': 'Host',
+          'allowGuestControl': true,
+          'createdAt': 1000,
+          'media': {
+            'title': 'The Hunger Games',
+            'mediaType': 'movie',
+            'tmdbId': 100,
           },
-          'push_key_2': {
-            'id': 'msg_custom_id_1', // Duplicate id
-            'senderId': 'user_1',
-            'senderName': 'Alice',
-            'text': 'Halo',
-            'timestamp': 1001,
-            'type': 'chat',
+          'playback': {
+            'isPlaying': true,
+            'positionSeconds': 0.0,
+            'updatedAt': 1000,
+            'updatedBy': 'Host',
+            'action': 'init',
           },
-          'push_key_3': {
-            'id': 'msg_custom_id_2',
-            'senderId': 'user_2',
-            'senderName': 'Bob',
-            'text': 'Hai Alice',
-            'timestamp': 1002,
-            'type': 'chat',
+          'messages': {
+            'push_key_1': {
+              'id': 'msg_custom_id_1',
+              'senderId': 'user_1',
+              'senderName': 'Alice',
+              'text': 'Halo',
+              'timestamp': 1001,
+              'type': 'chat',
+            },
+            'push_key_2': {
+              'id': 'msg_custom_id_1', // Duplicate id
+              'senderId': 'user_1',
+              'senderName': 'Alice',
+              'text': 'Halo',
+              'timestamp': 1001,
+              'type': 'chat',
+            },
+            'push_key_3': {
+              'id': 'msg_custom_id_2',
+              'senderId': 'user_2',
+              'senderName': 'Bob',
+              'text': 'Hai Alice',
+              'timestamp': 1002,
+              'type': 'chat',
+            },
           },
-        },
-      };
+        };
 
-      final room = WatchPartyRoom.fromJson(json);
-      expect(room.media.title, 'The Hunger Games');
-      expect(room.messages.length, 2); // Deduplicated from 3 to 2!
-      expect(room.messages[0].id, 'msg_custom_id_1');
-      expect(room.messages[1].id, 'msg_custom_id_2');
-    });
+        final room = WatchPartyRoom.fromJson(json);
+        expect(room.media.title, 'The Hunger Games');
+        expect(room.messages.length, 2); // Deduplicated from 3 to 2!
+        expect(room.messages[0].id, 'msg_custom_id_1');
+        expect(room.messages[1].id, 'msg_custom_id_2');
+      },
+    );
   });
 
   group('WatchPartySideView Widget Tests', () {
-    testWidgets('Renders side panel with tabs, media summary card, and controls', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1280, 720));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets(
+      'Renders side panel with tabs, media summary card, and controls',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(1280, 720));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      const testMedia = WatchPartyMedia(
-        title: 'The Rookie',
-        mediaType: 'tv',
-        tmdbId: 79744,
-        season: 3,
-        episode: 10,
-        episodeTitle: 'True Crime',
-      );
+        const testMedia = WatchPartyMedia(
+          title: 'The Rookie',
+          mediaType: 'tv',
+          tmdbId: 79744,
+          season: 3,
+          episode: 10,
+          episodeTitle: 'True Crime',
+        );
 
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                width: 360,
-                height: 720,
-                child: WatchPartySideView(media: testMedia),
+        await tester.pumpWidget(
+          const ProviderScope(
+            child: MaterialApp(
+              home: Scaffold(
+                body: SizedBox(
+                  width: 360,
+                  height: 720,
+                  child: WatchPartySideView(media: testMedia),
+                ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      // Check Tabs
-      expect(find.text('Buat Ruangan'), findsOneWidget);
-      expect(find.text('Gabung Ruangan'), findsOneWidget);
+        // Check Tabs
+        expect(find.text('Buat Ruangan'), findsOneWidget);
+        expect(find.text('Gabung Ruangan'), findsOneWidget);
 
-      // Check Media Card
-      expect(find.text('The Rookie'), findsOneWidget);
-      expect(find.text('Season 3 - Episode 10 (True Crime)'), findsOneWidget);
-      expect(find.text('Serial TV'), findsOneWidget);
+        // Check Media Card
+        expect(find.text('The Rookie'), findsOneWidget);
+        expect(find.text('Season 3 - Episode 10 (True Crime)'), findsOneWidget);
+        expect(find.text('Serial TV'), findsOneWidget);
 
-      // Check Host controls
-      expect(find.text('Nama Panggilan'), findsOneWidget);
-      expect(find.text('Izinkan partner/tamu mengontrol video'), findsOneWidget);
-      expect(find.text('Kunci ruangan dengan PIN'), findsOneWidget);
-      expect(find.text('Buat Ruangan & Mulai'), findsOneWidget);
+        // Check Host controls
+        expect(find.text('Nama Panggilan'), findsOneWidget);
+        expect(
+          find.text('Izinkan partner/tamu mengontrol video'),
+          findsOneWidget,
+        );
+        expect(find.text('Kunci ruangan dengan PIN'), findsOneWidget);
+        expect(find.text('Buat Ruangan & Mulai'), findsOneWidget);
 
-      // Tap PIN checkbox to reveal 4-digit PIN field
-      await tester.tap(find.text('Kunci ruangan dengan PIN'));
-      await tester.pumpAndSettle();
-      expect(find.text('Contoh: 1234'), findsOneWidget);
+        // Tap PIN checkbox to reveal 4-digit PIN field
+        await tester.tap(find.text('Kunci ruangan dengan PIN'));
+        await tester.pumpAndSettle();
+        expect(find.text('Contoh: 1234'), findsOneWidget);
 
-      // Switch to Join Room Tab
-      await tester.tap(find.text('Gabung Ruangan'));
-      await tester.pumpAndSettle();
+        // Switch to Join Room Tab
+        await tester.tap(find.text('Gabung Ruangan'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Kode Ruangan'), findsOneWidget);
-      expect(find.text('PIN Ruangan (4 digit)'), findsOneWidget);
-      expect(find.text('(Jika dikunci PIN)'), findsOneWidget);
-      expect(find.text('Nama Panggilan (Guest Mode)'), findsOneWidget);
-      expect(find.text('Gabung Ruangan'), findsNWidgets(2)); // Tab title + button label
-    });
+        expect(find.text('Kode Ruangan'), findsOneWidget);
+        expect(find.text('PIN Ruangan (4 digit)'), findsOneWidget);
+        expect(find.text('(Jika dikunci PIN)'), findsOneWidget);
+        expect(find.text('Nama Panggilan (Guest Mode)'), findsOneWidget);
+        expect(
+          find.text('Gabung Ruangan'),
+          findsNWidgets(2),
+        ); // Tab title + button label
+      },
+    );
 
-    testWidgets('WatchPartyJoinBanner renders cleanly and opens full-width 24dp bottom sheet', (tester) async {
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            home: Scaffold(
-              body: WatchPartyJoinBanner(),
-            ),
+    testWidgets(
+      'WatchPartyJoinBanner renders cleanly and opens full-width 24dp bottom sheet',
+      (tester) async {
+        await tester.pumpWidget(
+          const ProviderScope(
+            child: MaterialApp(home: Scaffold(body: WatchPartyJoinBanner())),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('Nonton Bareng Teman'), findsOneWidget);
-      expect(find.text('SYNC'), findsOneWidget);
-      expect(find.text('Gabung Nobar'), findsOneWidget);
+        expect(find.text('Nonton Bareng Teman'), findsOneWidget);
+        expect(find.text('SYNC'), findsOneWidget);
+        expect(find.text('Gabung Nobar'), findsOneWidget);
 
-      // Tap Join button to open bottom sheet
-      await tester.tap(find.text('Gabung Nobar'));
-      await tester.pumpAndSettle();
+        // Tap Join button to open bottom sheet
+        await tester.tap(find.text('Gabung Nobar'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Kode Ruangan'), findsOneWidget);
-      expect(find.text('PIN Ruangan (4 digit)'), findsOneWidget);
-      expect(find.text('Nama Panggilan'), findsOneWidget);
-      expect(find.text('Gabung & Tonton'), findsOneWidget);
-    });
+        expect(find.text('Kode Ruangan'), findsOneWidget);
+        expect(find.text('PIN Ruangan (4 digit)'), findsOneWidget);
+        expect(find.text('Nama Panggilan'), findsOneWidget);
+        expect(find.text('Gabung & Tonton'), findsOneWidget);
+      },
+    );
 
-    testWidgets('WatchPartyChatPanel displays End Room and Delete & Leave dialog for Host', (tester) async {
-      const room = WatchPartyRoom(
-        roomCode: 'CNV-7777',
-        hostId: 'host_id',
-        hostName: 'TestHost',
-        allowGuestControl: false,
-        media: WatchPartyMedia(title: 'Panel Test Movie', mediaType: 'movie', tmdbId: 50),
-        playback: WatchPartyPlayback(
-          isPlaying: true,
-          positionSeconds: 0,
-          updatedAt: 0,
-          updatedBy: 'TestHost',
-          action: 'init',
-        ),
-        createdAt: 0,
-      );
+    testWidgets(
+      'WatchPartyChatPanel displays End Room and Delete & Leave dialog for Host',
+      (tester) async {
+        const room = WatchPartyRoom(
+          roomCode: 'CNV-7777',
+          hostId: 'host_id',
+          hostName: 'TestHost',
+          allowGuestControl: false,
+          media: WatchPartyMedia(
+            title: 'Panel Test Movie',
+            mediaType: 'movie',
+            tmdbId: 50,
+          ),
+          playback: WatchPartyPlayback(
+            isPlaying: true,
+            positionSeconds: 0,
+            updatedAt: 0,
+            updatedBy: 'TestHost',
+            action: 'init',
+          ),
+          createdAt: 0,
+        );
 
-      final container = ProviderContainer(
-        overrides: [
-          watchPartyProvider.overrideWith((ref) {
-            final service = ref.watch(watchPartyServiceProvider);
-            final notifier = WatchPartyNotifier(service);
-            notifier.state = const WatchPartyState(
-              room: room,
-              isHost: true,
-              isChatPanelOpen: true,
-              myMemberId: 'host_id',
-              myName: 'TestHost',
-            );
-            return notifier;
-          }),
-        ],
-      );
+        final container = ProviderContainer(
+          overrides: [
+            watchPartyProvider.overrideWith((ref) {
+              final service = ref.watch(watchPartyServiceProvider);
+              final notifier = WatchPartyNotifier(service);
+              notifier.state = const WatchPartyState(
+                room: room,
+                isHost: true,
+                isChatPanelOpen: true,
+                myMemberId: 'host_id',
+                myName: 'TestHost',
+              );
+              return notifier;
+            }),
+          ],
+        );
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                width: 340,
-                height: 800,
-                child: WatchPartyChatPanel(),
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(
+                body: SizedBox(
+                  width: 340,
+                  height: 800,
+                  child: WatchPartyChatPanel(),
+                ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('CNV-7777'), findsOneWidget);
+        expect(find.text('CNV-7777'), findsOneWidget);
 
-      // Tap leave room icon button
-      await tester.tap(find.byIcon(Icons.exit_to_app_rounded));
-      await tester.pumpAndSettle();
+        // Tap leave room icon button
+        await tester.tap(find.byIcon(Icons.exit_to_app_rounded));
+        await tester.pumpAndSettle();
 
-      // Check Host leave dialog
-      expect(find.text('Tutup Ruangan Nonton Bersama?'), findsOneWidget);
-      expect(
-        find.text('Sebagai Host, keluar dari ruangan akan otomatis menghapus ruangan, kode akses, dan seluruh data percakapan.'),
-        findsOneWidget,
-      );
-      expect(find.text('Hapus & Keluar'), findsOneWidget);
-
-      // Tap Hapus & Keluar
-      await tester.tap(find.text('Hapus & Keluar'));
-      await tester.pumpAndSettle();
-
-      // Ensure room state is cleared
-      expect(container.read(watchPartyProvider).isInRoom, isFalse);
-    });
-
-    testWidgets('WatchPartyChatPanel localizes system messages dynamically into English', (tester) async {
-      const room = WatchPartyRoom(
-        roomCode: 'CNV-9999',
-        hostId: 'host_id',
-        hostName: 'Alice',
-        allowGuestControl: true,
-        media: WatchPartyMedia(title: 'Localization Test', mediaType: 'movie', tmdbId: 77),
-        playback: WatchPartyPlayback(
-          isPlaying: false,
-          positionSeconds: 320,
-          updatedAt: 0,
-          updatedBy: 'Alice',
-          action: 'pause',
-        ),
-        messages: [
-          WatchPartyMessage(
-            id: 'sys_1',
-            senderId: 'system',
-            senderName: 'Cineva',
-            text: 'Ruang Nonton Bareng dibuat oleh Alice',
-            timestamp: 1000,
-            type: 'system',
+        // Check Host leave dialog
+        expect(find.text('Tutup Ruangan Nonton Bersama?'), findsOneWidget);
+        expect(
+          find.text(
+            'Sebagai Host, keluar dari ruangan akan otomatis menghapus ruangan, kode akses, dan seluruh data percakapan.',
           ),
-          WatchPartyMessage(
-            id: 'sys_2',
-            senderId: 'bob_id',
-            senderName: 'Bob',
-            text: 'Bob telah bergabung ke ruangan',
-            timestamp: 2000,
-            type: 'system',
-          ),
-          WatchPartyMessage(
-            id: 'sys_3',
-            senderId: 'host_id',
-            senderName: 'Alice',
-            text: 'Alice menjeda video di 05:20',
-            timestamp: 3000,
-            type: 'system',
-          ),
-          WatchPartyMessage(
-            id: 'sys_4',
-            senderId: 'host_id',
-            senderName: 'Alice',
-            text: 'Alice memajukan video ke 05:30',
-            timestamp: 4000,
-            type: 'system',
-          ),
-          WatchPartyMessage(
-            id: 'sys_5',
-            senderId: 'host_id',
-            senderName: 'Alice',
-            text: 'Alice memundurkan video ke 05:10',
-            timestamp: 5000,
-            type: 'system',
-          ),
-        ],
-        createdAt: 0,
-      );
+          findsOneWidget,
+        );
+        expect(find.text('Hapus & Keluar'), findsOneWidget);
 
-      final container = ProviderContainer(
-        overrides: [
-          appLanguageProvider.overrideWith((ref) => AppLanguageNotifier(AppLanguage.en)),
-          watchPartyProvider.overrideWith((ref) {
-            final service = ref.watch(watchPartyServiceProvider);
-            final notifier = WatchPartyNotifier(service);
-            notifier.state = const WatchPartyState(
-              room: room,
-              isHost: true,
-              isChatPanelOpen: true,
-              myMemberId: 'host_id',
-              myName: 'Alice',
-            );
-            return notifier;
-          }),
-        ],
-      );
+        // Tap Hapus & Keluar
+        await tester.tap(find.text('Hapus & Keluar'));
+        await tester.pumpAndSettle();
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(
+        // Ensure room state is cleared
+        expect(container.read(watchPartyProvider).isInRoom, isFalse);
+      },
+    );
+
+    testWidgets(
+      'WatchPartyChatPanel localizes system messages dynamically into English',
+      (tester) async {
+        const room = WatchPartyRoom(
+          roomCode: 'CNV-9999',
+          hostId: 'host_id',
+          hostName: 'Alice',
+          allowGuestControl: true,
+          media: WatchPartyMedia(
+            title: 'Localization Test',
+            mediaType: 'movie',
+            tmdbId: 77,
+          ),
+          playback: WatchPartyPlayback(
+            isPlaying: false,
+            positionSeconds: 320,
+            updatedAt: 0,
+            updatedBy: 'Alice',
+            action: 'pause',
+          ),
+          messages: [
+            WatchPartyMessage(
+              id: 'sys_1',
+              senderId: 'system',
+              senderName: 'Cineva',
+              text: 'Ruang Nonton Bareng dibuat oleh Alice',
+              timestamp: 1000,
+              type: 'system',
+            ),
+            WatchPartyMessage(
+              id: 'sys_2',
+              senderId: 'bob_id',
+              senderName: 'Bob',
+              text: 'Bob telah bergabung ke ruangan',
+              timestamp: 2000,
+              type: 'system',
+            ),
+            WatchPartyMessage(
+              id: 'sys_3',
+              senderId: 'host_id',
+              senderName: 'Alice',
+              text: 'Alice menjeda video di 05:20',
+              timestamp: 3000,
+              type: 'system',
+            ),
+            WatchPartyMessage(
+              id: 'sys_4',
+              senderId: 'host_id',
+              senderName: 'Alice',
+              text: 'Alice memajukan video ke 05:30',
+              timestamp: 4000,
+              type: 'system',
+            ),
+            WatchPartyMessage(
+              id: 'sys_5',
+              senderId: 'host_id',
+              senderName: 'Alice',
+              text: 'Alice memundurkan video ke 05:10',
+              timestamp: 5000,
+              type: 'system',
+            ),
+          ],
+          createdAt: 0,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            appLanguageProvider.overrideWith(
+              (ref) => AppLanguageNotifier(AppLanguage.en),
+            ),
+            watchPartyProvider.overrideWith((ref) {
+              final service = ref.watch(watchPartyServiceProvider);
+              final notifier = WatchPartyNotifier(service);
+              notifier.state = const WatchPartyState(
+                room: room,
+                isHost: true,
+                isChatPanelOpen: true,
+                myMemberId: 'host_id',
+                myName: 'Alice',
+              );
+              return notifier;
+            }),
+          ],
+        );
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(
+                body: SizedBox(
+                  width: 340,
+                  height: 800,
+                  child: WatchPartyChatPanel(),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // System messages must render in English dynamically!
+        expect(find.text('Watch Party room created by Alice'), findsOneWidget);
+        expect(find.text('Bob joined the room'), findsOneWidget);
+        expect(find.text('Alice paused the video at 05:20'), findsOneWidget);
+        expect(find.text('Alice forwarded the video to 05:30'), findsOneWidget);
+        expect(find.text('Alice rewound the video to 05:10'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'WatchPartyChatPanel localizes system messages dynamically into Indonesian',
+      (tester) async {
+        const room = WatchPartyRoom(
+          roomCode: 'CNV-8888',
+          hostId: 'host_id',
+          hostName: 'Alice',
+          allowGuestControl: true,
+          media: WatchPartyMedia(
+            title: 'Localization Test ID',
+            mediaType: 'movie',
+            tmdbId: 78,
+          ),
+          playback: WatchPartyPlayback(
+            isPlaying: false,
+            positionSeconds: 320,
+            updatedAt: 0,
+            updatedBy: 'Alice',
+            action: 'pause',
+          ),
+          messages: [
+            WatchPartyMessage(
+              id: 'sys_1',
+              senderId: 'system',
+              senderName: 'Cineva',
+              text:
+                  'Watch Party room created by Alice', // Stored in English in cloud
+              timestamp: 1000,
+              type: 'system',
+            ),
+            WatchPartyMessage(
+              id: 'sys_2',
+              senderId: 'bob_id',
+              senderName: 'Bob',
+              text: 'Bob joined the room', // Stored in English in cloud
+              timestamp: 2000,
+              type: 'system',
+            ),
+            WatchPartyMessage(
+              id: 'sys_3',
+              senderId: 'host_id',
+              senderName: 'Alice',
+              text:
+                  'Alice paused the video at 05:20', // Stored in English in cloud
+              timestamp: 3000,
+              type: 'system',
+            ),
+            WatchPartyMessage(
+              id: 'sys_4',
+              senderId: 'host_id',
+              senderName: 'Alice',
+              text:
+                  'Alice forwarded the video to 05:30', // Stored in English in cloud
+              timestamp: 4000,
+              type: 'system',
+            ),
+            WatchPartyMessage(
+              id: 'sys_5',
+              senderId: 'host_id',
+              senderName: 'Alice',
+              text:
+                  'Alice rewound the video to 05:10', // Stored in English in cloud
+              timestamp: 5000,
+              type: 'system',
+            ),
+          ],
+          createdAt: 0,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            appLanguageProvider.overrideWith(
+              (ref) => AppLanguageNotifier(AppLanguage.id),
+            ),
+            watchPartyProvider.overrideWith((ref) {
+              final service = ref.watch(watchPartyServiceProvider);
+              final notifier = WatchPartyNotifier(service);
+              notifier.state = const WatchPartyState(
+                room: room,
+                isHost: true,
+                isChatPanelOpen: true,
+                myMemberId: 'host_id',
+                myName: 'Alice',
+              );
+              return notifier;
+            }),
+          ],
+        );
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(
+                body: SizedBox(
+                  width: 340,
+                  height: 800,
+                  child: WatchPartyChatPanel(),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // System messages must render in Indonesian dynamically!
+        expect(
+          find.text('Ruang Nonton Bareng dibuat oleh Alice'),
+          findsOneWidget,
+        );
+        expect(find.text('Bob telah bergabung ke ruangan'), findsOneWidget);
+        expect(find.text('Alice menjeda video di 05:20'), findsOneWidget);
+        expect(find.text('Alice memajukan video ke 05:30'), findsOneWidget);
+        expect(find.text('Alice memundurkan video ke 05:10'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'WatchPartyDynamicIsland renders message preview with host badge and handles tap',
+      (tester) async {
+        bool tapped = false;
+        bool dismissed = false;
+
+        const hostMsg = WatchPartyMessage(
+          id: 'msg_island_1',
+          senderId: 'host_id',
+          senderName: 'Sultan Nobar',
+          isHost: true,
+          text: 'Halo semua, seru banget filmnya!',
+          timestamp: 1000,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
             home: Scaffold(
-              body: SizedBox(
-                width: 340,
-                height: 800,
-                child: WatchPartyChatPanel(),
+              body: Center(
+                child: WatchPartyDynamicIsland(
+                  message: hostMsg,
+                  onTap: () => tapped = true,
+                  onDismiss: () => dismissed = true,
+                ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      // System messages must render in English dynamically!
-      expect(find.text('Watch Party room created by Alice'), findsOneWidget);
-      expect(find.text('Bob joined the room'), findsOneWidget);
-      expect(find.text('Alice paused the video at 05:20'), findsOneWidget);
-      expect(find.text('Alice forwarded the video to 05:30'), findsOneWidget);
-      expect(find.text('Alice rewound the video to 05:10'), findsOneWidget);
-    });
+        expect(find.text('Sultan Nobar'), findsOneWidget);
+        expect(find.text('HOST'), findsOneWidget);
+        expect(find.text('👑'), findsOneWidget);
+        expect(find.text('Halo semua, seru banget filmnya!'), findsOneWidget);
 
-    testWidgets('WatchPartyChatPanel localizes system messages dynamically into Indonesian', (tester) async {
-      const room = WatchPartyRoom(
-        roomCode: 'CNV-8888',
-        hostId: 'host_id',
-        hostName: 'Alice',
-        allowGuestControl: true,
-        media: WatchPartyMedia(title: 'Localization Test ID', mediaType: 'movie', tmdbId: 78),
-        playback: WatchPartyPlayback(
-          isPlaying: false,
-          positionSeconds: 320,
-          updatedAt: 0,
-          updatedBy: 'Alice',
-          action: 'pause',
-        ),
-        messages: [
-          WatchPartyMessage(
-            id: 'sys_1',
-            senderId: 'system',
-            senderName: 'Cineva',
-            text: 'Watch Party room created by Alice', // Stored in English in cloud
-            timestamp: 1000,
-            type: 'system',
-          ),
-          WatchPartyMessage(
-            id: 'sys_2',
-            senderId: 'bob_id',
-            senderName: 'Bob',
-            text: 'Bob joined the room', // Stored in English in cloud
-            timestamp: 2000,
-            type: 'system',
-          ),
-          WatchPartyMessage(
-            id: 'sys_3',
-            senderId: 'host_id',
-            senderName: 'Alice',
-            text: 'Alice paused the video at 05:20', // Stored in English in cloud
-            timestamp: 3000,
-            type: 'system',
-          ),
-          WatchPartyMessage(
-            id: 'sys_4',
-            senderId: 'host_id',
-            senderName: 'Alice',
-            text: 'Alice forwarded the video to 05:30', // Stored in English in cloud
-            timestamp: 4000,
-            type: 'system',
-          ),
-          WatchPartyMessage(
-            id: 'sys_5',
-            senderId: 'host_id',
-            senderName: 'Alice',
-            text: 'Alice rewound the video to 05:10', // Stored in English in cloud
-            timestamp: 5000,
-            type: 'system',
-          ),
-        ],
-        createdAt: 0,
-      );
+        // Tap on Dynamic Island
+        await tester.tap(find.byType(WatchPartyDynamicIsland));
+        await tester.pumpAndSettle();
 
-      final container = ProviderContainer(
-        overrides: [
-          appLanguageProvider.overrideWith((ref) => AppLanguageNotifier(AppLanguage.id)),
-          watchPartyProvider.overrideWith((ref) {
-            final service = ref.watch(watchPartyServiceProvider);
-            final notifier = WatchPartyNotifier(service);
-            notifier.state = const WatchPartyState(
-              room: room,
-              isHost: true,
-              isChatPanelOpen: true,
-              myMemberId: 'host_id',
-              myName: 'Alice',
-            );
-            return notifier;
-          }),
-        ],
-      );
+        expect(tapped, isTrue);
+        expect(dismissed, isTrue);
+      },
+    );
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                width: 340,
-                height: 800,
-                child: WatchPartyChatPanel(),
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // System messages must render in Indonesian dynamically!
-      expect(find.text('Ruang Nonton Bareng dibuat oleh Alice'), findsOneWidget);
-      expect(find.text('Bob telah bergabung ke ruangan'), findsOneWidget);
-      expect(find.text('Alice menjeda video di 05:20'), findsOneWidget);
-      expect(find.text('Alice memajukan video ke 05:30'), findsOneWidget);
-      expect(find.text('Alice memundurkan video ke 05:10'), findsOneWidget);
-    });
-
-    testWidgets('WatchPartyDynamicIsland renders message preview with host badge and handles tap', (tester) async {
-      bool tapped = false;
-      bool dismissed = false;
-
-      const hostMsg = WatchPartyMessage(
-        id: 'msg_island_1',
-        senderId: 'host_id',
-        senderName: 'Sultan Nobar',
-        isHost: true,
-        text: 'Halo semua, seru banget filmnya!',
-        timestamp: 1000,
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: WatchPartyDynamicIsland(
-                message: hostMsg,
-                onTap: () => tapped = true,
-                onDismiss: () => dismissed = true,
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Sultan Nobar'), findsOneWidget);
-      expect(find.text('HOST'), findsOneWidget);
-      expect(find.text('👑'), findsOneWidget);
-      expect(find.text('Halo semua, seru banget filmnya!'), findsOneWidget);
-
-      // Tap on Dynamic Island
-      await tester.tap(find.byType(WatchPartyDynamicIsland));
-      await tester.pumpAndSettle();
-
-      expect(tapped, isTrue);
-      expect(dismissed, isTrue);
-    });
-
-    testWidgets('WatchPartyDynamicIsland renders emoji reaction cleanly', (tester) async {
+    testWidgets('WatchPartyDynamicIsland renders emoji reaction cleanly', (
+      tester,
+    ) async {
       const emojiMsg = WatchPartyMessage(
         id: 'msg_island_2',
         senderId: 'guest_id',
@@ -892,4 +975,3 @@ void main() {
     });
   });
 }
-

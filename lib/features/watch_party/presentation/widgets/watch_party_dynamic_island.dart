@@ -150,21 +150,17 @@ class _WatchPartyDynamicIslandState extends State<WatchPartyDynamicIsland>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF09090D).withValues(alpha: 0.94),
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(26),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.14),
-                        width: 0.9,
-                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.65),
-                          blurRadius: 22,
-                          spreadRadius: 1,
+                          color: Colors.black.withValues(alpha: 0.75),
+                          blurRadius: 24,
+                          spreadRadius: 2,
                           offset: const Offset(0, 6),
                         ),
                         BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.16),
+                          color: AppColors.primary.withValues(alpha: 0.12),
                           blurRadius: 16,
                           spreadRadius: 0,
                           offset: const Offset(0, 2),
@@ -183,12 +179,6 @@ class _WatchPartyDynamicIslandState extends State<WatchPartyDynamicIsland>
                             color: msg.isHost
                                 ? const Color(0xFFFFD54F).withValues(alpha: 0.18)
                                 : AppColors.primary.withValues(alpha: 0.2),
-                            border: Border.all(
-                              color: msg.isHost
-                                  ? const Color(0xFFFFD54F).withValues(alpha: 0.5)
-                                  : AppColors.primary.withValues(alpha: 0.4),
-                              width: 1,
-                            ),
                           ),
                           child: Center(
                             child: msg.isHost
