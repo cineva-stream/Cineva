@@ -7334,7 +7334,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ),
             ),
 
-          // Preview Bubble Below Icon (Auto-dismisses in 5s)
+          // Preview Bubble Below Icon (Auto-dismisses in 8s)
           if (!isChatOpen && latestMsg != null)
             Positioned(
               top: 44,
@@ -8752,7 +8752,7 @@ class _WatchPartyMessagePreviewBubbleState
 
   void _startTimer() {
     _dismissTimer?.cancel();
-    _dismissTimer = Timer(const Duration(seconds: 5), () {
+    _dismissTimer = Timer(const Duration(seconds: 8), () {
       if (mounted) widget.onDismiss();
     });
   }

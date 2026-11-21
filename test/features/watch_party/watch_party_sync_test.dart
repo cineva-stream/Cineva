@@ -973,5 +973,45 @@ void main() {
       expect(find.text('🍿'), findsOneWidget);
       expect(find.text('HOST'), findsNothing);
     });
+
+    testWidgets('WatchPartyDynamicIsland auto-dismisses after 8 seconds', (
+      tester,
+    ) async {
+      bool dismissed = false;
+
+      const msg = WatchPartyMessage(
+        id: 'msg_island_3',
+        senderId: 'guest_id',
+        senderName: 'Charlie',
+        isHost: false,
+        text: 'Halo semua',
+        timestamp: 3000,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: WatchPartyDynamicIsland(
+                message: msg,
+                onTap: () {},
+                onDismiss: () => dismissed = true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // At 7 seconds, not dismissed yet
+      await tester.pump(const Duration(seconds: 7));
+      expect(dismissed, isFalse);
+
+      // At 8 seconds, timer fires and reverse animation starts
+      await tester.pump(const Duration(seconds: 1, milliseconds: 50));
+      // Finish reverse animation (240ms)
+      await tester.pumpAndSettle();
+      expect(dismissed, isTrue);
+    });
   });
 }

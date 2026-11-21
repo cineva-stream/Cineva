@@ -87,7 +87,7 @@ class _WatchPartyDynamicIslandState extends State<WatchPartyDynamicIsland>
 
   void _startTimer() {
     _dismissTimer?.cancel();
-    _dismissTimer = Timer(const Duration(seconds: 5), () {
+    _dismissTimer = Timer(const Duration(seconds: 8), () {
       _handleDismiss();
     });
   }
