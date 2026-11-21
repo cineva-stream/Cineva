@@ -7,7 +7,7 @@ import 'package:cineva/features/watch_party/presentation/providers/watch_party_p
 import 'package:cineva/features/watch_party/presentation/widgets/watch_party_side_view.dart';
 import 'package:cineva/features/watch_party/presentation/widgets/watch_party_join_banner.dart';
 import 'package:cineva/features/watch_party/presentation/widgets/watch_party_chat_panel.dart';
-import 'package:cineva/core/localization/app_strings.dart';
+import 'package:cineva/features/watch_party/presentation/widgets/watch_party_dynamic_island.dart';
 import 'package:cineva/core/localization/app_language.dart';
 import 'package:cineva/core/localization/app_language_provider.dart';
 
@@ -816,6 +816,79 @@ void main() {
       expect(find.text('Alice menjeda video di 05:20'), findsOneWidget);
       expect(find.text('Alice memajukan video ke 05:30'), findsOneWidget);
       expect(find.text('Alice memundurkan video ke 05:10'), findsOneWidget);
+    });
+
+    testWidgets('WatchPartyDynamicIsland renders message preview with host badge and handles tap', (tester) async {
+      bool tapped = false;
+      bool dismissed = false;
+
+      const hostMsg = WatchPartyMessage(
+        id: 'msg_island_1',
+        senderId: 'host_id',
+        senderName: 'Sultan Nobar',
+        isHost: true,
+        text: 'Halo semua, seru banget filmnya!',
+        timestamp: 1000,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: WatchPartyDynamicIsland(
+                message: hostMsg,
+                onTap: () => tapped = true,
+                onDismiss: () => dismissed = true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sultan Nobar'), findsOneWidget);
+      expect(find.text('HOST'), findsOneWidget);
+      expect(find.text('👑'), findsOneWidget);
+      expect(find.text('Halo semua, seru banget filmnya!'), findsOneWidget);
+
+      // Tap on Dynamic Island
+      await tester.tap(find.byType(WatchPartyDynamicIsland));
+      await tester.pumpAndSettle();
+
+      expect(tapped, isTrue);
+      expect(dismissed, isTrue);
+    });
+
+    testWidgets('WatchPartyDynamicIsland renders emoji reaction cleanly', (tester) async {
+      const emojiMsg = WatchPartyMessage(
+        id: 'msg_island_2',
+        senderId: 'guest_id',
+        senderName: 'Budi Tamu',
+        isHost: false,
+        text: '🍿',
+        emoji: '🍿',
+        timestamp: 2000,
+        type: 'emoji',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: WatchPartyDynamicIsland(
+                message: emojiMsg,
+                onTap: () {},
+                onDismiss: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Budi Tamu'), findsOneWidget);
+      expect(find.text('🍿'), findsOneWidget);
+      expect(find.text('HOST'), findsNothing);
     });
   });
 }

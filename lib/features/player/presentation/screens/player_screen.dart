@@ -34,6 +34,7 @@ import '../../../watch_party/presentation/providers/watch_party_provider.dart';
 import '../../../watch_party/presentation/widgets/watch_party_chat_panel.dart';
 import '../../../watch_party/presentation/widgets/watch_party_side_view.dart';
 import '../../../watch_party/presentation/widgets/floating_emoji_particles.dart';
+import '../../../watch_party/presentation/widgets/watch_party_dynamic_island.dart';
 import '../../../history/data/models/watch_history_item.dart';
 import '../../../history/data/repositories/watch_history_repository.dart';
 import '../../../download/domain/models/download_item.dart';
@@ -8595,6 +8596,47 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           // ── 7. Watch Party Floating Animated Emojis Overlay ──
                           const Positioned.fill(
                             child: FloatingEmojiParticles(),
+                          ),
+
+                          // ── 8. Watch Party Dynamic Island Notification (When controls are hidden) ──
+                          Consumer(
+                            builder: (context, ref, _) {
+                              final wp = ref.watch(watchPartyProvider);
+                              final latestMsg = wp.latestIncomingMessage;
+                              final isChatOpen =
+                                  wp.isInRoom && wp.isChatPanelOpen;
+
+                              // Only show Dynamic Island when in room, chat is closed, message exists, AND player controls are hidden
+                              if (!wp.isInRoom ||
+                                  isChatOpen ||
+                                  latestMsg == null ||
+                                  _showControls) {
+                                return const SizedBox.shrink();
+                              }
+
+                              return Positioned(
+                                top: MediaQuery.of(context).padding.top > 0
+                                    ? MediaQuery.of(context).padding.top + 10
+                                    : 16,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: WatchPartyDynamicIsland(
+                                    message: latestMsg,
+                                    onDismiss: () => ref
+                                        .read(watchPartyProvider.notifier)
+                                        .clearLatestIncomingMessage(),
+                                    onTap: () {
+                                      _resetControlsTimer();
+                                      if (_isSidePanelOpen) _closeSidePanel();
+                                      ref
+                                          .read(watchPartyProvider.notifier)
+                                          .toggleChatPanel(true);
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
