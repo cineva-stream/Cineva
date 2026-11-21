@@ -8,6 +8,7 @@ import 'package:cineva/features/watch_party/presentation/widgets/watch_party_sid
 import 'package:cineva/features/watch_party/presentation/widgets/watch_party_join_banner.dart';
 import 'package:cineva/features/watch_party/presentation/widgets/watch_party_chat_panel.dart';
 import 'package:cineva/features/watch_party/presentation/widgets/watch_party_dynamic_island.dart';
+import 'package:cineva/features/watch_party/presentation/screens/watch_party_direct_join_screen.dart';
 import 'package:cineva/core/localization/app_language.dart';
 import 'package:cineva/core/localization/app_language_provider.dart';
 
@@ -1012,6 +1013,58 @@ void main() {
       // Finish reverse animation (240ms)
       await tester.pumpAndSettle();
       expect(dismissed, isTrue);
+    });
+
+    test('WatchPartyDirectJoinScreen.extractRoomCode parses various URL and code formats', () {
+      expect(
+        WatchPartyDirectJoinScreen.extractRoomCode('https://cineva.app/party/CNV-9XYZ'),
+        'CNV-9XYZ',
+      );
+      expect(
+        WatchPartyDirectJoinScreen.extractRoomCode('http://cineva.app/party/CNV-ABCD'),
+        'CNV-ABCD',
+      );
+      expect(
+        WatchPartyDirectJoinScreen.extractRoomCode('cineva://party/CNV-7788'),
+        'CNV-7788',
+      );
+      expect(
+        WatchPartyDirectJoinScreen.extractRoomCode('CNV-WXYZ'),
+        'CNV-WXYZ',
+      );
+      expect(
+        WatchPartyDirectJoinScreen.extractRoomCode('cnv-wxyz'),
+        'CNV-WXYZ',
+      );
+      expect(
+        WatchPartyDirectJoinScreen.extractRoomCode('  cnv-29ab  '),
+        'CNV-29AB',
+      );
+    });
+
+    test('WatchPartyService emojiReactionStream emits emoji upon sendEmojiReaction', () async {
+      final service = WatchPartyService();
+      final emitted = <String>[];
+      final sub = service.emojiReactionStream.listen(emitted.add);
+
+      // Create a dummy room first
+      await service.createRoom(
+        hostName: 'Test Host',
+        media: const WatchPartyMedia(
+          title: 'Movie',
+          mediaType: 'movie',
+          tmdbId: 100,
+        ),
+      );
+
+      await service.sendEmojiReaction('🍿');
+      await service.sendEmojiReaction('🔥');
+
+      await Future.delayed(const Duration(milliseconds: 50));
+      expect(emitted, containsAll(['🍿', '🔥']));
+
+      await sub.cancel();
+      service.dispose();
     });
   });
 }

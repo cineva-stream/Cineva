@@ -31,6 +31,7 @@ import '../../features/calendar/presentation/screens/airing_calendar_screen.dart
 import '../../features/person/presentation/screens/person_detail_screen.dart';
 import '../../features/collection/presentation/screens/collection_detail_screen.dart';
 import '../../features/tv_universe/presentation/screens/tv_universe_screen.dart';
+import '../../features/watch_party/presentation/screens/watch_party_direct_join_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 import '../../shared/widgets/shell_pop_scope.dart';
 
@@ -255,6 +256,21 @@ final GoRouter appRouter = GoRouter(
               ).animate(curved),
               child: FadeTransition(opacity: curved, child: child),
             );
+          },
+        );
+      },
+    ),
+    // ── Watch Party Direct Join Deep Link Route ──
+    GoRoute(
+      path: '/party/:code',
+      name: 'watchPartyDeepLink',
+      pageBuilder: (context, state) {
+        final code = state.pathParameters['code'] ?? '';
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: WatchPartyDirectJoinScreen(roomCode: code),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
           },
         );
       },

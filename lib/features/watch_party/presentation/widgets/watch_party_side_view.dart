@@ -11,6 +11,7 @@ import '../../../../core/localization/app_language_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../domain/models/watch_party_room.dart';
 import '../providers/watch_party_provider.dart';
+import '../screens/watch_party_direct_join_screen.dart';
 import 'watch_party_beta_notice_card.dart';
 
 /// Right-side panel view for Watch Party (Create Room & Join Room) inside PlayerScreen.
@@ -116,13 +117,14 @@ class _WatchPartySideViewState extends ConsumerState<WatchPartySideView>
 
   Future<void> _handleJoinRoom() async {
     final s = ref.read(appStringsProvider);
-    final code = _roomCodeController.text.trim();
-    if (code.isEmpty) {
+    final rawCode = _roomCodeController.text.trim();
+    if (rawCode.isEmpty) {
       setState(() {
         _errorMessage = s.watchPartyEnterCodePrompt;
       });
       return;
     }
+    final code = WatchPartyDirectJoinScreen.extractRoomCode(rawCode);
 
     final guestName = _guestNameController.text.trim().isNotEmpty
         ? _guestNameController.text.trim()

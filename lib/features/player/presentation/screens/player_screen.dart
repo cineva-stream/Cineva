@@ -33,7 +33,7 @@ import '../../../watch_party/domain/models/watch_party_room.dart';
 import '../../../watch_party/presentation/providers/watch_party_provider.dart';
 import '../../../watch_party/presentation/widgets/watch_party_chat_panel.dart';
 import '../../../watch_party/presentation/widgets/watch_party_side_view.dart';
-import '../../../watch_party/presentation/widgets/floating_emoji_particles.dart';
+import '../../../watch_party/presentation/widgets/watch_party_floating_reactions.dart';
 import '../../../watch_party/presentation/widgets/watch_party_dynamic_island.dart';
 import '../../../history/data/models/watch_history_item.dart';
 import '../../../history/data/repositories/watch_history_repository.dart';
@@ -8595,7 +8595,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
                           // ── 7. Watch Party Floating Animated Emojis Overlay ──
                           const Positioned.fill(
-                            child: FloatingEmojiParticles(),
+                            child: WatchPartyFloatingReactions(),
                           ),
 
                           // ── 8. Watch Party Dynamic Island Notification (When controls are hidden) ──

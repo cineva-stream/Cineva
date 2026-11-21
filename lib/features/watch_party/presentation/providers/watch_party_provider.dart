@@ -307,6 +307,12 @@ final watchPartyServiceProvider = Provider<WatchPartyService>((ref) {
   return service;
 });
 
+/// Stream provider for live floating emoji reactions.
+final watchPartyEmojiReactionStreamProvider = StreamProvider<String>((ref) {
+  final service = ref.watch(watchPartyServiceProvider);
+  return service.emojiReactionStream;
+});
+
 /// Riverpod provider for active Watch Party state.
 final watchPartyProvider =
     StateNotifierProvider<WatchPartyNotifier, WatchPartyState>((ref) {

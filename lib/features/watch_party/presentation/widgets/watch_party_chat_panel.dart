@@ -77,6 +77,26 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
     );
   }
 
+  void _shareRoomLink(WatchPartyRoom room, AppStrings s) {
+    final url = 'https://cineva.app/party/${room.roomCode}';
+    final textToCopy = room.isProtectedByPin
+        ? 'Gabung nobar di Cineva: $url (Room dilindungi PIN, minta PIN ke host)'
+        : 'Gabung nobar di Cineva: $url';
+    Clipboard.setData(ClipboardData(text: textToCopy));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          room.isProtectedByPin
+              ? 'Tautan Nobar 🔒 disalin: $url'
+              : 'Tautan Nobar disalin: $url',
+        ),
+        duration: const Duration(seconds: 2),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   void _confirmLeaveRoom(AppStrings s) {
     final isHost = ref.read(watchPartyProvider).isHost;
     showDialog<void>(
@@ -227,116 +247,166 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                     const SizedBox(height: 8),
 
                     // Room Code Pill + PIN Badge + Member Count
-                    Row(
-                      children: [
-                        InkWell(
-                          onTap: () => _copyRoomCode(room, s),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: AppColors.primary.withValues(
-                                  alpha: 0.45,
-                                ),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          InkWell(
+                            onTap: () => _copyRoomCode(room, s),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
                               ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  room.roomCode,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1.2,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.45,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                const Icon(
-                                  Icons.copy_rounded,
-                                  size: 13,
-                                  color: AppColors.primary,
-                                ),
-                              ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    room.roomCode,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Icon(
+                                    Icons.copy_rounded,
+                                    size: 13,
+                                    color: AppColors.primary,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        if (room.isProtectedByPin) ...[
+                          if (room.isProtectedByPin) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.amber.withValues(alpha: 0.4),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.lock_rounded,
+                                    size: 12,
+                                    color: Colors.amberAccent,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    isHost ? 'PIN: ${room.pin}' : 'PIN',
+                                    style: const TextStyle(
+                                      color: Colors.amberAccent,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           const SizedBox(width: 6),
+                          InkWell(
+                            onTap: () => _shareRoomLink(room, s),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: room.isProtectedByPin
+                                    ? const Color(0xFFFFD54F).withValues(alpha: 0.16)
+                                    : AppColors.primary.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: room.isProtectedByPin
+                                      ? const Color(0xFFFFD54F).withValues(alpha: 0.45)
+                                      : AppColors.primary.withValues(alpha: 0.45),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    room.isProtectedByPin
+                                        ? Icons.lock_rounded
+                                        : Icons.share_rounded,
+                                    size: 12,
+                                    color: room.isProtectedByPin
+                                        ? const Color(0xFFFFD54F)
+                                        : AppColors.primary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    room.isProtectedByPin ? 'Bagikan 🔒' : 'Bagikan',
+                                    style: TextStyle(
+                                      color: room.isProtectedByPin
+                                          ? const Color(0xFFFFD54F)
+                                          : AppColors.primaryLight,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
-                              vertical: 5,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.amber.withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: Colors.amber.withValues(alpha: 0.4),
-                              ),
+                              color: Colors.white.withValues(alpha: 0.06),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
-                                  Icons.lock_rounded,
-                                  size: 12,
-                                  color: Colors.amberAccent,
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF4CAF50),
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: 5),
                                 Text(
-                                  isHost ? 'PIN: ${room.pin}' : 'PIN',
+                                  s.watchPartyOnlineCount(room.members.length),
                                   style: const TextStyle(
-                                    color: Colors.amberAccent,
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.8,
+                                    color: AppColors.textSecondary,
+                                    fontSize: 11,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ],
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF4CAF50),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                s.watchPartyOnlineCount(room.members.length),
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),

@@ -28,6 +28,27 @@ class WatchPartyService {
       StreamController<WatchPartyRoom?>.broadcast();
   Stream<WatchPartyRoom?> get roomStream => _roomController.stream;
 
+  final StreamController<String> _emojiReactionController =
+      StreamController<String>.broadcast();
+  Stream<String> get emojiReactionStream => _emojiReactionController.stream;
+
+  final Set<String> _seenEmojiMessageIds = {};
+
+  void _emitRoomUpdate(WatchPartyRoom room) {
+    _currentRoom = room;
+    for (final m in room.messages) {
+      if (m.type == 'emoji' &&
+          m.emoji != null &&
+          !_seenEmojiMessageIds.contains(m.id)) {
+        _seenEmojiMessageIds.add(m.id);
+        if (m.senderId != _myMemberId) {
+          _emojiReactionController.add(m.emoji!);
+        }
+      }
+    }
+    _roomController.add(room);
+  }
+
   WatchPartyRoom? _currentRoom;
   WatchPartyRoom? get currentRoom => _currentRoom;
 
@@ -463,6 +484,8 @@ class WatchPartyService {
 
     // Optimistically append emoji message with ID deduplication
     final existingIds = _currentRoom!.messages.map((m) => m.id).toSet();
+    _seenEmojiMessageIds.add(msg.id);
+    _emojiReactionController.add(emoji);
     if (!existingIds.contains(msg.id)) {
       final updatedMessages = List<WatchPartyMessage>.from(
         _currentRoom!.messages,
@@ -616,8 +639,7 @@ class WatchPartyService {
           try {
             final rawMap = val.cast<String, dynamic>();
             final room = WatchPartyRoom.fromJson(rawMap);
-            _currentRoom = room;
-            _roomController.add(room);
+            _emitRoomUpdate(room);
           } catch (e) {
             debugPrint('[WatchPartyService] Parse room update error: $e');
           }
@@ -625,6 +647,7 @@ class WatchPartyService {
           debugPrint('[WatchPartyService] Room $roomCode was deleted from database.');
           _stopListening();
           _currentRoom = null;
+          _seenEmojiMessageIds.clear();
           _roomController.add(null);
         }
       }, onError: (e) {
@@ -640,12 +663,12 @@ class WatchPartyService {
           Timer.periodic(const Duration(milliseconds: 1200), (_) async {
         final room = await _fetchRoomFromCloud(roomCode);
         if (room != null) {
-          _currentRoom = room;
-          _roomController.add(room);
+          _emitRoomUpdate(room);
         } else {
           debugPrint('[WatchPartyService] Room $roomCode not found / deleted during polling.');
           _stopListening();
           _currentRoom = null;
+          _seenEmojiMessageIds.clear();
           _roomController.add(null);
         }
       });
@@ -903,5 +926,7 @@ class WatchPartyService {
   void dispose() {
     _stopListening();
     _roomController.close();
+    _emojiReactionController.close();
+    _seenEmojiMessageIds.clear();
   }
 }

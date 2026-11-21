@@ -10,6 +10,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../providers/watch_party_provider.dart';
+import '../screens/watch_party_direct_join_screen.dart';
 import 'watch_party_beta_notice_card.dart';
 
 /// Modern minimalist banner displayed on the Home Screen allowing users to join
@@ -248,9 +249,7 @@ class _WatchPartyJoinSheetState extends ConsumerState<_WatchPartyJoinSheet> {
       return;
     }
 
-    final code = rawCode.toUpperCase().startsWith('CNV-')
-        ? rawCode.toUpperCase()
-        : 'CNV-${rawCode.toUpperCase()}';
+    final code = WatchPartyDirectJoinScreen.extractRoomCode(rawCode);
 
     final name = _nameController.text.trim().isNotEmpty
         ? _nameController.text.trim()
