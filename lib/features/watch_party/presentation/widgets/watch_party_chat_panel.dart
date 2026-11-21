@@ -79,17 +79,11 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
 
   void _shareRoomLink(WatchPartyRoom room, AppStrings s) {
     final url = 'https://cineva.app/party/${room.roomCode}';
-    final textToCopy = room.isProtectedByPin
-        ? 'Gabung nobar di Cineva: $url (Room dilindungi PIN, minta PIN ke host)'
-        : 'Gabung nobar di Cineva: $url';
+    final textToCopy = s.watchPartyShareText(url, room.isProtectedByPin);
     Clipboard.setData(ClipboardData(text: textToCopy));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          room.isProtectedByPin
-              ? 'Tautan Nobar 🔒 disalin: $url'
-              : 'Tautan Nobar disalin: $url',
-        ),
+        content: Text(s.watchPartyShareCopied(url, room.isProtectedByPin)),
         duration: const Duration(seconds: 2),
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
@@ -360,7 +354,9 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    room.isProtectedByPin ? 'Bagikan 🔒' : 'Bagikan',
+                                    room.isProtectedByPin
+                                        ? s.watchPartyShareLocked
+                                        : s.watchPartyShare,
                                     style: TextStyle(
                                       color: room.isProtectedByPin
                                           ? const Color(0xFFFFD54F)

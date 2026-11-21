@@ -61,7 +61,10 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
     try {
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
       if (!launched) {
         await launchUrl(uri);
       }
@@ -71,16 +74,20 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
   }
 
   Future<void> _launchEmail(String email) async {
+    final isIndo = ref.read(appStringsProvider).isIndonesian;
+    final fallbackMsg = isIndo
+        ? 'Email disalin ke papan klip'
+        : 'Email copied to clipboard';
     final mailUri = Uri.parse(
       'mailto:$email?subject=Cineva%20Feedback%20%2F%20Bug%20Report',
     );
     try {
       final launched = await launchUrl(mailUri);
       if (!launched) {
-        _copyToClipboard(email, 'Email disalin ke papan klip');
+        _copyToClipboard(email, fallbackMsg);
       }
     } catch (_) {
-      _copyToClipboard(email, 'Email disalin ke papan klip');
+      _copyToClipboard(email, fallbackMsg);
     }
   }
 
@@ -273,7 +280,9 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
 
                   // ── 3. Developer & Community Connect Cards ──
                   Text(
-                    s.isIndonesian ? 'Komunitas & Pengembang' : 'Community & Developer',
+                    s.isIndonesian
+                        ? 'Komunitas & Pengembang'
+                        : 'Community & Developer',
                     style: GoogleFonts.outfit(
                       color: Colors.white,
                       fontSize: 18,
@@ -286,12 +295,18 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                   Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () => _launchUrl('https://github.com/cineva-stream'),
+                      onTap: () =>
+                          _launchUrl('https://github.com/cineva-stream'),
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceVariant.withValues(alpha: 0.45),
+                          color: AppColors.surfaceVariant.withValues(
+                            alpha: 0.45,
+                          ),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -304,7 +319,10 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                                 shape: BoxShape.circle,
                               ),
                               child: const Center(
-                                child: GithubBrandIcon(size: 22, color: Colors.white),
+                                child: GithubBrandIcon(
+                                  size: 22,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 14),
@@ -329,8 +347,12 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                                           vertical: 2,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(alpha: 0.18),
-                                          borderRadius: BorderRadius.circular(6),
+                                          color: AppColors.primary.withValues(
+                                            alpha: 0.18,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
                                         ),
                                         child: Text(
                                           'GitHub',
@@ -374,9 +396,14 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                       onTap: () => _launchEmail('cineva.dev@gmail.com'),
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceVariant.withValues(alpha: 0.45),
+                          color: AppColors.surfaceVariant.withValues(
+                            alpha: 0.45,
+                          ),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -385,7 +412,9 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.14),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.14,
+                                ),
                                 shape: BoxShape.circle,
                               ),
                               child: const Center(
@@ -402,7 +431,9 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    s.isIndonesian ? 'Email Pengembang' : 'Developer Contact',
+                                    s.isIndonesian
+                                        ? 'Email Pengembang'
+                                        : 'Developer Contact',
                                     style: GoogleFonts.outfit(
                                       color: Colors.white,
                                       fontSize: 16,
@@ -437,10 +468,14 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                                 color: AppColors.textMuted,
                                 size: 18,
                               ),
-                              tooltip: 'Salin Email',
+                              tooltip: s.isIndonesian
+                                  ? 'Salin Email'
+                                  : 'Copy Email',
                               onPressed: () => _copyToClipboard(
                                 'cineva.dev@gmail.com',
-                                'Email cineva.dev@gmail.com disalin',
+                                s.isIndonesian
+                                    ? 'Email cineva.dev@gmail.com disalin'
+                                    : 'Email cineva.dev@gmail.com copied',
                               ),
                             ),
                           ],
@@ -453,7 +488,9 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
 
                   // ── 4. App Description ──
                   Text(
-                    s.isIndonesian ? 'Tentang Aplikasi' : 'About the Application',
+                    s.isIndonesian
+                        ? 'Tentang Aplikasi'
+                        : 'About the Application',
                     style: GoogleFonts.outfit(
                       color: Colors.white,
                       fontSize: 18,
@@ -475,7 +512,9 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
 
                   // ── 5. Clean Architecture Pillars ──
                   Text(
-                    s.isIndonesian ? 'Fitur & Keunggulan' : 'Features & Architecture',
+                    s.isIndonesian
+                        ? 'Fitur & Keunggulan'
+                        : 'Features & Architecture',
                     style: GoogleFonts.outfit(
                       color: Colors.white,
                       fontSize: 18,
@@ -674,7 +713,9 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
           Text(
             label,
             style: GoogleFonts.inter(
-              color: isPrimary ? AppColors.primaryLight : AppColors.textSecondary,
+              color: isPrimary
+                  ? AppColors.primaryLight
+                  : AppColors.textSecondary,
               fontSize: 11.5,
               fontWeight: FontWeight.w600,
             ),

@@ -11,6 +11,7 @@ import 'package:cineva/features/watch_party/presentation/widgets/watch_party_dyn
 import 'package:cineva/features/watch_party/presentation/screens/watch_party_direct_join_screen.dart';
 import 'package:cineva/core/localization/app_language.dart';
 import 'package:cineva/core/localization/app_language_provider.dart';
+import 'package:cineva/core/localization/app_strings.dart';
 
 void main() {
   group('WatchPartyRoom Models & Serialization', () {
@@ -772,6 +773,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // System messages must render in English dynamically!
+        expect(find.text('Share'), findsOneWidget);
         expect(find.text('Watch Party room created by Alice'), findsOneWidget);
         expect(find.text('Bob joined the room'), findsOneWidget);
         expect(find.text('Alice paused the video at 05:20'), findsOneWidget);
@@ -886,6 +888,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // System messages must render in Indonesian dynamically!
+        expect(find.text('Bagikan'), findsOneWidget);
         expect(
           find.text('Ruang Nonton Bareng dibuat oleh Alice'),
           findsOneWidget,
@@ -1065,6 +1068,33 @@ void main() {
 
       await sub.cancel();
       service.dispose();
+    });
+
+    test('AppStrings provides correct bilingual translations for watch party sharing and join screen', () {
+      final sId = AppStrings(AppLanguage.id);
+      final sEn = AppStrings(AppLanguage.en);
+
+      // Share strings
+      expect(sId.watchPartyShare, 'Bagikan');
+      expect(sEn.watchPartyShare, 'Share');
+      expect(sId.watchPartyShareLocked, 'Bagikan 🔒');
+      expect(sEn.watchPartyShareLocked, 'Share 🔒');
+      expect(sId.watchPartyShareCopied('https://cineva.app/party/CNV-1234', false), 'Tautan Nobar disalin: https://cineva.app/party/CNV-1234');
+      expect(sEn.watchPartyShareCopied('https://cineva.app/party/CNV-1234', false), 'Watch Party link copied: https://cineva.app/party/CNV-1234');
+      expect(sId.watchPartyShareCopied('https://cineva.app/party/CNV-1234', true), 'Tautan Nobar 🔒 disalin: https://cineva.app/party/CNV-1234');
+      expect(sEn.watchPartyShareCopied('https://cineva.app/party/CNV-1234', true), 'Watch Party link 🔒 copied: https://cineva.app/party/CNV-1234');
+
+      // Direct join & error strings
+      expect(sId.watchPartyPinRequiredToJoin, 'PIN diperlukan untuk bergabung ke room ini.');
+      expect(sEn.watchPartyPinRequiredToJoin, 'PIN is required to join this room.');
+      expect(sId.watchPartyPinIncorrectAttempt(1, 5), 'PIN salah. Percobaan ke-1 dari 5.');
+      expect(sEn.watchPartyPinIncorrectAttempt(1, 5), 'Incorrect PIN. Attempt 1 of 5.');
+      expect(sId.watchPartyPinLockout(30), 'Terlalu banyak percobaan PIN salah. Coba lagi dalam 30 detik.');
+      expect(sEn.watchPartyPinLockout(30), 'Too many incorrect PIN attempts. Try again in 30 seconds.');
+      expect(sId.watchPartyPartyGuest, 'Tamu Nobar');
+      expect(sEn.watchPartyPartyGuest, 'Party Guest');
+      expect(sId.watchPartyVerifyAndJoin, 'Verifikasi & Gabung');
+      expect(sEn.watchPartyVerifyAndJoin, 'Verify & Join');
     });
   });
 }

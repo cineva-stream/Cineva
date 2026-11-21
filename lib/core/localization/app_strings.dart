@@ -1390,6 +1390,68 @@ class AppStrings {
       isIndonesian ? 'Hapus & Keluar' : 'Delete & Leave';
   String get watchPartyTvSeries => isIndonesian ? 'Serial TV' : 'TV Show';
   String get watchPartyMovie => isIndonesian ? 'Film' : 'Movie';
+  String get watchPartyShare => isIndonesian ? 'Bagikan' : 'Share';
+  String get watchPartyShareLocked =>
+      isIndonesian ? 'Bagikan 🔒' : 'Share 🔒';
+  String watchPartyShareCopied(String url, bool isProtected) => isIndonesian
+      ? (isProtected
+          ? 'Tautan Nobar 🔒 disalin: $url'
+          : 'Tautan Nobar disalin: $url')
+      : (isProtected
+          ? 'Watch Party link 🔒 copied: $url'
+          : 'Watch Party link copied: $url');
+  String watchPartyShareText(String url, bool isProtected) => isIndonesian
+      ? (isProtected
+          ? 'Gabung nobar di Cineva: $url (Room dilindungi PIN, minta PIN ke host)'
+          : 'Gabung nobar di Cineva: $url')
+      : (isProtected
+          ? 'Join Watch Party on Cineva: $url (Room is protected by PIN, ask host for PIN)'
+          : 'Join Watch Party on Cineva: $url');
+  String watchPartyConnectingToRoom(String code) => isIndonesian
+      ? 'Menghubungkan ke Ruang Nobar $code...'
+      : 'Connecting to Watch Party $code...';
+  String get watchPartyRoomNotFoundTitle =>
+      isIndonesian ? 'Ruang Tidak Ditemukan' : 'Room Not Found';
+  String watchPartyRoomNotFoundDesc(String code) => isIndonesian
+      ? 'Ruang dengan kode $code tidak aktif atau telah dibubarkan oleh host.'
+      : 'Room with code $code is inactive or has been ended by the host.';
+  String watchPartyFailedToLoadRoom(String error) => isIndonesian
+      ? 'Gagal memuat ruang: $error'
+      : 'Failed to load room: $error';
+  String get watchPartyPinRequiredToJoin => isIndonesian
+      ? 'PIN diperlukan untuk bergabung ke room ini.'
+      : 'PIN is required to join this room.';
+  String watchPartyPinIncorrectAttempt(int attempt, int maxAttempts) =>
+      isIndonesian
+          ? 'PIN salah. Percobaan ke-$attempt dari $maxAttempts.'
+          : 'Incorrect PIN. Attempt $attempt of $maxAttempts.';
+  String watchPartyPinLockout(int seconds) => isIndonesian
+      ? 'Terlalu banyak percobaan PIN salah. Coba lagi dalam $seconds detik.'
+      : 'Too many incorrect PIN attempts. Try again in $seconds seconds.';
+  String watchPartyLockedCountdown(int seconds) =>
+      isIndonesian ? 'Terkunci ($seconds s)' : 'Locked ($seconds s)';
+  String get watchPartyYourRoomName =>
+      isIndonesian ? 'Nama Anda di Ruangan' : 'Your Name in Room';
+  String get watchPartyEnterYourNameHint =>
+      isIndonesian ? 'Masukkan nama Anda...' : 'Enter your name...';
+  String get watchPartyRoomPin4Digits =>
+      isIndonesian ? 'PIN Ruangan (4 Digit)' : 'Room PIN (4 Digits)';
+  String get watchPartyVerifyAndJoin =>
+      isIndonesian ? 'Verifikasi & Gabung' : 'Verify & Join';
+  String get watchPartyJoinWatching =>
+      isIndonesian ? 'Gabung Menonton' : 'Join Watch Party';
+  String watchPartySpectators(int count) => isIndonesian
+      ? '$count Penonton'
+      : (count == 1 ? '1 Viewer' : '$count Viewers');
+  String get watchPartyBadgeTitle =>
+      isIndonesian ? 'NONTON BARENG' : 'WATCH PARTY';
+  String get watchPartyBackToHome =>
+      isIndonesian ? 'Kembali ke Beranda' : 'Back to Home';
+  String get watchPartyPartyGuest =>
+      isIndonesian ? 'Tamu Nobar' : 'Party Guest';
+  String get watchPartyRoomNotFoundOrClosed => isIndonesian
+      ? 'Ruang Nonton Bareng tidak ditemukan atau sudah dibubarkan.'
+      : 'Watch Party room not found or has already ended.';
   String get playerRewind10Tooltip =>
       isIndonesian ? 'Mundurkan 10 detik' : 'Rewind 10 seconds';
   String get playerForward10Tooltip =>

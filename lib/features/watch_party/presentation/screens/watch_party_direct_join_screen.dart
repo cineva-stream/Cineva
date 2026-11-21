@@ -64,12 +64,13 @@ class _WatchPartyDirectJoinScreenState
     super.initState();
     _cleanCode = WatchPartyDirectJoinScreen.extractRoomCode(widget.roomCode);
 
+    final s = ref.read(appStringsProvider);
     final profile = ref.read(userProfileProvider);
     final defaultName = profile.name.trim().isNotEmpty &&
             profile.name != 'Penikmat Film' &&
             profile.name != 'Movie Enthusiast'
         ? profile.name.trim()
-        : 'Tamu Nobar';
+        : s.watchPartyPartyGuest;
     _nameController.text = defaultName;
 
     _fetchRoom();
@@ -85,19 +86,21 @@ class _WatchPartyDirectJoinScreenState
       final service = ref.read(watchPartyServiceProvider);
       final room = await service.fetchRoom(_cleanCode);
       if (mounted) {
+        final s = ref.read(appStringsProvider);
         setState(() {
           _room = room;
           _isLoading = false;
           if (room == null) {
-            _errorMessage = 'Ruang Nonton Bareng tidak ditemukan atau sudah dibubarkan.';
+            _errorMessage = s.watchPartyRoomNotFoundOrClosed;
           }
         });
       }
     } catch (e) {
       if (mounted) {
+        final s = ref.read(appStringsProvider);
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Gagal memuat ruang: $e';
+          _errorMessage = s.watchPartyFailedToLoadRoom('$e');
         });
       }
     }
@@ -131,11 +134,12 @@ class _WatchPartyDirectJoinScreenState
     final room = _room;
     if (room == null) return;
 
+    final s = ref.read(appStringsProvider);
     final pin = _pinController.text.trim();
     if (room.isProtectedByPin) {
       if (pin.isEmpty) {
         setState(() {
-          _errorMessage = 'PIN diperlukan untuk bergabung ke room ini.';
+          _errorMessage = s.watchPartyPinRequiredToJoin;
         });
         return;
       }
@@ -148,13 +152,11 @@ class _WatchPartyDirectJoinScreenState
         if (newAttempts >= 5) {
           _startCooldown();
           setState(() {
-            _errorMessage =
-                'Terlalu banyak percobaan PIN salah. Terkunci selama 30 detik.';
+            _errorMessage = s.watchPartyPinLockout(30);
           });
         } else {
           setState(() {
-            _errorMessage =
-                'PIN salah. Percobaan ke-$newAttempts dari 5.';
+            _errorMessage = s.watchPartyPinIncorrectAttempt(newAttempts, 5);
           });
         }
         return;
@@ -168,7 +170,7 @@ class _WatchPartyDirectJoinScreenState
 
     final name = _nameController.text.trim().isNotEmpty
         ? _nameController.text.trim()
-        : 'Tamu Nobar';
+        : s.watchPartyPartyGuest;
 
     final success = await ref.read(watchPartyProvider.notifier).joinRoom(
           roomCode: _cleanCode,
@@ -199,7 +201,7 @@ class _WatchPartyDirectJoinScreenState
       setState(() {
         _isLoading = false;
         _errorMessage =
-            ref.read(watchPartyProvider).errorMessage ?? 'Gagal bergabung ke ruangan.';
+            ref.read(watchPartyProvider).errorMessage ?? s.watchPartyJoinFailed;
       });
     }
   }
@@ -231,7 +233,7 @@ class _WatchPartyDirectJoinScreenState
                         const CircularProgressIndicator(color: AppColors.primary),
                         const SizedBox(height: 20),
                         Text(
-                          'Menghubungkan ke Ruang Nobar $_cleanCode...',
+                          s.watchPartyConnectingToRoom(_cleanCode),
                           textAlign: TextAlign.center,
                           style: GoogleFonts.outfit(
                             color: Colors.white,
@@ -279,7 +281,7 @@ class _WatchPartyDirectJoinScreenState
           ),
           const SizedBox(height: 16),
           Text(
-            'Ruang Tidak Ditemukan',
+            s.watchPartyRoomNotFoundTitle,
             style: GoogleFonts.outfit(
               color: Colors.white,
               fontSize: 20,
@@ -288,8 +290,7 @@ class _WatchPartyDirectJoinScreenState
           ),
           const SizedBox(height: 8),
           Text(
-            _errorMessage ??
-                'Ruang dengan kode $_cleanCode tidak aktif atau telah dibubarkan oleh host.',
+            _errorMessage ?? s.watchPartyRoomNotFoundDesc(_cleanCode),
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: AppColors.textSecondary,
@@ -311,7 +312,7 @@ class _WatchPartyDirectJoinScreenState
                 ),
               ),
               child: Text(
-                'Kembali ke Beranda',
+                s.watchPartyBackToHome,
                 style: GoogleFonts.inter(
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
@@ -416,7 +417,7 @@ class _WatchPartyDirectJoinScreenState
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                'NONTON BARENG',
+                                s.watchPartyBadgeTitle,
                                 style: GoogleFonts.outfit(
                                   color: Colors.black,
                                   fontSize: 10,
@@ -507,7 +508,7 @@ class _WatchPartyDirectJoinScreenState
                         const Icon(Iconsax.people, color: AppColors.textSecondary, size: 14),
                         const SizedBox(width: 5),
                         Text(
-                          '${room.members.length} Penonton',
+                          s.watchPartySpectators(room.members.length),
                           style: GoogleFonts.inter(
                             color: AppColors.textSecondary,
                             fontSize: 12,
@@ -526,7 +527,7 @@ class _WatchPartyDirectJoinScreenState
 
         // ── 2. Member Name Input ──
         Text(
-          'Nama Anda di Ruangan',
+          s.watchPartyYourRoomName,
           style: GoogleFonts.inter(
             color: Colors.white70,
             fontSize: 12.5,
@@ -538,7 +539,7 @@ class _WatchPartyDirectJoinScreenState
           controller: _nameController,
           style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
           decoration: InputDecoration(
-            hintText: 'Masukkan nama Anda...',
+            hintText: s.watchPartyEnterYourNameHint,
             hintStyle: GoogleFonts.inter(color: Colors.white30),
             prefixIcon: const Icon(Iconsax.user, color: AppColors.textSecondary, size: 18),
             filled: true,
@@ -566,7 +567,7 @@ class _WatchPartyDirectJoinScreenState
               const Icon(Iconsax.lock, color: Color(0xFFFFD54F), size: 14),
               const SizedBox(width: 6),
               Text(
-                'PIN Ruangan (4 Digit)',
+                s.watchPartyRoomPin4Digits,
                 style: GoogleFonts.inter(
                   color: const Color(0xFFFFD54F),
                   fontSize: 12.5,
@@ -627,7 +628,7 @@ class _WatchPartyDirectJoinScreenState
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Terlalu banyak percobaan PIN salah. Coba lagi dalam $_cooldownSeconds detik.',
+                    s.watchPartyPinLockout(_cooldownSeconds),
                     style: GoogleFonts.inter(
                       color: Colors.redAccent,
                       fontSize: 12,
@@ -668,7 +669,7 @@ class _WatchPartyDirectJoinScreenState
                   ),
                 ),
                 child: Text(
-                  'Batal',
+                  s.dialogCancel,
                   style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                 ),
               ),
@@ -690,8 +691,8 @@ class _WatchPartyDirectJoinScreenState
                 ),
                 child: Text(
                   _cooldownSeconds > 0
-                      ? 'Terkunci ($_cooldownSeconds s)'
-                      : (isLocked ? 'Verifikasi & Gabung' : 'Gabung Menonton'),
+                      ? s.watchPartyLockedCountdown(_cooldownSeconds)
+                      : (isLocked ? s.watchPartyVerifyAndJoin : s.watchPartyJoinWatching),
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
