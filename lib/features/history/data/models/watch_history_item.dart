@@ -1,3 +1,5 @@
+import '../../../../core/localization/app_language.dart';
+
 /// Represents a watch history entry stored in Hive.
 class WatchHistoryItem {
   final int id;
@@ -53,7 +55,11 @@ class WatchHistoryItem {
   int get progressPercent => (progress * 100).round();
 
   /// Human-readable progress description with localization support.
-  String localizedProgressSubtitle({bool isIndonesian = true}) {
+  String localizedProgressSubtitle({
+    bool isIndonesian = true,
+    AppLanguage? language,
+  }) {
+    final lang = language ?? (isIndonesian ? AppLanguage.id : AppLanguage.en);
     if (mediaType == 'tv' && season != null && episode != null) {
       final epLabel = 'S$season:E$episode';
       if (episodeTitle != null && episodeTitle!.isNotEmpty) {
@@ -67,11 +73,18 @@ class WatchHistoryItem {
       if (remMinutes >= 60) {
         final hours = remMinutes ~/ 60;
         final mins = remMinutes % 60;
-        return isIndonesian ? 'Sisa ${hours}j ${mins}m' : '${hours}h ${mins}m left';
+        if (lang.isHindi) return '$hoursघं $minsमि शेष';
+        return lang.isIndonesian
+            ? 'Sisa ${hours}j ${mins}m'
+            : '${hours}h ${mins}m left';
       }
-      return isIndonesian ? 'Sisa $remMinutes mnt' : '$remMinutes mins left';
+      if (lang.isHindi) return '$remMinutes मि. शेष';
+      return lang.isIndonesian
+          ? 'Sisa $remMinutes mnt'
+          : '$remMinutes mins left';
     }
-    return isIndonesian ? 'Lanjutkan Menonton' : 'Continue Watching';
+    if (lang.isHindi) return 'देखना जारी रखें';
+    return lang.isIndonesian ? 'Lanjutkan Menonton' : 'Continue Watching';
   }
 
   /// Human-readable progress description (defaults to Indonesian).
@@ -137,20 +150,23 @@ class WatchHistoryItem {
     'isCompleted': isCompleted,
   };
 
-  factory WatchHistoryItem.fromJson(Map<dynamic, dynamic> json) => WatchHistoryItem(
-    id: (json['id'] as num?)?.toInt() ?? 0,
-    mediaType: json['mediaType'] as String? ?? 'movie',
-    title: json['title'] as String? ?? '',
-    episodeTitle: json['episodeTitle'] as String?,
-    season: (json['season'] as num?)?.toInt(),
-    episode: (json['episode'] as num?)?.toInt(),
-    imdbId: json['imdbId'] as String?,
-    posterPath: json['posterPath'] as String?,
-    backdropPath: json['backdropPath'] as String?,
-    voteAverage: (json['voteAverage'] as num?)?.toDouble() ?? 0.0,
-    positionMs: (json['positionMs'] as num?)?.toInt() ?? 0,
-    durationMs: (json['durationMs'] as num?)?.toInt() ?? 0,
-    lastWatchedAt: DateTime.tryParse(json['lastWatchedAt'] as String? ?? '') ?? DateTime.now(),
-    isCompleted: json['isCompleted'] as bool? ?? false,
-  );
+  factory WatchHistoryItem.fromJson(Map<dynamic, dynamic> json) =>
+      WatchHistoryItem(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        mediaType: json['mediaType'] as String? ?? 'movie',
+        title: json['title'] as String? ?? '',
+        episodeTitle: json['episodeTitle'] as String?,
+        season: (json['season'] as num?)?.toInt(),
+        episode: (json['episode'] as num?)?.toInt(),
+        imdbId: json['imdbId'] as String?,
+        posterPath: json['posterPath'] as String?,
+        backdropPath: json['backdropPath'] as String?,
+        voteAverage: (json['voteAverage'] as num?)?.toDouble() ?? 0.0,
+        positionMs: (json['positionMs'] as num?)?.toInt() ?? 0,
+        durationMs: (json['durationMs'] as num?)?.toInt() ?? 0,
+        lastWatchedAt:
+            DateTime.tryParse(json['lastWatchedAt'] as String? ?? '') ??
+            DateTime.now(),
+        isCompleted: json['isCompleted'] as bool? ?? false,
+      );
 }

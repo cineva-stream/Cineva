@@ -1,16 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../data/models/airing_show_model.dart';
 import '../../data/models/upcoming_media_model.dart';
 import '../../data/datasources/calendar_remote_datasource.dart';
 import '../../data/datasources/upcoming_remote_datasource.dart';
 
-final calendarRemoteDataSourceProvider = Provider<CalendarRemoteDataSource>((ref) {
+final calendarRemoteDataSourceProvider = Provider<CalendarRemoteDataSource>((
+  ref,
+) {
   return CalendarRemoteDataSource();
 });
 
-final upcomingRemoteDataSourceProvider = Provider<UpcomingRemoteDataSource>((ref) {
+final upcomingRemoteDataSourceProvider = Provider<UpcomingRemoteDataSource>((
+  ref,
+) {
   return UpcomingRemoteDataSource();
 });
 
@@ -26,23 +29,24 @@ final upcomingCategoryFilterProvider = StateProvider<String>((ref) => 'all');
 final selectedUpcomingDateProvider = StateProvider<DateTime?>((ref) => null);
 
 /// Upcoming movies and TV shows provider
-final upcomingMediaListProvider = FutureProvider.autoDispose<List<UpcomingMediaModel>>((ref) async {
-  final category = ref.watch(upcomingCategoryFilterProvider);
-  final targetDate = ref.watch(selectedUpcomingDateProvider);
-  final lang = ref.watch(appLanguageProvider);
-  final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
+final upcomingMediaListProvider =
+    FutureProvider.autoDispose<List<UpcomingMediaModel>>((ref) async {
+      final category = ref.watch(upcomingCategoryFilterProvider);
+      final targetDate = ref.watch(selectedUpcomingDateProvider);
+      final lang = ref.watch(appLanguageProvider);
+      final tmdbLang = lang.tmdbLanguageCode;
 
-  final targetDateStr = targetDate != null
-      ? '${targetDate.year.toString().padLeft(4, '0')}-${targetDate.month.toString().padLeft(2, '0')}-${targetDate.day.toString().padLeft(2, '0')}'
-      : null;
+      final targetDateStr = targetDate != null
+          ? '${targetDate.year.toString().padLeft(4, '0')}-${targetDate.month.toString().padLeft(2, '0')}-${targetDate.day.toString().padLeft(2, '0')}'
+          : null;
 
-  final dataSource = ref.watch(upcomingRemoteDataSourceProvider);
-  return dataSource.getUpcomingMedia(
-    category: category,
-    language: tmdbLang,
-    targetDate: targetDateStr,
-  );
-});
+      final dataSource = ref.watch(upcomingRemoteDataSourceProvider);
+      return dataSource.getUpcomingMedia(
+        category: category,
+        language: tmdbLang,
+        targetDate: targetDateStr,
+      );
+    });
 
 /// Selected date on the Airing Calendar (normalized to midnight)
 final selectedCalendarDateProvider = StateProvider<DateTime>((ref) {
@@ -54,17 +58,17 @@ final selectedCalendarDateProvider = StateProvider<DateTime>((ref) {
 final selectedCalendarCategoryProvider = StateProvider<String>((ref) => 'all');
 
 /// Airing schedule provider reactively fetching shows based on date, category, and language
-final calendarScheduleProvider = FutureProvider.autoDispose<List<AiringShowModel>>((ref) async {
-  final date = ref.watch(selectedCalendarDateProvider);
-  final category = ref.watch(selectedCalendarCategoryProvider);
-  final lang = ref.watch(appLanguageProvider);
-  final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
+final calendarScheduleProvider =
+    FutureProvider.autoDispose<List<AiringShowModel>>((ref) async {
+      final date = ref.watch(selectedCalendarDateProvider);
+      final category = ref.watch(selectedCalendarCategoryProvider);
+      final lang = ref.watch(appLanguageProvider);
+      final tmdbLang = lang.tmdbLanguageCode;
 
-  final dataSource = ref.watch(calendarRemoteDataSourceProvider);
-  return dataSource.getAiringShowsForDate(
-    date: date,
-    category: category,
-    language: tmdbLang,
-  );
-});
-
+      final dataSource = ref.watch(calendarRemoteDataSourceProvider);
+      return dataSource.getAiringShowsForDate(
+        date: date,
+        category: category,
+        language: tmdbLang,
+      );
+    });

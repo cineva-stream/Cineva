@@ -53,24 +53,30 @@ class _UpdateDetailModalState extends ConsumerState<UpdateDetailModal> {
 
   void _initLanguageAdaptation() {
     final s = ref.read(appStringsProvider);
-    _targetLang = s.isIndonesian ? 'id' : 'en';
+    _targetLang = s.language.code;
 
-    // 1. Check if markdown already contains bilingual sections
-    final sectionText = _extractLanguageSection(_originalText, s.isIndonesian);
-    if (sectionText != null && sectionText.isNotEmpty) {
-      if (mounted) {
-        setState(() {
-          _translatedText = sectionText;
-          _showTranslated = true;
-          _needsTranslation = false;
-        });
+    // 1. Check if markdown already contains bilingual sections (for ID/EN)
+    if (!s.isHindi) {
+      final sectionText = _extractLanguageSection(
+        _originalText,
+        s.isIndonesian,
+      );
+      if (sectionText != null && sectionText.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _translatedText = sectionText;
+            _showTranslated = true;
+            _needsTranslation = false;
+          });
+        }
+        return;
       }
-      return;
     }
 
     // 2. Check if original text already matches the app language
     final isIndo = _isIndonesianText(_originalText);
-    final textLangMatches = (s.isIndonesian && isIndo) || (!s.isIndonesian && !isIndo);
+    final textLangMatches =
+        !s.isHindi && ((s.isIndonesian && isIndo) || (!s.isIndonesian && !isIndo));
 
     if (textLangMatches) {
       _needsTranslation = false;

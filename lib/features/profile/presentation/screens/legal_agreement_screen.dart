@@ -124,14 +124,17 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
     final termsDoc = LegalContentRepository.getDocument(
       LegalDocType.termsAndConditions,
       s.isIndonesian,
+      language,
     );
     final privacyDoc = LegalContentRepository.getDocument(
       LegalDocType.privacyPolicy,
       s.isIndonesian,
+      language,
     );
     final disclaimerDoc = LegalContentRepository.getDocument(
       LegalDocType.disclaimer,
       s.isIndonesian,
+      language,
     );
 
     return Focus(
@@ -174,7 +177,7 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
                 context.pushReplacement('/onboarding-profile');
               }
             },
-            tooltip: s.isIndonesian ? 'Kembali' : 'Back',
+            tooltip: s.tr('Kembali', 'Back', 'वापस'),
           ),
           title: Text(
             s.legalAgreementTitle,
@@ -265,12 +268,16 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
                         Expanded(
                           child: Text(
                             _hasScrolledToBottom
-                                ? (s.isIndonesian
-                                      ? 'Anda telah mencapai akhir dokumen. Silakan tekan tombol Setuju di bawah untuk melanjutkan.'
-                                      : 'You have reached the end of the document. Tap Agree below to proceed.')
-                                : (s.isIndonesian
-                                      ? 'Harap gulir ke bawah hingga selesai untuk menyetujui.'
-                                      : 'Please scroll to the bottom to agree.'),
+                                ? s.tr(
+                                    'Anda telah mencapai akhir dokumen. Silakan tekan tombol Setuju di bawah untuk melanjutkan.',
+                                    'You have reached the end of the document. Tap Agree below to proceed.',
+                                    'आप दस्तावेज़ के अंत तक पहुँच गए हैं। आगे बढ़ने के लिए नीचे सहमत हैं पर टैप करें।',
+                                  )
+                                : s.tr(
+                                    'Harap gulir ke bawah hingga selesai untuk menyetujui.',
+                                    'Please scroll to the bottom to agree.',
+                                    'सहमत होने के लिए कृपया नीचे तक स्क्रॉल करें।',
+                                  ),
                             style: GoogleFonts.inter(
                               color: _hasScrolledToBottom
                                   ? Colors.white
@@ -319,9 +326,11 @@ class _LegalAgreementScreenState extends ConsumerState<LegalAgreementScreen> {
               ),
             ),
             child: Text(
-              s.isIndonesian
-                  ? 'DOKUMEN $docIndex DARI $totalDocs'
-                  : 'DOCUMENT $docIndex OF $totalDocs',
+              s.tr(
+                'DOKUMEN $docIndex DARI $totalDocs',
+                'DOCUMENT $docIndex OF $totalDocs',
+                'दस्तावेज़ $docIndex / $totalDocs',
+              ),
               style: GoogleFonts.outfit(
                 color: AppColors.primaryLight,
                 fontSize: 11,

@@ -426,7 +426,8 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        val muxerMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        muxerMethodChannel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "muxToMp4" -> {
                     val videoPath = call.argument<String>("videoPath")
@@ -440,15 +441,26 @@ class MainActivity : FlutterActivity() {
                     }
 
                     thread {
-                        // Attempt 1: preserve true presentation timestamps (correct for B-frames).
-                        // Attempt 2: force monotonic timestamps in case MPEG4Writer rejects
-                        // out-of-order frames.
                         var success = false
                         var lastError: String? = null
                         for (monotonic in booleanArrayOf(false, true)) {
                             try {
                                 success = muxTsToMp4(
-                                    videoPath, audioPath, outputPath, expectedDurationUs, monotonic
+                                    videoPath = videoPath,
+                                    audioPath = audioPath,
+                                    outputPath = outputPath,
+                                    expectedDurationUs = expectedDurationUs,
+                                    monotonicPts = monotonic,
+                                    onProgress = { progress ->
+                                        runOnUiThread {
+                                            try {
+                                                muxerMethodChannel.invokeMethod(
+                                                    "onMuxProgress",
+                                                    mapOf("progress" to progress)
+                                                )
+                                            } catch (_: Throwable) {}
+                                        }
+                                    }
                                 )
                             } catch (e: Throwable) {
                                 Log.w(TAG, "Mux attempt (monotonic=$monotonic) failed: ${e.message}", e)
@@ -516,8 +528,6 @@ class MainActivity : FlutterActivity() {
             )
         } catch (e: Exception) {
             Log.w(TAG, "probeMedia exception for $path: ${e.message}")
-            // An unreadable file must be reported as invalid (null). Faking hasVideo=true here let
-            // corrupt downloads pass validation and later play as a black screen with 00:00.
             null
         } finally {
             try { extractor.release() } catch (_: Exception) {}
@@ -529,14 +539,15 @@ class MainActivity : FlutterActivity() {
         audioPath: String?,
         outputPath: String,
         expectedDurationUs: Long?,
-        monotonicPts: Boolean
+        monotonicPts: Boolean,
+        onProgress: ((Double) -> Unit)? = null
     ): Boolean {
         val outputFile = File(outputPath)
         if (outputFile.exists()) outputFile.delete()
         outputFile.parentFile?.mkdirs()
 
         var videoExtractor: MediaExtractor? = null
-        var audioExtractor: MediaExtractor? = null
+        var separateAudioExtractor: MediaExtractor? = null
         var muxer: MediaMuxer? = null
         var muxerStarted = false
         var ok = false
@@ -567,7 +578,7 @@ class MainActivity : FlutterActivity() {
                 return false
             }
 
-            var audioTrackIndex = -1
+            var separateAudioTrackIndex = -1
             var audioFormat: MediaFormat? = null
 
             if (audioPath != null && File(audioPath).exists()) {
@@ -578,25 +589,24 @@ class MainActivity : FlutterActivity() {
                         val format = ext.getTrackFormat(i)
                         val mime = format.getString(MediaFormat.KEY_MIME) ?: ""
                         if (mime.startsWith("audio/")) {
-                            audioTrackIndex = i
+                            separateAudioTrackIndex = i
                             audioFormat = format
                             break
                         }
                     }
-                    if (audioFormat != null) audioExtractor = ext else ext.release()
+                    if (audioFormat != null) separateAudioExtractor = ext else ext.release()
                 } catch (e: Exception) {
                     Log.w(TAG, "Separate audio unreadable: ${e.message}")
                     ext.release()
                 }
             }
 
-            // Audio muxed inside the video TS: use a dedicated extractor so video and
-            // audio samples are never read from the same cursor.
-            if (audioExtractor == null && embeddedAudioTrackIndex != -1 && embeddedAudioFormat != null) {
-                val ext = MediaExtractor()
-                ext.setDataSource(videoPath)
-                audioExtractor = ext
-                audioTrackIndex = embeddedAudioTrackIndex
+            // When audio is embedded inside videoPath, select BOTH tracks on the single videoExtractor
+            // so the 1.5 GB MPEG-TS file is demuxed in a single sequential pass instead of read twice!
+            val useEmbeddedAudio = separateAudioExtractor == null &&
+                embeddedAudioTrackIndex != -1 &&
+                embeddedAudioFormat != null
+            if (useEmbeddedAudio) {
                 audioFormat = embeddedAudioFormat
             }
 
@@ -606,7 +616,7 @@ class MainActivity : FlutterActivity() {
             muxer = MediaMuxer(outputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
             val muxerVideoTrack = muxer.addTrack(videoFormat)
             var muxerAudioTrack = -1
-            if (audioExtractor != null && audioFormat != null) {
+            if (audioFormat != null && (separateAudioExtractor != null || useEmbeddedAudio)) {
                 ensureAudioCsd(audioFormat)
                 muxerAudioTrack = muxer.addTrack(audioFormat)
             }
@@ -615,19 +625,22 @@ class MainActivity : FlutterActivity() {
             muxerStarted = true
 
             videoExtractor.selectTrack(videoTrackIndex)
-            audioExtractor?.selectTrack(audioTrackIndex)
+            if (useEmbeddedAudio) {
+                videoExtractor.selectTrack(embeddedAudioTrackIndex)
+            }
+            separateAudioExtractor?.selectTrack(separateAudioTrackIndex)
 
-            // Normalise timestamps so the MP4 starts at 0 (TS PTS usually starts at ~1.4s or 10s).
-            val firstVideoPts = videoExtractor.sampleTime
-            val firstAudioPts = audioExtractor?.sampleTime ?: -1L
-            val candidates = listOf(firstVideoPts, firstAudioPts).filter { it >= 0L }
+            val firstPrimaryPts = videoExtractor.sampleTime
+            val firstSepAudioPts = separateAudioExtractor?.sampleTime ?: -1L
+            val candidates = listOf(firstPrimaryPts, firstSepAudioPts).filter { it >= 0L }
             val basePts = candidates.minOrNull() ?: 0L
 
-            val buffer = ByteBuffer.allocateDirect(8 * 1024 * 1024)
+            // 2 MB cache-friendly direct buffer (plenty for compressed 1080p/4K H.264/HEVC frames)
+            val buffer = ByteBuffer.allocateDirect(2 * 1024 * 1024)
             val bufferInfo = MediaCodec.BufferInfo()
 
-            var hasVideo = true
-            var hasAudio = audioExtractor != null
+            var hasPrimary = true
+            var hasSepAudio = separateAudioExtractor != null
 
             val vFrameRate = if (videoFormat.containsKey(MediaFormat.KEY_FRAME_RATE)) {
                 val r = videoFormat.getInteger(MediaFormat.KEY_FRAME_RATE)
@@ -636,6 +649,7 @@ class MainActivity : FlutterActivity() {
             val videoStepUs = 1000000L / vFrameRate
 
             var maxVideoPts = -1L
+            var lastWrittenVideoPts = -1L
             var prevRawVideoPts = -1L
             var videoPtsOffset = 0L
             var videoSamples = 0
@@ -644,73 +658,115 @@ class MainActivity : FlutterActivity() {
             var prevRawAudioPts = -1L
             var audioPtsOffset = 0L
 
-            while (hasVideo || hasAudio) {
-                val vTime = if (hasVideo) videoExtractor.sampleTime else Long.MAX_VALUE
-                val aTime = if (hasAudio && audioExtractor != null) audioExtractor.sampleTime else Long.MAX_VALUE
+            var lastProgressEmitMs = 0L
+            val totalInputBytes = (File(videoPath).length() + (if (audioPath != null) File(audioPath).length() else 0L)).coerceAtLeast(1L)
+            var totalBytesWritten = 0L
 
-                if (vTime < 0L) hasVideo = false
-                if (aTime < 0L) hasAudio = false
-                if (!hasVideo && !hasAudio) break
+            fun emitProgressIfNeeded() {
+                if (onProgress == null) return
+                val now = System.currentTimeMillis()
+                if (now - lastProgressEmitMs < 200L) return
+                lastProgressEmitMs = now
+                val ratio = if (expectedDurationUs != null && expectedDurationUs > 0L && maxVideoPts > 0L) {
+                    (maxVideoPts.toDouble() / expectedDurationUs.toDouble()).coerceIn(0.0, 0.99)
+                } else {
+                    (totalBytesWritten.toDouble() / totalInputBytes.toDouble()).coerceIn(0.0, 0.99)
+                }
+                onProgress.invoke(ratio)
+            }
 
-                if (hasVideo && (!hasAudio || vTime <= aTime)) {
-                    val sampleSize = videoExtractor.readSampleData(buffer, 0)
-                    if (sampleSize <= 0) {
-                        hasVideo = videoExtractor.advance()
-                        continue
-                    }
-                    val rawPts = videoExtractor.sampleTime
-                    if (prevRawVideoPts != -1L && rawPts < prevRawVideoPts - 500000L) {
-                        // Segment discontinuity/reset detected
-                        videoPtsOffset += (maxVideoPts - (rawPts - basePts + videoPtsOffset) + videoStepUs)
-                    }
-                    prevRawVideoPts = rawPts
+            fun writeAudioSample(ext: MediaExtractor) {
+                val sampleSize = ext.readSampleData(buffer, 0)
+                if (sampleSize <= 0) return
+                val rawPts = ext.sampleTime
+                if (prevRawAudioPts != -1L &&
+                    (rawPts < prevRawAudioPts - 200000L || rawPts > prevRawAudioPts + 15000000L)
+                ) {
+                    // Audio segment discontinuity/reset detected
+                    audioPtsOffset += (lastAudioPts - (rawPts - basePts + audioPtsOffset) + 21333L)
+                }
+                prevRawAudioPts = rawPts
 
-                    var pts = (rawPts - basePts + videoPtsOffset).coerceAtLeast(0L)
-                    if (monotonicPts && pts <= maxVideoPts) {
-                        pts = maxVideoPts + 1000L
-                    }
-                    if (pts > maxVideoPts) maxVideoPts = pts
+                var pts = (rawPts - basePts + audioPtsOffset).coerceAtLeast(0L)
+                if (pts <= lastAudioPts) {
+                    pts = lastAudioPts + 1000L
+                }
+                lastAudioPts = pts
 
-                    bufferInfo.offset = 0
-                    bufferInfo.size = sampleSize
-                    bufferInfo.presentationTimeUs = pts
-                    bufferInfo.flags = if ((videoExtractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
-                        MediaCodec.BUFFER_FLAG_KEY_FRAME
-                    } else {
-                        0
-                    }
-                    muxer.writeSampleData(muxerVideoTrack, buffer, bufferInfo)
-                    videoSamples++
-                    hasVideo = videoExtractor.advance()
-                } else if (hasAudio && audioExtractor != null) {
-                    val sampleSize = audioExtractor.readSampleData(buffer, 0)
-                    if (sampleSize <= 0) {
-                        hasAudio = audioExtractor.advance()
-                        continue
-                    }
-                    val rawPts = audioExtractor.sampleTime
-                    if (prevRawAudioPts != -1L && rawPts < prevRawAudioPts - 500000L) {
-                        // Audio segment discontinuity detected
-                        audioPtsOffset += (lastAudioPts - (rawPts - basePts + audioPtsOffset) + 21333L)
-                    }
-                    prevRawAudioPts = rawPts
+                bufferInfo.offset = 0
+                bufferInfo.size = sampleSize
+                bufferInfo.presentationTimeUs = pts
+                bufferInfo.flags = if ((ext.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
+                    MediaCodec.BUFFER_FLAG_KEY_FRAME
+                } else {
+                    0
+                }
+                muxer.writeSampleData(muxerAudioTrack, buffer, bufferInfo)
+                totalBytesWritten += sampleSize
+            }
 
-                    var pts = (rawPts - basePts + audioPtsOffset).coerceAtLeast(0L)
-                    if (pts <= lastAudioPts) {
-                        pts = lastAudioPts + 1000L
-                    }
-                    lastAudioPts = pts
+            fun writeVideoSample(ext: MediaExtractor) {
+                val sampleSize = ext.readSampleData(buffer, 0)
+                if (sampleSize <= 0) return
+                val rawPts = ext.sampleTime
+                val isSyncFrame = (ext.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0
 
-                    bufferInfo.offset = 0
-                    bufferInfo.size = sampleSize
-                    bufferInfo.presentationTimeUs = pts
-                    bufferInfo.flags = if ((audioExtractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
-                        MediaCodec.BUFFER_FLAG_KEY_FRAME
-                    } else {
-                        0
+                if (prevRawVideoPts != -1L) {
+                    val delta = rawPts - prevRawVideoPts
+                    val candidatePts = rawPts - basePts + videoPtsOffset
+                    // Detect segment timestamp reset/discontinuity:
+                    // 1) Large backward jump (> 300ms) or huge forward jump (> 15s), OR
+                    // 2) An IDR keyframe (new GOP) whose PTS is <= maxVideoPts from the previous GOP.
+                    if (delta < -300000L || delta > 15000000L || (isSyncFrame && maxVideoPts >= 0L && candidatePts <= maxVideoPts)) {
+                        videoPtsOffset += (maxVideoPts - candidatePts + videoStepUs)
                     }
-                    muxer.writeSampleData(muxerAudioTrack, buffer, bufferInfo)
-                    hasAudio = audioExtractor.advance()
+                }
+                prevRawVideoPts = rawPts
+
+                var pts = (rawPts - basePts + videoPtsOffset).coerceAtLeast(0L)
+                if (monotonicPts && pts <= maxVideoPts) {
+                    pts = maxVideoPts + 1000L
+                } else if (pts == lastWrittenVideoPts) {
+                    // Prevent duplicate PTS rejection in MPEG4Writer while keeping B-frame order
+                    pts += 100L
+                }
+                lastWrittenVideoPts = pts
+                if (pts > maxVideoPts) maxVideoPts = pts
+
+                bufferInfo.offset = 0
+                bufferInfo.size = sampleSize
+                bufferInfo.presentationTimeUs = pts
+                bufferInfo.flags = if (isSyncFrame) {
+                    MediaCodec.BUFFER_FLAG_KEY_FRAME
+                } else {
+                    0
+                }
+                muxer.writeSampleData(muxerVideoTrack, buffer, bufferInfo)
+                videoSamples++
+                totalBytesWritten += sampleSize
+            }
+
+            while (hasPrimary || hasSepAudio) {
+                val pTime = if (hasPrimary) videoExtractor.sampleTime else Long.MAX_VALUE
+                val aTime = if (hasSepAudio && separateAudioExtractor != null) separateAudioExtractor.sampleTime else Long.MAX_VALUE
+
+                if (pTime < 0L) hasPrimary = false
+                if (aTime < 0L) hasSepAudio = false
+                if (!hasPrimary && !hasSepAudio) break
+
+                if (hasPrimary && (!hasSepAudio || pTime <= aTime)) {
+                    val trackIdx = videoExtractor.sampleTrackIndex
+                    if (useEmbeddedAudio && trackIdx == embeddedAudioTrackIndex && muxerAudioTrack != -1) {
+                        writeAudioSample(videoExtractor)
+                    } else if (trackIdx == videoTrackIndex) {
+                        writeVideoSample(videoExtractor)
+                    }
+                    hasPrimary = videoExtractor.advance()
+                    emitProgressIfNeeded()
+                } else if (hasSepAudio && separateAudioExtractor != null) {
+                    writeAudioSample(separateAudioExtractor)
+                    hasSepAudio = separateAudioExtractor.advance()
+                    emitProgressIfNeeded()
                 }
             }
 
@@ -723,19 +779,20 @@ class MainActivity : FlutterActivity() {
             muxer.stop()
             muxerStarted = false
             ok = true
+            onProgress?.invoke(1.0)
         } finally {
             if (muxerStarted) {
                 try { muxer?.stop() } catch (_: Exception) {}
             }
             try { muxer?.release() } catch (_: Exception) {}
             try { videoExtractor?.release() } catch (_: Exception) {}
-            try { audioExtractor?.release() } catch (_: Exception) {}
+            try { separateAudioExtractor?.release() } catch (_: Exception) {}
             if (!ok) {
                 try { outputFile.delete() } catch (_: Exception) {}
             }
         }
 
-        // Validate the produced MP4 by re-opening it.
+        // Validate the produced MP4 by re-opening it once natively.
         if (!outputFile.exists() || outputFile.length() <= 50000) {
             Log.w(TAG, "Validation failed: output file missing or smaller than 50KB (${outputFile.length()} bytes)")
             try { outputFile.delete() } catch (_: Exception) {}
@@ -743,12 +800,20 @@ class MainActivity : FlutterActivity() {
         }
         val info = probeMedia(outputPath)
         val hasVideoTrack = (info?.get("hasVideo") as? Boolean) ?: false
-        if (!hasVideoTrack) {
-            Log.w(TAG, "Validation failed: no video track detected in output MP4")
+        val durationMs = (info?.get("durationMs") as? Long) ?: 0L
+        if (!hasVideoTrack || durationMs <= 0L) {
+            Log.w(TAG, "Validation failed: invalid video track or duration ($durationMs ms) in output MP4")
             try { outputFile.delete() } catch (_: Exception) {}
             return false
         }
-        val durationMs = (info["durationMs"] as? Long) ?: 0L
+        if (expectedDurationUs != null && expectedDurationUs > 0L) {
+            val actualUs = durationMs * 1000L
+            if (actualUs < (expectedDurationUs * 0.9).toLong()) {
+                Log.w(TAG, "Validation failed: actual duration ${actualUs}us < 90% of expected ${expectedDurationUs}us")
+                try { outputFile.delete() } catch (_: Exception) {}
+                return false
+            }
+        }
         Log.i(TAG, "Mux validation passed! Size: ${outputFile.length()} bytes, duration: ${durationMs}ms, hasVideo: $hasVideoTrack")
         return true
     }

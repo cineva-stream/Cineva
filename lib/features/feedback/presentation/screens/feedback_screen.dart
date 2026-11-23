@@ -6,6 +6,7 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/localization/app_strings.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../data/feedback_service.dart';
 
@@ -109,8 +110,9 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor:
-            isError ? const Color(0xFFD32F2F) : const Color(0xFF2E7D32),
+        backgroundColor: isError
+            ? const Color(0xFFD32F2F)
+            : const Color(0xFF2E7D32),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -204,7 +206,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                           elevation: 2,
                         ),
                         child: Text(
-                          s.isIndonesian ? 'Selesai' : 'Done',
+                          s.tr('Selesai', 'Done', 'पूर्ण'),
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -316,7 +318,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                   runSpacing: 8,
                   children: FeedbackCategory.values.map((cat) {
                     final isSelected = _selectedCategory == cat;
-                    return _buildCategoryChip(cat, isSelected, s.isIndonesian);
+                    return _buildCategoryChip(cat, isSelected, s);
                   }).toList(),
                 ),
                 const SizedBox(height: 20),
@@ -398,7 +400,10 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                     controller: _descController,
                     minLines: 5,
                     maxLines: 8,
-                    style: GoogleFonts.inter(color: Colors.white, fontSize: 13.5),
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 13.5,
+                    ),
                     cursorColor: AppColors.primary,
                     decoration: InputDecoration(
                       hintText: s.feedbackDescHint,
@@ -415,7 +420,10 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
 
                 // ── Device Technical Specs Card ──
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.04),
                     borderRadius: BorderRadius.circular(14),
@@ -503,12 +511,11 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                               color: Colors.black,
                             ),
                           )
-                        : const Icon(
-                            Icons.send_rounded,
-                            size: 19,
-                          ),
+                        : const Icon(Icons.send_rounded, size: 19),
                     label: Text(
-                      _isSubmitting ? s.feedbackSendingBtn : s.feedbackSubmitBtn,
+                      _isSubmitting
+                          ? s.feedbackSendingBtn
+                          : s.feedbackSubmitBtn,
                       style: GoogleFonts.inter(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w800,
@@ -527,7 +534,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
   Widget _buildCategoryChip(
     FeedbackCategory cat,
     bool isSelected,
-    bool isIndonesian,
+    AppStrings s,
   ) {
     IconData icon;
     Color accentColor;
@@ -563,7 +570,10 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
               : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: isSelected
-              ? Border.all(color: accentColor.withValues(alpha: 0.6), width: 1.2)
+              ? Border.all(
+                  color: accentColor.withValues(alpha: 0.6),
+                  width: 1.2,
+                )
               : null,
         ),
         child: Row(
@@ -576,7 +586,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
             ),
             const SizedBox(width: 7),
             Text(
-              cat.localizedLabel(isIndonesian),
+              cat.localizedLabel(s.isIndonesian, s.language),
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -615,11 +625,12 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
             size: 18,
           ),
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 14,
+          ),
         ),
       ),
     );
   }
 }
-

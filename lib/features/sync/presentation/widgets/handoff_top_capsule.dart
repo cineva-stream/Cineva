@@ -112,9 +112,11 @@ class HandOffTopCapsule extends ConsumerWidget {
                           ),
                           children: [
                             TextSpan(
-                              text: s.isIndonesian
-                                  ? 'Lanjutkan menonton '
-                                  : 'Continue watching ',
+                              text: s.tr(
+                                'Lanjutkan menonton ',
+                                'Continue watching ',
+                                'देखना जारी रखें: ',
+                              ),
                             ),
                             TextSpan(
                               text: session.title,
@@ -132,9 +134,7 @@ class HandOffTopCapsule extends ConsumerWidget {
                                 ),
                               ),
                             TextSpan(
-                              text: s.isIndonesian
-                                  ? ' di menit '
-                                  : ' at ',
+                              text: s.tr(' di menit ', ' at ', ' • समय '),
                             ),
                             TextSpan(
                               text: session.formattedPosition,

@@ -30,10 +30,25 @@ class NativeMediaMuxer {
     String? audioPath,
     required String outputPath,
     int? expectedDurationUs,
+    void Function(double progress)? onProgress,
   }) async {
     if (!Platform.isAndroid) {
       debugPrint('[NativeMediaMuxer] Native muxing is only supported on Android.');
       return false;
+    }
+
+    if (onProgress != null) {
+      _channel.setMethodCallHandler((call) async {
+        if (call.method == 'onMuxProgress') {
+          final args = call.arguments;
+          if (args is Map) {
+            final p = (args['progress'] as num?)?.toDouble();
+            if (p != null) {
+              onProgress(p.clamp(0.0, 1.0));
+            }
+          }
+        }
+      });
     }
 
     try {
@@ -50,6 +65,10 @@ class NativeMediaMuxer {
     } catch (e) {
       debugPrint('[NativeMediaMuxer] Unexpected error during mux: $e');
       return false;
+    } finally {
+      if (onProgress != null) {
+        _channel.setMethodCallHandler(null);
+      }
     }
   }
 

@@ -165,7 +165,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           Icon(pref.icon, size: 13, color: AppColors.primary),
                           const SizedBox(width: 5),
                           Text(
-                            s.searchPriority(pref.label),
+                            s.searchPriority(
+                              pref.getLocalizedLabel(
+                                s.isIndonesian,
+                                s.language,
+                              ),
+                            ),
                             style: GoogleFonts.inter(
                               color: AppColors.primaryLight,
                               fontSize: 11,
@@ -281,7 +286,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 const SizedBox(width: 5),
                               ],
                               Text(
-                                genre.label,
+                                genre.getLocalizedLabel(
+                                  s.isIndonesian,
+                                  s.language,
+                                ),
                                 style: GoogleFonts.inter(
                                   fontSize: 11.5,
                                   fontWeight: isSelected
@@ -1127,6 +1135,7 @@ class _MovieSearchCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pref = ref.watch(contentPreferenceProvider);
+    final s = ref.watch(appStringsProvider);
 
     return TvFocusable(
       onTap: () {
@@ -1189,7 +1198,10 @@ class _MovieSearchCard extends ConsumerWidget {
                             ],
                           ),
                           child: Text(
-                            pref.label.split(' ').first,
+                            pref
+                                .getLocalizedLabel(s.isIndonesian, s.language)
+                                .split(' ')
+                                .first,
                             style: GoogleFonts.inter(
                               color: Colors.black,
                               fontSize: 8.5,
@@ -1311,6 +1323,7 @@ class _TvSearchCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pref = ref.watch(contentPreferenceProvider);
+    final s = ref.watch(appStringsProvider);
 
     return TvFocusable(
       onTap: () {
@@ -1370,7 +1383,10 @@ class _TvSearchCard extends ConsumerWidget {
                             ],
                           ),
                           child: Text(
-                            pref.label.split(' ').first,
+                            pref
+                                .getLocalizedLabel(s.isIndonesian, s.language)
+                                .split(' ')
+                                .first,
                             style: GoogleFonts.inter(
                               color: Colors.black,
                               fontSize: 8.5,
@@ -1678,6 +1694,10 @@ class _GenreExplorerViewState extends ConsumerState<_GenreExplorerView> {
     final popularMovies = ref.watch(popularMoviesProvider);
     final topRatedMovies = ref.watch(topRatedMoviesProvider);
     final popularTv = ref.watch(popularTvProvider);
+    final genreLabel = widget.activeGenre.getLocalizedLabel(
+      s.isIndonesian,
+      s.language,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1687,13 +1707,13 @@ class _GenreExplorerViewState extends ConsumerState<_GenreExplorerView> {
           child: Row(
             children: [
               _FilterChip(
-                label: s.searchGenreMovies(widget.activeGenre.label),
+                label: s.searchGenreMovies(genreLabel),
                 isSelected: _tab == 0,
                 onTap: () => setState(() => _tab = 0),
               ),
               const SizedBox(width: 8),
               _FilterChip(
-                label: s.searchGenreTv(widget.activeGenre.label),
+                label: s.searchGenreTv(genreLabel),
                 isSelected: _tab == 1,
                 onTap: () => setState(() => _tab = 1),
               ),
@@ -1719,9 +1739,7 @@ class _GenreExplorerViewState extends ConsumerState<_GenreExplorerView> {
 
                     if (filtered.isEmpty) {
                       return AppErrorWidget.empty(
-                        message: s.searchNoGenreMovies(
-                          widget.activeGenre.label,
-                        ),
+                        message: s.searchNoGenreMovies(genreLabel),
                       );
                     }
                     return _MovieGrid(movies: filtered);
@@ -1739,7 +1757,7 @@ class _GenreExplorerViewState extends ConsumerState<_GenreExplorerView> {
                         .toList();
                     if (filtered.isEmpty) {
                       return AppErrorWidget.empty(
-                        message: s.searchNoGenreTv(widget.activeGenre.label),
+                        message: s.searchNoGenreTv(genreLabel),
                       );
                     }
                     return _TvGrid(tvShows: filtered);

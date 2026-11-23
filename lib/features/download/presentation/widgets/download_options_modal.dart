@@ -133,7 +133,9 @@ class _DownloadOptionsModalState extends ConsumerState<DownloadOptionsModal> {
       return pref.toLowerCase();
     }
     final appLang = ref.read(appLanguageProvider);
-    return appLang == AppLanguage.en ? 'en' : 'id';
+    return appLang == AppLanguage.en
+        ? 'en'
+        : (appLang == AppLanguage.hi ? 'hi' : 'id');
   }
 
   Future<void> _loadData() async {

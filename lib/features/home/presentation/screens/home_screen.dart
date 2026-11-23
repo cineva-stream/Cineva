@@ -51,9 +51,9 @@ enum HomeCategoryFilter {
       case HomeCategoryFilter.all:
         return s.homeAllCategory;
       case HomeCategoryFilter.movies:
-        return s.isIndonesian ? 'Film' : 'Movies';
+        return s.tr('Film', 'Movies', 'फ़िल्में');
       case HomeCategoryFilter.tv:
-        return s.isIndonesian ? 'Serial TV' : 'TV Shows';
+        return s.tr('Serial TV', 'TV Shows', 'टीवी सीरीज़');
     }
   }
 }
@@ -107,11 +107,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final isTv = ref.watch(isTvProvider);
     final isWide = isWideScreenLayout(context, isTv: isTv);
     final screenWidth = MediaQuery.sizeOf(context).width;
+    final screenHeight = MediaQuery.sizeOf(context).height;
     final availableWidth = isWide
         ? (screenWidth - (isTv ? 96.0 : 88.0))
         : screenWidth;
-    final showCompanionSideBySide = isWide && screenWidth >= 920;
+    // Tablet, Windows Desktop, and Android TV display Watch Party & Airing Calendar
+    // stacked top-to-bottom on the right side of the Hero Carousel.
+    final showCompanionSideBySide = isWide;
     final isSuperWide = screenWidth >= 1380;
+    final heroCarouselHeight = isWide
+        ? (screenWidth < 920 ? 390.0 : (screenHeight < 650 ? 400.0 : 490.0))
+        : (screenWidth < 360 || screenHeight < 700 ? 375.0 : 430.0);
+    const companionGap = 12.0;
+    final watchPartyCompanionHeight =
+        ((heroCarouselHeight - companionGap) * 0.46).floorToDouble();
+    final calendarCompanionHeight =
+        heroCarouselHeight - companionGap - watchPartyCompanionHeight;
 
     final activeFilter = ref.watch(homeFilterProvider);
     final activeGenre = ref.watch(selectedHomeGenreProvider);
@@ -308,7 +319,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    pref.label,
+                                    pref.getLocalizedLabel(
+                                      s.isIndonesian,
+                                      s.language,
+                                    ),
                                     style: GoogleFonts.inter(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
@@ -456,8 +470,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           isGenreActive
                                               ? activeGenre.getLocalizedLabel(
                                                   s.isIndonesian,
+                                                  s.language,
                                                 )
-                                              : 'Genre',
+                                              : s.tr('Genre', 'Genre', 'शैली'),
                                           style: GoogleFonts.inter(
                                             fontSize: 12,
                                             fontWeight: isGenreActive
@@ -531,10 +546,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // ── Seamless Device Hand-Off Capsule ──
             const SliverToBoxAdapter(child: HandOffTopCapsule()),
 
-            // ── Modern Watch Party Quick Join Banner ──
-            const SliverToBoxAdapter(child: WatchPartyJoinBanner()),
-
-            // ── Hero Billboard Carousel (Trending Movies or Popular TV Series) ──
+            // ── Hero Billboard Carousel + Parallel Companion Banners (Tablet/Windows/TV: Right Side Top-Bottom) ──
             if (activeFilter == HomeCategoryFilter.all ||
                 activeFilter == HomeCategoryFilter.movies)
               SliverToBoxAdapter(
@@ -549,14 +561,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  flex: isSuperWide ? 72 : 67,
+                                  flex: isSuperWide ? 72 : 66,
                                   child: MovieCarousel(movies: filtered),
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
-                                  flex: isSuperWide ? 28 : 33,
-                                  child: const AiringCalendarBanner(
-                                    isCompanion: true,
+                                  flex: isSuperWide ? 28 : 34,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      WatchPartyJoinBanner(
+                                        isCompanion: true,
+                                        height: watchPartyCompanionHeight,
+                                      ),
+                                      const SizedBox(height: companionGap),
+                                      AiringCalendarBanner(
+                                        isCompanion: true,
+                                        height: calendarCompanionHeight,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -584,16 +607,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                              flex: isSuperWide ? 72 : 67,
+                              flex: isSuperWide ? 72 : 66,
                               child: const ShimmerHeroCarousel(
                                 padding: EdgeInsets.zero,
                               ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
-                              flex: isSuperWide ? 28 : 33,
-                              child: const AiringCalendarBanner(
-                                isCompanion: true,
+                              flex: isSuperWide ? 28 : 34,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  WatchPartyJoinBanner(
+                                    isCompanion: true,
+                                    height: watchPartyCompanionHeight,
+                                  ),
+                                  const SizedBox(height: companionGap),
+                                  AiringCalendarBanner(
+                                    isCompanion: true,
+                                    height: calendarCompanionHeight,
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -603,9 +637,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     return const ShimmerHeroCarousel();
                   },
                   error: (e, _) => AppErrorWidget(
-                    message: s.isIndonesian
-                        ? 'Gagal memuat film trending'
-                        : 'Failed to load trending movies',
+                    message: s.language.isHindi
+                        ? 'ट्रेंडिंग फ़िल्में लोड करने में विफल'
+                        : (s.isIndonesian
+                              ? 'Gagal memuat film trending'
+                              : 'Failed to load trending movies'),
                     onRetry: () => ref.invalidate(trendingMoviesProvider),
                   ),
                 ),
@@ -626,14 +662,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  flex: isSuperWide ? 72 : 67,
+                                  flex: isSuperWide ? 72 : 66,
                                   child: MovieCarousel(movies: adaptedMovies),
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
-                                  flex: isSuperWide ? 28 : 33,
-                                  child: const AiringCalendarBanner(
-                                    isCompanion: true,
+                                  flex: isSuperWide ? 28 : 34,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      WatchPartyJoinBanner(
+                                        isCompanion: true,
+                                        height: watchPartyCompanionHeight,
+                                      ),
+                                      const SizedBox(height: companionGap),
+                                      AiringCalendarBanner(
+                                        isCompanion: true,
+                                        height: calendarCompanionHeight,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -661,16 +708,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                              flex: isSuperWide ? 72 : 67,
+                              flex: isSuperWide ? 72 : 66,
                               child: const ShimmerHeroCarousel(
                                 padding: EdgeInsets.zero,
                               ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
-                              flex: isSuperWide ? 28 : 33,
-                              child: const AiringCalendarBanner(
-                                isCompanion: true,
+                              flex: isSuperWide ? 28 : 34,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  WatchPartyJoinBanner(
+                                    isCompanion: true,
+                                    height: watchPartyCompanionHeight,
+                                  ),
+                                  const SizedBox(height: companionGap),
+                                  AiringCalendarBanner(
+                                    isCompanion: true,
+                                    height: calendarCompanionHeight,
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -680,20 +738,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     return const ShimmerHeroCarousel();
                   },
                   error: (e, _) => AppErrorWidget(
-                    message: s.isIndonesian
-                        ? 'Gagal memuat serial TV populer'
-                        : 'Failed to load popular TV series',
+                    message: s.language.isHindi
+                        ? 'लोकप्रिय टीवी सीरीज़ लोड करने में विफल'
+                        : (s.isIndonesian
+                              ? 'Gagal memuat serial TV populer'
+                              : 'Failed to load popular TV series'),
                     onRetry: () => ref.invalidate(popularTvProvider),
+                  ),
+                ),
+              ),
+
+            // ── Mobile Side-by-Side (Left-Right) Watch Party & Airing Calendar Row Below Hero Carousel ──
+            if (!showCompanionSideBySide)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(16, 10, 16, 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: WatchPartyJoinBanner(isCompactPair: true),
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: AiringCalendarBanner(isCompactPair: true),
+                      ),
+                    ],
                   ),
                 ),
               ),
 
             // ── KONDISI 1: TAB "SEMUA" (Layout Dashboard Klasik Lengkap) ──
             if (activeFilter == HomeCategoryFilter.all) ...[
-              // AIRING CALENDAR BANNER (Shown below carousel on mobile & portrait tablet)
-              if (activeGenre.id == 'all' && !showCompanionSideBySide)
-                const SliverToBoxAdapter(child: AiringCalendarBanner()),
-
               // CONTINUE WATCHING SECTION
               if (activeGenre.id == 'all')
                 const SliverToBoxAdapter(child: ContinueWatchingSection()),
@@ -742,7 +817,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // TOP RATED MOVIES SECTION
               SliverToBoxAdapter(
                 child: _SectionWithHeader<Movie>(
-                  title: s.isIndonesian ? 'Rating Tertinggi' : 'Top Rated',
+                  title: s.tr(
+                    'Rating Tertinggi',
+                    'Top Rated',
+                    'सर्वोच्च रेटेड',
+                  ),
                   icon: Iconsax.star_1,
                   asyncData: topRated,
                   filter: filterMovies,
@@ -755,9 +834,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // UPCOMING MOVIES SECTION
               SliverToBoxAdapter(
                 child: _SectionWithHeader<Movie>(
-                  title: s.isIndonesian
-                      ? 'Segera Tayang di Bioskop'
-                      : 'Coming Soon in Theaters',
+                  title: s.tr(
+                    'Segera Tayang di Bioskop',
+                    'Coming Soon in Theaters',
+                    'सिनेमाघरों में जल्द आ रहा है',
+                  ),
                   icon: Iconsax.calendar,
                   asyncData: upcoming,
                   filter: filterMovies,
@@ -797,7 +878,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                s.isIndonesian ? 'Seluruh Film' : 'All Movies',
+                                s.tr(
+                                  'Seluruh Film',
+                                  'All Movies',
+                                  'सभी फ़िल्में',
+                                ),
                                 style: GoogleFonts.outfit(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -844,9 +929,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 40),
                             child: AppErrorWidget.empty(
-                              message: s.isIndonesian
-                                  ? 'Tidak ada film ditemukan'
-                                  : 'No movies found',
+                              message: s.tr(
+                                'Tidak ada film ditemukan',
+                                'No movies found',
+                                'कोई फ़िल्म नहीं मिली',
+                              ),
                             ),
                           ),
                         )
@@ -917,9 +1004,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                s.isIndonesian
-                                    ? 'Seluruh Serial TV'
-                                    : 'All TV Shows',
+                                s.tr(
+                                  'Seluruh Serial TV',
+                                  'All TV Shows',
+                                  'सभी टीवी सीरीज़',
+                                ),
                                 style: GoogleFonts.outfit(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -964,9 +1053,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 40),
                             child: AppErrorWidget.empty(
-                              message: s.isIndonesian
-                                  ? 'Tidak ada serial TV ditemukan'
-                                  : 'No TV shows found',
+                              message: s.tr(
+                                'Tidak ada serial TV ditemukan',
+                                'No TV shows found',
+                                'कोई टीवी सीरीज़ नहीं मिली',
+                              ),
                             ),
                           ),
                         )
@@ -1067,9 +1158,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              s.isIndonesian
-                                  ? 'Belum Ada Tayangan Genre ${activeGenre.label}'
-                                  : 'No Content in ${activeGenre.getLocalizedLabel(false)}',
+                              s.tr(
+                                'Belum Ada Tayangan Genre ${activeGenre.getLocalizedLabel(s.isIndonesian, s.language)}',
+                                'No Content in ${activeGenre.getLocalizedLabel(false, s.language)}',
+                                '${activeGenre.getLocalizedLabel(false, s.language)} शैली में कोई सामग्री नहीं',
+                              ),
                               textAlign: TextAlign.center,
                               style: GoogleFonts.outfit(
                                 fontSize: 18,
@@ -1079,9 +1172,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              s.isIndonesian
-                                  ? 'Coba pilih genre lain atau atur ulang ke Semua Genre.'
-                                  : 'Try picking another genre or reset to All Genres.',
+                              s.tr(
+                                'Coba pilih genre lain atau atur ulang ke Semua Genre.',
+                                'Try picking another genre or reset to All Genres.',
+                                'कोई अन्य शैली चुनने का प्रयास करें या सभी शैलियों पर रीसेट करें।',
+                              ),
                               textAlign: TextAlign.center,
                               style: GoogleFonts.inter(
                                 fontSize: 13,
@@ -1099,9 +1194,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               },
                               icon: const Icon(Icons.refresh_rounded, size: 18),
                               label: Text(
-                                s.isIndonesian
-                                    ? 'Tampilkan Semua Genre'
-                                    : 'Show All Genres',
+                                s.tr(
+                                  'Tampilkan Semua Genre',
+                                  'Show All Genres',
+                                  'सभी शैलियाँ दिखाएं',
+                                ),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,

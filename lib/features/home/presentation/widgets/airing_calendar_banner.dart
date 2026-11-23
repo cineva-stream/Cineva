@@ -16,17 +16,20 @@ import '../providers/home_providers.dart';
 
 /// Highly modern, cinematic Airing Calendar promotional banner.
 ///
-/// Supports two adaptive presentations:
-/// 1. [isCompanion: false] - Classic full-width horizontal banner for mobile portrait.
-/// 2. [isCompanion: true]  - Vertical companion card for Desktop (Windows) and Android TV (720p/1080p/4K),
-///    rendered side-by-side with the Hero Billboard Carousel.
+/// Supports three adaptive presentations:
+/// 1. [isCompanion: true]   - Vertical companion card for Tablet, Desktop (Windows), and Android TV,
+///    rendered side-by-side (stacked with WatchPartyJoinBanner) with the Hero Billboard Carousel.
+/// 2. [isCompactPair: true] - Side-by-side (left-right) Bento card paired with WatchPartyJoinBanner on Mobile.
+/// 3. Default               - Classic full-width horizontal banner.
 class AiringCalendarBanner extends ConsumerStatefulWidget {
   final bool isCompanion;
+  final bool isCompactPair;
   final double? height;
 
   const AiringCalendarBanner({
     super.key,
     this.isCompanion = false,
+    this.isCompactPair = false,
     this.height,
   });
 
@@ -85,8 +88,200 @@ class _AiringCalendarBannerState extends ConsumerState<AiringCalendarBanner> {
     if (widget.isCompanion) {
       return _buildCompanionCard(context, s, currentImage, upcoming);
     }
+    if (widget.isCompactPair) {
+      return _buildCompactPairCard(context, s, currentImage);
+    }
 
     return _buildHorizontalBanner(context, s, currentImage);
+  }
+
+  /// Side-by-side (left-right) Bento card for Mobile below the Hero Carousel.
+  Widget _buildCompactPairCard(
+    BuildContext context,
+    dynamic s,
+    String currentImage,
+  ) {
+    final cardHeight = widget.height ?? 138.0;
+    final openLabel = s.language.isHindi
+        ? 'खोलें'
+        : (s.isIndonesian ? 'Buka' : 'Open');
+
+    return TvFocusable(
+      focusedScale: 1.02,
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => context.push('/calendar'),
+      child: Container(
+        height: cardHeight,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          color: const Color(0xFF14141C),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.24),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 900),
+                transitionBuilder: (child, animation) =>
+                    FadeTransition(opacity: animation, child: child),
+                child: CachedNetworkImage(
+                  key: ValueKey<String>(currentImage),
+                  imageUrl: ApiConstants.imageUrl(
+                    currentImage,
+                    size: ApiConstants.backdropMedium,
+                  ),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFF0F0F16).withValues(alpha: 0.90),
+                    const Color(0xFF0F0F16).withValues(alpha: 0.85),
+                    const Color(0xFF0A0A10).withValues(alpha: 0.96),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.primary.withValues(alpha: 0.28),
+                              AppColors.primary.withValues(alpha: 0.12),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.45),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Iconsax.calendar_tick,
+                            color: AppColors.primary,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '2 TAB',
+                          style: GoogleFonts.inter(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    s.calendarBannerTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      height: 1.15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Expanded(
+                    child: Text(
+                      s.calendarBannerSubtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 10.2,
+                        color: const Color(0xFFB0B0C0),
+                        height: 1.25,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 6.5),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFFFFB800),
+                          Color(0xFFFF9500),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          openLabel,
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.black,
+                          size: 13,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Vertical companion card designed for Windows Desktop & Android TV (placed beside Hero Carousel)
@@ -104,19 +299,23 @@ class _AiringCalendarBannerState extends ConsumerState<AiringCalendarBanner> {
     final cardHeight = widget.height ??
         (isWide ? (screenHeight < 650 ? 400.0 : 490.0) : (isCompact ? 375.0 : 430.0));
     final horizontalPad = screenWidth < 960 ? 14.0 : 18.0;
+    final isStackedCompanion = cardHeight < 300;
+    final isTightCompanion = cardHeight < 215;
 
-    // Curate up to 2 upcoming highlights for the live preview widget
-    final previewItems = upcoming.take(2).toList();
+    // Curate upcoming highlights for the live preview widget
+    final previewItems = isStackedCompanion
+        ? const <dynamic>[]
+        : upcoming.take(2).toList();
 
     return TvFocusable(
       focusedScale: 1.02,
       glowBlurRadius: 18,
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(isStackedCompanion ? 24 : 28),
       onTap: () => context.push('/calendar'),
       child: Container(
         height: cardHeight,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(isStackedCompanion ? 24 : 28),
           color: const Color(0xFF13131D),
           border: Border.all(
             color: AppColors.primary.withValues(alpha: 0.28),
@@ -192,7 +391,10 @@ class _AiringCalendarBannerState extends ConsumerState<AiringCalendarBanner> {
 
             // ── Card Foreground Content ──
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: horizontalPad, vertical: 18),
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalPad,
+                vertical: isTightCompanion ? 11 : (isStackedCompanion ? 14 : 18),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -269,8 +471,8 @@ class _AiringCalendarBannerState extends ConsumerState<AiringCalendarBanner> {
 
                       // Squircle Calendar Icon
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: isTightCompanion ? 28 : 32,
+                        height: isTightCompanion ? 28 : 32,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
@@ -297,136 +499,159 @@ class _AiringCalendarBannerState extends ConsumerState<AiringCalendarBanner> {
                     ],
                   ),
 
-                  const SizedBox(height: 16),
+                  SizedBox(height: isTightCompanion ? 8 : (isStackedCompanion ? 12 : 16)),
 
                   // Main Heading
                   Text(
                     s.calendarBannerTitle,
-                    maxLines: 2,
+                    maxLines: isStackedCompanion ? 1 : 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.outfit(
-                      fontSize: 20,
+                      fontSize: isTightCompanion ? 15.5 : (isStackedCompanion ? 18 : 20),
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
                       height: 1.18,
                       letterSpacing: -0.3,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
 
                   // Subtitle
-                  Text(
-                    s.calendarBannerSubtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFFB0B0C4),
-                      height: 1.4,
+                  Flexible(
+                    child: Text(
+                      s.calendarBannerSubtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 11.2,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFFB0B0C4),
+                        height: 1.35,
+                      ),
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  if (!isStackedCompanion) ...[
+                    const SizedBox(height: 16),
 
-                  // ── Mini Upcoming Highlights or Feature Chips ──
-                  if (previewItems.isNotEmpty) ...[
-                    ...previewItems.map((item) {
-                      final title = item.title ?? '';
-                      final poster = item.posterPath ?? '';
-                      final release = (item.releaseDate as String?) ?? '';
+                    // ── Mini Upcoming Highlights or Feature Chips ──
+                    if (previewItems.isNotEmpty) ...[
+                      ...previewItems.map((item) {
+                        final title = item.title ?? '';
+                        final poster = item.posterPath ?? '';
+                        final release = (item.releaseDate as String?) ?? '';
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(7),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.09),
-                            width: 0.8,
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.09),
+                              width: 0.8,
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: CachedNetworkImage(
-                                imageUrl: ApiConstants.imageUrl(
-                                  poster,
-                                  size: ApiConstants.posterSmall,
-                                ),
-                                width: 34,
-                                height: 48,
-                                fit: BoxFit.cover,
-                                errorWidget: (context, error, stackTrace) => Container(
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: CachedNetworkImage(
+                                  imageUrl: ApiConstants.imageUrl(
+                                    poster,
+                                    size: ApiConstants.posterSmall,
+                                  ),
                                   width: 34,
                                   height: 48,
-                                  color: AppColors.surfaceVariant,
-                                  child: const Icon(Icons.movie, size: 16, color: Colors.white30),
+                                  fit: BoxFit.cover,
+                                  errorWidget: (context, error, stackTrace) => Container(
+                                    width: 34,
+                                    height: 48,
+                                    color: AppColors.surfaceVariant,
+                                    child: const Icon(Icons.movie, size: 16, color: Colors.white30),
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          release.isNotEmpty ? release : (s.isIndonesian ? 'Segera' : 'Soon'),
-                                          style: GoogleFonts.inter(
-                                            color: AppColors.primaryLight,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 9.5,
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            release.isNotEmpty
+                                                ? release
+                                                : (s.language.isHindi
+                                                      ? 'जल्द'
+                                                      : (s.isIndonesian ? 'Segera' : 'Soon')),
+                                            style: GoogleFonts.inter(
+                                              color: AppColors.primaryLight,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 9.5,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      const Icon(Icons.star_rounded, color: AppColors.star, size: 12),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        item.voteAverage.toStringAsFixed(1),
-                                        style: const TextStyle(
-                                          color: AppColors.textSecondary,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
+                                        const SizedBox(width: 6),
+                                        const Icon(Icons.star_rounded, color: AppColors.star, size: 12),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          item.voteAverage.toStringAsFixed(1),
+                                          style: const TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ] else ...[
-                    _buildFeatureChip(Icons.calendar_month_rounded, s.isIndonesian ? '14 Hari Jadwal Siaran' : '14-Day Weekly Broadcast'),
-                    const SizedBox(height: 6),
-                    _buildFeatureChip(Icons.movie_filter_rounded, s.isIndonesian ? 'Radar Film Bioskop & TV' : 'Theatrical & TV Radar'),
-                    const SizedBox(height: 6),
-                    _buildFeatureChip(Icons.bookmark_add_rounded, s.isIndonesian ? 'Simpan ke Watchlist' : '1-Tap Watchlist Save'),
+                            ],
+                          ),
+                        );
+                      }),
+                    ] else ...[
+                      _buildFeatureChip(
+                        Icons.calendar_month_rounded,
+                        s.language.isHindi
+                            ? '14 दिनों का प्रसारण शेड्यूल'
+                            : (s.isIndonesian ? '14 Hari Jadwal Siaran' : '14-Day Weekly Broadcast'),
+                      ),
+                      const SizedBox(height: 6),
+                      _buildFeatureChip(
+                        Icons.movie_filter_rounded,
+                        s.language.isHindi
+                            ? 'सिनेमा और टीवी रडार'
+                            : (s.isIndonesian ? 'Radar Film Bioskop & TV' : 'Theatrical & TV Radar'),
+                      ),
+                      const SizedBox(height: 6),
+                      _buildFeatureChip(
+                        Icons.bookmark_add_rounded,
+                        s.language.isHindi
+                            ? 'वॉचलिस्ट में सहेजें'
+                            : (s.isIndonesian ? 'Simpan ke Watchlist' : '1-Tap Watchlist Save'),
+                      ),
+                    ],
                   ],
 
                   const Spacer(),
@@ -434,7 +659,9 @@ class _AiringCalendarBannerState extends ConsumerState<AiringCalendarBanner> {
                   // ── Action CTA Button ──
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    padding: EdgeInsets.symmetric(
+                      vertical: isTightCompanion ? 8 : (isStackedCompanion ? 10 : 11),
+                    ),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [
@@ -442,7 +669,7 @@ class _AiringCalendarBannerState extends ConsumerState<AiringCalendarBanner> {
                           Color(0xFFFF9500),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(isStackedCompanion ? 12 : 14),
                       boxShadow: [
                         BoxShadow(
                           color: const Color(0xFFFF9500).withValues(alpha: 0.38),
@@ -462,7 +689,9 @@ class _AiringCalendarBannerState extends ConsumerState<AiringCalendarBanner> {
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            s.isIndonesian ? 'Buka Jadwal Lengkap' : 'Explore Full Schedule',
+                            s.language.isHindi
+                                ? 'पूरा शेड्यूल देखें'
+                                : (s.isIndonesian ? 'Buka Jadwal Lengkap' : 'Explore Full Schedule'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(

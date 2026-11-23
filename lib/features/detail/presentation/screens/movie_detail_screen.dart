@@ -11,7 +11,6 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../watchlist/data/watchlist_repository.dart';
 import '../../../download/presentation/widgets/download_options_modal.dart';
-import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
@@ -24,22 +23,29 @@ import '../../../watch_party/presentation/widgets/watch_party_modal.dart';
 
 // ── Detail Providers ──
 
-final movieDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((ref, movieId) async {
+final movieDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((
+  ref,
+  movieId,
+) async {
   final lang = ref.watch(appLanguageProvider);
-  final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
+  final tmdbLang = lang.tmdbLanguageCode;
   final dio = DioClient.createTmdbClient();
-  final response = await dio.get('/movie/$movieId', queryParameters: {
-    'language': tmdbLang,
-    'append_to_response': 'credits,external_ids,similar,videos',
-  });
+  final response = await dio.get(
+    '/movie/$movieId',
+    queryParameters: {
+      'language': tmdbLang,
+      'append_to_response': 'credits,external_ids,similar,videos',
+    },
+  );
   final data = Map<String, dynamic>.from(response.data as Map);
   final overview = (data['overview'] as String? ?? '').trim();
   if (overview.isEmpty) {
     try {
-      final fallbackLang = tmdbLang == 'id-ID' ? 'en-US' : 'id-ID';
-      final fbResponse = await dio.get('/movie/$movieId', queryParameters: {
-        'language': fallbackLang,
-      });
+      final fallbackLang = tmdbLang == 'en-US' ? 'id-ID' : 'en-US';
+      final fbResponse = await dio.get(
+        '/movie/$movieId',
+        queryParameters: {'language': fallbackLang},
+      );
       final fbOverview = (fbResponse.data['overview'] as String? ?? '').trim();
       if (fbOverview.isNotEmpty) {
         data['overview'] = fbOverview;
@@ -51,9 +57,10 @@ final movieDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((re
   final rawVideos = (data['videos']?['results'] as List<dynamic>?) ?? [];
   if (rawVideos.isEmpty && tmdbLang != 'en-US') {
     try {
-      final vResponse = await dio.get('/movie/$movieId/videos', queryParameters: {
-        'language': 'en-US',
-      });
+      final vResponse = await dio.get(
+        '/movie/$movieId/videos',
+        queryParameters: {'language': 'en-US'},
+      );
       data['videos'] = vResponse.data;
     } catch (_) {}
   }
@@ -89,9 +96,16 @@ class MovieDetailScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
+                const Icon(
+                  Iconsax.warning_2,
+                  size: 48,
+                  color: AppColors.textMuted,
+                ),
                 const SizedBox(height: 16),
-                Text(s.detailFailed, style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  s.detailFailed,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => ref.invalidate(movieDetailProvider(movieId)),
@@ -120,17 +134,25 @@ class _DetailContent extends ConsumerWidget {
     final voteAverage = (data['vote_average'] as num?)?.toDouble() ?? 0.0;
     final releaseDate = data['release_date'] as String? ?? '';
     final runtime = data['runtime'] as int? ?? 0;
-    final genres = (data['genres'] as List<dynamic>?)?.map((g) => g['name'] as String).toList() ?? [];
+    final genres =
+        (data['genres'] as List<dynamic>?)
+            ?.map((g) => g['name'] as String)
+            .toList() ??
+        [];
     final tagline = data['tagline'] as String? ?? '';
     final imdbId = data['external_ids']?['imdb_id'] as String?;
     final trailer = TrailerVideoModel.findBestTrailer(data['videos']);
-    final belongsToCollection = data['belongs_to_collection'] as Map<String, dynamic>?;
+    final belongsToCollection =
+        data['belongs_to_collection'] as Map<String, dynamic>?;
 
     // Cast
-    final castList = (data['credits']?['cast'] as List<dynamic>?)?.take(10).toList() ?? [];
+    final castList =
+        (data['credits']?['cast'] as List<dynamic>?)?.take(10).toList() ?? [];
 
     // Similar movies
-    final similarList = (data['similar']?['results'] as List<dynamic>?)?.take(10).toList() ?? [];
+    final similarList =
+        (data['similar']?['results'] as List<dynamic>?)?.take(10).toList() ??
+        [];
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isTv = ref.watch(isTvProvider);
@@ -191,16 +213,19 @@ class _DetailContent extends ConsumerWidget {
     required Map<String, dynamic> data,
     required String overview,
   }) async {
-    await context.push('/player', extra: {
-      'title': title,
-      'imdbId': imdbId,
-      'tmdbId': data['id'] as int?,
-      'mediaType': 'movie',
-      'posterPath': data['poster_path'] as String?,
-      'backdropPath': data['backdrop_path'] as String?,
-      'overview': overview,
-      'magnetLink': '',
-    });
+    await context.push(
+      '/player',
+      extra: {
+        'title': title,
+        'imdbId': imdbId,
+        'tmdbId': data['id'] as int?,
+        'mediaType': 'movie',
+        'posterPath': data['poster_path'] as String?,
+        'backdropPath': data['backdrop_path'] as String?,
+        'overview': overview,
+        'magnetLink': '',
+      },
+    );
     await restoreSystemUiAndOrientations(isTv: gIsTv);
   }
 
@@ -225,7 +250,9 @@ class _DetailContent extends ConsumerWidget {
     required String? imdbId,
   }) {
     final mediaId = data['id'] as int? ?? 0;
-    final releaseYear = releaseDate.length >= 4 ? releaseDate.substring(0, 4) : '';
+    final releaseYear = releaseDate.length >= 4
+        ? releaseDate.substring(0, 4)
+        : '';
 
     return CustomScrollView(
       slivers: [
@@ -302,7 +329,8 @@ class _DetailContent extends ConsumerWidget {
                   child: TvFocusable(
                     focusedScale: 1.1,
                     borderRadius: BorderRadius.circular(24),
-                    onTap: () => context.canPop() ? context.pop() : context.go('/'),
+                    onTap: () =>
+                        context.canPop() ? context.pop() : context.go('/'),
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -313,7 +341,11 @@ class _DetailContent extends ConsumerWidget {
                           width: 1,
                         ),
                       ),
-                      child: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                   ),
                 ),
@@ -342,7 +374,9 @@ class _DetailContent extends ConsumerWidget {
                                   offset: const Offset(0, 10),
                                 ),
                                 BoxShadow(
-                                  color: AppColors.primary.withValues(alpha: 0.15),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   blurRadius: 36,
                                   offset: const Offset(0, 4),
                                 ),
@@ -357,7 +391,8 @@ class _DetailContent extends ConsumerWidget {
                               child: CachedNetworkImage(
                                 imageUrl: ApiConstants.imageUrl(posterPath),
                                 fit: BoxFit.cover,
-                                placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
+                                placeholder: (_, _) =>
+                                    Container(color: AppColors.surfaceVariant),
                               ),
                             ),
                           ),
@@ -402,19 +437,30 @@ class _DetailContent extends ConsumerWidget {
                                 Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: AppColors.star.withValues(alpha: 0.18),
+                                        color: AppColors.star.withValues(
+                                          alpha: 0.18,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: AppColors.star.withValues(alpha: 0.4),
+                                          color: AppColors.star.withValues(
+                                            alpha: 0.4,
+                                          ),
                                           width: 0.8,
                                         ),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Icon(Icons.star_rounded, color: AppColors.star, size: 16),
+                                          const Icon(
+                                            Icons.star_rounded,
+                                            color: AppColors.star,
+                                            size: 16,
+                                          ),
                                           const SizedBox(width: 4),
                                           Text(
                                             voteAverage.toStringAsFixed(1),
@@ -424,47 +470,92 @@ class _DetailContent extends ConsumerWidget {
                                               color: Colors.white,
                                             ),
                                           ),
-                                          const Text(' / 10', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                                          const Text(
+                                            ' / 10',
+                                            style: TextStyle(
+                                              color: AppColors.textMuted,
+                                              fontSize: 11,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
                                     if (releaseYear.isNotEmpty) ...[
                                       const SizedBox(width: 8),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: Text(
                                           releaseYear,
-                                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                                          style: const TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ),
                                     ],
                                     if (runtime > 0) ...[
                                       const SizedBox(width: 8),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: Text(
                                           '${runtime ~/ 60}${s.isIndonesian ? 'j' : 'h'} ${runtime % 60}m',
-                                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                                          style: const TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ),
                                     ],
                                     const SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.8),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 4,
                                       ),
-                                      child: const Text('4K UHD', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        '4K UHD',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -479,13 +570,28 @@ class _DetailContent extends ConsumerWidget {
                                     children: genres
                                         .map(
                                           (g) => Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.surfaceVariant.withValues(alpha: 0.7),
-                                              borderRadius: BorderRadius.circular(16),
-                                              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 4,
                                             ),
-                                            child: Text(g, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.surfaceVariant
+                                                  .withValues(alpha: 0.7),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              border: Border.all(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.1,
+                                                ),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              g,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
                                           ),
                                         )
                                         .toList(),
@@ -506,15 +612,27 @@ class _DetailContent extends ConsumerWidget {
                                       glowBlurRadius: 16,
                                       glowColor: AppColors.primary,
                                       borderRadius: BorderRadius.circular(14),
-                                      onTap: () => _playMovie(context, title: title, imdbId: imdbId, data: data, overview: overview),
+                                      onTap: () => _playMovie(
+                                        context,
+                                        title: title,
+                                        imdbId: imdbId,
+                                        data: data,
+                                        overview: overview,
+                                      ),
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                          vertical: 14,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: AppColors.primary,
-                                          borderRadius: BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: AppColors.primary.withValues(alpha: 0.4),
+                                              color: AppColors.primary
+                                                  .withValues(alpha: 0.4),
                                               blurRadius: 18,
                                               offset: const Offset(0, 4),
                                             ),
@@ -531,12 +649,13 @@ class _DetailContent extends ConsumerWidget {
                                             const SizedBox(width: 8),
                                             Text(
                                               s.detailWatchNow,
-                                              style: GoogleFonts.plusJakartaSans(
-                                                color: Colors.black,
-                                                fontWeight: FontWeight.w800,
-                                                fontSize: 14,
-                                                letterSpacing: 0.2,
-                                              ),
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    color: Colors.black,
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: 14,
+                                                    letterSpacing: 0.2,
+                                                  ),
                                             ),
                                           ],
                                         ),
@@ -552,24 +671,49 @@ class _DetailContent extends ConsumerWidget {
                                             context,
                                             trailer: trailer,
                                             title: title,
-                                            onWatchNow: () => _playMovie(context, title: title, imdbId: imdbId, data: data, overview: overview),
+                                            onWatchNow: () => _playMovie(
+                                              context,
+                                              title: title,
+                                              imdbId: imdbId,
+                                              data: data,
+                                              overview: overview,
+                                            ),
                                           );
                                         },
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 18,
+                                            vertical: 13,
+                                          ),
                                           decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 1),
+                                            color: Colors.white.withValues(
+                                              alpha: 0.12,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.redAccent
+                                                  .withValues(alpha: 0.5),
+                                              width: 1,
+                                            ),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              const Icon(Icons.smart_display_rounded, color: Colors.redAccent, size: 20),
+                                              const Icon(
+                                                Icons.smart_display_rounded,
+                                                color: Colors.redAccent,
+                                                size: 20,
+                                              ),
                                               const SizedBox(width: 8),
                                               Text(
                                                 s.trailerTitle,
-                                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -580,11 +724,16 @@ class _DetailContent extends ConsumerWidget {
                                     Consumer(
                                       builder: (context, ref, _) {
                                         final isInWatchlist = ref.watch(
-                                          isInWatchlistProvider((id: mediaId, type: 'movie')),
+                                          isInWatchlistProvider((
+                                            id: mediaId,
+                                            type: 'movie',
+                                          )),
                                         );
                                         return TvFocusable(
                                           focusedScale: 1.04,
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           onTap: () async {
                                             final item = WatchlistItem(
                                               id: mediaId,
@@ -594,28 +743,53 @@ class _DetailContent extends ConsumerWidget {
                                               type: 'movie',
                                               addedAt: DateTime.now(),
                                             );
-                                            final added = await ref.read(watchlistProvider.notifier).toggle(item);
+                                            final added = await ref
+                                                .read(
+                                                  watchlistProvider.notifier,
+                                                )
+                                                .toggle(item);
                                             if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
                                                 SnackBar(
-                                                  content: Text(added ? s.detailAddedToWatchlist : s.detailRemovedFromWatchlist),
-                                                  backgroundColor: AppColors.surfaceVariant,
-                                                  duration: const Duration(seconds: 2),
+                                                  content: Text(
+                                                    added
+                                                        ? s.detailAddedToWatchlist
+                                                        : s.detailRemovedFromWatchlist,
+                                                  ),
+                                                  backgroundColor:
+                                                      AppColors.surfaceVariant,
+                                                  duration: const Duration(
+                                                    seconds: 2,
+                                                  ),
                                                 ),
                                               );
                                             }
                                           },
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 18,
+                                              vertical: 13,
+                                            ),
                                             decoration: BoxDecoration(
                                               color: isInWatchlist
-                                                  ? AppColors.primary.withValues(alpha: 0.15)
-                                                  : Colors.white.withValues(alpha: 0.12),
-                                              borderRadius: BorderRadius.circular(12),
+                                                  ? AppColors.primary
+                                                        .withValues(alpha: 0.15)
+                                                  : Colors.white.withValues(
+                                                      alpha: 0.12,
+                                                    ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                               border: Border.all(
                                                 color: isInWatchlist
-                                                    ? AppColors.primary.withValues(alpha: 0.6)
-                                                    : Colors.white.withValues(alpha: 0.2),
+                                                    ? AppColors.primary
+                                                          .withValues(
+                                                            alpha: 0.6,
+                                                          )
+                                                    : Colors.white.withValues(
+                                                        alpha: 0.2,
+                                                      ),
                                                 width: 1,
                                               ),
                                             ),
@@ -623,15 +797,22 @@ class _DetailContent extends ConsumerWidget {
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(
-                                                  isInWatchlist ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                                                  color: isInWatchlist ? AppColors.primary : Colors.white,
+                                                  isInWatchlist
+                                                      ? Icons.bookmark_rounded
+                                                      : Icons
+                                                            .bookmark_border_rounded,
+                                                  color: isInWatchlist
+                                                      ? AppColors.primary
+                                                      : Colors.white,
                                                   size: 20,
                                                 ),
                                                 const SizedBox(width: 8),
                                                 Text(
                                                   'Watchlist',
                                                   style: GoogleFonts.inter(
-                                                    color: isInWatchlist ? AppColors.primary : Colors.white,
+                                                    color: isInWatchlist
+                                                        ? AppColors.primary
+                                                        : Colors.white,
                                                     fontWeight: FontWeight.w600,
                                                     fontSize: 13,
                                                   ),
@@ -657,24 +838,46 @@ class _DetailContent extends ConsumerWidget {
                                           posterPath: posterPath,
                                           backdropPath: backdropPath,
                                           imdbId: imdbId,
-                                          runtimeMinutes: runtime > 0 ? runtime : 100,
+                                          runtimeMinutes: runtime > 0
+                                              ? runtime
+                                              : 100,
                                         );
                                       },
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 18,
+                                          vertical: 13,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                            width: 1,
+                                          ),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            const Icon(Icons.download_rounded, color: Colors.white, size: 20),
+                                            const Icon(
+                                              Icons.download_rounded,
+                                              color: Colors.white,
+                                              size: 20,
+                                            ),
                                             const SizedBox(width: 8),
                                             Text(
                                               s.detailDownloadMovie,
-                                              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                                              style: GoogleFonts.inter(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -701,7 +904,10 @@ class _DetailContent extends ConsumerWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1300),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 36,
+                  vertical: 24,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -720,7 +926,11 @@ class _DetailContent extends ConsumerWidget {
                       constraints: const BoxConstraints(maxWidth: 900),
                       child: Text(
                         overview.isNotEmpty ? overview : s.detailNoSynopsis,
-                        style: GoogleFonts.inter(fontSize: 15, height: 1.6, color: AppColors.textSecondary),
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          height: 1.6,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
 
@@ -762,7 +972,10 @@ class _DetailContent extends ConsumerWidget {
                               scaleOnFocus: 1.06,
                               onTap: () {
                                 if (castId != null) {
-                                  context.push('/person/$castId', extra: cast['name'] as String?);
+                                  context.push(
+                                    '/person/$castId',
+                                    extra: cast['name'] as String?,
+                                  );
                                 }
                               },
                               child: Padding(
@@ -773,13 +986,23 @@ class _DetailContent extends ConsumerWidget {
                                     children: [
                                       CircleAvatar(
                                         radius: 36,
-                                        backgroundColor: AppColors.surfaceVariant,
+                                        backgroundColor:
+                                            AppColors.surfaceVariant,
                                         backgroundImage: profilePath != null
                                             ? CachedNetworkImageProvider(
-                                                ApiConstants.imageUrl(profilePath, size: ApiConstants.posterSmall),
+                                                ApiConstants.imageUrl(
+                                                  profilePath,
+                                                  size:
+                                                      ApiConstants.posterSmall,
+                                                ),
                                               )
                                             : null,
-                                        child: profilePath == null ? const Icon(Icons.person, color: AppColors.textMuted) : null,
+                                        child: profilePath == null
+                                            ? const Icon(
+                                                Icons.person,
+                                                color: AppColors.textMuted,
+                                              )
+                                            : null,
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
@@ -787,14 +1010,21 @@ class _DetailContent extends ConsumerWidget {
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.center,
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary,
+                                        ),
                                       ),
                                       Text(
                                         cast['character'] ?? '',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.center,
-                                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textMuted,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -830,7 +1060,9 @@ class _DetailContent extends ConsumerWidget {
                             final sId = similar['id'] as int;
                             final sPoster = similar['poster_path'] as String?;
                             final sTitle = similar['title'] as String? ?? '';
-                            final sRating = (similar['vote_average'] as num?)?.toDouble() ?? 0.0;
+                            final sRating =
+                                (similar['vote_average'] as num?)?.toDouble() ??
+                                0.0;
                             return TvFocusable(
                               focusedScale: 1.11,
                               glowBlurRadius: 16,
@@ -845,22 +1077,43 @@ class _DetailContent extends ConsumerWidget {
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(14),
                                         child: CachedNetworkImage(
-                                          imageUrl: ApiConstants.imageUrl(sPoster),
+                                          imageUrl: ApiConstants.imageUrl(
+                                            sPoster,
+                                          ),
                                           fit: BoxFit.cover,
                                           width: 130,
-                                          placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
+                                          placeholder: (_, _) => Container(
+                                            color: AppColors.surfaceVariant,
+                                          ),
                                         ),
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    Text(sTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                    Text(
+                                      sTitle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
                                     Row(
                                       children: [
-                                        const Icon(Icons.star, size: 12, color: AppColors.star),
+                                        const Icon(
+                                          Icons.star,
+                                          size: 12,
+                                          color: AppColors.star,
+                                        ),
                                         const SizedBox(width: 3),
-                                        Text(sRating.toStringAsFixed(1),
-                                            style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                                        Text(
+                                          sRating.toStringAsFixed(1),
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: AppColors.textMuted,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ],
@@ -922,7 +1175,11 @@ class _DetailContent extends ConsumerWidget {
                 color: Colors.black.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+              child: const Icon(
+                Icons.arrow_back,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ),
           flexibleSpace: FlexibleSpaceBar(
@@ -931,7 +1188,10 @@ class _DetailContent extends ConsumerWidget {
               children: [
                 if (backdropPath != null)
                   CachedNetworkImage(
-                    imageUrl: ApiConstants.imageUrl(backdropPath, size: ApiConstants.backdropLarge),
+                    imageUrl: ApiConstants.imageUrl(
+                      backdropPath,
+                      size: ApiConstants.backdropLarge,
+                    ),
                     fit: BoxFit.cover,
                   ),
                 // Seamless gradient fade to pure black background
@@ -1006,10 +1266,11 @@ class _DetailContent extends ConsumerWidget {
                         children: [
                           Text(
                             title,
-                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                              fontSize: isCompact ? 21 : 24,
-                              letterSpacing: -0.3,
-                            ),
+                            style: Theme.of(context).textTheme.headlineLarge
+                                ?.copyWith(
+                                  fontSize: isCompact ? 21 : 24,
+                                  letterSpacing: -0.3,
+                                ),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1017,7 +1278,8 @@ class _DetailContent extends ConsumerWidget {
                             const SizedBox(height: 4),
                             Text(
                               tagline,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
                                     fontStyle: FontStyle.italic,
                                     color: AppColors.primary,
                                   ),
@@ -1027,7 +1289,11 @@ class _DetailContent extends ConsumerWidget {
                           // Rating
                           Row(
                             children: [
-                              const Icon(Icons.star, color: AppColors.star, size: 18),
+                              const Icon(
+                                Icons.star,
+                                color: AppColors.star,
+                                size: 18,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 voteAverage.toStringAsFixed(1),
@@ -1037,7 +1303,13 @@ class _DetailContent extends ConsumerWidget {
                                   color: AppColors.textPrimary,
                                 ),
                               ),
-                              const Text(' / 10', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                              const Text(
+                                ' / 10',
+                                style: TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -1047,13 +1319,22 @@ class _DetailContent extends ConsumerWidget {
                               if (releaseDate.length >= 4)
                                 Text(
                                   releaseDate.substring(0, 4),
-                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               if (runtime > 0) ...[
-                                const Text('  •  ', style: TextStyle(color: AppColors.textMuted)),
+                                const Text(
+                                  '  •  ',
+                                  style: TextStyle(color: AppColors.textMuted),
+                                ),
                                 Text(
-                                  '${runtime ~/ 60}${s.isIndonesian ? 'j' : 'h'} ${runtime % 60}m',
-                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                                  '${runtime ~/ 60}${s.tr('j', 'h', 'घं')} ${runtime % 60}${s.tr('m', 'm', 'मि')}',
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ],
                             ],
@@ -1074,13 +1355,22 @@ class _DetailContent extends ConsumerWidget {
                     children: genres
                         .map(
                           (g) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.surfaceVariant,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(color: AppColors.borderSubtle),
                             ),
-                            child: Text(g, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                            child: Text(
+                              g,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
                           ),
                         )
                         .toList(),
@@ -1119,7 +1409,9 @@ class _DetailContent extends ConsumerWidget {
                           elevation: 6,
                           shadowColor: AppColors.primary.withValues(alpha: 0.4),
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
                     ),
@@ -1147,7 +1439,9 @@ class _DetailContent extends ConsumerWidget {
                             width: 56,
                             height: 56,
                             decoration: BoxDecoration(
-                              color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+                              color: AppColors.surfaceVariant.withValues(
+                                alpha: 0.6,
+                              ),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                 color: Colors.redAccent.withValues(alpha: 0.6),
@@ -1186,7 +1480,9 @@ class _DetailContent extends ConsumerWidget {
                           width: 56,
                           height: 56,
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+                            color: AppColors.surfaceVariant.withValues(
+                              alpha: 0.6,
+                            ),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: AppColors.primary.withValues(alpha: 0.6),
@@ -1210,7 +1506,9 @@ class _DetailContent extends ConsumerWidget {
                           isInWatchlistProvider((id: mediaId, type: 'movie')),
                         );
                         return Tooltip(
-                          message: isInWatchlist ? s.detailWatchlistRemoveTooltip : s.detailWatchlistAddTooltip,
+                          message: isInWatchlist
+                              ? s.detailWatchlistRemoveTooltip
+                              : s.detailWatchlistAddTooltip,
                           child: InkWell(
                             onTap: () async {
                               final item = WatchlistItem(
@@ -1221,11 +1519,17 @@ class _DetailContent extends ConsumerWidget {
                                 type: 'movie',
                                 addedAt: DateTime.now(),
                               );
-                              final added = await ref.read(watchlistProvider.notifier).toggle(item);
+                              final added = await ref
+                                  .read(watchlistProvider.notifier)
+                                  .toggle(item);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(added ? s.detailAddedToWatchlist : s.detailRemovedFromWatchlist),
+                                    content: Text(
+                                      added
+                                          ? s.detailAddedToWatchlist
+                                          : s.detailRemovedFromWatchlist,
+                                    ),
                                     backgroundColor: AppColors.surfaceVariant,
                                     duration: const Duration(seconds: 2),
                                   ),
@@ -1238,7 +1542,9 @@ class _DetailContent extends ConsumerWidget {
                               width: 56,
                               height: 56,
                               decoration: BoxDecoration(
-                                color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+                                color: AppColors.surfaceVariant.withValues(
+                                  alpha: 0.6,
+                                ),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
                                   color: isInWatchlist
@@ -1249,11 +1555,16 @@ class _DetailContent extends ConsumerWidget {
                               ),
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 250),
-                                transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                                transitionBuilder: (child, anim) =>
+                                    ScaleTransition(scale: anim, child: child),
                                 child: Icon(
-                                  isInWatchlist ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                  isInWatchlist
+                                      ? Icons.bookmark_rounded
+                                      : Icons.bookmark_border_rounded,
                                   key: ValueKey(isInWatchlist),
-                                  color: isInWatchlist ? AppColors.primary : Colors.white,
+                                  color: isInWatchlist
+                                      ? AppColors.primary
+                                      : Colors.white,
                                   size: 26,
                                 ),
                               ),
@@ -1272,7 +1583,9 @@ class _DetailContent extends ConsumerWidget {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: () {
-                      final releaseYear = releaseDate.length >= 4 ? releaseDate.substring(0, 4) : '';
+                      final releaseYear = releaseDate.length >= 4
+                          ? releaseDate.substring(0, 4)
+                          : '';
                       DownloadOptionsModal.show(
                         context,
                         tmdbId: data['id'] as int? ?? 0,
@@ -1285,7 +1598,11 @@ class _DetailContent extends ConsumerWidget {
                         runtimeMinutes: runtime > 0 ? runtime : 100,
                       );
                     },
-                    icon: const Icon(Icons.download_rounded, size: 22, color: AppColors.primary),
+                    icon: const Icon(
+                      Icons.download_rounded,
+                      size: 22,
+                      color: AppColors.primary,
+                    ),
                     label: Text(
                       s.detailDownloadMovie,
                       style: const TextStyle(
@@ -1296,7 +1613,9 @@ class _DetailContent extends ConsumerWidget {
                     ),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                       side: const BorderSide(color: AppColors.primary),
                     ),
                   ),
@@ -1305,11 +1624,16 @@ class _DetailContent extends ConsumerWidget {
                 const SizedBox(height: 24),
 
                 // ── Synopsis ──
-                Text(s.detailSynopsis, style: Theme.of(context).textTheme.headlineMedium),
+                Text(
+                  s.detailSynopsis,
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   overview.isNotEmpty ? overview : s.detailNoSynopsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(height: 1.6),
                 ),
 
                 // ── Franchise / Collection Hub ──
@@ -1323,7 +1647,10 @@ class _DetailContent extends ConsumerWidget {
                 // ── Cast ──
                 if (castList.isNotEmpty) ...[
                   const SizedBox(height: 24),
-                  Text(s.detailCast, style: Theme.of(context).textTheme.headlineMedium),
+                  Text(
+                    s.detailCast,
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
                   const SizedBox(height: 12),
                   SizedBox(
                     height: 142,
@@ -1340,7 +1667,10 @@ class _DetailContent extends ConsumerWidget {
                           scaleOnFocus: 1.06,
                           onTap: () {
                             if (castId != null) {
-                              context.push('/person/$castId', extra: cast['name'] as String?);
+                              context.push(
+                                '/person/$castId',
+                                extra: cast['name'] as String?,
+                              );
                             }
                           },
                           child: Padding(
@@ -1354,11 +1684,17 @@ class _DetailContent extends ConsumerWidget {
                                     backgroundColor: AppColors.surfaceVariant,
                                     backgroundImage: profilePath != null
                                         ? CachedNetworkImageProvider(
-                                            ApiConstants.imageUrl(profilePath, size: ApiConstants.posterSmall),
+                                            ApiConstants.imageUrl(
+                                              profilePath,
+                                              size: ApiConstants.posterSmall,
+                                            ),
                                           )
                                         : null,
                                     child: profilePath == null
-                                        ? const Icon(Icons.person, color: AppColors.textMuted)
+                                        ? const Icon(
+                                            Icons.person,
+                                            color: AppColors.textMuted,
+                                          )
                                         : null,
                                   ),
                                   const SizedBox(height: 6),
@@ -1367,14 +1703,20 @@ class _DetailContent extends ConsumerWidget {
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(fontSize: 11, color: AppColors.textPrimary),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textPrimary,
+                                    ),
                                   ),
                                   Text(
                                     cast['character'] ?? '',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.textMuted,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1389,7 +1731,10 @@ class _DetailContent extends ConsumerWidget {
                 // ── Similar Movies ──
                 if (similarList.isNotEmpty) ...[
                   const SizedBox(height: 24),
-                  Text(s.detailSimilarMovies, style: Theme.of(context).textTheme.headlineMedium),
+                  Text(
+                    s.detailSimilarMovies,
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
                   const SizedBox(height: 12),
                   SizedBox(
                     height: 205,
@@ -1402,7 +1747,9 @@ class _DetailContent extends ConsumerWidget {
                         final sId = similar['id'] as int;
                         final sPoster = similar['poster_path'] as String?;
                         final sTitle = similar['title'] as String? ?? '';
-                        final sRating = (similar['vote_average'] as num?)?.toDouble() ?? 0.0;
+                        final sRating =
+                            (similar['vote_average'] as num?)?.toDouble() ??
+                            0.0;
                         return TvFocusable(
                           borderRadius: BorderRadius.circular(12),
                           scaleOnFocus: 1.05,
@@ -1419,19 +1766,37 @@ class _DetailContent extends ConsumerWidget {
                                       imageUrl: ApiConstants.imageUrl(sPoster),
                                       fit: BoxFit.cover,
                                       width: 130,
-                                      placeholder: (_, _) => Container(color: AppColors.surfaceVariant),
+                                      placeholder: (_, _) => Container(
+                                        color: AppColors.surfaceVariant,
+                                      ),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(height: 6),
-                                Text(sTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 12, color: AppColors.textPrimary)),
+                                Text(
+                                  sTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
                                 Row(
                                   children: [
-                                    const Icon(Icons.star, size: 11, color: AppColors.star),
+                                    const Icon(
+                                      Icons.star,
+                                      size: 11,
+                                      color: AppColors.star,
+                                    ),
                                     const SizedBox(width: 2),
-                                    Text(sRating.toStringAsFixed(1),
-                                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                                    Text(
+                                      sRating.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ],

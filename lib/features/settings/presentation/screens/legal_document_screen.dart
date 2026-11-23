@@ -21,7 +21,11 @@ class LegalDocumentScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final language = ref.watch(appLanguageProvider);
     final s = AppStrings(language);
-    final doc = LegalContentRepository.getDocument(type, s.isIndonesian);
+    final doc = LegalContentRepository.getDocument(
+      type,
+      s.isIndonesian,
+      language,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -33,7 +37,7 @@ class LegalDocumentScreen extends ConsumerWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
-          tooltip: s.isIndonesian ? 'Kembali' : 'Back',
+          tooltip: s.tr('Kembali', 'Back', 'वापस'),
         ),
         title: Text(
           doc.title,

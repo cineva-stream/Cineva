@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/localization/app_language.dart';
 import '../../../../core/platform/device_form_factor.dart';
 
 /// Categories for user feedback and reports.
@@ -14,16 +15,26 @@ enum FeedbackCategory {
   report,
   general;
 
-  String localizedLabel(bool isIndonesian) {
+  String localizedLabel(bool isIndonesian, [AppLanguage? language]) {
+    final lang =
+        language ?? (isIndonesian ? AppLanguage.id : AppLanguage.en);
     switch (this) {
       case FeedbackCategory.bugs:
-        return isIndonesian ? 'Bug & Masalah Teknis' : 'Bugs & Technical Issues';
+        if (lang.isHindi) return 'बग और तकनीकी समस्याएं';
+        return lang.isIndonesian
+            ? 'Bug & Masalah Teknis'
+            : 'Bugs & Technical Issues';
       case FeedbackCategory.features:
-        return isIndonesian ? 'Saran Fitur Baru' : 'Feature Suggestions';
+        if (lang.isHindi) return 'नई सुविधा के सुझाव';
+        return lang.isIndonesian ? 'Saran Fitur Baru' : 'Feature Suggestions';
       case FeedbackCategory.report:
-        return isIndonesian ? 'Lapor Konten / Tayangan' : 'Report Media / Subtitles';
+        if (lang.isHindi) return 'मीडिया / सबटाइटल रिपोर्ट करें';
+        return lang.isIndonesian
+            ? 'Lapor Konten / Tayangan'
+            : 'Report Media / Subtitles';
       case FeedbackCategory.general:
-        return isIndonesian ? 'Lainnya / Umum' : 'General & Other';
+        if (lang.isHindi) return 'सामान्य और अन्य';
+        return lang.isIndonesian ? 'Lainnya / Umum' : 'General & Other';
     }
   }
 

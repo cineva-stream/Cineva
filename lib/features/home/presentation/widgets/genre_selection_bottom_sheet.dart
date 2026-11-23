@@ -89,7 +89,7 @@ class GenreSelectionBottomSheet extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          s.isIndonesian ? 'Pilih Genre' : 'Select Genre',
+                          s.tr('Pilih Genre', 'Select Genre', 'शैली चुनें'),
                           style: GoogleFonts.outfit(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -97,7 +97,11 @@ class GenreSelectionBottomSheet extends ConsumerWidget {
                           ),
                         ),
                         Text(
-                          s.isIndonesian ? 'Saring film dan serial TV sesuai selera' : 'Filter movies and TV series by genre',
+                          s.tr(
+                            'Saring film dan serial TV sesuai selera',
+                            'Filter movies and TV series by genre',
+                            'शैली के अनुसार फ़िल्में और टीवी सीरीज़ फ़िल्टर करें',
+                          ),
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             color: AppColors.textMuted,
@@ -114,9 +118,12 @@ class GenreSelectionBottomSheet extends ConsumerWidget {
                         ref.read(selectedHomeGenreProvider.notifier).state = GenreConstants.filters.first;
                         Navigator.pop(context);
                       },
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        child: Text('Reset', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        child: Text(
+                          s.tr('Reset', 'Reset', 'रीसेट'),
+                          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                 ],
@@ -177,7 +184,7 @@ class GenreSelectionBottomSheet extends ConsumerWidget {
                                 const SizedBox(width: 8),
                               ],
                               Text(
-                                genre.getLocalizedLabel(s.isIndonesian),
+                                genre.getLocalizedLabel(s.isIndonesian, s.language),
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
                                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,

@@ -46,7 +46,11 @@ class CollectionDetailScreen extends ConsumerWidget {
               const Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
               const SizedBox(height: 16),
               Text(
-                s.isIndonesian ? 'Gagal memuat data koleksi' : 'Failed to load collection data',
+                s.tr(
+                  'Gagal memuat data koleksi',
+                  'Failed to load collection data',
+                  'संग्रह डेटा लोड करने में विफल',
+                ),
                 style: GoogleFonts.inter(color: AppColors.textPrimary),
               ),
               const SizedBox(height: 16),

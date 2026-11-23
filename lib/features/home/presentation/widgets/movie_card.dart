@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/utils/tmdb_genres.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
 import '../../domain/entities/movie.dart';
@@ -15,7 +17,7 @@ import '../../domain/entities/movie.dart';
 /// - 100% pure poster image without dark vignette or gradient overlays
 /// - Minimalist TMDb rating badge on the poster (semi-transparent black, borderless)
 /// - Movie title and genre/year positioned cleanly below the poster
-class MovieCard extends StatelessWidget {
+class MovieCard extends ConsumerWidget {
   final Movie movie;
   final double width;
   final double? height;
@@ -36,10 +38,17 @@ class MovieCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
     final primaryGenre = TmdbGenres.getPrimaryGenre(
       movie.genreIds,
-      fallback: isTv ? (movie.originCountry.contains('JP') ? 'Anime' : 'Serial TV') : 'Film',
+      fallback: isTv
+          ? (movie.originCountry.contains('JP')
+                ? s.tr('Anime', 'Anime', 'एनीमे')
+                : s.tr('Serial TV', 'TV Show', 'टीवी शो'))
+          : s.tr('Film', 'Movie', 'फ़िल्म'),
+      isIndonesian: s.isIndonesian,
+      language: s.language,
     );
 
     return RepaintBoundary(

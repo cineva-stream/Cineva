@@ -8,6 +8,8 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
+import '../../../../core/localization/app_strings.dart';
+import '../../../../shared/widgets/tv_focusable.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../providers/watch_party_provider.dart';
 import '../screens/watch_party_direct_join_screen.dart';
@@ -15,8 +17,22 @@ import 'watch_party_beta_notice_card.dart';
 
 /// Modern minimalist banner displayed on the Home Screen allowing users to join
 /// a Watch Party room directly without needing to search for the movie or TV series manually.
+///
+/// Supports three adaptive presentations:
+/// 1. [isCompanion: true]   - Stacked companion card placed beside the Hero Carousel on Tablet, Windows & TV.
+/// 2. [isCompactPair: true] - Side-by-side (left-right) Bento card paired with AiringCalendarBanner on Mobile.
+/// 3. Default               - Classic full-width horizontal banner.
 class WatchPartyJoinBanner extends ConsumerWidget {
-  const WatchPartyJoinBanner({super.key});
+  final bool isCompanion;
+  final bool isCompactPair;
+  final double? height;
+
+  const WatchPartyJoinBanner({
+    super.key,
+    this.isCompanion = false,
+    this.isCompactPair = false,
+    this.height,
+  });
 
   void _showJoinModal(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
@@ -33,6 +49,398 @@ class WatchPartyJoinBanner extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
 
+    if (isCompanion) {
+      return _buildCompanionCard(context, ref, s);
+    }
+    if (isCompactPair) {
+      return _buildCompactPairCard(context, ref, s);
+    }
+    return _buildClassicHorizontalBanner(context, ref, s);
+  }
+
+  /// Stacked vertical companion card placed beside Hero Carousel on Tablet, Windows & TV.
+  Widget _buildCompanionCard(
+    BuildContext context,
+    WidgetRef ref,
+    AppStrings s,
+  ) {
+    final cardHeight = height ?? 220.0;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final horizontalPad = screenWidth < 960 ? 14.0 : 18.0;
+    final isTight = cardHeight < 190;
+
+    return TvFocusable(
+      focusedScale: 1.02,
+      glowBlurRadius: 18,
+      borderRadius: BorderRadius.circular(24),
+      onTap: () => _showJoinModal(context, ref),
+      child: Container(
+        height: cardHeight,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF1A1218),
+              Color(0xFF111119),
+              Color(0xFF0B0B11),
+            ],
+          ),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.28),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.65),
+              blurRadius: 18,
+              offset: const Offset(0, 5),
+            ),
+            BoxShadow(
+              color: const Color(0xFFE50914).withValues(alpha: 0.10),
+              blurRadius: 22,
+              offset: const Offset(0, 0),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Ambient glow top-right
+            Positioned(
+              right: -25,
+              top: -25,
+              child: Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFE50914).withValues(alpha: 0.14),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalPad,
+                vertical: isTight ? 11 : 14,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top badges & icon row
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.45),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'SYNC PLAY',
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primaryLight,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          s.watchPartyBetaBadge,
+                          style: GoogleFonts.inter(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white70,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: isTight ? 28 : 32,
+                        height: isTight ? 28 : 32,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFE50914), Color(0xFFB81D24)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Iconsax.people,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: isTight ? 8 : 12),
+                  Text(
+                    s.watchPartyBannerTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: isTight ? 15.5 : 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      height: 1.15,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: Text(
+                      s.watchPartyBannerDesc,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 11.2,
+                        color: const Color(0xFFB0B0C4),
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(vertical: isTight ? 8 : 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.35),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.login_rounded,
+                          size: 14,
+                          color: Colors.black,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            s.watchPartyBannerJoinBtn,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Side-by-side (left-right) Bento card for Mobile below the Hero Carousel.
+  Widget _buildCompactPairCard(
+    BuildContext context,
+    WidgetRef ref,
+    AppStrings s,
+  ) {
+    final cardHeight = height ?? 138.0;
+
+    return TvFocusable(
+      focusedScale: 1.02,
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => _showJoinModal(context, ref),
+      child: Container(
+        height: cardHeight,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF1A131A),
+              Color(0xFF13131B),
+              Color(0xFF0E0E14),
+            ],
+          ),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.24),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE50914), Color(0xFFB81D24)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Iconsax.people,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Text(
+                    'SYNC',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              s.watchPartyBannerTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.outfit(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                height: 1.15,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Expanded(
+              child: Text(
+                s.watchPartyBannerDesc,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 10.2,
+                  color: AppColors.textMuted,
+                  height: 1.25,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 6.5),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.login_rounded,
+                    size: 13,
+                    color: Colors.black,
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      s.watchPartyBannerJoinBtn,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClassicHorizontalBanner(
+    BuildContext context,
+    WidgetRef ref,
+    AppStrings s,
+  ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: ClipRRect(

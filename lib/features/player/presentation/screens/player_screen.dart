@@ -207,7 +207,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       return prefLang.toLowerCase();
     }
     final appLang = ref.read(appLanguageProvider);
-    return appLang == AppLanguage.en ? 'en' : 'id';
+    return appLang == AppLanguage.en
+        ? 'en'
+        : (appLang == AppLanguage.hi ? 'hi' : 'id');
   }
 
   Duration _position = Duration.zero;
@@ -1083,7 +1085,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     try {
       final lang = ref.read(appLanguageProvider);
-      final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
+      final tmdbLang = lang.tmdbLanguageCode;
       final dio = DioClient.createTmdbClient();
 
       final isTv = _currentSeason != null || _currentEpisode != null;
@@ -2051,13 +2053,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       }
 
       if (mounted) {
-        final isId = ref.read(appStringsProvider).isIndonesian;
+        final s = ref.read(appStringsProvider);
         setState(() {
           _isLoading = false;
           _isBuffering = false;
           _currentQuality = 'Offline';
           _resolutionLabel = path.toLowerCase().endsWith('.mp4')
-              ? (isId ? 'Lokal MP4' : 'Local MP4')
+              ? s.tr('Lokal MP4', 'Local MP4', 'लोकल MP4')
               : 'Cineva Offline';
         });
       }
@@ -2170,6 +2172,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
       // 1. If user specifically picked a single direct provider from server menu
       if (_currentServer.videoProvider != null) {
+        if (mounted) {
+          final s = ref.read(appStringsProvider);
+          setState(() {
+            _customLoadingStatus = s.playerTryingServer(
+              _currentServer.videoProvider!.displayName,
+            );
+          });
+        }
         try {
           final res = await loader.loadFromProvider(
             provider: _currentServer.videoProvider!,
@@ -2195,8 +2205,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         episode: _currentEpisode,
         onStartAttempt: (provider) {
           if (mounted) {
+            final s = ref.read(appStringsProvider);
             setState(() {
-              _customLoadingStatus = 'Mencoba ${provider.displayName}...';
+              _customLoadingStatus = s.playerTryingServer(provider.displayName);
             });
           }
         },
@@ -2347,9 +2358,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
       debugPrint('[PlayerScreen] WebView fallback not supported on desktop platform');
       if (mounted) {
+        final s = ref.read(appStringsProvider);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Server webview tidak didukung di platform desktop'),
+          SnackBar(
+            content: Text(
+              s.tr(
+                'Server webview tidak didukung di platform desktop',
+                'WebView server is not supported on desktop platform',
+                'डेस्कटॉप प्लेटफ़ॉर्म पर वेबव्यू सर्वर समर्थित नहीं है',
+              ),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -4405,7 +4423,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       ),
                       child: Text(
                         isCustom
-                            ? (s.isIndonesian ? 'UPLOAD' : 'CUSTOM')
+                            ? s.tr('UPLOAD', 'CUSTOM', 'कस्टम')
                             : sub.language.toUpperCase(),
                         style: TextStyle(
                           color: isCustom
@@ -4519,7 +4537,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            s.isIndonesian ? 'Status Sinkronisasi' : 'Sync Status',
+                            s.tr('Status Sinkronisasi', 'Sync Status', 'सिंक स्थिति'),
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 12,
@@ -4541,10 +4559,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             ),
                             child: Text(
                               style.syncOffsetMs == 0
-                                  ? (s.isIndonesian ? 'Tepat Waktu' : 'On Time')
+                                  ? s.tr('Tepat Waktu', 'On Time', 'समय पर')
                                   : (style.syncOffsetMs > 0
-                                      ? (s.isIndonesian ? 'Terlambat' : 'Delayed')
-                                      : (s.isIndonesian ? 'Lebih Awal' : 'Advanced')),
+                                      ? s.tr('Terlambat', 'Delayed', 'देरी से')
+                                      : s.tr('Lebih Awal', 'Advanced', 'पहले')),
                               style: TextStyle(
                                 color: style.syncOffsetMs == 0
                                     ? AppColors.success
@@ -4561,8 +4579,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       const SizedBox(height: 10),
                       Text(
                         style.syncOffsetMs == 0
-                            ? (s.isIndonesian ? '0.00 detik' : '0.00 seconds')
-                            : '${style.syncOffsetMs > 0 ? "+" : ""}${(style.syncOffsetMs / 1000.0).toStringAsFixed(2)} ${s.isIndonesian ? "detik" : "seconds"}',
+                            ? s.tr('0.00 detik', '0.00 seconds', '0.00 सेकंड')
+                            : '${style.syncOffsetMs > 0 ? "+" : ""}${(style.syncOffsetMs / 1000.0).toStringAsFixed(2)} ${s.tr("detik", "seconds", "सेकंड")}',
                         style: GoogleFonts.outfit(
                           color: style.syncOffsetMs != 0
                               ? AppColors.primary
@@ -4574,16 +4592,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       const SizedBox(height: 4),
                       Text(
                         style.syncOffsetMs == 0
-                            ? (s.isIndonesian
-                                ? 'Subtitle sinkron dengan audio stream'
-                                : 'Subtitle synchronized with audio stream')
+                            ? s.tr(
+                                'Subtitle sinkron dengan audio stream',
+                                'Subtitle synchronized with audio stream',
+                                'सबटाइटल ऑडियो स्ट्रीम के साथ सिंक है',
+                              )
                             : (style.syncOffsetMs > 0
-                                ? (s.isIndonesian
-                                    ? 'Subtitle dimunculkan lebih lambat'
-                                    : 'Subtitle appears later')
-                                : (s.isIndonesian
-                                    ? 'Subtitle dimunculkan lebih cepat'
-                                    : 'Subtitle appears earlier')),
+                                ? s.tr(
+                                    'Subtitle dimunculkan lebih lambat',
+                                    'Subtitle appears later',
+                                    'सबटाइटल बाद में दिखाई देता है',
+                                  )
+                                : s.tr(
+                                    'Subtitle dimunculkan lebih cepat',
+                                    'Subtitle appears earlier',
+                                    'सबटाइटल पहले दिखाई देता है',
+                                  )),
                         style: const TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 11,
@@ -4704,9 +4728,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          s.isIndonesian
-                              ? 'Tekan [-] jika subtitle muncul terlambat dari ucapan aktor, atau [+] jika subtitle muncul mendahului suara.'
-                              : 'Tap [-] if subtitle appears after dialogue, or [+] if subtitle appears before dialogue.',
+                          s.tr(
+                            'Tekan [-] jika subtitle muncul terlambat dari ucapan aktor, atau [+] jika subtitle muncul mendahului suara.',
+                            'Tap [-] if subtitle appears after dialogue, or [+] if subtitle appears before dialogue.',
+                            'यदि सबटाइटल संवाद के बाद आता है तो [-] दबाएं, या यदि पहले आता है तो [+] दबाएं।',
+                          ),
                           style: const TextStyle(
                             color: AppColors.textMuted,
                             fontSize: 11,
@@ -4739,36 +4765,38 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               children: [
                 _buildSubtitleSectionHeader(
                   icon: Icons.format_size_rounded,
-                  title: s.isIndonesian ? 'Ukuran Font' : 'Font Size',
+                  title: s.tr('Ukuran Font', 'Font Size', 'फ़ॉन्ट आकार'),
                   valueLabel: is1080pDesktopOrTv
-                      ? (s.isIndonesian
-                          ? '$effectivePt pt (1080p+ Aktif)'
-                          : '$effectivePt pt (1080p+ Active)')
+                      ? s.tr(
+                          '$effectivePt pt (1080p+ Aktif)',
+                          '$effectivePt pt (1080p+ Active)',
+                          '$effectivePt pt (1080p+ सक्रिय)',
+                        )
                       : '$effectivePt pt',
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Kecil' : 'Small',
+                      label: s.tr('Kecil', 'Small', 'छोटा'),
                       isSelected: (style.fontSize - 16.0).abs() < 1.0,
                       onTap: () => notifier.updateFontSize(16.0),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Sedang' : 'Medium',
+                      label: s.tr('Sedang', 'Medium', 'मध्यम'),
                       isSelected: (style.fontSize - 20.0).abs() < 1.0,
                       onTap: () => notifier.updateFontSize(20.0),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Besar' : 'Large',
+                      label: s.tr('Besar', 'Large', 'बड़ा'),
                       isSelected: (style.fontSize - 24.0).abs() < 1.0,
                       onTap: () => notifier.updateFontSize(24.0),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Ekstra' : 'Extra',
+                      label: s.tr('Ekstra', 'Extra', 'अतिरिक्त'),
                       isSelected: (style.fontSize - 28.0).abs() < 1.0,
                       onTap: () => notifier.updateFontSize(28.0),
                     ),
@@ -4812,35 +4840,35 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               children: [
                 _buildSubtitleSectionHeader(
                   icon: Icons.palette_outlined,
-                  title: s.isIndonesian ? 'Warna Teks' : 'Text Color',
+                  title: s.tr('Warna Teks', 'Text Color', 'टेक्स्ट का रंग'),
                   valueLabel: _getColorName(style.textColor, s),
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
                     _buildColorCard(
-                      s.isIndonesian ? 'Putih' : 'White',
+                      s.tr('Putih', 'White', 'सफ़ेद'),
                       const Color(0xFFFFFFFF),
                       style.textColor,
                       notifier,
                     ),
                     const SizedBox(width: 8),
                     _buildColorCard(
-                      s.isIndonesian ? 'Kuning' : 'Yellow',
+                      s.tr('Kuning', 'Yellow', 'पीला'),
                       const Color(0xFFFFD700),
                       style.textColor,
                       notifier,
                     ),
                     const SizedBox(width: 8),
                     _buildColorCard(
-                      'Cyan',
+                      s.tr('Cyan', 'Cyan', 'सियान'),
                       const Color(0xFF00E5FF),
                       style.textColor,
                       notifier,
                     ),
                     const SizedBox(width: 8),
                     _buildColorCard(
-                      s.isIndonesian ? 'Hijau' : 'Green',
+                      s.tr('Hijau', 'Green', 'हरा'),
                       const Color(0xFF00E676),
                       style.textColor,
                       notifier,
@@ -4867,32 +4895,32 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               children: [
                 _buildSubtitleSectionHeader(
                   icon: Icons.layers_outlined,
-                  title: s.isIndonesian ? 'Latar Belakang Teks' : 'Text Background',
+                  title: s.tr('Latar Belakang Teks', 'Text Background', 'टेक्स्ट बैकग्राउंड'),
                   valueLabel: '${(style.backgroundOpacity * 100).toInt()}%',
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Mati (0%)' : 'None (0%)',
+                      label: s.tr('Mati (0%)', 'None (0%)', 'बंद (0%)'),
                       isSelected: (style.backgroundOpacity - 0.0).abs() < 0.05,
                       onTap: () => notifier.updateBackgroundOpacity(0.0),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Tipis (30%)' : 'Thin (30%)',
+                      label: s.tr('Tipis (30%)', 'Thin (30%)', 'हल्का (30%)'),
                       isSelected: (style.backgroundOpacity - 0.3).abs() < 0.08,
                       onTap: () => notifier.updateBackgroundOpacity(0.3),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Sedang' : 'Medium',
+                      label: s.tr('Sedang', 'Medium', 'मध्यम'),
                       isSelected: (style.backgroundOpacity - 0.65).abs() < 0.08,
                       onTap: () => notifier.updateBackgroundOpacity(0.65),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Pekat' : 'Solid',
+                      label: s.tr('Pekat', 'Solid', 'गहरा'),
                       isSelected: (style.backgroundOpacity - 0.9).abs() < 0.08,
                       onTap: () => notifier.updateBackgroundOpacity(0.9),
                     ),
@@ -4936,32 +4964,32 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               children: [
                 _buildSubtitleSectionHeader(
                   icon: Icons.border_style_rounded,
-                  title: s.isIndonesian ? 'Garis Tepi (Outline)' : 'Text Outline',
+                  title: s.tr('Garis Tepi (Outline)', 'Text Outline', 'टेक्स्ट आउटलाइन'),
                   valueLabel: '${style.strokeWidth.toStringAsFixed(1)} px',
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Mati (0)' : 'None (0)',
+                      label: s.tr('Mati (0)', 'None (0)', 'बंद (0)'),
                       isSelected: (style.strokeWidth - 0.0).abs() < 0.2,
                       onTap: () => notifier.updateStrokeWidth(0.0),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Tipis' : 'Thin',
+                      label: s.tr('Tipis', 'Thin', 'पतला'),
                       isSelected: (style.strokeWidth - 1.5).abs() < 0.3,
                       onTap: () => notifier.updateStrokeWidth(1.5),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Standar' : 'Standard',
+                      label: s.tr('Standar', 'Standard', 'मानक'),
                       isSelected: (style.strokeWidth - 2.5).abs() < 0.3,
                       onTap: () => notifier.updateStrokeWidth(2.5),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Tebal' : 'Thick',
+                      label: s.tr('Tebal', 'Thick', 'मोटा'),
                       isSelected: (style.strokeWidth - 4.0).abs() < 0.3,
                       onTap: () => notifier.updateStrokeWidth(4.0),
                     ),
@@ -5005,32 +5033,32 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               children: [
                 _buildSubtitleSectionHeader(
                   icon: Icons.vertical_align_bottom_rounded,
-                  title: s.isIndonesian ? 'Posisi Vertikal' : 'Vertical Position',
+                  title: s.tr('Posisi Vertikal', 'Vertical Position', 'लंबवत स्थिति'),
                   valueLabel: '${style.bottomOffset.toInt()} px',
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Bawah (20)' : 'Bottom (20)',
+                      label: s.tr('Bawah (20)', 'Bottom (20)', 'नीचे (20)'),
                       isSelected: (style.bottomOffset - 20.0).abs() < 3.0,
                       onTap: () => notifier.updateBottomOffset(20.0),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Standar (32)' : 'Default (32)',
+                      label: s.tr('Standar (32)', 'Default (32)', 'मानक (32)'),
                       isSelected: (style.bottomOffset - 32.0).abs() < 3.0,
                       onTap: () => notifier.updateBottomOffset(32.0),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Tinggi (48)' : 'Raised (48)',
+                      label: s.tr('Tinggi (48)', 'Raised (48)', 'ऊँचा (48)'),
                       isSelected: (style.bottomOffset - 48.0).abs() < 3.0,
                       onTap: () => notifier.updateBottomOffset(48.0),
                     ),
                     const SizedBox(width: 6),
                     _buildPresetPill(
-                      label: s.isIndonesian ? 'Atas (70)' : 'High (70)',
+                      label: s.tr('Atas (70)', 'High (70)', 'शीर्ष (70)'),
                       isSelected: (style.bottomOffset - 70.0).abs() < 3.0,
                       onTap: () => notifier.updateBottomOffset(70.0),
                     ),
@@ -5086,9 +5114,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        s.isIndonesian
-                            ? 'Kembalikan Tampilan Default'
-                            : 'Reset Appearance to Default',
+                        s.tr(
+                          'Kembalikan Tampilan Default',
+                          'Reset Appearance to Default',
+                          'डिफ़ॉल्ट दिखावट रीसेट करें',
+                        ),
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 11,
@@ -5150,15 +5180,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   String _getColorName(Color color, AppStrings s) {
     final argb = color.toARGB32();
     if (argb == const Color(0xFFFFFFFF).toARGB32()) {
-      return s.isIndonesian ? 'Putih' : 'White';
+      return s.tr('Putih', 'White', 'सफ़ेद');
     } else if (argb == const Color(0xFFFFD700).toARGB32()) {
-      return s.isIndonesian ? 'Kuning' : 'Yellow';
+      return s.tr('Kuning', 'Yellow', 'पीला');
     } else if (argb == const Color(0xFF00E5FF).toARGB32()) {
-      return 'Cyan';
+      return s.tr('Cyan', 'Cyan', 'सियान');
     } else if (argb == const Color(0xFF00E676).toARGB32()) {
-      return s.isIndonesian ? 'Hijau' : 'Green';
+      return s.tr('Hijau', 'Green', 'हरा');
     }
-    return s.isIndonesian ? 'Kustom' : 'Custom';
+    return s.tr('Kustom', 'Custom', 'कस्टम');
   }
 
   Widget _buildSubTabButton({
@@ -5580,7 +5610,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     IconData icon;
     switch (_sidePanelPage) {
       case _SidePanelPage.main:
-        title = s.isIndonesian ? 'Pengaturan' : 'Settings';
+        title = s.tr('Pengaturan', 'Settings', 'सेटिंग्स');
         icon = Iconsax.setting_2;
         break;
       case _SidePanelPage.quality:
@@ -6086,8 +6116,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     : Icons.volume_down_rounded),
           title: 'Audio & Volume',
           subtitle: _volume == 0
-              ? (s.isIndonesian ? 'Bisu (Muted)' : 'Muted')
-              : '${_volume.toInt()}%${_volume > 100.0 ? (s.isIndonesian ? ' • Boost Aktif' : ' • Boost Active') : ''}',
+              ? s.tr('Bisu (Muted)', 'Muted', 'म्यूट')
+              : '${_volume.toInt()}%${_volume > 100.0 ? s.tr(' • Boost Aktif', ' • Boost Active', ' • बूस्ट सक्रिय') : ''}',
           onTap: () => _navigateToSidePanelPage(_SidePanelPage.audio),
         ),
 
@@ -6297,7 +6327,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          s.isIndonesian ? 'AKTIF' : 'ACTIVE',
+                          s.tr('AKTIF', 'ACTIVE', 'सक्रिय'),
                           style: const TextStyle(
                             color: AppColors.primary,
                             fontSize: 9,
@@ -6449,7 +6479,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           ...audioTracks.map((track) {
             final isSelected = _player.state.track.audio == track;
             final trackTitle =
-                track.title ?? track.language ?? (s.isIndonesian ? 'Trek ${track.id}' : 'Track ${track.id}');
+                track.title ??
+                track.language ??
+                s.tr('Trek ${track.id}', 'Track ${track.id}', 'ट्रैक ${track.id}');
             return Material(
               color: Colors.transparent,
               child: InkWell(
@@ -6798,7 +6830,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ),
           child: Text(
-            s.isIndonesian ? 'Daftar Subtitle Tersedia' : 'Available Subtitles',
+            s.tr('Daftar Subtitle Tersedia', 'Available Subtitles', 'उपलब्ध सबटाइटल'),
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 11,
@@ -6883,7 +6915,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         ),
                         child: Text(
                           isCustom
-                              ? (s.isIndonesian ? 'UPLOAD' : 'CUSTOM')
+                              ? s.tr('UPLOAD', 'CUSTOM', 'कस्टम')
                               : sub.language.toUpperCase(),
                           style: TextStyle(
                             color: isCustom
@@ -7019,7 +7051,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          s.isIndonesian ? 'AKTIF' : 'ACTIVE',
+                          s.tr('AKTIF', 'ACTIVE', 'सक्रिय'),
                           style: const TextStyle(
                             color: AppColors.primary,
                             fontSize: 9,
@@ -7210,7 +7242,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                               _switchServer(webServer);
                             },
                             icon: const Icon(Icons.public_rounded, size: 16),
-                            label: const Text('Coba Server Web (VidLink)'),
+                            label: Text(
+                              s.tr(
+                                'Coba Server Web (VidLink)',
+                                'Try Web Server (VidLink)',
+                                'वेब सर्वर आज़माएं (VidLink)',
+                              ),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.black,
@@ -7677,9 +7715,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                s.isIndonesian
-                    ? 'Ruangan Nonton Bersama telah ditutup oleh Host.'
-                    : 'The Watch Party room has been closed by the Host.',
+                s.tr(
+                  'Ruangan Nonton Bersama telah ditutup oleh Host.',
+                  'The Watch Party room has been closed by the Host.',
+                  'होस्ट द्वारा वॉच पार्टी रूम बंद कर दिया गया है।',
+                ),
               ),
               backgroundColor: AppColors.primary,
               duration: const Duration(seconds: 3),

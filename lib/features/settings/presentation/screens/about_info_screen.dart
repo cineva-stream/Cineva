@@ -76,10 +76,12 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
   }
 
   Future<void> _launchEmail(String email) async {
-    final isIndo = ref.read(appStringsProvider).isIndonesian;
-    final fallbackMsg = isIndo
-        ? 'Email disalin ke papan klip'
-        : 'Email copied to clipboard';
+    final s = ref.read(appStringsProvider);
+    final fallbackMsg = s.tr(
+      'Email disalin ke papan klip',
+      'Email copied to clipboard',
+      'ईमेल क्लिपबोर्ड पर कॉपी किया गया',
+    );
     final mailUri = Uri.parse(
       'mailto:$email?subject=Cineva%20Feedback%20%2F%20Bug%20Report',
     );
@@ -135,7 +137,7 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                     size: 18,
                   ),
                   onPressed: () => Navigator.of(context).pop(),
-                  tooltip: s.isIndonesian ? 'Kembali' : 'Back',
+                  tooltip: s.tr('Kembali', 'Back', 'वापस'),
                 ),
               ),
             ),
@@ -277,9 +279,11 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
 
                   // ── 3. Developer & Community Connect Cards ──
                   Text(
-                    s.isIndonesian
-                        ? 'Komunitas & Pengembang'
-                        : 'Community & Developer',
+                    s.tr(
+                      'Komunitas & Pengembang',
+                      'Community & Developer',
+                      'समुदाय और डेवलपर',
+                    ),
                     style: GoogleFonts.outfit(
                       color: Colors.white,
                       fontSize: 18,
@@ -428,9 +432,11 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    s.isIndonesian
-                                        ? 'Email Pengembang'
-                                        : 'Developer Contact',
+                                    s.tr(
+                                      'Email Pengembang',
+                                      'Developer Contact',
+                                      'डेवलपर संपर्क',
+                                    ),
                                     style: GoogleFonts.outfit(
                                       color: Colors.white,
                                       fontSize: 16,
@@ -448,9 +454,11 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    s.isIndonesian
-                                        ? 'Hubungi kami jika memiliki rekomendasi fitur atau laporan bug'
-                                        : 'Contact us for recommendations or bug reports',
+                                    s.tr(
+                                      'Hubungi kami jika memiliki rekomendasi fitur atau laporan bug',
+                                      'Contact us for recommendations or bug reports',
+                                      'फ़ीचर सुझावों या बग रिपोर्ट के लिए हमसे संपर्क करें',
+                                    ),
                                     style: GoogleFonts.inter(
                                       color: AppColors.textSecondary,
                                       fontSize: 11.5,
@@ -465,14 +473,18 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                                 color: AppColors.textMuted,
                                 size: 18,
                               ),
-                              tooltip: s.isIndonesian
-                                  ? 'Salin Email'
-                                  : 'Copy Email',
+                              tooltip: s.tr(
+                                'Salin Email',
+                                'Copy Email',
+                                'ईमेल कॉपी करें',
+                              ),
                               onPressed: () => _copyToClipboard(
                                 'cineva.dev@gmail.com',
-                                s.isIndonesian
-                                    ? 'Email cineva.dev@gmail.com disalin'
-                                    : 'Email cineva.dev@gmail.com copied',
+                                s.tr(
+                                  'Email cineva.dev@gmail.com disalin',
+                                  'Email cineva.dev@gmail.com copied',
+                                  'ईमेल cineva.dev@gmail.com कॉपी किया गया',
+                                ),
                               ),
                             ),
                           ],
@@ -485,9 +497,11 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
 
                   // ── 4. App Description ──
                   Text(
-                    s.isIndonesian
-                        ? 'Tentang Aplikasi'
-                        : 'About the Application',
+                    s.tr(
+                      'Tentang Aplikasi',
+                      'About the Application',
+                      'ऐप के बारे में',
+                    ),
                     style: GoogleFonts.outfit(
                       color: Colors.white,
                       fontSize: 18,
@@ -509,9 +523,11 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
 
                   // ── 5. Clean Architecture Pillars ──
                   Text(
-                    s.isIndonesian
-                        ? 'Fitur & Keunggulan'
-                        : 'Features & Architecture',
+                    s.tr(
+                      'Fitur & Keunggulan',
+                      'Features & Architecture',
+                      'विशेषताएं और आर्किटेक्चर',
+                    ),
                     style: GoogleFonts.outfit(
                       color: Colors.white,
                       fontSize: 18,
@@ -624,9 +640,11 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          s.isIndonesian
-                              ? 'Hak cipta seluruh konten film & TV series adalah milik masing-masing studio pembuatnya.'
-                              : 'All film and TV series intellectual properties remain with their respective studios.',
+                          s.tr(
+                            'Hak cipta seluruh konten film & TV series adalah milik masing-masing studio pembuatnya.',
+                            'All film and TV series intellectual properties remain with their respective studios.',
+                            'सभी फ़िल्म और टीवी सीरीज़ के बौद्धिक संपदा अधिकार उनके संबंधित स्टूडियो के पास सुरक्षित हैं।',
+                          ),
                           textAlign: TextAlign.center,
                           style: GoogleFonts.inter(
                             color: AppColors.textMuted.withValues(alpha: 0.6),

@@ -234,9 +234,11 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
 
         // Title
         Text(
-          s.isIndonesian
-              ? 'Tautkan Akun Cineva Anda'
-              : 'Connect Your Cineva Account',
+          s.tr(
+            'Tautkan Akun Cineva Anda',
+            'Connect Your Cineva Account',
+            'अपना Cineva खाता कनेक्ट करें',
+          ),
           style: GoogleFonts.outfit(
             fontSize: isShortScreen ? 24 : 32,
             fontWeight: FontWeight.w800,
@@ -250,9 +252,11 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
 
         // Subtitle
         Text(
-          s.isIndonesian
-              ? 'Pindai QR code ini melalui aplikasi Cineva di handphone Anda. Bekerja otomatis baik di Wi-Fi rumah maupun paket data seluler (4G/5G).'
-              : 'Scan this QR code from your Cineva smartphone app. Works seamlessly over home Wi-Fi and mobile cellular (4G/5G).',
+          s.tr(
+            'Pindai QR code ini melalui aplikasi Cineva di handphone Anda. Bekerja otomatis baik di Wi-Fi rumah maupun paket data seluler (4G/5G).',
+            'Scan this QR code from your Cineva smartphone app. Works seamlessly over home Wi-Fi and mobile cellular (4G/5G).',
+            'अपने Cineva स्मार्टफ़ोन ऐप से इस QR कोड को स्कैन करें। यह होम वाई-फ़ाई और मोबाइल डेटा (4G/5G) दोनों पर स्वचालित रूप से काम करता है।',
+          ),
           style: GoogleFonts.inter(
             fontSize: isShortScreen ? 12.5 : 13.5,
             color: AppColors.textSecondary,
@@ -266,36 +270,48 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
         _buildStepItem(
           number: '1',
           icon: Icons.phone_android_rounded,
-          title: s.isIndonesian
-              ? 'Buka Cineva di Handphone'
-              : 'Open Cineva on Smartphone',
-          desc: s.isIndonesian
-              ? 'Gunakan aplikasi Cineva di smartphone Android Anda'
-              : 'Launch the Cineva Android app',
+          title: s.tr(
+            'Buka Cineva di Handphone',
+            'Open Cineva on Smartphone',
+            'स्मार्टफ़ोन पर Cineva खोलें',
+          ),
+          desc: s.tr(
+            'Gunakan aplikasi Cineva di smartphone Android Anda',
+            'Launch the Cineva Android app',
+            'अपने Android स्मार्टफ़ोन पर Cineva ऐप खोलें',
+          ),
           isShortScreen: isShortScreen,
         ),
         SizedBox(height: isShortScreen ? 8 : 10),
         _buildStepItem(
           number: '2',
           icon: Iconsax.scan_barcode,
-          title: s.isIndonesian
-              ? 'Pilih "Tautkan ke TV"'
-              : 'Select "Connect to TV"',
-          desc: s.isIndonesian
-              ? 'Masuk ke Pengaturan ➔ Tautkan ke Android TV / PC'
-              : 'Go to Settings ➔ Connect to Android TV / PC',
+          title: s.tr(
+            'Pilih "Tautkan ke TV"',
+            'Select "Connect to TV"',
+            '"टीवी से लिंक करें" चुनें',
+          ),
+          desc: s.tr(
+            'Masuk ke Pengaturan ➔ Tautkan ke Android TV / PC',
+            'Go to Settings ➔ Connect to Android TV / PC',
+            'सेटिंग्स ➔ Android TV / PC से लिंक करें पर जाएं',
+          ),
           isShortScreen: isShortScreen,
         ),
         SizedBox(height: isShortScreen ? 8 : 10),
         _buildStepItem(
           number: '3',
           icon: Icons.qr_code_scanner_rounded,
-          title: s.isIndonesian
-              ? 'Pindai QR Code di Samping'
-              : 'Scan the QR Code Beside',
-          desc: s.isIndonesian
-              ? 'Arahkan kamera ponsel Anda untuk sinkronisasi instan'
-              : 'Aim your phone camera for instant transfer',
+          title: s.tr(
+            'Pindai QR Code di Samping',
+            'Scan the QR Code Beside',
+            'बगल में दिया गया QR कोड स्कैन करें',
+          ),
+          desc: s.tr(
+            'Arahkan kamera ponsel Anda untuk sinkronisasi instan',
+            'Aim your phone camera for instant transfer',
+            'तुरंत सिंक करने के लिए अपने फ़ोन के कैमरे को QR कोड की ओर करें',
+          ),
           isShortScreen: isShortScreen,
         ),
 
@@ -336,9 +352,11 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      s.isIndonesian
-                          ? 'Masuk sebagai Tamu'
-                          : 'Continue as Guest',
+                      s.tr(
+                        'Masuk sebagai Tamu',
+                        'Continue as Guest',
+                        'अतिथि के रूप में जारी रखें',
+                      ),
                       style: GoogleFonts.inter(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -379,9 +397,11 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        s.isIndonesian
-                            ? 'Setup Manual di PC'
-                            : 'Manual PC Setup',
+                        s.tr(
+                          'Setup Manual di PC',
+                          'Manual PC Setup',
+                          'पीसी पर मैनुअल सेटअप',
+                        ),
                         style: GoogleFonts.inter(
                           color: AppColors.primaryLight,
                           fontWeight: FontWeight.w700,
@@ -421,7 +441,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      s.isIndonesian ? 'Muat Ulang QR' : 'Refresh QR',
+                      s.tr('Muat Ulang QR', 'Refresh QR', 'QR रीफ़्रेश करें'),
                       style: GoogleFonts.inter(
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
@@ -555,9 +575,11 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
             ),
             const SizedBox(height: 12),
             Text(
-              s.isIndonesian
-                  ? 'Gagal membuat sesi QR'
-                  : 'Failed to start QR session',
+              s.tr(
+                'Gagal membuat sesi QR',
+                'Failed to start QR session',
+                'QR सत्र शुरू करने में विफल',
+              ),
               textAlign: TextAlign.center,
               style: GoogleFonts.outfit(
                 color: AppColors.textPrimary,
@@ -580,7 +602,7 @@ class _TvQrSyncViewState extends ConsumerState<TvQrSyncView> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  s.isIndonesian ? 'Coba Lagi' : 'Retry',
+                  s.tr('Coba Lagi', 'Retry', 'पुनः प्रयास करें'),
                   style: GoogleFonts.inter(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,

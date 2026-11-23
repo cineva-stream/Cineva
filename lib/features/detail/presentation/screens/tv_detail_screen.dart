@@ -11,7 +11,6 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../watchlist/data/watchlist_repository.dart';
 import '../../../download/presentation/widgets/download_options_modal.dart';
-import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
@@ -29,7 +28,7 @@ final tvDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((
   tvId,
 ) async {
   final lang = ref.watch(appLanguageProvider);
-  final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
+  final tmdbLang = lang.tmdbLanguageCode;
   final dio = DioClient.createTmdbClient();
   final response = await dio.get(
     '/tv/$tvId',
@@ -42,7 +41,7 @@ final tvDetailProvider = FutureProvider.family<Map<String, dynamic>, int>((
   final overview = (data['overview'] as String? ?? '').trim();
   if (overview.isEmpty) {
     try {
-      final fallbackLang = tmdbLang == 'id-ID' ? 'en-US' : 'id-ID';
+      final fallbackLang = tmdbLang == 'en-US' ? 'id-ID' : 'en-US';
       final fbResponse = await dio.get(
         '/tv/$tvId',
         queryParameters: {'language': fallbackLang},
@@ -77,7 +76,7 @@ final tvSeasonEpisodesProvider =
       ({int tvId, int seasonNumber})
     >((ref, arg) async {
       final lang = ref.watch(appLanguageProvider);
-      final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
+      final tmdbLang = lang.tmdbLanguageCode;
       final dio = DioClient.createTmdbClient();
       try {
         final response = await dio.get(
@@ -89,7 +88,7 @@ final tvSeasonEpisodesProvider =
       } catch (e) {
         // Fallback to alternate language
         try {
-          final fallbackLang = tmdbLang == 'id-ID' ? 'en-US' : 'id-ID';
+          final fallbackLang = tmdbLang == 'en-US' ? 'id-ID' : 'en-US';
           final response = await dio.get(
             '/tv/${arg.tvId}/season/${arg.seasonNumber}',
             queryParameters: {'language': fallbackLang},

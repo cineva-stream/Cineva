@@ -39,6 +39,8 @@ class ModernFlagBadge extends StatelessWidget {
       flagContent = const _IndonesiaFlagPainterWidget();
     } else if (code == 'US') {
       flagContent = const _UnitedStatesFlagPainterWidget();
+    } else if (code == 'IN') {
+      flagContent = const _IndiaFlagPainterWidget();
     } else {
       // General world flag using regional indicator emoji
       final emoji = countryCodeToEmoji(code);
@@ -130,6 +132,45 @@ class _UnitedStatesFlagPainterWidget extends StatelessWidget {
                 fontSize: 6.5,
                 height: 1.0,
               ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Pixel-perfect vector representation of the Indian flag (Tiranga with Ashoka Chakra)
+class _IndiaFlagPainterWidget extends StatelessWidget {
+  const _IndiaFlagPainterWidget();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Column(
+          children: [
+            Expanded(
+              child: Container(color: const Color(0xFFFF9933)), // Saffron
+            ),
+            Expanded(
+              child: Container(color: const Color(0xFFFFFFFF)), // White
+            ),
+            Expanded(
+              child: Container(color: const Color(0xFF138808)), // India Green
+            ),
+          ],
+        ),
+        // Navy Blue Ashoka Chakra in the center white band
+        Container(
+          width: 4.5,
+          height: 4.5,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: const Color(0xFF000080),
+              width: 1.1,
             ),
           ),
         ),

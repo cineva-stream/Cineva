@@ -52,7 +52,11 @@ class _PersonDetailScreenState extends ConsumerState<PersonDetailScreen> {
               const Icon(Iconsax.warning_2, size: 48, color: AppColors.textMuted),
               const SizedBox(height: 16),
               Text(
-                s.isIndonesian ? 'Gagal memuat profil pemeran' : 'Failed to load actor profile',
+                s.tr(
+                  'Gagal memuat profil pemeran',
+                  'Failed to load actor profile',
+                  'कलाकार प्रोफ़ाइल लोड करने में विफल',
+                ),
                 style: GoogleFonts.inter(color: AppColors.textPrimary),
               ),
               const SizedBox(height: 16),

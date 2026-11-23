@@ -7,9 +7,93 @@ import 'package:cineva/core/constants/genre_constants.dart';
 import 'package:cineva/core/utils/tmdb_genres.dart';
 import 'package:cineva/features/history/data/models/watch_history_item.dart';
 import 'package:cineva/features/home/data/datasources/tmdb_remote_datasource.dart';
+import 'package:cineva/features/settings/data/legal_content.dart';
 
 void main() {
   group('Localization Verification Tests', () {
+    test('AppLanguage.hi displays "India" in Indonesian, "Hindi" in English, and "हिन्दी" in Hindi', () {
+      expect(AppLanguage.hi.code, 'hi');
+      expect(AppLanguage.hi.flagCountryCode, 'IN');
+      expect(AppLanguage.hi.tmdbLanguageCode, 'hi-IN');
+      expect(AppLanguage.id.tmdbLanguageCode, 'id-ID');
+      expect(AppLanguage.en.tmdbLanguageCode, 'en-US');
+      expect(AppLanguage.fromCode('hi'), AppLanguage.hi);
+
+      // Dynamic localized label requirement:
+      // "India" when active language is Indonesian, "Hindi" when English, "हिन्दी" when Hindi
+      expect(AppLanguage.hi.localizedLabel(AppLanguage.id), 'India');
+      expect(AppLanguage.hi.localizedLabel(AppLanguage.en), 'Hindi');
+      expect(AppLanguage.hi.localizedLabel(AppLanguage.hi), 'हिन्दी');
+
+      expect(AppLanguage.hi.localizedDisplayName(AppLanguage.id), 'India (हिन्दी)');
+      expect(AppLanguage.hi.localizedDisplayName(AppLanguage.en), 'Hindi (हिन्दी)');
+      expect(AppLanguage.hi.localizedDisplayName(AppLanguage.hi), 'हिन्दी (भारत)');
+    });
+
+    test('AppStrings provides full Hindi (hi) translations across all core modules', () {
+      final sHi = const AppStrings(AppLanguage.hi);
+
+      expect(sHi.isHindi, isTrue);
+      expect(sHi.isIndonesian, isFalse);
+      expect(sHi.isEnglish, isFalse);
+
+      // Navigation & Home
+      expect(sHi.navHome, 'होम');
+      expect(sHi.navSearch, 'खोजें');
+      expect(sHi.navWatchlist, 'वॉचलिस्ट');
+      expect(sHi.navSettings, 'सेटिंग्स');
+      expect(sHi.homeWatchNow, 'अभी देखें');
+      expect(sHi.homeContinueWatching, 'देखना जारी रखें');
+      expect(sHi.homeSeeAll, 'सभी देखें');
+
+      // Watch Party & Airing Calendar
+      expect(sHi.watchPartyBadgeTitle, 'वॉच पार्टी');
+      expect(sHi.watchPartyJoinWatching, 'वॉच पार्टी में जुड़ें');
+      expect(sHi.calendarBannerTitle, 'रिलीज़ कैलेंडर और एपिसोड शेड्यूल');
+      expect(sHi.calendarTitle, 'रिलीज़ कैलेंडर');
+
+      // Settings & Player & Download
+      expect(sHi.settingsTitle, 'सेटिंग्स');
+      expect(sHi.settingsAppLanguage, 'ऐप की भाषा');
+      expect(sHi.playerQualityTitle, 'वीडियो गुणवत्ता');
+      expect(sHi.playerTryingServer('Zeila'), 'Zeila आज़माया जा रहा है...');
+      expect(const AppStrings(AppLanguage.en).playerTryingServer('Zeila'), 'Trying Zeila...');
+      expect(const AppStrings(AppLanguage.id).playerTryingServer('Zeila'), 'Mencoba Zeila...');
+      expect(sHi.downloadStatusFinalizing, 'पूर्ण हो रहा है');
+    });
+
+    test('ContentPreference, GenreConstants, TmdbGenres, and LegalContentRepository support Hindi', () {
+      for (final pref in ContentPreference.values) {
+        final labelHi = pref.getLocalizedLabel(false, AppLanguage.hi);
+        final descHi = pref.getLocalizedDescription(false, AppLanguage.hi);
+        expect(labelHi.isNotEmpty, isTrue);
+        expect(descHi.isNotEmpty, isTrue);
+      }
+      expect(
+        ContentPreference.bollywood.getLocalizedLabel(false, AppLanguage.hi),
+        'बॉलीवुड (भारत)',
+      );
+
+      for (final genre in GenreConstants.filters) {
+        final labelHi = genre.getLocalizedLabel(false, AppLanguage.hi);
+        expect(labelHi.isNotEmpty, isTrue);
+      }
+      expect(TmdbGenres.getGenreName(28, language: AppLanguage.hi), 'एक्शन');
+      expect(TmdbGenres.getGenreName(10749, language: AppLanguage.hi), 'रोमांस');
+      expect(
+        TmdbGenres.getFormattedGenres([28, 12], language: AppLanguage.hi),
+        'एक्शन • एडवेंचर',
+      );
+
+      final privacyHi = LegalContentRepository.getDocument(
+        LegalDocType.privacyPolicy,
+        false,
+        AppLanguage.hi,
+      );
+      expect(privacyHi.title, 'गोपनीयता नीति');
+      expect(privacyHi.sections.isNotEmpty, isTrue);
+    });
+
     test('AppStrings provides correct English translations for user-reported items', () {
       final sEn = const AppStrings(AppLanguage.en);
       final sId = const AppStrings(AppLanguage.id);

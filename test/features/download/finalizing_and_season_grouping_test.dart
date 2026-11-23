@@ -111,6 +111,73 @@ void main() {
         await tempDir.delete(recursive: true);
       }
     });
+
+    test('OfflineMp4Builder.build reuses pre-concatenated fMP4 video.mp4 and deletes segments in parallel', () async {
+      final tempDir = await Directory.systemTemp.createTemp('cineva_preconcat_test_');
+      try {
+        final bundleDir = Directory('${tempDir.path}/item_fmp4');
+        await bundleDir.create(recursive: true);
+
+        final initFile = File('${bundleDir.path}/init_v.mp4');
+        final initBytes = List<int>.filled(20000, 0x11);
+        await initFile.writeAsBytes(initBytes);
+
+        final segFiles = <File>[];
+        final totalBytes = <int>[...initBytes];
+        for (int i = 0; i < 5; i++) {
+          final seg = File('${bundleDir.path}/v_${i.toString().padLeft(4, '0')}.m4s');
+          final b = List<int>.filled(10000, i + 1);
+          await seg.writeAsBytes(b);
+          segFiles.add(seg);
+          totalBytes.addAll(b);
+        }
+
+        // Simulate progressive track assembler having already built video.mp4 during download
+        final mp4File = File('${bundleDir.path}/${OfflineMp4Builder.mp4Name}');
+        await mp4File.writeAsBytes(totalBytes);
+
+        final messages = <String>[];
+        final ok = await OfflineMp4Builder.build(
+          dir: bundleDir,
+          deleteSegmentsOnSuccess: true,
+          deleteSegmentsInBackground: false,
+          onProgress: ({required double progress, required String statusMessage}) {
+            messages.add(statusMessage);
+          },
+        );
+
+        expect(ok, isTrue);
+        // Should skip 'Menyatukan segmen' because video.mp4 was already pre-concatenated!
+        expect(messages.any((m) => m.contains('Menyatukan segmen')), isFalse);
+        expect(await mp4File.exists(), isTrue);
+        expect(await initFile.exists(), isFalse);
+        for (final seg in segFiles) {
+          expect(await seg.exists(), isFalse);
+        }
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    test('OfflineMp4Builder.deleteFilesFast deletes large batches of segment files in parallel', () async {
+      final tempDir = await Directory.systemTemp.createTemp('cineva_fast_delete_test_');
+      try {
+        final files = <File>[];
+        for (int i = 0; i < 150; i++) {
+          final f = File('${tempDir.path}/v_${i.toString().padLeft(4, '0')}.ts');
+          await f.writeAsBytes(const [0x47, 0x00, 0x01]);
+          files.add(f);
+        }
+
+        await OfflineMp4Builder.deleteFilesFast(files, batchSize: 64);
+
+        for (final f in files) {
+          expect(await f.exists(), isFalse);
+        }
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
+    });
   });
 
   group('Download List Screen Finalizing & Season Dropdown Widget Tests', () {

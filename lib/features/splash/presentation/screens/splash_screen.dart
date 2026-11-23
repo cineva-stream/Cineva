@@ -35,7 +35,6 @@ class SplashScreen extends ConsumerStatefulWidget {
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
-
   static const List<String> _allPosters = [
     'assets/images/spiderman_brand_new_day.webp',
     'assets/images/stranger_things.webp',
@@ -84,7 +83,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _navTimer = Timer(const Duration(milliseconds: 2000), () {
       if (!mounted) return;
       final profile = ref.read(userProfileProvider);
-      final isConfigured = profile.isConfigured || ProfileService.hasConfiguredProfile();
+      final isConfigured =
+          profile.isConfigured || ProfileService.hasConfiguredProfile();
       final hasAcceptedLegal = SettingsService.hasAcceptedLegal();
 
       if (isConfigured && hasAcceptedLegal) {
@@ -115,8 +115,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     setState(() => _isGoogleSigningIn = true);
     final s = ref.read(appStringsProvider);
     try {
-      final success =
-          await ref.read(googleSyncProvider.notifier).signInWithGoogle(ref);
+      final success = await ref
+          .read(googleSyncProvider.notifier)
+          .signInWithGoogle(ref);
       if (!mounted) return;
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -161,7 +162,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             backgroundColor: AppColors.surfaceElevated,
             content: Text(
               s.backupImportSuccessSummary(
-                  result.watchlistCount, result.historyCount),
+                result.watchlistCount,
+                result.historyCount,
+              ),
               style: GoogleFonts.inter(color: Colors.white),
             ),
           ),
@@ -173,8 +176,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.surfaceElevated,
-            content: Text(result.errorMessage ?? s.backupImportFailed,
-                style: GoogleFonts.inter(color: Colors.white)),
+            content: Text(
+              result.errorMessage ?? s.backupImportFailed,
+              style: GoogleFonts.inter(color: Colors.white),
+            ),
           ),
         );
       }
@@ -192,7 +197,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   void _onStartWatching() {
     final profile = ref.read(userProfileProvider);
-    final isConfigured = profile.isConfigured || ProfileService.hasConfiguredProfile();
+    final isConfigured =
+        profile.isConfigured || ProfileService.hasConfiguredProfile();
     if (!isConfigured) {
       context.push('/onboarding-profile');
     } else if (!SettingsService.hasAcceptedLegal()) {
@@ -212,9 +218,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         fit: StackFit.expand,
         children: [
           // ── Layer 1: Full-Bleed Tilted (`\`) Vertical Counter-Scrolling Poster Wall ──
-          Positioned.fill(
-            child: _buildTiltedPosterWall(size),
-          ),
+          Positioned.fill(child: _buildTiltedPosterWall(size)),
 
           // ── Layer 2: Bottom-to-Top Pure Black Fade to Transparent ──
           Positioned.fill(
@@ -307,15 +311,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final double gridWidth = size.width * absCos + size.height * absSin + 48.0;
     final double gridHeight = size.width * absSin + size.height * absCos + 64.0;
 
-    final int columnCount =
-        math.max(3, ((gridWidth + cardSpacing) / colExtent).ceil());
+    final int columnCount = math.max(
+      3,
+      ((gridWidth + cardSpacing) / colExtent).ceil(),
+    );
     final double totalGridWidth =
         columnCount * cardWidth + (columnCount - 1) * cardSpacing;
-    final int chunksPerCycle =
-        math.max(1, (_allPosters.length / postersPerChunk).ceil());
+    final int chunksPerCycle = math.max(
+      1,
+      (_allPosters.length / postersPerChunk).ceil(),
+    );
     final double cycleHeight = chunksPerCycle * chunkHeight;
-    final int cyclesPerCol =
-        ((gridHeight + chunkHeight) / cycleHeight).ceil().clamp(1, 10);
+    final int cyclesPerCol = ((gridHeight + chunkHeight) / cycleHeight)
+        .ceil()
+        .clamp(1, 10);
     final int chunksPerCol = cyclesPerCol * chunksPerCycle;
 
     return RepaintBoundary(
@@ -378,7 +387,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final basePosters = _postersForColumn(colIndex);
     final chunks = <Widget>[];
     for (int cycle = 0; cycle < cyclesPerCol; cycle++) {
-      for (int chunkInCycle = 0; chunkInCycle < chunksPerCycle; chunkInCycle++) {
+      for (
+        int chunkInCycle = 0;
+        chunkInCycle < chunksPerCycle;
+        chunkInCycle++
+      ) {
         final start = chunkInCycle * postersPerChunk;
         chunks.add(
           RepaintBoundary(
@@ -402,7 +415,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Widget _buildPosterCard(
-      String path, double width, double height, double bottomMargin) {
+    String path,
+    double width,
+    double height,
+    double bottomMargin,
+  ) {
     final isNetwork = path.startsWith('http://') || path.startsWith('https://');
     final ImageProvider baseProvider = isNetwork
         ? CachedNetworkImageProvider(path)
@@ -434,10 +451,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       mainAxisSize: MainAxisSize.min,
       children: [
         Image.asset(
-          'assets/images/logo_cineva.png',
-          height: 92,
-          fit: BoxFit.contain,
-        )
+              'assets/images/logo_cineva.png',
+              height: 92,
+              fit: BoxFit.contain,
+            )
             .animate()
             .fadeIn(duration: 650.ms, curve: Curves.easeOut)
             .scale(
@@ -448,9 +465,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             ),
         const SizedBox(height: 14),
         Text(
-          s.isIndonesian
-              ? 'Nonton Film & Serial TV Favorit Tanpa Batas'
-              : 'Stream Unlimited Movies & TV Series',
+          s.tr(
+            'Nonton Film & Serial TV Favorit Tanpa Batas',
+            'Stream Unlimited Movies & TV Series',
+            'असीमित फ़िल्में और टीवी सीरीज़ स्ट्रीम करें',
+          ),
           textAlign: TextAlign.center,
           style: GoogleFonts.plusJakartaSans(
             color: AppColors.textPrimary,
@@ -461,9 +480,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         ).animate(delay: 200.ms).fadeIn(duration: 450.ms),
         const SizedBox(height: 6),
         Text(
-          s.isIndonesian
-              ? 'Koleksi Terlengkap • Kualitas Ultra HD • Subtitle Indonesia'
-              : 'Complete Library • Ultra HD Quality • World Subtitles',
+          s.tr(
+            'Koleksi Terlengkap • Kualitas Ultra HD • Subtitle Indonesia',
+            'Complete Library • Ultra HD Quality • World Subtitles',
+            'संपूर्ण संग्रह • अल्ट्रा एचडी गुणवत्ता • बहुभाषी सबटाइटल',
+          ),
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             color: AppColors.textMuted,
@@ -524,29 +545,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(
-              child: _buildLanguageCard(
-                lang: AppLanguage.id,
-                isSelected: currentLang == AppLanguage.id,
-                onTap: () {
-                  ref
-                      .read(appLanguageProvider.notifier)
-                      .setLanguage(AppLanguage.id);
-                },
+            for (int i = 0; i < AppLanguage.values.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              Expanded(
+                child: _buildLanguageCard(
+                  lang: AppLanguage.values[i],
+                  activeLanguage: currentLang,
+                  isSelected: currentLang == AppLanguage.values[i],
+                  onTap: () {
+                    ref
+                        .read(appLanguageProvider.notifier)
+                        .setLanguage(AppLanguage.values[i]);
+                  },
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildLanguageCard(
-                lang: AppLanguage.en,
-                isSelected: currentLang == AppLanguage.en,
-                onTap: () {
-                  ref
-                      .read(appLanguageProvider.notifier)
-                      .setLanguage(AppLanguage.en);
-                },
-              ),
-            ),
+            ],
           ],
         ),
         const SizedBox(height: 14),
@@ -569,7 +582,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               onTap: _isGoogleSigningIn ? null : _handleGoogleSignIn,
               borderRadius: BorderRadius.circular(14),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     if (_isGoogleSigningIn)
@@ -644,7 +660,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               onTap: _isRestoringFile ? null : _handleFileRestore,
               borderRadius: BorderRadius.circular(14),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     if (_isRestoringFile)
@@ -804,6 +823,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   Widget _buildLanguageCard({
     required AppLanguage lang,
+    required AppLanguage activeLanguage,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
@@ -812,7 +832,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         constraints: const BoxConstraints(minHeight: 48),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withValues(alpha: 0.08)
@@ -830,29 +850,29 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           children: [
             ModernFlagBadge(
               countryCode: lang.flagCountryCode,
-              width: 26,
-              height: 18,
+              width: 24,
+              height: 16,
               borderRadius: 3.5,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Flexible(
               child: Text(
-                lang.label,
+                lang.localizedLabel(activeLanguage),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
                   color: isSelected ? AppColors.primary : Colors.white,
-                  fontSize: 13,
+                  fontSize: 12.5,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),
             if (isSelected) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               const Icon(
                 Icons.check_circle_rounded,
                 color: AppColors.primary,
-                size: 16,
+                size: 15,
               ),
             ],
           ],
@@ -908,8 +928,9 @@ class _TiltedPosterFlowDelegate extends FlowDelegate {
       final double phase = (colIndex * 0.27) % 1.0;
       final bool scrollUp = colIndex.isEven;
       final double progress = (animation.value + phase) % 1.0;
-      final double dy =
-          scrollUp ? -progress * cycleHeight : progress * cycleHeight;
+      final double dy = scrollUp
+          ? -progress * cycleHeight
+          : progress * cycleHeight;
 
       for (int chunkIndex = 0; chunkIndex < chunksPerCol; chunkIndex++) {
         final int childIndex = colIndex * chunksPerCol + chunkIndex;

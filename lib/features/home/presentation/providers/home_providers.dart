@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 
 import '../../../../core/constants/content_preference.dart';
-import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../settings/data/settings_service.dart';
@@ -20,8 +19,11 @@ final tmdbDioProvider = Provider<Dio>((ref) {
 
 final tmdbDatasourceProvider = Provider<TmdbRemoteDatasource>((ref) {
   final lang = ref.watch(appLanguageProvider);
-  final tmdbLang = lang == AppLanguage.en ? 'en-US' : 'id-ID';
-  return TmdbRemoteDatasource(ref.watch(tmdbDioProvider), languageCode: tmdbLang);
+  final tmdbLang = lang.tmdbLanguageCode;
+  return TmdbRemoteDatasource(
+    ref.watch(tmdbDioProvider),
+    languageCode: tmdbLang,
+  );
 });
 
 final movieRepositoryProvider = Provider<MovieRepository>((ref) {
@@ -32,7 +34,7 @@ final movieRepositoryProvider = Provider<MovieRepository>((ref) {
 
 class ContentPreferenceNotifier extends StateNotifier<ContentPreference> {
   ContentPreferenceNotifier()
-      : super(ContentPreference.fromCode(SettingsService.getContentPreference()));
+    : super(ContentPreference.fromCode(SettingsService.getContentPreference()));
 
   Future<void> setPreference(ContentPreference pref) async {
     state = pref;
@@ -42,8 +44,8 @@ class ContentPreferenceNotifier extends StateNotifier<ContentPreference> {
 
 final contentPreferenceProvider =
     StateNotifierProvider<ContentPreferenceNotifier, ContentPreference>((ref) {
-  return ContentPreferenceNotifier();
-});
+      return ContentPreferenceNotifier();
+    });
 
 // ── Data Providers (Reactively filter by user content preference) ──
 
@@ -69,12 +71,16 @@ final upcomingMoviesProvider = FutureProvider<List<Movie>>((ref) {
 
 final popularTvProvider = FutureProvider<List<TvSeries>>((ref) {
   final pref = ref.watch(contentPreferenceProvider);
-  return ref.watch(movieRepositoryProvider).getPopularTvSeries(preference: pref);
+  return ref
+      .watch(movieRepositoryProvider)
+      .getPopularTvSeries(preference: pref);
 });
 
 final topRatedTvProvider = FutureProvider<List<TvSeries>>((ref) {
   final pref = ref.watch(contentPreferenceProvider);
-  return ref.watch(movieRepositoryProvider).getTopRatedTvSeries(preference: pref);
+  return ref
+      .watch(movieRepositoryProvider)
+      .getTopRatedTvSeries(preference: pref);
 });
 
 // ── Paginated Infinite Scroll Providers for Home Filter Catalog ──
@@ -115,12 +121,13 @@ class PaginatedMediaState<T> {
   }
 }
 
-class PaginatedPopularMoviesNotifier extends StateNotifier<PaginatedMediaState<Movie>> {
+class PaginatedPopularMoviesNotifier
+    extends StateNotifier<PaginatedMediaState<Movie>> {
   final MovieRepository _repo;
   final ContentPreference _pref;
 
   PaginatedPopularMoviesNotifier(this._repo, this._pref)
-      : super(const PaginatedMediaState(isLoading: true)) {
+    : super(const PaginatedMediaState(isLoading: true)) {
     _loadInitial();
   }
 
@@ -134,10 +141,7 @@ class PaginatedPopularMoviesNotifier extends StateNotifier<PaginatedMediaState<M
         hasMore: initial.isNotEmpty,
       );
     } catch (e) {
-      state = PaginatedMediaState(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = PaginatedMediaState(isLoading: false, error: e.toString());
     }
   }
 
@@ -146,12 +150,17 @@ class PaginatedPopularMoviesNotifier extends StateNotifier<PaginatedMediaState<M
     state = state.copyWith(isLoadingMore: true);
     try {
       final nextPage = state.page + 1;
-      final nextItems = await _repo.getPopularMovies(page: nextPage, preference: _pref);
+      final nextItems = await _repo.getPopularMovies(
+        page: nextPage,
+        preference: _pref,
+      );
       if (nextItems.isEmpty) {
         state = state.copyWith(isLoadingMore: false, hasMore: false);
       } else {
         final existingIds = state.items.map((m) => m.id).toSet();
-        final newItems = nextItems.where((m) => !existingIds.contains(m.id)).toList();
+        final newItems = nextItems
+            .where((m) => !existingIds.contains(m.id))
+            .toList();
         state = state.copyWith(
           items: [...state.items, ...newItems],
           page: nextPage,
@@ -170,18 +179,22 @@ class PaginatedPopularMoviesNotifier extends StateNotifier<PaginatedMediaState<M
   }
 }
 
-class PaginatedPopularTvNotifier extends StateNotifier<PaginatedMediaState<TvSeries>> {
+class PaginatedPopularTvNotifier
+    extends StateNotifier<PaginatedMediaState<TvSeries>> {
   final MovieRepository _repo;
   final ContentPreference _pref;
 
   PaginatedPopularTvNotifier(this._repo, this._pref)
-      : super(const PaginatedMediaState(isLoading: true)) {
+    : super(const PaginatedMediaState(isLoading: true)) {
     _loadInitial();
   }
 
   Future<void> _loadInitial() async {
     try {
-      final initial = await _repo.getPopularTvSeries(page: 1, preference: _pref);
+      final initial = await _repo.getPopularTvSeries(
+        page: 1,
+        preference: _pref,
+      );
       state = PaginatedMediaState(
         items: initial,
         page: 1,
@@ -189,10 +202,7 @@ class PaginatedPopularTvNotifier extends StateNotifier<PaginatedMediaState<TvSer
         hasMore: initial.isNotEmpty,
       );
     } catch (e) {
-      state = PaginatedMediaState(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = PaginatedMediaState(isLoading: false, error: e.toString());
     }
   }
 
@@ -201,12 +211,17 @@ class PaginatedPopularTvNotifier extends StateNotifier<PaginatedMediaState<TvSer
     state = state.copyWith(isLoadingMore: true);
     try {
       final nextPage = state.page + 1;
-      final nextItems = await _repo.getPopularTvSeries(page: nextPage, preference: _pref);
+      final nextItems = await _repo.getPopularTvSeries(
+        page: nextPage,
+        preference: _pref,
+      );
       if (nextItems.isEmpty) {
         state = state.copyWith(isLoadingMore: false, hasMore: false);
       } else {
         final existingIds = state.items.map((t) => t.id).toSet();
-        final newItems = nextItems.where((t) => !existingIds.contains(t.id)).toList();
+        final newItems = nextItems
+            .where((t) => !existingIds.contains(t.id))
+            .toList();
         state = state.copyWith(
           items: [...state.items, ...newItems],
           page: nextPage,
@@ -226,15 +241,21 @@ class PaginatedPopularTvNotifier extends StateNotifier<PaginatedMediaState<TvSer
 }
 
 final paginatedPopularMoviesProvider =
-    StateNotifierProvider<PaginatedPopularMoviesNotifier, PaginatedMediaState<Movie>>((ref) {
-  final repo = ref.watch(movieRepositoryProvider);
-  final pref = ref.watch(contentPreferenceProvider);
-  return PaginatedPopularMoviesNotifier(repo, pref);
-});
+    StateNotifierProvider<
+      PaginatedPopularMoviesNotifier,
+      PaginatedMediaState<Movie>
+    >((ref) {
+      final repo = ref.watch(movieRepositoryProvider);
+      final pref = ref.watch(contentPreferenceProvider);
+      return PaginatedPopularMoviesNotifier(repo, pref);
+    });
 
 final paginatedPopularTvProvider =
-    StateNotifierProvider<PaginatedPopularTvNotifier, PaginatedMediaState<TvSeries>>((ref) {
-  final repo = ref.watch(movieRepositoryProvider);
-  final pref = ref.watch(contentPreferenceProvider);
-  return PaginatedPopularTvNotifier(repo, pref);
-});
+    StateNotifierProvider<
+      PaginatedPopularTvNotifier,
+      PaginatedMediaState<TvSeries>
+    >((ref) {
+      final repo = ref.watch(movieRepositoryProvider);
+      final pref = ref.watch(contentPreferenceProvider);
+      return PaginatedPopularTvNotifier(repo, pref);
+    });

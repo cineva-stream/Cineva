@@ -161,8 +161,8 @@ class ContinueWatchingCard extends ConsumerWidget {
                           item.mediaType == 'tv'
                               ? (item.season != null
                                   ? 'S${item.season}:E${item.episode}'
-                                  : (s.isIndonesian ? 'SERIAL TV' : 'TV SERIES'))
-                              : (s.isIndonesian ? 'FILM' : 'MOVIE'),
+                                  : s.tr('SERIAL TV', 'TV SERIES', 'टीवी सीरीज़'))
+                              : s.tr('FILM', 'MOVIE', 'फ़िल्म'),
                           style: GoogleFonts.inter(
                             color: Colors.white,
                             fontSize: 10,
@@ -240,7 +240,10 @@ class ContinueWatchingCard extends ConsumerWidget {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  item.localizedProgressSubtitle(isIndonesian: s.isIndonesian),
+                  item.localizedProgressSubtitle(
+                    isIndonesian: s.isIndonesian,
+                    language: s.language,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(

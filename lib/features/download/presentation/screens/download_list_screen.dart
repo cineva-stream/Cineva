@@ -569,35 +569,53 @@ class _InProgressCard extends ConsumerWidget {
   String _localizeSpeed(String raw, AppStrings s) {
     if (s.isIndonesian) return raw;
     if (raw.startsWith('Menyatukan segmen video')) {
-      return raw.replaceFirst('Menyatukan segmen video', 'Merging video segments');
+      return raw.replaceFirst(
+        'Menyatukan segmen video',
+        s.tr('Menyatukan segmen video', 'Merging video segments', 'वीडियो सेगमेंट जोड़े जा रहे हैं'),
+      );
     }
     if (raw.startsWith('Menyatukan segmen audio')) {
-      return raw.replaceFirst('Menyatukan segmen audio', 'Merging audio segments');
+      return raw.replaceFirst(
+        'Menyatukan segmen audio',
+        s.tr('Menyatukan segmen audio', 'Merging audio segments', 'ऑडियो सेगमेंट जोड़े जा रहे हैं'),
+      );
     }
     if (raw.startsWith('Menyatukan segmen media')) {
-      return raw.replaceFirst('Menyatukan segmen media', 'Merging media segments');
+      return raw.replaceFirst(
+        'Menyatukan segmen media',
+        s.tr('Menyatukan segmen media', 'Merging media segments', 'मीडिया सेगमेंट जोड़े जा रहे हैं'),
+      );
     }
     if (raw.startsWith('Menyatukan segmen')) {
-      return raw.replaceFirst('Menyatukan segmen', 'Merging segments');
+      return raw.replaceFirst(
+        'Menyatukan segmen',
+        s.tr('Menyatukan segmen', 'Merging segments', 'सेगमेंट जोड़े जा रहे हैं'),
+      );
+    }
+    if (raw.startsWith('Mengoptimalkan format MP4')) {
+      return raw.replaceFirst(
+        'Mengoptimalkan format MP4',
+        s.tr('Mengoptimalkan format MP4', 'Optimizing MP4 container', 'MP4 फ़ॉर्मेट ऑप्टिमाइज़ किया जा रहा है'),
+      );
     }
     switch (raw) {
       case 'Selesai':
-        return 'Completed';
+        return s.tr('Selesai', 'Completed', 'पूर्ण');
       case 'Dijeda':
-        return 'Paused';
+        return s.tr('Dijeda', 'Paused', 'रोका गया');
       case 'Gagal':
-        return 'Failed';
+        return s.tr('Gagal', 'Failed', 'विफल');
       case 'Melanjutkan...':
-        return 'Resuming...';
+        return s.tr('Melanjutkan...', 'Resuming...', 'जारी किया जा रहा है...');
       case 'Menyelesaikan unduhan...':
       case 'Menyelesaikan berkas...':
-        return 'Finalizing package...';
+        return s.tr('Menyelesaikan unduhan...', 'Finalizing package...', 'डाउनलोड पूर्ण किया जा रहा है...');
       case 'Menyiapkan berkas offline...':
-        return 'Preparing offline package...';
+        return s.tr('Menyiapkan berkas offline...', 'Preparing offline package...', 'ऑफ़लाइन पैकेज तैयार किया जा रहा है...');
       case 'Mengoptimalkan format MP4...':
-        return 'Optimizing MP4 container...';
+        return s.tr('Mengoptimalkan format MP4...', 'Optimizing MP4 container...', 'MP4 फ़ॉर्मेट ऑप्टिमाइज़ किया जा रहा है...');
       case 'Memvalidasi video...':
-        return 'Validating video...';
+        return s.tr('Memvalidasi video...', 'Validating video...', 'वीडियो सत्यापित किया जा रहा है...');
       default:
         return raw;
     }
@@ -987,7 +1005,7 @@ class _CompletedMovieCard extends ConsumerWidget {
                     color: AppColors.primary,
                     size: 28,
                   ),
-                  tooltip: s.isIndonesian ? 'Putar' : 'Play',
+                  tooltip: s.tr('Putar', 'Play', 'चलाएं'),
                 ),
                 IconButton(
                   onPressed: () => _showDeleteDialog(context, notifier, s),
@@ -1028,11 +1046,16 @@ class _CompletedMovieCard extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceVariant,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(s.isIndonesian ? 'Hapus Unduhan?' : 'Delete Download?', style: GoogleFonts.outfit(color: Colors.white)),
+        title: Text(
+          s.tr('Hapus Unduhan?', 'Delete Download?', 'डाउनलोड हटाएं?'),
+          style: GoogleFonts.outfit(color: Colors.white),
+        ),
         content: Text(
-          s.isIndonesian
-              ? 'Film "${item.title}" akan dihapus dari penyimpanan perangkat Anda.'
-              : '"${item.title}" will be deleted from your device storage.',
+          s.tr(
+            'Film "${item.title}" akan dihapus dari penyimpanan perangkat Anda.',
+            '"${item.title}" will be deleted from your device storage.',
+            '"${item.title}" आपके डिवाइस स्टोरेज से हटा दिया जाएगा।',
+          ),
           style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
         ),
         actions: [
@@ -1181,9 +1204,11 @@ class _TvSeriesSeasonCardState extends ConsumerState<_TvSeriesSeasonCard> {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          appStrings.isIndonesian
-                              ? '${sortedSeasonKeys.length} Season • ${widget.episodes.length} Episode'
-                              : '${sortedSeasonKeys.length} Seasons • ${widget.episodes.length} Episodes',
+                          appStrings.tr(
+                            '${sortedSeasonKeys.length} Season • ${widget.episodes.length} Episode',
+                            '${sortedSeasonKeys.length} Seasons • ${widget.episodes.length} Episodes',
+                            '${sortedSeasonKeys.length} सीज़न • ${widget.episodes.length} एपिसोड',
+                          ),
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -1209,9 +1234,9 @@ class _TvSeriesSeasonCardState extends ConsumerState<_TvSeriesSeasonCard> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              appStrings.isIndonesian
-                                  ? (widget.isExpanded ? 'Tutup Daftar' : 'Buka Episode')
-                                  : (widget.isExpanded ? 'Collapse List' : 'View Episodes'),
+                              widget.isExpanded
+                                  ? appStrings.tr('Tutup Daftar', 'Collapse List', 'सूची बंद करें')
+                                  : appStrings.tr('Buka Episode', 'View Episodes', 'एपिसोड देखें'),
                               style: GoogleFonts.outfit(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -1402,7 +1427,7 @@ class _TvSeriesSeasonCardState extends ConsumerState<_TvSeriesSeasonCard> {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             icon: const Icon(Iconsax.trash, size: 14, color: AppColors.textMuted),
-            tooltip: s.isIndonesian ? 'Hapus Season $seasonNum' : 'Delete Season $seasonNum',
+            tooltip: s.tr('Hapus Season $seasonNum', 'Delete Season $seasonNum', 'सीज़न $seasonNum हटाएं'),
             onPressed: () {
               showDialog(
                 context: context,
@@ -1410,13 +1435,15 @@ class _TvSeriesSeasonCardState extends ConsumerState<_TvSeriesSeasonCard> {
                   backgroundColor: AppColors.surfaceVariant,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   title: Text(
-                    s.isIndonesian ? 'Hapus Season $seasonNum?' : 'Delete Season $seasonNum?',
+                    s.tr('Hapus Season $seasonNum?', 'Delete Season $seasonNum?', 'सीज़न $seasonNum हटाएं?'),
                     style: GoogleFonts.outfit(color: Colors.white),
                   ),
                   content: Text(
-                    s.isIndonesian
-                        ? 'Semua ${episodes.length} episode di Season $seasonNum ($seriesTitle) akan dihapus.'
-                        : 'All ${episodes.length} episodes in Season $seasonNum ($seriesTitle) will be deleted.',
+                    s.tr(
+                      'Semua ${episodes.length} episode di Season $seasonNum ($seriesTitle) akan dihapus.',
+                      'All ${episodes.length} episodes in Season $seasonNum ($seriesTitle) will be deleted.',
+                      'सीज़न $seasonNum ($seriesTitle) के सभी ${episodes.length} एपिसोड हटा दिए जाएंगे।',
+                    ),
                     style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
                   ),
                   actions: [
@@ -1432,7 +1459,10 @@ class _TvSeriesSeasonCardState extends ConsumerState<_TvSeriesSeasonCard> {
                         }
                       },
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                      child: Text(s.isIndonesian ? 'Hapus Semua' : 'Delete All', style: const TextStyle(color: Colors.white)),
+                      child: Text(
+                        s.tr('Hapus Semua', 'Delete All', 'सभी हटाएं'),
+                        style: const TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
@@ -1567,7 +1597,7 @@ class _EpisodeCard extends ConsumerWidget {
               });
             },
             icon: const Icon(Icons.play_circle_fill_rounded, color: AppColors.primary, size: 26),
-            tooltip: s.isIndonesian ? 'Putar Episode' : 'Play Episode',
+            tooltip: s.tr('Putar Episode', 'Play Episode', 'एपिसोड चलाएं'),
           ),
 
           // Delete Button
@@ -1575,7 +1605,7 @@ class _EpisodeCard extends ConsumerWidget {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             icon: const Icon(Iconsax.trash, size: 16, color: AppColors.textMuted),
-            tooltip: s.isIndonesian ? 'Hapus Episode' : 'Delete Episode',
+            tooltip: s.tr('Hapus Episode', 'Delete Episode', 'एपिसोड हटाएं'),
             onPressed: () {
               showDialog(
                 context: context,
@@ -1583,13 +1613,15 @@ class _EpisodeCard extends ConsumerWidget {
                   backgroundColor: AppColors.surfaceVariant,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   title: Text(
-                    s.isIndonesian ? 'Hapus Episode?' : 'Delete Episode?',
+                    s.tr('Hapus Episode?', 'Delete Episode?', 'एपिसोड हटाएं?'),
                     style: GoogleFonts.outfit(color: Colors.white),
                   ),
                   content: Text(
-                    s.isIndonesian
-                        ? 'Episode ${item.episodeNumber ?? 1} (${item.title}) akan dihapus.'
-                        : 'Episode ${item.episodeNumber ?? 1} (${item.title}) will be deleted.',
+                    s.tr(
+                      'Episode ${item.episodeNumber ?? 1} (${item.title}) akan dihapus.',
+                      'Episode ${item.episodeNumber ?? 1} (${item.title}) will be deleted.',
+                      'एपिसोड ${item.episodeNumber ?? 1} (${item.title}) हटा दिया जाएगा।',
+                    ),
                     style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
                   ),
                   actions: [

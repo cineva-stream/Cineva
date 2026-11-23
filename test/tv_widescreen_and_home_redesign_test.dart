@@ -5,6 +5,7 @@ import 'package:cineva/core/platform/device_form_factor.dart';
 import 'package:cineva/features/home/presentation/widgets/airing_calendar_banner.dart';
 import 'package:cineva/features/home/presentation/widgets/movie_carousel.dart';
 import 'package:cineva/features/home/domain/entities/movie.dart';
+import 'package:cineva/features/watch_party/presentation/widgets/watch_party_join_banner.dart';
 
 void main() {
   group('isWideScreenLayout & 720p TV Detection Tests', () {
@@ -192,6 +193,120 @@ void main() {
       expect(find.text('Cineva Premiere Movie'), findsOneWidget);
       expect(find.text('LIVE RADAR'), findsOneWidget);
       expect(find.text('Buka Jadwal Lengkap'), findsOneWidget);
+    });
+
+    testWidgets('Renders WatchPartyJoinBanner & AiringCalendarBanner stacked top-bottom on right of MovieCarousel for Tablet/Windows/TV', (tester) async {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const dummyMovie = Movie(
+        id: 2,
+        title: 'Cineva Widescreen Hero',
+        overview: 'Parallel companion banners on right',
+        voteAverage: 9.1,
+        releaseDate: '2026-11-23',
+        backdropPath: '/dummy2.jpg',
+      );
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 66,
+                      child: MovieCarousel(movies: [dummyMovie]),
+                    ),
+                    SizedBox(width: 14),
+                    Expanded(
+                      flex: 34,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          WatchPartyJoinBanner(
+                            isCompanion: true,
+                            height: 220,
+                          ),
+                          SizedBox(height: 12),
+                          AiringCalendarBanner(
+                            isCompanion: true,
+                            height: 258,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+
+      expect(find.byType(MovieCarousel), findsOneWidget);
+      expect(find.byType(WatchPartyJoinBanner), findsOneWidget);
+      expect(find.byType(AiringCalendarBanner), findsOneWidget);
+
+      final wpCenter = tester.getCenter(find.byType(WatchPartyJoinBanner));
+      final calCenter = tester.getCenter(find.byType(AiringCalendarBanner));
+      final heroCenter = tester.getCenter(find.byType(MovieCarousel));
+
+      // Both banners are to the right of the Hero Carousel and stacked top-to-bottom
+      expect(wpCenter.dx, greaterThan(heroCenter.dx));
+      expect(calCenter.dx, greaterThan(heroCenter.dx));
+      expect(wpCenter.dy, lessThan(calCenter.dy));
+    });
+
+    testWidgets('Renders WatchPartyJoinBanner & AiringCalendarBanner side-by-side left-right on Mobile', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: WatchPartyJoinBanner(isCompactPair: true),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: AiringCalendarBanner(isCompactPair: true),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+
+      expect(find.byType(WatchPartyJoinBanner), findsOneWidget);
+      expect(find.byType(AiringCalendarBanner), findsOneWidget);
+
+      final wpCenter = tester.getCenter(find.byType(WatchPartyJoinBanner));
+      final calCenter = tester.getCenter(find.byType(AiringCalendarBanner));
+
+      // Side-by-side left-right at the same vertical center
+      expect(wpCenter.dx, lessThan(calCenter.dx));
+      expect((wpCenter.dy - calCenter.dy).abs(), lessThan(2.0));
     });
   });
 }

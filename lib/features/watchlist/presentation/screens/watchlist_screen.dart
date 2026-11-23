@@ -283,8 +283,8 @@ class _WatchlistGrid extends ConsumerWidget {
                         ),
                         child: Text(
                           item.type == 'tv'
-                              ? 'TV Series'
-                              : (s.isIndonesian ? 'Film' : 'Movie'),
+                              ? s.tr('Serial TV', 'TV Series', 'टीवी सीरीज़')
+                              : s.tr('Film', 'Movie', 'फ़िल्म'),
                           style: TextStyle(
                             color: item.type == 'tv'
                                 ? AppColors.info

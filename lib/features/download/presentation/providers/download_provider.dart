@@ -185,7 +185,8 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
         }
       }
 
-      // Start Subtitle pipeline concurrently in the background so video download begins immediately
+      // Start Subtitle pipeline concurrently in the background so video download & finalizing never wait on subtitle translation
+      bool videoCompleted = false;
       final subtitleFuture = Future<void>(() async {
         if (item.selectedSubtitleLang != 'none') {
           try {
@@ -206,8 +207,11 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
               subtitleStatus: subResult.status,
               subtitlePath: subResult.subtitlePath,
             );
-            await _repository.saveDownload(currentItem);
-            _updateItemInState(currentItem);
+            // If video already completed while subtitle was translating, persist the updated subtitle immediately
+            if (videoCompleted && mounted) {
+              await _repository.saveDownload(currentItem);
+              _updateItemInState(currentItem);
+            }
           } catch (e) {
             debugPrint('[DownloadNotifier] Subtitle pipeline error: $e');
           }
@@ -215,7 +219,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       });
 
       // Video download starts at full multi-connection speed instantly
-      final videoFuture = _videoService.downloadStream(
+      await _videoService.downloadStream(
         streamUrl: targetStreamUrl,
         masterPlaylistUrl: targetMasterUrl,
         headers: targetHeaders,
@@ -245,10 +249,8 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
         },
       );
 
-      // Wait for both video and subtitle streams to complete
-      await Future.wait([videoFuture, subtitleFuture]);
-
-      // Step 3: Build unified offline media container (video.mp4 with video.ts / HLS fallback)
+      // Step 3: Build unified offline media container immediately when video segments finish
+      // (runs in parallel with any ongoing subtitle translation).
       final parentDir = Directory(File(item.videoPath).parent.path);
       bool mp4Built = false;
       try {
@@ -272,6 +274,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
             dir: parentDir,
             expectedDurationUs: expectedDurUs,
             deleteSegmentsOnSuccess: true,
+            deleteSegmentsInBackground: true,
             onProgress: ({required double progress, required String statusMessage}) {
               if (!mounted) return;
               currentItem = currentItem.copyWith(
@@ -279,7 +282,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
                 progress: progress.clamp(0.0, 1.0),
                 speed: statusMessage,
               );
-              _repository.saveDownload(currentItem);
+              // Update UI state in-memory without writing to Hive on every progress tick
               _updateItemInState(currentItem);
             },
           );
@@ -312,16 +315,26 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       }
 
       // Step 4: Resolve the best validated playable file and compute actual size
-      final playableFile = await OfflineMp4Builder.findPlayableOfflineFile(parentDir);
-
+      // When mp4Built is true, video.mp4 is already validated and old .ts segments are deleting
+      // asynchronously in the background, so read video.mp4 directly without re-probing or scanning .ts files.
+      final File? playableFile;
       int actualTotalBytes = 0;
-      try {
-        if (await parentDir.exists()) {
-          await for (final f in parentDir.list(recursive: true)) {
-            if (f is File) actualTotalBytes += await f.length();
+      if (mp4Built) {
+        final mp4File = File('${parentDir.path}/${OfflineMp4Builder.mp4Name}');
+        playableFile = mp4File;
+        try {
+          actualTotalBytes = await mp4File.length();
+        } catch (_) {}
+      } else {
+        playableFile = await OfflineMp4Builder.findPlayableOfflineFile(parentDir);
+        try {
+          if (await parentDir.exists()) {
+            await for (final f in parentDir.list(recursive: true)) {
+              if (f is File) actualTotalBytes += await f.length();
+            }
           }
-        }
-      } catch (_) {}
+        } catch (_) {}
+      }
 
       final masterM3u8 = File('${parentDir.path}/master.m3u8');
       final masterCineva = File('${parentDir.path}/master.cineva');
@@ -331,7 +344,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
 
       final actualVideoPath = playableFile?.path ?? fallbackPath;
 
-      final completedItem = currentItem.copyWith(
+      currentItem = currentItem.copyWith(
         status: DownloadStatus.completed,
         videoPath: actualVideoPath,
         downloadedBytes: actualTotalBytes > 0 ? actualTotalBytes : currentItem.downloadedBytes,
@@ -340,8 +353,12 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
         speed: 'Selesai',
         completedAt: DateTime.now(),
       );
-      await _repository.saveDownload(completedItem);
-      _updateItemInState(completedItem);
+      videoCompleted = true;
+      await _repository.saveDownload(currentItem);
+      _updateItemInState(currentItem);
+
+      // Allow any ongoing background subtitle translation to finish and update the completed record
+      unawaited(subtitleFuture);
     } catch (e) {
       if (cancelToken.isCancelled) {
         debugPrint('[DownloadNotifier] Download cancelled: $id');

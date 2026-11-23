@@ -89,11 +89,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _localizedFontSize(String size, AppStrings s) {
     switch (size.toLowerCase()) {
       case 'kecil':
-        return s.isIndonesian ? 'Kecil' : 'Small';
+        return s.tr('Kecil', 'Small', 'छोटा');
       case 'sedang':
-        return s.isIndonesian ? 'Sedang' : 'Medium';
+        return s.tr('Sedang', 'Medium', 'मध्यम');
       case 'besar':
-        return s.isIndonesian ? 'Besar' : 'Large';
+        return s.tr('Besar', 'Large', 'बड़ा');
       default:
         return size;
     }
@@ -102,11 +102,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _localizedSubtitleBg(String bg, AppStrings s) {
     final lower = bg.toLowerCase();
     if (lower.contains('transparan') && !lower.contains('semi')) {
-      return s.isIndonesian ? 'Transparan' : 'Transparent';
+      return s.tr('Transparan', 'Transparent', 'पारदर्शी');
     } else if (lower.contains('semi')) {
-      return s.isIndonesian ? 'Semi-Transparan' : 'Semi-Transparent';
+      return s.tr('Semi-Transparan', 'Semi-Transparent', 'अर्ध-पारदर्शी');
     } else if (lower.contains('hitam') || lower.contains('gelap')) {
-      return s.isIndonesian ? 'Hitam Pekat' : 'Solid Black';
+      return s.tr('Hitam Pekat', 'Solid Black', 'गहरा काला');
     }
     return bg;
   }
@@ -231,7 +231,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Icon(pref.icon, color: isSelected ? AppColors.primary : AppColors.textMuted, size: 18),
             ),
             title: Text(
-              pref.getLocalizedLabel(s.isIndonesian),
+              pref.getLocalizedLabel(s.isIndonesian, s.language),
               style: GoogleFonts.inter(
                 color: isSelected ? AppColors.primary : Colors.white,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -239,7 +239,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             subtitle: Text(
-              pref.getLocalizedDescription(s.isIndonesian),
+              pref.getLocalizedDescription(s.isIndonesian, s.language),
               style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 11),
             ),
             trailing: isSelected
@@ -251,6 +251,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _loadSettings();
 
               if (mounted) {
+                final prefLabel = pref.getLocalizedLabel(s.isIndonesian, s.language);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     backgroundColor: AppColors.surfaceElevated,
@@ -260,9 +261,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            s.isIndonesian
-                                ? 'Preferensi diubah ke ${pref.getLocalizedLabel(true)}. Beranda & Pencarian otomatis disesuaikan.'
-                                : 'Preference changed to ${pref.getLocalizedLabel(false)}. Home & Search updated.',
+                            s.tr(
+                              'Preferensi diubah ke $prefLabel. Beranda & Pencarian otomatis disesuaikan.',
+                              'Preference changed to $prefLabel. Home & Search updated.',
+                              'वरीयता $prefLabel में बदल दी गई। होम और खोज अपडेट हो गए।',
+                            ),
                             style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
                           ),
                         ),
@@ -283,22 +286,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       {
         'val': 'Auto',
         'label': 'Auto (Adaptif FHD)',
-        'desc': s.isIndonesian ? 'Menyesuaikan kecepatan jaringan secara dinamis' : 'Dynamically adapts to network speed',
+        'desc': s.tr(
+          'Menyesuaikan kecepatan jaringan secara dinamis',
+          'Dynamically adapts to network speed',
+          'नेटवर्क गति के अनुसार गतिशील रूप से अनुकूलित होता है',
+        ),
       },
       {
         'val': '1080p',
         'label': '1080p Full HD',
-        'desc': s.isIndonesian ? 'Kualitas gambar terbaik, jernih & tajam' : 'Best picture quality, crystal clear & sharp',
+        'desc': s.tr(
+          'Kualitas gambar terbaik, jernih & tajam',
+          'Best picture quality, crystal clear & sharp',
+          'सर्वश्रेष्ठ चित्र गुणवत्ता, बिल्कुल स्पष्ट और शार्प',
+        ),
       },
       {
         'val': '720p',
         'label': '720p HD',
-        'desc': s.isIndonesian ? 'Hemat kuota dengan resolusi tetap tajam' : 'Data saving with crisp resolution',
+        'desc': s.tr(
+          'Hemat kuota dengan resolusi tetap tajam',
+          'Data saving with crisp resolution',
+          'शार्प रेज़ोल्यूशन के साथ डेटा की बचत',
+        ),
       },
       {
         'val': '480p',
         'label': '480p SD',
-        'desc': s.isIndonesian ? 'Koneksi lambat & paling hemat kuota' : 'For slow connections & lowest data usage',
+        'desc': s.tr(
+          'Koneksi lambat & paling hemat kuota',
+          'For slow connections & lowest data usage',
+          'धीमे कनेक्शन और सबसे कम डेटा उपयोग के लिए',
+        ),
       },
     ];
 
@@ -313,7 +332,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ],
       ),
-      subtitle: s.isIndonesian ? 'Pilih resolusi pemutaran video yang disukai.' : 'Choose preferred video playback resolution.',
+      subtitle: s.tr(
+        'Pilih resolusi pemutaran video yang disukai.',
+        'Choose preferred video playback resolution.',
+        'पसंदीदा वीडियो प्लेबैक रेज़ोल्यूशन चुनें।',
+      ),
       children: options.map((opt) {
         final val = opt['val']!;
         final isSelected = _defaultQuality == val;
@@ -386,12 +409,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               borderRadius: 4.5,
             ),
             title: Text(
-              lang.displayName,
+              lang.localizedDisplayName(currentLang),
               style: GoogleFonts.inter(
                 color: isSelected ? AppColors.primary : Colors.white,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 fontSize: 14,
               ),
+            ),
+            subtitle: Text(
+              lang.localizedLabel(currentLang),
+              style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 11.5),
             ),
             trailing: isSelected
                 ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20)
@@ -435,36 +462,48 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final sizes = [
       {
         'val': 'Kecil',
-        'label': s.isIndonesian ? 'Kecil' : 'Small',
+        'label': s.tr('Kecil', 'Small', 'छोटा'),
         'desc': is1080pDesktopOrTv
-            ? (s.isIndonesian
-                ? 'Ukuran teks 24pt (Skala 1080p+ ringkas)'
-                : '24pt font size (1080p+ compact scale)')
-            : (s.isIndonesian
-                ? 'Ukuran teks 16pt (Cocok untuk layar landscape luas)'
-                : '16pt font size (Best for wide landscape screens)'),
+            ? s.tr(
+                'Ukuran teks 24pt (Skala 1080p+ ringkas)',
+                '24pt font size (1080p+ compact scale)',
+                '24pt फ़ॉन्ट आकार (1080p+ कॉम्पैक्ट स्केल)',
+              )
+            : s.tr(
+                'Ukuran teks 16pt (Cocok untuk layar landscape luas)',
+                '16pt font size (Best for wide landscape screens)',
+                '16pt फ़ॉन्ट आकार (चौड़ी लैंडस्केप स्क्रीन के लिए उपयुक्त)',
+              ),
       },
       {
         'val': 'Sedang',
-        'label': s.isIndonesian ? 'Sedang' : 'Medium',
+        'label': s.tr('Sedang', 'Medium', 'मध्यम'),
         'desc': is1080pDesktopOrTv
-            ? (s.isIndonesian
-                ? 'Ukuran teks 30pt (Standar ideal jarak sofa 1080p+)'
-                : '30pt font size (Ideal couch distance for 1080p+)')
-            : (s.isIndonesian
-                ? 'Ukuran teks 20pt (Standar nyaman untuk semua layar)'
-                : '20pt font size (Standard comfortable size for all screens)'),
+            ? s.tr(
+                'Ukuran teks 30pt (Standar ideal jarak sofa 1080p+)',
+                '30pt font size (Ideal couch distance for 1080p+)',
+                '30pt फ़ॉन्ट आकार (1080p+ टीवी दूरी के लिए आदर्श)',
+              )
+            : s.tr(
+                'Ukuran teks 20pt (Standar nyaman untuk semua layar)',
+                '20pt font size (Standard comfortable size for all screens)',
+                '20pt फ़ॉन्ट आकार (सभी स्क्रीन के लिए आरामदायक मानक)',
+              ),
       },
       {
         'val': 'Besar',
-        'label': s.isIndonesian ? 'Besar' : 'Large',
+        'label': s.tr('Besar', 'Large', 'बड़ा'),
         'desc': is1080pDesktopOrTv
-            ? (s.isIndonesian
-                ? 'Ukuran teks 36pt (Besar dan sangat jelas jarak jauh)'
-                : '36pt font size (Large and ultra clear from distance)')
-            : (s.isIndonesian
-                ? 'Ukuran teks 24pt (Terlihat jelas dan mudah dibaca)'
-                : '24pt font size (Clear and easily readable)'),
+            ? s.tr(
+                'Ukuran teks 36pt (Besar dan sangat jelas jarak jauh)',
+                '36pt font size (Large and ultra clear from distance)',
+                '36pt फ़ॉन्ट आकार (दूर से भी बड़ा और अत्यंत स्पष्ट)',
+              )
+            : s.tr(
+                'Ukuran teks 24pt (Terlihat jelas dan mudah dibaca)',
+                '24pt font size (Clear and easily readable)',
+                '24pt फ़ॉन्ट आकार (स्पष्ट और आसानी से पढ़ने योग्य)',
+              ),
       },
     ];
 
@@ -479,7 +518,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ],
       ),
-      subtitle: s.isIndonesian ? 'Sesuaikan ukuran teks subtitle agar nyaman dibaca.' : 'Adjust subtitle text size for comfortable reading.',
+      subtitle: s.tr(
+        'Sesuaikan ukuran teks subtitle agar nyaman dibaca.',
+        'Adjust subtitle text size for comfortable reading.',
+        'आरामदायक पढ़ने के लिए सबटाइटल टेक्स्ट का आकार समायोजित करें।',
+      ),
       children: sizes.map((item) {
         final isSelected = _subtitleFontSize == item['val'];
         return Container(
@@ -521,18 +564,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final backgrounds = [
       {
         'val': 'Transparan',
-        'label': s.isIndonesian ? 'Transparan' : 'Transparent',
-        'desc': s.isIndonesian ? 'Teks dengan bayangan halus tanpa kotak latar' : 'Text with soft shadow without background box',
+        'label': s.tr('Transparan', 'Transparent', 'पारदर्शी'),
+        'desc': s.tr(
+          'Teks dengan bayangan halus tanpa kotak latar',
+          'Text with soft shadow without background box',
+          'बिना बैकग्राउंड बॉक्स के हल्की छाया वाला टेक्स्ट',
+        ),
       },
       {
         'val': 'Semi-Transparan',
-        'label': s.isIndonesian ? 'Semi-Transparan' : 'Semi-Transparent',
-        'desc': s.isIndonesian ? 'Latar hitam transparan 50% untuk kontras tinggi' : '50% transparent black background for high contrast',
+        'label': s.tr('Semi-Transparan', 'Semi-Transparent', 'अर्ध-पारदर्शी'),
+        'desc': s.tr(
+          'Latar hitam transparan 50% untuk kontras tinggi',
+          '50% transparent black background for high contrast',
+          'उच्च कंट्रास्ट के लिए 50% पारदर्शी काला बैकग्राउंड',
+        ),
       },
       {
         'val': 'Hitam Pekat',
-        'label': s.isIndonesian ? 'Hitam Pekat' : 'Solid Black',
-        'desc': s.isIndonesian ? 'Latar hitam solid untuk keterbacaan maksimal' : 'Solid black background for maximum readability',
+        'label': s.tr('Hitam Pekat', 'Solid Black', 'गहरा काला'),
+        'desc': s.tr(
+          'Latar hitam solid untuk keterbacaan maksimal',
+          'Solid black background for maximum readability',
+          'अधिकतम पठनीयता के लिए गहरा काला बैकग्राउंड',
+        ),
       },
     ];
 
@@ -547,7 +602,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ],
       ),
-      subtitle: s.isIndonesian ? 'Sesuaikan kontras latar belakang subtitle terhadap gambar video.' : 'Adjust subtitle background contrast against video content.',
+      subtitle: s.tr(
+        'Sesuaikan kontras latar belakang subtitle terhadap gambar video.',
+        'Adjust subtitle background contrast against video content.',
+        'वीडियो सामग्री के अनुसार सबटाइटल बैकग्राउंड कंट्रास्ट समायोजित करें।',
+      ),
       children: backgrounds.map((bg) {
         final isSelected = _subtitleBg == bg['val'];
         return Container(
@@ -620,14 +679,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(width: 12),
           Text(
-            s.isIndonesian ? 'Kebijakan & Lisensi Legal' : 'Legal & Policies',
+            s.tr('Kebijakan & Lisensi Legal', 'Legal & Policies', 'कानूनी नीतियां और लाइसेंस'),
             style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
           ),
         ],
       ),
-      subtitle: s.isIndonesian
-          ? 'Dokumentasi kepatuhan hukum, privasi pengguna, dan batasan lisensi Cineva'
-          : 'Legal compliance documentation, user privacy, and Cineva licenses',
+      subtitle: s.tr(
+        'Dokumentasi kepatuhan hukum, privasi pengguna, dan batasan lisensi Cineva',
+        'Legal compliance documentation, user privacy, and Cineva licenses',
+        'कानूनी अनुपालन दस्तावेज़, उपयोगकर्ता गोपनीयता और Cineva लाइसेंस',
+      ),
       children: docs.map((doc) {
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
@@ -684,9 +745,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w700),
         ),
         content: Text(
-          s.isIndonesian
-              ? 'Tindakan ini akan menghapus ${_cacheSizeMb.toStringAsFixed(1)} MB file poster sementara dan data buffering yang tersimpan di perangkat.'
-              : 'This will remove ${_cacheSizeMb.toStringAsFixed(1)} MB of cached posters and temporary buffering data on this device.',
+          s.tr(
+            'Tindakan ini akan menghapus ${_cacheSizeMb.toStringAsFixed(1)} MB file poster sementara dan data buffering yang tersimpan di perangkat.',
+            'This will remove ${_cacheSizeMb.toStringAsFixed(1)} MB of cached posters and temporary buffering data on this device.',
+            'यह इस डिवाइस पर संग्रहीत ${_cacheSizeMb.toStringAsFixed(1)} MB कैश्ड पोस्टर और अस्थायी बफरिंग डेटा को हटा देगा।',
+          ),
           style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
         ),
         actions: [
@@ -1162,7 +1225,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      currentAppLang.label,
+                      currentAppLang.localizedLabel(currentAppLang),
                       style: GoogleFonts.inter(
                         color: AppColors.primaryLight,
                         fontWeight: FontWeight.w700,
@@ -1179,7 +1242,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _SettingsTileItem(
                 icon: Iconsax.discover,
                 title: s.settingsContentPref,
-                subtitle: '${s.settingsContentPrefDesc} (${ContentPreference.fromCode(_contentPreference).getLocalizedLabel(s.isIndonesian)})',
+                subtitle: '${s.settingsContentPrefDesc} (${ContentPreference.fromCode(_contentPreference).getLocalizedLabel(s.isIndonesian, s.language)})',
                 trailingWidget: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1190,7 +1253,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        ContentPreference.fromCode(_contentPreference).getLocalizedLabel(s.isIndonesian).split(' ').first,
+                        ContentPreference.fromCode(_contentPreference).getLocalizedLabel(s.isIndonesian, s.language).split(' ').first,
                         style: GoogleFonts.inter(
                           color: AppColors.primaryLight,
                           fontWeight: FontWeight.w700,
@@ -1390,10 +1453,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _buildCardDivider(),
               _SettingsTileItem(
                 icon: Icons.shield_outlined,
-                title: s.isIndonesian ? 'Kebijakan & Lisensi Legal' : 'Legal & Compliance',
-                subtitle: s.isIndonesian
-                    ? 'Kebijakan Privasi, Syarat Ketentuan, & Penafian'
-                    : 'Privacy Policy, Terms of Service, & Disclaimer',
+                title: s.tr('Kebijakan & Lisensi Legal', 'Legal & Compliance', 'कानूनी नीतियां और लाइसेंस'),
+                subtitle: s.tr(
+                  'Kebijakan Privasi, Syarat Ketentuan, & Penafian',
+                  'Privacy Policy, Terms of Service, & Disclaimer',
+                  'गोपनीयता नीति, सेवा की शर्तें और अस्वीकरण',
+                ),
                 trailingWidget: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
                 onTap: () => _showLegalDocsSheet(s),
               ),

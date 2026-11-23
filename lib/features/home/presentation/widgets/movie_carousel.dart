@@ -127,7 +127,12 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                 itemCount: movies.length,
                 itemBuilder: (context, index) {
                   final movie = movies[index];
-                  final genreText = TmdbGenres.getFormattedGenres(movie.genreIds, limit: 3);
+                  final genreText = TmdbGenres.getFormattedGenres(
+                    movie.genreIds,
+                    limit: 3,
+                    isIndonesian: s.isIndonesian,
+                    language: s.language,
+                  );
 
                   return AnimatedPadding(
                     duration: const Duration(milliseconds: 300),
@@ -264,8 +269,16 @@ class _MovieCarouselState extends ConsumerState<MovieCarousel> {
                                               const SizedBox(width: 4),
                                               Text(
                                                 movie.mediaType == 'tv'
-                                                    ? 'POPULER TV #${index + 1}'
-                                                    : 'TRENDING #${index + 1}',
+                                                    ? s.tr(
+                                                        'POPULER TV #${index + 1}',
+                                                        'POPULAR TV #${index + 1}',
+                                                        'लोकप्रिय टीवी #${index + 1}',
+                                                      )
+                                                    : s.tr(
+                                                        'TRENDING #${index + 1}',
+                                                        'TRENDING #${index + 1}',
+                                                        'ट्रेंडिंग #${index + 1}',
+                                                      ),
                                                 style: GoogleFonts.inter(
                                                   color: Colors.white,
                                                   fontSize: 11,

@@ -69,8 +69,9 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
   String _getDayName(DateTime date, AppStrings s) {
     const enDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
     const idDays = ['SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB', 'MIN'];
+    const hiDays = ['सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि', 'रवि'];
     final idx = date.weekday - 1;
-    return s.isIndonesian ? idDays[idx] : enDays[idx];
+    return s.tr(idDays[idx], enDays[idx], hiDays[idx]);
   }
 
   String _getMonthName(DateTime date, AppStrings s) {
@@ -102,8 +103,22 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
       'Nov',
       'Des',
     ];
+    const hiMonths = [
+      'जन',
+      'फ़र',
+      'मार्च',
+      'अप्रैल',
+      'मई',
+      'जून',
+      'जुल',
+      'अग',
+      'सित',
+      'अक्टू',
+      'नव',
+      'दिस',
+    ];
     final idx = date.month - 1;
-    return s.isIndonesian ? idMonths[idx] : enMonths[idx];
+    return s.tr(idMonths[idx], enMonths[idx], hiMonths[idx]);
   }
 
   @override
@@ -582,9 +597,11 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          s.isIndonesian
-                              ? 'Gagal memuat jadwal tayang'
-                              : 'Failed to load schedule',
+                          s.tr(
+                            'Gagal memuat jadwal tayang',
+                            'Failed to load schedule',
+                            'प्रसारण समय-सारणी लोड करने में विफल',
+                          ),
                           style: GoogleFonts.inter(
                             color: AppColors.textPrimary,
                           ),
@@ -865,9 +882,11 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                                     size: 16,
                                   ),
                                   label: Text(
-                                    s.isIndonesian
-                                        ? 'Tampilkan Semua Rilis Mendatang'
-                                        : 'Show All Upcoming Releases',
+                                    s.tr(
+                                      'Tampilkan Semua Rilis Mendatang',
+                                      'Show All Upcoming Releases',
+                                      'सभी आगामी रिलीज़ दिखाएं',
+                                    ),
                                     style: GoogleFonts.inter(
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -959,9 +978,11 @@ class _AiringCalendarScreenState extends ConsumerState<AiringCalendarScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          s.isIndonesian
-                              ? 'Gagal memuat daftar rilis mendatang'
-                              : 'Failed to load upcoming releases',
+                          s.tr(
+                            'Gagal memuat daftar rilis mendatang',
+                            'Failed to load upcoming releases',
+                            'आगामी रिलीज़ सूची लोड करने में विफल',
+                          ),
                           style: GoogleFonts.inter(
                             color: AppColors.textPrimary,
                           ),
@@ -1259,7 +1280,7 @@ class _AiringShowListItem extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            s.isIndonesian ? 'Lihat Serial' : 'View Series',
+                            s.tr('Lihat Serial', 'View Series', 'सीरीज़ देखें'),
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,

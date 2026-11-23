@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import '../../features/home/domain/entities/movie.dart';
 import '../../features/home/domain/entities/tv_series.dart';
+import '../localization/app_language.dart';
 
 /// User content preference for filtering and prioritizing Movies & TV Series.
 enum ContentPreference {
@@ -70,8 +71,28 @@ enum ContentPreference {
   }
 
   /// Returns localized label based on user's active language.
-  String getLocalizedLabel(bool isIndonesian) {
-    if (isIndonesian) return label;
+  String getLocalizedLabel(bool isIndonesian, [AppLanguage? language]) {
+    final effectiveLang =
+        language ?? (isIndonesian ? AppLanguage.id : AppLanguage.en);
+    if (effectiveLang == AppLanguage.id) return label;
+    if (effectiveLang == AppLanguage.hi) {
+      switch (this) {
+        case ContentPreference.all:
+          return 'सभी (ग्लोबल)';
+        case ContentPreference.indonesia:
+          return 'इंडोनेशिया';
+        case ContentPreference.anime:
+          return 'एनीमे (Anime)';
+        case ContentPreference.hollywood:
+          return 'हॉलीवुड (वेस्टर्न)';
+        case ContentPreference.korea:
+          return 'कोरिया (K-Drama)';
+        case ContentPreference.japan:
+          return 'जापान (J-Drama)';
+        case ContentPreference.bollywood:
+          return 'बॉलीवुड (भारत)';
+      }
+    }
     switch (this) {
       case ContentPreference.all:
         return 'All (Global)';
@@ -91,8 +112,28 @@ enum ContentPreference {
   }
 
   /// Returns localized description based on user's active language.
-  String getLocalizedDescription(bool isIndonesian) {
-    if (isIndonesian) return description;
+  String getLocalizedDescription(bool isIndonesian, [AppLanguage? language]) {
+    final effectiveLang =
+        language ?? (isIndonesian ? AppLanguage.id : AppLanguage.en);
+    if (effectiveLang == AppLanguage.id) return description;
+    if (effectiveLang == AppLanguage.hi) {
+      switch (this) {
+        case ContentPreference.all:
+          return 'बिना किसी प्रतिबंध के दुनिया भर की सभी फ़िल्में और टीवी शो दिखाएं';
+        case ContentPreference.indonesia:
+          return 'इंडोनेशियाई फ़िल्मों और टीवी सीरीज़ को प्राथमिकता दें';
+        case ContentPreference.anime:
+          return 'जापानी एनीमे फ़िल्मों और टीवी सीरीज़ को प्राथमिकता दें';
+        case ContentPreference.hollywood:
+          return 'हॉलीवुड ब्लॉकबस्टर और अमेरिकी टीवी सीरीज़ को प्राथमिकता दें';
+        case ContentPreference.korea:
+          return 'कोरियन ड्रामा और K-Cinema को प्राथमिकता दें';
+        case ContentPreference.japan:
+          return 'जापानी लाइव-एक्शन फ़िल्मों और सीरीज़ को प्राथमिकता दें';
+        case ContentPreference.bollywood:
+          return 'भारतीय सिनेमा और बॉलीवुड सीरीज़ को प्राथमिकता दें';
+      }
+    }
     switch (this) {
       case ContentPreference.all:
         return 'Show all movies and TV shows worldwide without restrictions';
