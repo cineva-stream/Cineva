@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../domain/models/watch_party_room.dart';
@@ -78,8 +79,12 @@ class _WatchPartyChatPanelState extends ConsumerState<WatchPartyChatPanel> {
   }
 
   void _shareRoomLink(WatchPartyRoom room, AppStrings s) {
-    final url = 'https://cineva.app/party/${room.roomCode}';
-    final textToCopy = s.watchPartyShareText(url, room.isProtectedByPin);
+    final url = '${AppConstants.watchPartyWebBaseUrl}/${room.roomCode}';
+    final textToCopy = s.watchPartyShareText(
+      url,
+      room.isProtectedByPin,
+      roomCode: room.roomCode,
+    );
     Clipboard.setData(ClipboardData(text: textToCopy));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

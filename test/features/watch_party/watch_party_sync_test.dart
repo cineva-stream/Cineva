@@ -1020,6 +1020,14 @@ void main() {
 
     test('WatchPartyDirectJoinScreen.extractRoomCode parses various URL and code formats', () {
       expect(
+        WatchPartyDirectJoinScreen.extractRoomCode('https://cineva-stream.github.io/Cineva/party/CNV-8899'),
+        'CNV-8899',
+      );
+      expect(
+        WatchPartyDirectJoinScreen.extractRoomCode('https://cineva-stream.github.io/party/CNV-2345'),
+        'CNV-2345',
+      );
+      expect(
         WatchPartyDirectJoinScreen.extractRoomCode('https://cineva.app/party/CNV-9XYZ'),
         'CNV-9XYZ',
       );
@@ -1081,8 +1089,16 @@ void main() {
       expect(sEn.watchPartyShareLocked, 'Share 🔒');
       expect(sId.watchPartyShareCopied('https://cineva.app/party/CNV-1234', false), 'Tautan Nobar disalin: https://cineva.app/party/CNV-1234');
       expect(sEn.watchPartyShareCopied('https://cineva.app/party/CNV-1234', false), 'Watch Party link copied: https://cineva.app/party/CNV-1234');
-      expect(sId.watchPartyShareCopied('https://cineva.app/party/CNV-1234', true), 'Tautan Nobar 🔒 disalin: https://cineva.app/party/CNV-1234');
-      expect(sEn.watchPartyShareCopied('https://cineva.app/party/CNV-1234', true), 'Watch Party link 🔒 copied: https://cineva.app/party/CNV-1234');
+      expect(sId.watchPartyShareCopied('https://cineva-stream.github.io/Cineva/party/CNV-1234', true), 'Tautan Nobar 🔒 disalin: https://cineva-stream.github.io/Cineva/party/CNV-1234');
+      expect(sEn.watchPartyShareCopied('https://cineva-stream.github.io/Cineva/party/CNV-1234', true), 'Watch Party link 🔒 copied: https://cineva-stream.github.io/Cineva/party/CNV-1234');
+      expect(
+        sId.watchPartyShareText('https://cineva-stream.github.io/Cineva/party/CNV-1234', false, roomCode: 'CNV-1234'),
+        contains('CNV-1234'),
+      );
+      expect(
+        sEn.watchPartyShareText('https://cineva-stream.github.io/Cineva/party/CNV-1234', true, roomCode: 'CNV-1234'),
+        contains('CNV-1234'),
+      );
 
       // Direct join & error strings
       expect(sId.watchPartyPinRequiredToJoin, 'PIN diperlukan untuk bergabung ke room ini.');

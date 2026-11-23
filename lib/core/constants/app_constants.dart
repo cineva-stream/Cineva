@@ -24,6 +24,10 @@ class AppConstants {
   static const int defaultDownloadLimitBytes = 10 * 1024 * 1024; // 10 MB/s
   static const int defaultUploadLimitBytes = 1 * 1024 * 1024; // 1 MB/s
 
+  // ── Watch Party Deep Link Base URL (GitHub Pages) ──
+  static const String watchPartyWebBaseUrl =
+      'https://cineva-stream.github.io/Cineva/party';
+
   // ── Hive Box Names ──
   static const String watchlistBox = 'watchlist';
   static const String historyBox = 'watch_history';

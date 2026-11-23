@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cineva Stream • Nonton Bareng</title>
+  <link rel="icon" type="image/png" href="assets/cineva_icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #0D0D0F;
+      color: #FFFFFF;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-x: hidden;
+      position: relative;
+    }
+    /* Subtle background ambient glow */
+    body::before {
+      content: '';
+      position: absolute;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(229, 9, 20, 0.18) 0%, rgba(13, 13, 15, 0) 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 440px;
+      background: rgba(26, 26, 36, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 32px 24px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    }
+    .app-icon {
+      width: 76px;
+      height: 76px;
+      border-radius: 20px;
+      box-shadow: 0 10px 24px rgba(229, 9, 20, 0.35);
+      margin: 0 auto 16px auto;
+      display: block;
+      object-fit: cover;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(229, 9, 20, 0.15);
+      color: #FF5A6E;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #FFFFFF;
+    }
+    .subtitle {
+      color: #A0A0AA;
+      font-size: 13.5px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    .code-box {
+      background: #14141B;
+      border: 1.5px dashed rgba(229, 9, 20, 0.4);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .code-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #A0A0AA;
+    }
+    .code-value {
+      font-family: 'Outfit', monospace;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 2.5px;
+      color: #FFFFFF;
+    }
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 14px;
+      font-size: 14.5px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+      margin-bottom: 10px;
+    }
+    .btn-primary {
+      background: #E50914;
+      color: #FFFFFF;
+      box-shadow: 0 8px 20px rgba(229, 9, 20, 0.35);
+    }
+    .btn-primary:hover {
+      background: #F40612;
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(229, 9, 20, 0.5);
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #FFFFFF;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+    .btn-copy {
+      background: transparent;
+      color: #FF5A6E;
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 8px;
+      margin-top: 4px;
+      cursor: pointer;
+      border: 1px solid rgba(229, 9, 20, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-copy:hover {
+      background: rgba(229, 9, 20, 0.1);
+    }
+    .instructions {
+      font-size: 12px;
+      color: #71717A;
+      line-height: 1.5;
+      margin-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 16px;
+    }
+    .footer {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #52525B;
+    }
+    .footer a {
+      color: #A0A0AA;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    #notFoundState {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card" id="roomState">
+    <img src="assets/cineva_icon.png" alt="Cineva Icon" class="app-icon">
+    
+    <div class="badge">🍿 Watch Party • Nonton Bareng</div>
+    
+    <h1>Gabung Ruang Nobar</h1>
+    <p class="subtitle">Anda diundang menonton bareng di Cineva. Tekan tombol di bawah untuk langsung membuka room di aplikasi.</p>
+
+    <div class="code-box">
+      <span class="code-label">Kode Room</span>
+      <span class="code-value" id="roomCodeText">CNV-....</span>
+      <button class="btn-copy" id="copyBtn" onclick="copyRoomCode()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        Salin Kode
+      </button>
+    </div>
+
+    <button class="btn btn-primary" onclick="openCinevaApp()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      Buka di Aplikasi Cineva
+    </button>
+
+    <a href="https://github.com/cineva-stream/Cineva/releases/latest" class="btn btn-secondary">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Unduh APK Cineva
+    </a>
+
+    <div class="instructions">
+      Jika aplikasi tidak terbuka otomatis, buka aplikasi <b>Cineva</b> lalu masukkan kode di atas pada menu <b>Gabung Room</b>.
+    </div>
+  </div>
+
+  <div class="card" id="notFoundState">
+    <img src="assets/cineva_icon.png" alt="Cineva Icon" class="app-icon">
+    <h1>Cineva Stream</h1>
+    <p class="subtitle">Aplikasi pemutar media terdesentralisasi modern dengan fitur Nonton Bareng P2P.</p>
+    <a href="https://github.com/cineva-stream/Cineva/releases/latest" class="btn btn-primary">
+      Unduh Versi Terbaru (APK)
+    </a>
+    <a href="https://github.com/cineva-stream" class="btn btn-secondary">
+      Profil GitHub Cineva
+    </a>
+  </div>
+
+  <div class="footer">
+    Made with ❤️ by <a href="https://github.com/cineva-stream" target="_blank">Cineva Group</a>
+  </div>
+
+  <script>
+    let detectedCode = "";
+
+    function extractRoomCode() {
+      // Check full path, hash, or query parameter
+      const full = window.location.pathname + window.location.search + window.location.hash;
+      const match = full.match(/CNV-[2-9A-Z]{4}/i);
+      if (match) {
+        return match[0].toUpperCase();
+      }
+      return "";
+    }
+
+    function openCinevaApp() {
+      if (!detectedCode) return;
+      // 1. Android Intent: forces Android Chrome to open the target package directly, bypassing domain verification
+      const intentUrl = "intent://party/" + detectedCode + "#Intent;scheme=cineva;package=com.primadev.cineva;end";
+      // 2. Custom Scheme fallback
+      const schemeUrl = "cineva://party/" + detectedCode;
+
+      window.location.href = intentUrl;
+
+      // Fallback to custom scheme after short timeout if intent doesn't trigger
+      setTimeout(() => {
+        window.location.href = schemeUrl;
+      }, 700);
+    }
+
+    function copyRoomCode() {
+      if (!detectedCode) return;
+      navigator.clipboard.writeText(detectedCode).then(() => {
+        const btn = document.getElementById("copyBtn");
+        btn.innerHTML = "✓ Kode Disalin!";
+        btn.style.color = "#4ADE80";
+        setTimeout(() => {
+          btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Salin Kode`;
+          btn.style.color = "#FF5A6E";
+        }, 2000);
+      });
+    }
+
+    // Auto-launch on page load if code is found
+    window.addEventListener("DOMContentLoaded", () => {
+      detectedCode = extractRoomCode();
+      if (detectedCode) {
+        document.getElementById("roomCodeText").innerText = detectedCode;
+        document.title = "Nobar " + detectedCode + " • Cineva Stream";
+        document.getElementById("roomState").style.display = "block";
+        document.getElementById("notFoundState").style.display = "none";
+
+        // Automatically trigger app opening when coming from browser/WhatsApp
+        openCinevaApp();
+      } else {
+        document.getElementById("roomState").style.display = "none";
+        document.getElementById("notFoundState").style.display = "block";
+      }
+    });
+  </script>
+</body>
+</html>

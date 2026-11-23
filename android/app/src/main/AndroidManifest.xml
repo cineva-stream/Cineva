@@ -75,18 +75,21 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
             </intent-filter>
-            <!-- Deep Link for Watch Party -->
+            <!-- Deep Link for Watch Party (GitHub Pages with AutoVerify) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="cineva.app" android:pathPrefix="/party" />
+                <data android:scheme="https" android:host="cineva-stream.github.io" android:pathPrefix="/Cineva/party" />
+                <data android:scheme="https" android:host="cineva-stream.github.io" android:pathPrefix="/party" />
             </intent-filter>
+            <!-- Deep Link Custom Scheme & Fallbacks -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="cineva" android:host="party" />
+                <data android:scheme="https" android:host="cineva.app" android:pathPrefix="/party" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

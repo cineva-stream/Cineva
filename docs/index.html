@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cineva Stream • Free & Open-Source Media Player</title>
+  <link rel="icon" type="image/png" href="assets/cineva_icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #0D0D0F;
+      color: #FFFFFF;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-x: hidden;
+      position: relative;
+    }
+    body::before {
+      content: '';
+      position: absolute;
+      top: -15%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 700px;
+      background: radial-gradient(circle, rgba(229, 9, 20, 0.16) 0%, rgba(13, 13, 15, 0) 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      background: rgba(26, 26, 36, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 36px 28px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    }
+    .app-icon {
+      width: 84px;
+      height: 84px;
+      border-radius: 22px;
+      box-shadow: 0 10px 24px rgba(229, 9, 20, 0.35);
+      margin: 0 auto 18px auto;
+      display: block;
+      object-fit: cover;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(229, 9, 20, 0.15);
+      color: #FF5A6E;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #FFFFFF;
+    }
+    .tagline {
+      color: #A0A0AA;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 28px;
+    }
+    .join-box {
+      background: #14141B;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 20px 18px;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+    .join-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .join-subtitle {
+      font-size: 11.5px;
+      color: #71717A;
+      margin-bottom: 12px;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+    .input-code {
+      flex: 1;
+      background: #1E1E28;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 15px;
+      color: #FFFFFF;
+      font-family: 'Outfit', monospace;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      outline: none;
+    }
+    .input-code:focus {
+      border-color: #E50914;
+    }
+    .btn-join {
+      background: #E50914;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 12px;
+      padding: 0 18px;
+      font-weight: 700;
+      font-size: 13.5px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-join:hover {
+      background: #F40612;
+    }
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 14px;
+      font-size: 14.5px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+      margin-bottom: 10px;
+    }
+    .btn-primary {
+      background: #E50914;
+      color: #FFFFFF;
+      box-shadow: 0 8px 20px rgba(229, 9, 20, 0.35);
+    }
+    .btn-primary:hover {
+      background: #F40612;
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #FFFFFF;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+    .features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 20px;
+      text-align: left;
+    }
+    .feature-item {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 11.5px;
+      color: #A0A0AA;
+    }
+    .feature-item strong {
+      color: #FFFFFF;
+      display: block;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+    .footer {
+      margin-top: 28px;
+      font-size: 12px;
+      color: #52525B;
+    }
+    .footer a {
+      color: #A0A0AA;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <img src="assets/cineva_icon.png" alt="Cineva Icon" class="app-icon">
+    
+    <div class="badge">Open Source • Non-Profit</div>
+    
+    <h1>Cineva Stream</h1>
+    <p class="tagline">Modern Decentralized Media Player dengan fitur Sinkronisasi Nonton Bareng (Watch Party) real-time.</p>
+
+    <!-- Join Watch Party Section -->
+    <div class="join-box">
+      <div class="join-title">
+        <span>🍿</span> Punya Kode Nonton Bareng?
+      </div>
+      <div class="join-subtitle">Masukkan kode 8 digit room nobar dari teman Anda</div>
+      <div class="input-row">
+        <input type="text" id="manualCodeInput" class="input-code" placeholder="CNV-XXXX" maxlength="8">
+        <button class="btn-join" onclick="handleJoin()">Buka</button>
+      </div>
+    </div>
+
+    <!-- Download APK Button -->
+    <a href="https://github.com/cineva-stream/Cineva/releases/latest" class="btn btn-primary">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Unduh APK Versi Terbaru
+    </a>
+
+    <!-- GitHub Profile Button -->
+    <a href="https://github.com/cineva-stream/Cineva" class="btn btn-secondary">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      Source Code di GitHub
+    </a>
+
+    <!-- Quick Features Summary -->
+    <div class="features">
+      <div class="feature-item">
+        <strong>P2P Watch Party</strong>
+        Sinkronisasi playback real-time & multi-guest.
+      </div>
+      <div class="feature-item">
+        <strong>Hardware Accel</strong>
+        MediaKit hardware rendering 4K 60FPS.
+      </div>
+      <div class="feature-item">
+        <strong>65+ Subtitle</strong>
+        Katalog subtitle otomatis & auto-sync.
+      </div>
+      <div class="feature-item">
+        <strong>Offline Manager</strong>
+        Pengunduh berkas offline terintegrasi.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Made with ❤️ by <a href="https://github.com/cineva-stream" target="_blank">Cineva Group</a>
+  </div>
+
+  <script>
+    function handleJoin() {
+      const input = document.getElementById("manualCodeInput").value.trim().toUpperCase();
+      const match = input.match(/CNV-[2-9A-Z]{4}/i);
+      if (!match) {
+        alert("Format kode nobar harus berupa CNV-XXXX (contoh: CNV-9XYZ)");
+        return;
+      }
+      const code = match[0].toUpperCase();
+      // Try Android Intent directly:
+      const intentUrl = "intent://party/" + code + "#Intent;scheme=cineva;package=com.primadev.cineva;end";
+      window.location.href = intentUrl;
+      setTimeout(() => {
+        window.location.href = "party/" + code;
+      }, 700);
+    }
+  </script>
+</body>
+</html>

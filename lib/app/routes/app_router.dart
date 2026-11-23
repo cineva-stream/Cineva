@@ -276,6 +276,20 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/Cineva/party/:code',
+      name: 'watchPartyDeepLinkRepoPath',
+      pageBuilder: (context, state) {
+        final code = state.pathParameters['code'] ?? '';
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: WatchPartyDirectJoinScreen(roomCode: code),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        );
+      },
+    ),
+    GoRoute(
       path: '/player',
       name: 'player',
       pageBuilder: (context, state) {

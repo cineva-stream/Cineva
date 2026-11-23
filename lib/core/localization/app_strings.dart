@@ -1400,13 +1400,26 @@ class AppStrings {
       : (isProtected
           ? 'Watch Party link 🔒 copied: $url'
           : 'Watch Party link copied: $url');
-  String watchPartyShareText(String url, bool isProtected) => isIndonesian
-      ? (isProtected
-          ? 'Gabung nobar di Cineva: $url (Room dilindungi PIN, minta PIN ke host)'
-          : 'Gabung nobar di Cineva: $url')
-      : (isProtected
-          ? 'Join Watch Party on Cineva: $url (Room is protected by PIN, ask host for PIN)'
-          : 'Join Watch Party on Cineva: $url');
+  String watchPartyShareText(
+    String url,
+    bool isProtected, {
+    String? roomCode,
+  }) =>
+      isIndonesian
+          ? (isProtected
+              ? (roomCode != null
+                  ? '🍿 Nobar di Cineva!\nKode Room: $roomCode (Dilindungi PIN 🔒)\n\nTautan Langsung:\n$url'
+                  : 'Gabung nobar di Cineva: $url (Room dilindungi PIN, minta PIN ke host)')
+              : (roomCode != null
+                  ? '🍿 Nobar di Cineva!\nKode Room: $roomCode\n\nTautan Langsung:\n$url'
+                  : 'Gabung nobar di Cineva: $url'))
+          : (isProtected
+              ? (roomCode != null
+                  ? '🍿 Watch Party on Cineva!\nRoom Code: $roomCode (PIN Protected 🔒)\n\nDirect Link:\n$url'
+                  : 'Join Watch Party on Cineva: $url (Room is protected by PIN, ask host for PIN)')
+              : (roomCode != null
+                  ? '🍿 Watch Party on Cineva!\nRoom Code: $roomCode\n\nDirect Link:\n$url'
+                  : 'Join Watch Party on Cineva: $url'));
   String watchPartyConnectingToRoom(String code) => isIndonesian
       ? 'Menghubungkan ke Ruang Nobar $code...'
       : 'Connecting to Watch Party $code...';
