@@ -1,104 +1,85 @@
-# Cineva v1.1.9 - Release Notes 🎬
+# Cineva v1.2.0 - Release Notes 🎬
 
-Pembaruan besar Cineva versi 1.1.9 menghadirkan **Lanjutkan Menonton Cerdas (Seamless Device Hand-Off)** lintas perangkat, fitur **Nonton Bareng Jarak Jauh (Watch Party & Sync Play)** lengkap dengan Live Chat & kontrol Host, **Sinkronisasi Cloud Real-Time Otomatis** untuk akun Google, serta perombakan revolusioner pada subtitle melalui **Cinematic NLP Post-Processing Engine** dan **Normalisasi Alami Singkatan & Akronim Subtitle**.
+Pembaruan besar Cineva versi 1.2.0 menghadirkan lompatan besar pada kenyamanan visual, interaktivitas, dan efisiensi performa: notifikasi pesan obrolan bergaya **Dynamic Island**, **Mini Preview & Digital Timecode** presisi tinggi pada timeline video (mendukung geser sentuh di Android dan kursor *hover* di Windows), partikel reaksi melayang **Floating Reactions ala TikTok Live**, sistem keamanan **PIN Ruangan Watch Party**, integrasi tautan langsung **Deep Linking** untuk berbagi ke media sosial, perombakan total **Halaman Info** dengan mosaik poster film dinamis, penyegaran tata letak kartu poster film & serial TV, standardisasi **Lokalisasi Penuh Dua Bahasa (Bilingual ID/EN)**, serta optimalisasi performa yang jauh lebih cepat, responsif, dan hemat daya.
 
 ---
 
-## Ringkasan Fitur Baru & Peningkatan Utama
+## Ringkasan Fitur Baru & Peningkatan Utama (v1.2.0)
 
-### 1. Lanjutkan Menonton Cerdas (Seamless Device Hand-Off)
-* **Pelacakan Sesi Playback Lintas Perangkat (`DeviceHandoffService` & `DevicePlaybackSession`)**:
-  * Cineva kini melacak sesi menonton terakhir secara cerdas di Cloud.
-  * Jika pengguna berhenti menonton di satu perangkat (misalnya di Android TV pada menit ke-45), saat membuka Cineva di Smartphone atau Windows Desktop akan muncul kartu kapsul kaca modern (*Floating Glass Capsule*) di bagian atas layar:
-    > *"Lanjutkan menonton Interstellar di menit 45:12?"*
-  * Dilengkapi tombol aksi *"Lanjutkan"* yang langsung membuka pemutar video pada detik yang tepat dan tombol tutup (*Dismiss*) instan.
+### 1. Pratinjau Pesan Obrolan Dynamic Island (*Dynamic Island Chat Message Preview*)
+* **Kapsul Notifikasi Melayang yang Elegan**:
+  * Saat ada pesan obrolan baru masuk pada sesi Watch Party ketika panel chat sedang ditutup, pratinjau pesan kini ditampilkan dalam bentuk kapsul hitam obsidian bergaya *Dynamic Island* di bagian atas layar pemutar video.
+  * Dilengkapi animasi ekspansi halus, avatar atau inisial pengirim, nama pengguna dengan aksen warna, dan teks pesan ringkas.
+  * Dirancang tanpa menghalangi pandangan video (*non-intrusive*), otomatis memudar dan menyusut kembali secara mulus setelah beberapa detik.
 
-### 2. Nonton Bareng Jarak Jauh (Watch Party / Sync Play Engine) dengan Live Chat
-* **Kamar Nobar Berbasis Room Code (`WatchPartyService` & `WatchPartyRoom`)**:
-  * Pengguna dapat membuat Room Code 8 digit unik (contoh: `CNV-XXXX`) atau bergabung ke ruangan teman untuk menonton film dan serial TV yang sama secara bersamaan dari jarak jauh.
-  * **Arsitektur Dual-Engine Cloud Relay**: Didukung integrasi Firebase Realtime Database dan otomatis failover ke zero-config Cloud Relay, menjamin pembuatan room 100% berhasil di semua perangkat (Desktop, Android, Smart TV) dan mode Guest tanpa hambatan perizinan.
-* **Integrasi Side Panel Pemutar Video & Cover Media Asli**:
-  * Pembuatan dan pencarian room kini hadir dalam Side Panel sisi kanan yang elegan dan responsif—aliran pemutaran video menyusut mulus tanpa jeda (*no freeze/dim*).
-  * Menampilkan cover poster asli dan format judul episode serial TV yang rapi: `Season X - Episode Y (Judul Episode)`.
-* **Sinkronisasi Playback Presisi (*Play, Pause, & Seek*)**:
-  * Seluruh aksi pemutaran video, jeda, maupun pergeseran durasi tersinkronisasi secara *real-time*.
-  * Dilengkapi algoritma **Kompensasi Latensi Jaringan (*Clock Skew Compensation*)** sehingga perbedaan koneksi antar pengguna tidak membuat video terputus atau tidak sinkron.
-* **Banner Minimalis Gabung Nobar di Beranda (*Home Quick Join Banner*)**:
-  * Pengguna yang ingin bergabung tidak perlu lagi mencari judul film atau serial TV secara manual. Cukup menekan banner **"Gabung Nobar"** di layar utama, memasukkan Kode Ruangan (contoh: `CNV-8492`), dan sistem akan secara otomatis melacak media Host serta langsung membuka pemutar video pada judul yang tepat.
-* **Preview Pesan Melayang & Badge Pesan Belum Dibaca (*Message Preview & Unread Counter*)**:
-  * Balon preview pesan kaca (*Floating Glass Preview*) muncul otomatis di bawah ikon chat saat ada pesan masuk dan menghilang sendiri setelah 5 detik tanpa mengganggu jalannya video.
-  * Dilengkapi lencana (*Badge Counter*) angka merah di pojok ikon yang menghitung jumlah pesan belum dibaca secara presisi dan mereset saat panel dibuka.
-* **Eliminasi Bug Pesan Duplikat**:
-  * Menerapkan deduplikasi ID deterministik di seluruh lapisan (domain model, cloud sync service, dan UI builder) sehingga pesan chat yang baru dikirim tidak pernah lagi muncul ganda.
-* **Pengaturan Otoritas Host (*Allow Guest Control*)**:
-  * Terdapat panel pengaturan di sisi kanan bagi Host dengan opsi checkbox apakah mengizinkan partner/tamu ikut mengontrol video (Play/Pause/Seek) atau mengunci kontrol video khusus untuk Host saja.
-* **Panel Live Chat & Floating Animated Emojis**:
-  * Panel percakapan interaktif di sisi kanan pemutar video untuk saling berkirim pesan teks secara langsung saat menonton.
-  * Tombol reaksi emoji cepat (❤️, 😂, 😮, 👏, 🔥) yang memunculkan partikel animasi emoji melayang (*Floating Emoji Particles*) di atas layar.
-* **Dukungan Guest Mode**:
-  * Pengguna yang belum atau tidak ingin masuk ke akun Google tetap dapat membuat dan bergabung ke dalam Watch Party cukup dengan memasukkan nama panggilan (*Display Name*).
+### 2. Mini Preview & Indikator Waktu Melayang pada Progress Bar (*Seekbar Scrubbing & Hover Preview*)
+* **Dukungan Penuh Multi-Platform (Android Mobile/Tablet & Windows Desktop)**:
+  * **Windows Desktop**: Kartu mini preview muncul secara otomatis mengikuti posisi kursor *mouse* saat melintasi atau mengarahkan kursor (*hover*) di atas bilah waktu (*progress bar*).
+  * **Android (Ponsel & Tablet)**: Kartu mini preview muncul saat jari pengguna menyentuh dan menggeser (*drag/scrub*) penanda durasi video.
+* **Fitur & Detail Kartu Mini Preview**:
+  * **Rasio Aspek Sinematik 16:9 Glassmorphic**: Kartu mengambang dengan latar kaca gelap berkilau (*dark blur glass*), border tipis modern, dan panah penunjuk (*pointer beak*) yang mengarah tepat ke titik waktu yang dituju.
+  * **Format Waktu Presisi Digital**: Menampilkan timecode target berformat `HH:MM:SS` (untuk video berdurasi lebih dari 1 jam) atau `MM:SS`.
+  * **Kalkulasi Selisih Waktu Loncat (*Seek Delta Indicator*)**: Menampilkan indikator selisih durasi relatif terhadap posisi pemutaran saat ini (misal: `+05:30` saat maju ke depan, atau `-02:15` saat mundur ke belakang).
+  * **Thumbnail Bayangan Vignette & Mini Progress Bar**: Dilengkapi ornamen vignette sinematik dengan ikon film serta progress bar sekunder bergradasi warna di bagian bawah kartu.
+  * **Boundary Clamping Otomatis**: Posisi kartu dijaga agar selalu berada di dalam batas layar (*safe-area clamping*), tidak akan pernah terpotong di tepi kiri maupun kanan layar pemutar video.
 
-### 3. Konsistensi Desain AppBar & Perapian Navigasi
-* **Penyelarasan AppBar Seluruh Halaman**:
-  * Menyeragamkan tipografi judul menggunakan **Google Fonts Outfit** (bobot 700/800, ukuran proporsional 20–22px, `letterSpacing: -0.3`), ikon kembali yang ergonomis (*rounded*), dan latar transparan bebas artefak elevasi di Watchlist, Unduhan, Profil, Legal, Kalender, dsb.
-* **Penyempurnaan AppBar Riwayat Tontonan**:
-  * Menghilangkan ikon *chevron left* pada halaman Riwayat Tontonan sesuai kaidah layar tab utama.
+### 3. Partikel Reaksi Melayang ala TikTok Live (*Floating Streaming Reactions*)
+* **Aliran Reaksi Emoji Interaktif Real-Time**:
+  * Pengguna dapat mengirim reaksi cepat (❤️, 😂, 😮, 👏, 🔥) saat streaming berlangsung.
+  * Partikel emoji beranimasi melayang mengapung ke atas dari sudut kanan bawah layar dengan lintasan gelombang acak (*random sway & floating curves*), variasi rotasi dinamis, dan efek pemudaran (*fade-out*) bertingkat seperti siaran langsung TikTok Live.
+  * Tersinkronisasi secara instan ke seluruh peserta di dalam ruangan Watch Party, menciptakan suasana menonton bersama yang meriah dan interaktif.
 
-### 3. Sinkronisasi Cloud Otomatis Real-Time (Google Account)
-* **Sinkronisasi Otomatis Tanpa Perlu Menekan Tombol Sync**:
-  * Pengguna yang telah masuk dengan akun Google kini menikmati sinkronisasi riwayat tontonan (*Watch History*), daftar tontonan (*Watchlist*), dan profil secara otomatis di latar belakang (*auto-push debounced* 5 detik).
-  * Dilengkapi pendengar jarak jauh (*Realtime Remote Listener*) yang mendeteksi perubahan data dari perangkat lain dan menyinkronkannya ke perangkat lokal secara instan.
+### 4. Proteksi PIN Opsional untuk Ruangan Watch Party (*Optional Room PIN Protection*)
+* **Keamanan & Privasi Sesi Menonton Bersama**:
+  * Saat membuat ruangan (*Host Room*), pengguna kini dapat menyalakan toggle **Proteksi PIN** dan menentukan 4 digit PIN numerik keamanan.
+  * Tamu (*Guests*) yang ingin bergabung ke ruangan terproteksi wajib memasukkan PIN yang sesuai sebelum diizinkan masuk ke ruang pemutaran.
+  * Mencegah akses yang tidak diinginkan dan menjaga kenyamanan nobar privat bersama keluarga atau sahabat.
 
-### 4. Normalisasi Alami Singkatan & Akronim Subtitle (*Natural Abbreviation & Acronym Normalization*)
-* **Perbaikan Cacat Tokenizer Pemisah Titik**:
-  * Memperbaiki masalah pemisahan tanda titik pada tokenizer yang sebelumnya merusak singkatan bertitik di tengah kalimat menjadi huruf kecil campur besar yang aneh (seperti `l.A.P.D`, `i.A`, dan `t.O` pada serial seperti *The Rookie*).
-  * Seluruh singkatan bertitik kini otomatis dinormalisasi secara utuh menjadi huruf besar bersih: **`L.A.P.D.`**, **`I.A.`**, **`T.O.`**, **`D.A.`**, **`U.S.A.`**, dsb.
-* **Dukungan Imbuhan & Klitis Bahasa Indonesia**:
-  * Mengakomodasi singkatan berimbuhan secara rapi: **`T.O.-ku`**, **`L.A.P.D.-nya`**, **`I.A.-mu`** (bagian singkatan huruf kapital, imbuhan huruf kecil).
-* **Intelligent Sentence Continuation Guard**:
-  * Tanda titik di akhir singkatan (misalnya: *"Petugas L.A.P.D. itu sedang bertugas..."*) tidak lagi salah mengkapitalisasi kata sambung atau kata tunjuk berikutnya (`itu`, `ini`, `yang`, `sedang`, `adalah`), namun tetap menjaga huruf kapital jika singkatan benar-benar berada di akhir kalimat.
-* **Normalisasi Singkatan Berjarak (*Spaced Abbreviations*)**:
-  * Pola singkatan berjarak hasil pemindaian OCR subtitle (seperti `l. a. p. d.` atau `t. o.`) otomatis dirapatkan menjadi **`L.A.P.D.`** dan **`T.O.`**.
-* **Perlindungan Kata Asli Bahasa Indonesia**:
-  * Kata ganti orang ketiga bahasa Indonesia **`"ia"`** (dia) dan kata **`"doa"`** (berdoa) tetap dipertahankan huruf kecil di tengah kalimat dan tidak diubah paksa menjadi akronim tanpa titik.
+### 5. Tautan Langsung & Berbagi Ruangan ke Media Sosial (*Watch Party Deep Linking*)
+* **Berbagi Sekali Sentuh ke Media Sosial**:
+  * Host Watch Party dapat menyalin tautan ruangan atau membagikannya langsung ke aplikasi perpesanan dan media sosial (WhatsApp, Telegram, X/Twitter, Instagram, Facebook, dll.).
+* **Integrasi Universal Deep Link via GitHub Pages**:
+  * Menggunakan URL resmi `https://cineva-tv.github.io/web/join?room=...` yang ramah pratinjau tautan (*rich link preview*).
+  * Saat tautan diklik di perangkat yang telah terpasang Cineva, aplikasi akan langsung terbuka secara otomatis, mengarahkan pengguna ke ruangan yang dimaksud, dan mengisi kode ruangan tanpa perlu mengetik manual.
 
-### 5. Cinematic NLP Post-Processing Engine untuk Auto-Translate Subtitle
-* **Penyempurnaan Subtitle Mesin Menjadi Bahasa Dialog Sinematik**:
-  * Menerapkan mesin pemrosesan bahasa alami sinematik di sisi klien (*Client-Side NLP*) yang mengubah terjemahan kaku dan ambigu dari Google GTX menjadi terjemahan dialog percakapan yang hidup dan natural layaknya dikerjakan oleh penerjemah film profesional (*Netflix ID / Lebah Ganteng style*), **tetap 100% gratis, tanpa kuota, dan tanpa API Key**.
-* **Pembersihan Idiom Harfiah Bahasa Inggris**:
-  * *"Aku punya punggungmu"* $\rightarrow$ **`Aku melindungimu`** (*I got your back*)
-  * *"Beri aku istirahat"* $\rightarrow$ **`Yang benar saja`** (*Give me a break*)
-  * *"Kepala ke atas!"* $\rightarrow$ **`Awas!`** (*Heads up*)
-  * *"Sebut itu sehari"* $\rightarrow$ **`Cukup untuk hari ini`** (*Call it a day*)
-  * *"Bukan sepotong kue"* $\rightarrow$ **`Tidak mudah`** (*Not a piece of cake*)
-  * *"Berada di kapal yang sama"* $\rightarrow$ **`Senasib`** (*In the same boat*)
-  * *"Di bawah cuaca"* $\rightarrow$ **`Kurang enak badan`** (*Under the weather*)
-  * *"Tarik kakimu"* $\rightarrow$ **`Hanya bercanda`** (*Pulling your leg*)
-  * *"Keluar dari pertanyaan"* $\rightarrow$ **`Mustahil`** (*Out of the question*)
-* **Istilah Kriminal, Kepolisian & Aksi (*The Rookie, SWAT, FBI*)**:
-  * *"Salin itu"* $\rightarrow$ **`Dimengerti`** (*Copy that*)
-  * *"Pegang apimu / Tahan apimu"* $\rightarrow$ **`Tahan tembakan`** (*Hold your fire*)
-  * *"Tembakan dilepaskan"* $\rightarrow$ **`Ada tembakan`** (*Shots fired*)
-  * *"Tersangka dalam tahanan"* $\rightarrow$ **`Tersangka sudah diamankan`** (*Suspect in custody*)
-  * *"Butuh cadangan"* $\rightarrow$ **`Butuh bantuan`** (*Need backup*)
-  * *"Dalam perjalanan saya"* $\rightarrow$ **`Aku segera ke sana`** (*On my way*)
-  * *"Semua bersih"* $\rightarrow$ **`Area aman`** (*All clear*)
-  * *"Adegan kejahatan"* $\rightarrow$ **`TKP`** (*Crime scene*)
-  * *"Tiarap di lantai"* $\rightarrow$ **`Tiarap`** (*On the floor*)
-* **Penghalusan Frasa Kaku (Conversational Dialogue Smoothing)**:
-  * *"Aku tidak berpikir begitu"* $\rightarrow$ **`Kurasa tidak`** (*I don't think so*)
-  * *"Aku pikir kita harus..."* $\rightarrow$ **`Kurasa kita harus...`**
-  * *"Itu masuk akal"* $\rightarrow$ **`Masuk akal`**
-  * *"Itu tidak apa-apa / Tidak apa-apa"* $\rightarrow$ **`Tak apa`**
-  * *"Apa yang sedang kau bicarakan?"* $\rightarrow$ **`Kau bicara apa?`**
-  * *"Apa yang kau tunggu?"* $\rightarrow$ **`Tunggu apa lagi?`**
-  * *"Di sanalah kau berada"* $\rightarrow$ **`Rupanya kau di sana`** (*There you are*)
-  * *"Kau dipersilakan"* $\rightarrow$ **`Sama-sama`** (*You're welcome*)
-  * *"Jangan khawatir tentang itu"* $\rightarrow$ **`Jangan khawatir`**
+### 6. Desain Ulang Halaman Info Aplikasi & Mosaik Poster Sinematik (*Redesigned Info Page*)
+* **Mosaik Poster Film Tanpa Batas (*Seamless Poster Collage*)**:
+  * Halaman Tentang Aplikasi (*About Cineva*) kini dihiasi mosaik poster film beresolusi tinggi dengan efek gradasi gelap elegan (*dark vignette fade*).
+* **Detail Aplikasi Komprehensif**:
+  * Informasi versi dan build dinormalisasi dengan tepat (`v1.2.0 (Build 21)`).
+  * Ringkasan fitur unggulan terorganisir rapi dalam kartu kaca modern, dokumentasi teknologi inti (Flutter, Riverpod, MediaKit/MPV, Torrent Engine), informasi pengembang, dan tautan repositori serta situs resmi.
+
+### 7. Tata Letak Poster Film & Serial TV Lebih Bersih dan Elegan (*Clean Poster & Card Layout*)
+* **Estetika Minimalis & Rasio Bioskop Standar**:
+  * Penyempurnaan rasio aspek kartu film dan serial TV agar seragam, bebas distorsi, dan nyaman dipandang di berbagai ukuran layar (layar ponsel kecil, tablet, hingga monitor PC ultrawide).
+  * Penempatan badge informasi (seperti rating IMDb, tahun rilis, dan indikator resolusi HD/4K) ditata ulang secara rapi dan ergonomis dengan efek *frosted glass* halus tanpa menghalangi gambar poster utama.
+
+### 8. Lokalisasi Penuh Dua Bahasa (*Full Bilingual Localization - ID & EN*)
+* **Standardisasi Bahasa Menyeluruh**:
+  * Memperbaiki dan melengkapi seluruh string antarmuka ke dalam Bahasa Indonesia dan Bahasa Inggris secara menyeluruh.
+  * Tidak ada lagi teks yang terlewat, tercampur, atau gagal diterjemahkan saat berganti bahasa di Pengaturan, Beranda, Halaman Detail, Pemutar Video, Pengaturan Subtitle, Watch Party, hingga Halaman Info dan Syarat Ketentuan / Legalitas.
+
+### 9. Performa Lebih Cepat, Ringan & Efisien (*Faster & More Efficient Performance*)
+* **Optimalisasi Mesin Pemutar & Sinkronisasi**:
+  * Pengurangan beban *thread* dan penggunaan memori RAM saat memutar video beresolusi tinggi dan *multi-stream*.
+  * Efisiensi sinkronisasi status playback pada fitur Watch Party dan Google Cloud Sync, menghasilkan pengalaman menonton yang lebih mulus dengan jeda latensi minimal dan konsumsi daya baterai yang jauh lebih hemat.
+
+### 10. Migrasi Identitas Aplikasi Mandiri (*Application ID Migration*)
+* **Peralihan Bersih ke `com.cinevagroup.cinevastream`**:
+  * Migrasi nama paket resmi untuk memastikan pembaruan jangka panjang yang stabil.
+  * Dilengkapi deteksi cerdas instalasi versi terdahulu disertai aksi penghapusan versi lama secara mudah dan aman.
 
 ---
 
 ## Riwayat Versi Sebelumnya
+
+### Cineva v1.1.9
+* **Lanjutkan Menonton Cerdas (Seamless Device Hand-Off)**: Pelacakan sesi pemutaran lintas perangkat cerdas via Cloud dengan kapsul notifikasi melanjutkan tontonan di detik yang tepat.
+* **Nonton Bareng Jarak Jauh (Watch Party & Sync Play Engine)**: Pembuatan ruangan dengan kode 8 digit, dual-engine cloud relay (Firebase & Cloud Relay), integrasi side panel pemutar video, serta sinkronisasi play/pause/seek dengan kompensasi latensi.
+* **Live Chat & Pesan Mengambang**: Panel obrolan di samping pemutar video, pratinjau pesan kaca, dan partikel reaksi emoji dasar.
+* **Normalisasi Alami Singkatan & Akronim Subtitle**: Perbaikan pemisah titik tokenizer untuk singkatan berjarak/bertitik (`L.A.P.D.`, `T.O.`, `U.S.A.`) dan dukungan imbuhan bahasa Indonesia.
+* **Cinematic NLP Post-Processing Engine**: Mesin penerjemah dialog alami lokal untuk mengubah terjemahan kaku menjadi bahasa sinematik khas bioskop secara gratis tanpa kuota API.
+* **Sinkronisasi Cloud Real-Time**: Sinkronisasi otomatis tanpa tombol manual untuk Watchlist, Riwayat Tontonan, dan Profil pengguna akun Google.
 
 ### Cineva v1.1.8
 * **Relayout Responsif Modern**: Grid adaptif dan bilah navigasi samping (*Side Navigation Rail*) untuk Tablet, Windows Desktop & Android TV.
@@ -116,13 +97,13 @@ Pembaruan besar Cineva versi 1.1.9 menghadirkan **Lanjutkan Menonton Cerdas (Sea
 
 ## Informasi Versi
 
-* **Versi Aplikasi**: 1.1.9
-* **Build**: 20
+* **Versi Aplikasi**: 1.2.0
+* **Build**: 21
 * **Target Sistem Operasi**: Android 5.0 (API 21) ke atas (Smartphone, Tablet & Android TV / Google TV), Windows 10/11 (64-bit)
 * **Daftar Varian File Rilis**:
-  * `Cineva_setup_v1.1.9.exe` (Windows Desktop Installer Resmi)
-  * `Cineva_v1.1.9-android-tv.apk` (Khusus Android TV & Smart TV - **Rekomendasi TV**)
-  * `Cineva_v1.1.9-arm64-v8a.apk` (HP & Tablet Android Modern 64-bit)
-  * `Cineva_v1.1.9-armeabi-v7a.apk` (HP & Tablet Android Lawas 32-bit)
-  * `Cineva_v1.1.9-x86_64.apk` (Emulator PC & Android x86)
-  * `Cineva_v1.1.9.apk` (Universal / Semua CPU, Kompatibel Penuh)
+  * `Cineva_setup_v1.2.0.exe` (Windows Desktop Installer Resmi)
+  * `Cineva_v1.2.0-android-tv.apk` (Khusus Android TV & Smart TV - **Rekomendasi TV**)
+  * `Cineva_v1.2.0-arm64-v8a.apk` (HP & Tablet Android Modern 64-bit)
+  * `Cineva_v1.2.0-armeabi-v7a.apk` (HP & Tablet Android Lawas 32-bit)
+  * `Cineva_v1.2.0-x86_64.apk` (Emulator PC & Android x86)
+  * `Cineva_v1.2.0.apk` (Universal / Semua CPU, Kompatibel Penuh)
