@@ -45,6 +45,7 @@ import '../../../download/presentation/providers/download_provider.dart';
 import '../providers/mini_player_provider.dart';
 import '../providers/player_providers.dart';
 import '../widgets/custom_subtitle_overlay.dart';
+import '../widgets/timeline_mini_preview_bubble.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
@@ -312,6 +313,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   late String? _currentOverview = widget.overview;
   late String? _currentBackdropPath = widget.backdropPath;
   late String? _currentPosterPath = widget.posterPath;
+
+  // ── Seekbar Hover & Scrubbing Mini Preview ──
+  bool _isHoveringSeekbar = false;
+  double _hoverSeekbarX = 0.0;
+  Duration _previewTargetDuration = Duration.zero;
+  bool _isScrubbingTouch = false;
+
+  String? get _resolvedPreviewBackdropUrl {
+    final path = _currentBackdropPath ??
+        _currentPosterPath ??
+        widget.backdropPath ??
+        widget.posterPath;
+    if (path == null || path.trim().isEmpty) return null;
+    if (path.startsWith('http')) return path;
+    return ApiConstants.imageUrl(path, size: ApiConstants.backdropMedium);
+  }
 
   static String _cleanEpisodeName(String? raw) {
     if (raw == null || raw.trim().isEmpty) return '';
@@ -2765,6 +2782,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // and mini popups. The right side panel NEVER auto-closes (only closed manually by user).
     _controlsTimer = Timer(const Duration(seconds: 4), () {
       if (mounted) {
+        if (_isHoveringSeekbar || _isScrubbingTouch) {
+          _resetControlsTimer();
+          return;
+        }
         setState(() {
           _showControls = false;
           _activePopup = _PlayerMiniPopup.none;
@@ -8315,59 +8336,99 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                                       ),
                                                     ),
                                                     Expanded(
-                                                      child: SliderTheme(
-                                                        data:
-                                                            SliderTheme.of(
-                                                              context,
-                                                            ).copyWith(
-                                                              trackHeight: 3.5,
-                                                              thumbShape:
-                                                                  const RoundSliderThumbShape(
-                                                                    enabledThumbRadius:
-                                                                        6,
-                                                                  ),
-                                                              overlayShape:
-                                                                  const RoundSliderOverlayShape(
-                                                                    overlayRadius:
-                                                                        14,
-                                                                  ),
-                                                              activeTrackColor:
-                                                                  AppColors
-                                                                      .primary,
-                                                              inactiveTrackColor:
-                                                                  Colors.white24,
-                                                              thumbColor:
-                                                                  AppColors
-                                                                      .primary,
-                                                            ),
-                                                        child: Slider(
-                                                          value:
-                                                              _duration
-                                                                      .inSeconds >
-                                                                  0
-                                                              ? pos.inSeconds
-                                                                    .toDouble()
-                                                                    .clamp(
-                                                                      0.0,
-                                                                      _duration
-                                                                          .inSeconds
-                                                                          .toDouble(),
-                                                                    )
-                                                              : 0.0,
-                                                          min: 0.0,
-                                                          max:
-                                                              _duration
-                                                                      .inSeconds >
-                                                                  0
-                                                              ? _duration
-                                                                    .inSeconds
-                                                                    .toDouble()
-                                                              : 1.0,
-                                                          onChanged: (v) =>
-                                                              _seekTo(v),
-                                                        ),
-                                                      ),
-                                                    ),
+                                                       child: LayoutBuilder(
+                                                         builder: (context, constraints) {
+                                                           final trackWidth = constraints.maxWidth;
+                                                           return Stack(
+                                                             clipBehavior: Clip.none,
+                                                             alignment: Alignment.center,
+                                                             children: [
+                                                               MouseRegion(
+                                                                 onHover: (event) {
+                                                                   if (trackWidth <= 0) return;
+                                                                   final percent = (event.localPosition.dx / trackWidth).clamp(0.0, 1.0);
+                                                                   final targetSec = percent * _duration.inSeconds;
+                                                                   setState(() {
+                                                                     _isHoveringSeekbar = true;
+                                                                     _hoverSeekbarX = event.localPosition.dx;
+                                                                     _previewTargetDuration = Duration(seconds: targetSec.toInt());
+                                                                   });
+                                                                 },
+                                                                 onExit: (_) {
+                                                                   if (_isHoveringSeekbar) {
+                                                                     setState(() => _isHoveringSeekbar = false);
+                                                                   }
+                                                                 },
+                                                                 child: SliderTheme(
+                                                                   data: SliderTheme.of(context).copyWith(
+                                                                     trackHeight: 3.5,
+                                                                     thumbShape: const RoundSliderThumbShape(
+                                                                       enabledThumbRadius: 6,
+                                                                     ),
+                                                                     overlayShape: const RoundSliderOverlayShape(
+                                                                       overlayRadius: 14,
+                                                                     ),
+                                                                     activeTrackColor: AppColors.primary,
+                                                                     inactiveTrackColor: Colors.white24,
+                                                                     thumbColor: AppColors.primary,
+                                                                   ),
+                                                                   child: Slider(
+                                                                     value: _duration.inSeconds > 0
+                                                                         ? (_isScrubbingTouch
+                                                                             ? _previewTargetDuration.inSeconds
+                                                                                 .toDouble()
+                                                                                 .clamp(0.0, _duration.inSeconds.toDouble())
+                                                                             : pos.inSeconds
+                                                                                 .toDouble()
+                                                                                 .clamp(0.0, _duration.inSeconds.toDouble()))
+                                                                         : 0.0,
+                                                                     min: 0.0,
+                                                                     max: _duration.inSeconds > 0
+                                                                         ? _duration.inSeconds.toDouble()
+                                                                         : 1.0,
+                                                                     onChangeStart: (v) {
+                                                                       _resetControlsTimer();
+                                                                       setState(() {
+                                                                         _isScrubbingTouch = true;
+                                                                         final total = _duration.inSeconds > 0 ? _duration.inSeconds : 1;
+                                                                         final percent = (v / total).clamp(0.0, 1.0);
+                                                                         _hoverSeekbarX = percent * trackWidth;
+                                                                         _previewTargetDuration = Duration(seconds: v.toInt());
+                                                                       });
+                                                                     },
+                                                                     onChanged: (v) {
+                                                                       _resetControlsTimer();
+                                                                       setState(() {
+                                                                         final total = _duration.inSeconds > 0 ? _duration.inSeconds : 1;
+                                                                         final percent = (v / total).clamp(0.0, 1.0);
+                                                                         _hoverSeekbarX = percent * trackWidth;
+                                                                         _previewTargetDuration = Duration(seconds: v.toInt());
+                                                                       });
+                                                                     },
+                                                                     onChangeEnd: (v) {
+                                                                       _seekTo(v);
+                                                                       setState(() {
+                                                                         _isScrubbingTouch = false;
+                                                                       });
+                                                                     },
+                                                                   ),
+                                                                 ),
+                                                               ),
+                                                               if ((_isHoveringSeekbar || _isScrubbingTouch) && _duration.inSeconds > 0)
+                                                                 TimelineMiniPreviewBubble(
+                                                                   targetTime: _previewTargetDuration,
+                                                                   currentTime: pos,
+                                                                   totalDuration: _duration,
+                                                                   backdropUrl: _resolvedPreviewBackdropUrl,
+                                                                   title: widget.title,
+                                                                   pointerPositionX: _hoverSeekbarX,
+                                                                   trackWidth: trackWidth,
+                                                                 ),
+                                                             ],
+                                                           );
+                                                         },
+                                                       ),
+                                                     ),
                                                     Text(
                                                       _formatDuration(_duration),
                                                       style: const TextStyle(
