@@ -86,9 +86,10 @@ class FeedbackService {
   static Future<String> getAppVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      return 'v${info.version}+${info.buildNumber}';
+      final build = AppConstants.normalizeBuildNumber(info.buildNumber);
+      return 'v${info.version}+$build';
     } catch (_) {
-      return 'v1.2.0';
+      return 'v${AppConstants.appVersion}+${AppConstants.appBuildNumber}';
     }
   }
 

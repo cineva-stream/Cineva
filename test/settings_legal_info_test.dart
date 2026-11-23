@@ -267,6 +267,21 @@ void main() {
     );
   });
 
+  group('AppConstants Build Number & Version Normalization Tests', () {
+    test('Normalizes Android ABI-split version codes to canonical pubspec build number', () {
+      expect(AppConstants.appVersion, '1.2.0');
+      expect(AppConstants.appBuildNumber, '21');
+
+      // Flutter ABI-split version codes
+      expect(AppConstants.normalizeBuildNumber('2021'), '21'); // arm64-v8a: 2000 + 21
+      expect(AppConstants.normalizeBuildNumber('1021'), '21'); // armeabi-v7a: 1000 + 21
+      expect(AppConstants.normalizeBuildNumber('3021'), '21'); // x86_64: 3000 + 21
+      expect(AppConstants.normalizeBuildNumber('21'), '21');   // Universal / Non-split
+      expect(AppConstants.normalizeBuildNumber(' 2021 '), '21');
+      expect(AppConstants.normalizeBuildNumber('dev'), 'dev');
+    });
+  });
+
   group('AppStrings Settings & About Localization Tests', () {
     test(
       'Settings menu tile strings are distinct and non-empty in Indonesian and English',

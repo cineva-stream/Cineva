@@ -48,7 +48,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _autoPlayNextEpisode = true;
   double _cacheSizeMb = 38.4;
   String _appVersion = AppConstants.appVersion;
-  String _buildNumber = '1';
+  String _buildNumber = AppConstants.appBuildNumber;
 
   @override
   void initState() {
@@ -63,7 +63,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (mounted) {
         setState(() {
           if (info.version.isNotEmpty) _appVersion = info.version;
-          if (info.buildNumber.isNotEmpty) _buildNumber = info.buildNumber;
+          if (info.buildNumber.isNotEmpty) {
+            _buildNumber = AppConstants.normalizeBuildNumber(info.buildNumber);
+          }
         });
       }
     } catch (_) {

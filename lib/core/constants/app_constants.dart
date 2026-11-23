@@ -4,7 +4,18 @@ class AppConstants {
 
   static const String appName = 'Cineva Stream';
   static const String appVersion = '1.2.0';
+  static const String appBuildNumber = '21';
   static const String appTagline = 'Stream Freely';
+
+  /// Normalizes Android ABI-split version codes (e.g. 2021 -> 21, 1021 -> 21)
+  /// back to the canonical build number from pubspec.yaml.
+  static String normalizeBuildNumber(String rawBuildNumber) {
+    final code = int.tryParse(rawBuildNumber.trim());
+    if (code != null && code >= 1000) {
+      return (code % 1000).toString();
+    }
+    return rawBuildNumber.trim();
+  }
 
   // ── Durations ──
   static const Duration searchDebounce = Duration(milliseconds: 500);

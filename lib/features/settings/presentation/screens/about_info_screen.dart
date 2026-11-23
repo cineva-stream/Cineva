@@ -23,8 +23,8 @@ class AboutInfoScreen extends ConsumerStatefulWidget {
 }
 
 class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
-  String _version = '1.2.0';
-  String _buildNumber = '21';
+  String _version = AppConstants.appVersion;
+  String _buildNumber = AppConstants.appBuildNumber;
 
   // High quality curated local poster collection for seamless borderless hero collage
   final List<String> _localPosters = const [
@@ -50,7 +50,9 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
       if (mounted) {
         setState(() {
           if (info.version.isNotEmpty) _version = info.version;
-          if (info.buildNumber.isNotEmpty) _buildNumber = info.buildNumber;
+          if (info.buildNumber.isNotEmpty) {
+            _buildNumber = AppConstants.normalizeBuildNumber(info.buildNumber);
+          }
         });
       }
     } catch (_) {
