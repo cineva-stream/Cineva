@@ -17,6 +17,9 @@
     <!-- In-App package installation permission -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Permission to request uninstalling packages (e.g. legacy version cleanup) -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
     <!-- Notification permission for Android 13+ (API 33+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

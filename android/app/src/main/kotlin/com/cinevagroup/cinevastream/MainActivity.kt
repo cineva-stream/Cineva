@@ -400,20 +400,20 @@ class MainActivity : FlutterActivity() {
                         result.success(false)
                     } else {
                         try {
-                            val intent = Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply {
-                                data = Uri.parse("package:$targetPackage")
-                                putExtra(Intent.EXTRA_RETURN_RESULT, true)
+                            val intent = Intent(Intent.ACTION_DELETE).apply {
+                                data = Uri.fromParts("package", targetPackage, null)
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
                             startActivity(intent)
                             result.success(true)
                         } catch (t: Throwable) {
                             try {
-                                val intent = Intent(Intent.ACTION_DELETE).apply {
+                                @Suppress("DEPRECATION")
+                                val fallbackIntent = Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply {
                                     data = Uri.parse("package:$targetPackage")
                                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 }
-                                startActivity(intent)
+                                startActivity(fallbackIntent)
                                 result.success(true)
                             } catch (e: Throwable) {
                                 Log.e(TAG, "Failed to launch uninstall intent: ${e.message}", e)
