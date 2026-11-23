@@ -137,6 +137,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   StreamSubscription? _trackSub;
   StreamSubscription? _tracksSub;
 
+  // ── Seekbar Scrubbing / Hover Video Frame Preview ──
+  Player? _previewPlayer;
+  VideoController? _previewVideoController;
+  Timer? _previewSeekDebounce;
+  Duration? _lastPreviewSeekTarget;
+  String? _lastPreviewMediaUri;
+
   // ── Fallback WebView Controller ──
   WebViewController? _webViewController;
 
@@ -419,6 +426,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _player = reclaimed.player;
       _videoController = reclaimed.videoController;
       _useNativePlayer = true;
+      _initPreviewPlayer();
       _position = reclaimed.position;
       _positionNotifier.value = reclaimed.position;
       _duration = reclaimed.duration;
@@ -468,6 +476,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             true, // Hardware MediaCodec decoding on Android GPU
       ),
     );
+    _initPreviewPlayer();
 
     // Ensure subtitle styling is freshly synchronized from user preferences
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -498,6 +507,86 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         _pipChannel.invokeMethod('setAutoPipEnabled', {'enabled': enabled});
       } catch (_) {}
     }
+  }
+
+  /// Initializes the secondary low-footprint preview player and video controller
+  /// for rendering live scene frames inside the seekbar preview bubble.
+  void _initPreviewPlayer() {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) return;
+    if (_previewPlayer != null) return;
+    try {
+      _previewPlayer = Player(
+        configuration: const PlayerConfiguration(
+          muted: true,
+          bufferSize: 8 * 1024 * 1024,
+        ),
+      );
+      _previewVideoController = VideoController(
+        _previewPlayer!,
+        configuration: const VideoControllerConfiguration(
+          width: 320,
+          height: 180,
+          enableHardwareAcceleration: false, // Software decoding avoids exhausting hardware decoder instances
+        ),
+      );
+      _setupMpvPreviewOptions();
+    } catch (e) {
+      debugPrint('[PlayerScreen] Failed to init preview player: $e');
+    }
+  }
+
+  /// Sets up minimal decoding, muted audio, and fast keyframe seek options for the preview player.
+  Future<void> _setupMpvPreviewOptions() async {
+    if (_previewPlayer == null) return;
+    try {
+      await _previewPlayer!.setVolume(0);
+      await _previewPlayer!.setSubtitleTrack(SubtitleTrack.no());
+      final mpv = (_previewPlayer!.platform as dynamic);
+      await mpv?.command(['set', 'aid', 'no']);
+      await mpv?.command(['set', 'sid', 'no']);
+      await mpv?.command(['set', 'pause', 'yes']);
+      await mpv?.command(['set', 'hr-seek', 'no']); // Lightning-fast keyframe seek
+      await mpv?.command(['set', 'cache', 'yes']);
+      await mpv?.command(['set', 'cache-secs', '15']);
+      await mpv?.command(['set', 'demuxer-readahead-secs', '15']);
+      await mpv?.command(['set', 'demuxer-max-bytes', '16777216']); // 16 MB max preview buffer
+    } catch (e) {
+      debugPrint('[PlayerScreen] setupMpvPreviewOptions error: $e');
+    }
+  }
+
+  /// Synchronizes the preview player with the currently loaded media source.
+  Future<void> _syncPreviewMedia(Media media) async {
+    if (Platform.environment.containsKey('FLUTTER_TEST')) return;
+    if (_previewPlayer == null) {
+      _initPreviewPlayer();
+    }
+    if (_previewPlayer == null) return;
+    if (_lastPreviewMediaUri == media.uri) return;
+    _lastPreviewMediaUri = media.uri;
+    try {
+      await _previewPlayer!.open(media, play: false);
+      await _setupMpvPreviewOptions();
+    } catch (e) {
+      debugPrint('[PlayerScreen] syncPreviewMedia error: $e');
+    }
+  }
+
+  /// Seeks the preview player to the targeted seekbar scrub/hover position.
+  void _onSeekPreviewChanged(Duration target) {
+    if (_previewPlayer == null || Platform.environment.containsKey('FLUTTER_TEST')) return;
+    if (_lastPreviewSeekTarget != null &&
+        (_lastPreviewSeekTarget!.inSeconds - target.inSeconds).abs() == 0) {
+      return;
+    }
+    _previewSeekDebounce?.cancel();
+    _previewSeekDebounce = Timer(const Duration(milliseconds: 60), () {
+      if (!mounted || _previewPlayer == null) return;
+      _lastPreviewSeekTarget = target;
+      try {
+        _previewPlayer!.seek(target);
+      } catch (_) {}
+    });
   }
 
   /// Sets up smooth, zero-latency offline playback options for mpv.
@@ -728,6 +817,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     // Cancel local stream listeners before transferring ownership to MiniPlayerNotifier
     _controlsTimer?.cancel();
+    _previewSeekDebounce?.cancel();
     _volumeIndicatorTimer?.cancel();
     _brightnessIndicatorTimer?.cancel();
     _lockedOverlayTimer?.cancel();
@@ -934,6 +1024,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     } catch (_) {}
 
     _controlsTimer?.cancel();
+    _previewSeekDebounce?.cancel();
     _volumeIndicatorTimer?.cancel();
     _brightnessIndicatorTimer?.cancel();
     _lockedOverlayTimer?.cancel();
@@ -965,6 +1056,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
       _player.dispose();
     }
+
+    try {
+      _previewPlayer?.setVolume(0.0);
+      _previewPlayer?.pause();
+      _previewPlayer?.stop();
+      _previewPlayer?.dispose();
+    } catch (_) {}
 
     // Re-assert form-factor orientation as safety net
     restoreSystemUiAndOrientations(isTv: gIsTv);
@@ -1844,7 +1942,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
       if (ext == 'mp4' || ext == 'mkv') {
         // Direct standalone hardware container
-        await _player.open(Media(path));
+        final media = Media(path);
+        await _player.open(media);
+        unawaited(_syncPreviewMedia(media));
       } else {
         // Check if master.m3u8, master.cineva, or video.m3u8 exists in mediaDir to use LocalStreamServer
         final masterFile = File('${mediaDir.path}/master.m3u8');
@@ -1870,13 +1970,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               id: cleanId,
             );
             debugPrint('[PlayerScreen] Opening local loopback HLS: $streamUrl');
-            await _player.open(Media(streamUrl));
+            final media = Media(streamUrl);
+            await _player.open(media);
+            unawaited(_syncPreviewMedia(media));
           } else {
-            await _player.open(Media(path));
+            final media = Media(path);
+            await _player.open(media);
+            unawaited(_syncPreviewMedia(media));
           }
         } else {
           // Fallback: direct media file (e.g. video.ts without playlist)
-          await _player.open(Media(path));
+          final media = Media(path);
+          await _player.open(media);
+          unawaited(_syncPreviewMedia(media));
           final secondaryAudio = await OfflineMp4Builder.getSecondaryAudioFile(
             mediaDir,
           );
@@ -2166,7 +2272,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         await _setupMpvFastBufferOptions();
 
         // Opening the stream with headers ensures full CDN & audio rendition is bound
-        await _player.open(Media(streamUrl, httpHeaders: streamHeaders));
+        final media = Media(streamUrl, httpHeaders: streamHeaders);
+        await _player.open(media);
+        unawaited(_syncPreviewMedia(media));
         // CRITICAL: Disable mpv's internal subtitles so they do not bypass Cineva's settings!
         await _player.setSubtitleTrack(SubtitleTrack.no());
         await _player.setVolume(_volume);
@@ -2415,7 +2523,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         'var v = document.querySelector("video"); if (v) { v.pause(); v.src = ""; v.load(); }',
       );
       await _setupMpvFastBufferOptions();
-      await _player.open(Media(directStreamUrl));
+      final media = Media(directStreamUrl);
+      await _player.open(media);
+      unawaited(_syncPreviewMedia(media));
       await _player.setSubtitleTrack(SubtitleTrack.no());
       await _player.setVolume(_volume);
 
@@ -8348,16 +8458,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                                                    if (trackWidth <= 0) return;
                                                                    final percent = (event.localPosition.dx / trackWidth).clamp(0.0, 1.0);
                                                                    final targetSec = percent * _duration.inSeconds;
+                                                                   final targetDuration = Duration(seconds: targetSec.toInt());
                                                                    setState(() {
                                                                      _isHoveringSeekbar = true;
                                                                      _hoverSeekbarX = event.localPosition.dx;
-                                                                     _previewTargetDuration = Duration(seconds: targetSec.toInt());
+                                                                     _previewTargetDuration = targetDuration;
                                                                    });
+                                                                   _onSeekPreviewChanged(targetDuration);
                                                                  },
                                                                  onExit: (_) {
                                                                    if (_isHoveringSeekbar) {
                                                                      setState(() => _isHoveringSeekbar = false);
                                                                    }
+                                                                   _previewSeekDebounce?.cancel();
+                                                                   _lastPreviewSeekTarget = null;
                                                                  },
                                                                  child: SliderTheme(
                                                                    data: SliderTheme.of(context).copyWith(
@@ -8388,28 +8502,34 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                                                          : 1.0,
                                                                      onChangeStart: (v) {
                                                                        _resetControlsTimer();
+                                                                       final total = _duration.inSeconds > 0 ? _duration.inSeconds : 1;
+                                                                       final percent = (v / total).clamp(0.0, 1.0);
+                                                                       final targetDuration = Duration(seconds: v.toInt());
                                                                        setState(() {
                                                                          _isScrubbingTouch = true;
-                                                                         final total = _duration.inSeconds > 0 ? _duration.inSeconds : 1;
-                                                                         final percent = (v / total).clamp(0.0, 1.0);
                                                                          _hoverSeekbarX = percent * trackWidth;
-                                                                         _previewTargetDuration = Duration(seconds: v.toInt());
+                                                                         _previewTargetDuration = targetDuration;
                                                                        });
+                                                                       _onSeekPreviewChanged(targetDuration);
                                                                      },
                                                                      onChanged: (v) {
                                                                        _resetControlsTimer();
+                                                                       final total = _duration.inSeconds > 0 ? _duration.inSeconds : 1;
+                                                                       final percent = (v / total).clamp(0.0, 1.0);
+                                                                       final targetDuration = Duration(seconds: v.toInt());
                                                                        setState(() {
-                                                                         final total = _duration.inSeconds > 0 ? _duration.inSeconds : 1;
-                                                                         final percent = (v / total).clamp(0.0, 1.0);
                                                                          _hoverSeekbarX = percent * trackWidth;
-                                                                         _previewTargetDuration = Duration(seconds: v.toInt());
+                                                                         _previewTargetDuration = targetDuration;
                                                                        });
+                                                                       _onSeekPreviewChanged(targetDuration);
                                                                      },
                                                                      onChangeEnd: (v) {
                                                                        _seekTo(v);
                                                                        setState(() {
                                                                          _isScrubbingTouch = false;
                                                                        });
+                                                                       _previewSeekDebounce?.cancel();
+                                                                       _lastPreviewSeekTarget = null;
                                                                      },
                                                                    ),
                                                                  ),
@@ -8423,6 +8543,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                                                    title: widget.title,
                                                                    pointerPositionX: _hoverSeekbarX,
                                                                    trackWidth: trackWidth,
+                                                                   previewVideoController: _previewVideoController,
                                                                  ),
                                                              ],
                                                            );

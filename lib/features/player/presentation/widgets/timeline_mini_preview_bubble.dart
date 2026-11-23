@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../../../app/theme/app_colors.dart';
 
@@ -9,6 +10,7 @@ import '../../../../app/theme/app_colors.dart';
 /// during touch scrubbing (Android/Mobile) or mouse hover (Windows/Desktop).
 ///
 /// Features:
+/// - Live video frame preview decoded at the hovered/scrubbed timestamp.
 /// - Prominent digital timestamp in HH:MM:SS or MM:SS format.
 /// - Relative seek delta indicator (+05:30 forward in emerald / -02:15 backward in coral).
 /// - 16:9 cinematic preview card with title and backdrop vignette.
@@ -23,6 +25,7 @@ class TimelineMiniPreviewBubble extends StatelessWidget {
   final String? title;
   final double pointerPositionX;
   final double trackWidth;
+  final VideoController? previewVideoController;
 
   static const double bubbleWidth = 160.0;
   static const double bubbleHeight = 94.0;
@@ -37,6 +40,7 @@ class TimelineMiniPreviewBubble extends StatelessWidget {
     this.title,
     required this.pointerPositionX,
     required this.trackWidth,
+    this.previewVideoController,
   });
 
   /// Formats duration into digital timecode format (HH:MM:SS or MM:SS).
@@ -118,7 +122,7 @@ class TimelineMiniPreviewBubble extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Layer 1: Backdrop Image (if available)
+                  // Layer 1: Backdrop Image (if available) / Fallback Base
                   if (backdropUrl != null && backdropUrl!.trim().isNotEmpty)
                     CachedNetworkImage(
                       imageUrl: backdropUrl!,
@@ -140,7 +144,28 @@ class TimelineMiniPreviewBubble extends StatelessWidget {
                       ),
                     ),
 
-                  // Layer 2: OLED Vignette & Multi-stop Dark Gradient
+                  // Layer 1b: Live Video Frame at current seek position (if preview controller is attached)
+                  if (previewVideoController != null)
+                    Positioned.fill(
+                      child: ValueListenableBuilder<int?>(
+                        valueListenable: previewVideoController!.id,
+                        builder: (context, textureId, child) {
+                          if (textureId == null) {
+                            return const SizedBox.shrink();
+                          }
+                          return Video(
+                            controller: previewVideoController!,
+                            controls: NoVideoControls,
+                            subtitleViewConfiguration: const SubtitleViewConfiguration(
+                              visible: false,
+                            ),
+                            fit: BoxFit.cover,
+                          );
+                        },
+                      ),
+                    ),
+
+                  // Layer 2: OLED Vignette & Edge Gradient Scrims (Lightened in center for video clarity)
                   Positioned.fill(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
@@ -148,12 +173,12 @@ class TimelineMiniPreviewBubble extends StatelessWidget {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.black.withValues(alpha: 0.65),
-                            Colors.black.withValues(alpha: 0.40),
-                            Colors.black.withValues(alpha: 0.85),
-                            Colors.black.withValues(alpha: 0.96),
+                            Colors.black.withValues(alpha: 0.50),
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.30),
+                            Colors.black.withValues(alpha: 0.88),
                           ],
-                          stops: const [0.0, 0.35, 0.70, 1.0],
+                          stops: const [0.0, 0.35, 0.65, 1.0],
                         ),
                       ),
                     ),
