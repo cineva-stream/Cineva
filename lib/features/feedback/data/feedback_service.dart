@@ -88,7 +88,7 @@ class FeedbackService {
       final info = await PackageInfo.fromPlatform();
       return 'v${info.version}+${info.buildNumber}';
     } catch (_) {
-      return 'v1.1.9';
+      return 'v1.2.0';
     }
   }
 

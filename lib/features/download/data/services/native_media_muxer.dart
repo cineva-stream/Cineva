@@ -20,7 +20,7 @@ class NativeMediaProbe {
 /// Service interfacing with native Android MediaMuxer to package H.264 video
 /// and AAC audio into standard, hardware-accelerated .mp4 containers with zero stutter.
 class NativeMediaMuxer {
-  static const MethodChannel _channel = MethodChannel('com.primadev.cineva/muxer');
+  static const MethodChannel _channel = MethodChannel('com.cinevagroup.cinevastream/muxer');
 
   /// Remuxes video TS and optional separate audio TS into a standard hardware-accelerated MP4 container.
   /// When [expectedDurationUs] is given, the native side validates the output duration and

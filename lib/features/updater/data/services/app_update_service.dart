@@ -12,7 +12,7 @@ import '../../domain/entities/app_update_info.dart';
 /// native package installer execution, and automated cache cleanup.
 class AppUpdateService {
   static const MethodChannel _channel = MethodChannel(
-    'com.primadev.cineva/updater',
+    'com.cinevagroup.cinevastream/updater',
   );
   static const String _latestReleaseUrl =
       'https://api.github.com/repos/cineva-stream/Cineva/releases/latest';

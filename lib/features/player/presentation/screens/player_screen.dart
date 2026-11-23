@@ -236,7 +236,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   // ── Desktop Fullscreen & Native PiP / Mini-Player State ──
   bool _isDesktopFullScreen = false;
   static const MethodChannel _pipChannel = MethodChannel(
-    'com.primadev.cineva/pip',
+    'com.cinevagroup.cinevastream/pip',
   );
   bool _transferredToMiniPlayer = false;
   bool _isInNativePip = false;
@@ -248,7 +248,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   // ── Screen Brightness State ──
   static const MethodChannel _brightnessChannel = MethodChannel(
-    'com.primadev.cineva/brightness',
+    'com.cinevagroup.cinevastream/brightness',
   );
   double _brightness = 0.5; // 0.05 to 1.0 (5% to 100%)
   bool _showBrightnessIndicator = false;

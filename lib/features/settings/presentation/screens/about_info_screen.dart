@@ -23,7 +23,7 @@ class AboutInfoScreen extends ConsumerStatefulWidget {
 }
 
 class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
-  String _version = '1.1.9';
+  String _version = '1.2.0';
   String _buildNumber = '21';
 
   // High quality curated local poster collection for seamless borderless hero collage

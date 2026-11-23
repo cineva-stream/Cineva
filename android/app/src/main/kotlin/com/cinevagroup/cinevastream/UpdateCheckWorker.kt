@@ -1,4 +1,4 @@
-package com.primadev.cineva
+package com.cinevagroup.cinevastream
 
 import android.app.AlarmManager
 import android.app.Notification

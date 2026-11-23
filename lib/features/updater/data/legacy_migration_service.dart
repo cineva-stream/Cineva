@@ -25,7 +25,7 @@ enum MigrationScenario {
 /// seamless identity migration and uninstallation via modern borderless bottom sheets.
 class LegacyMigrationService {
   static const MethodChannel _updaterChannel = MethodChannel(
-    'com.primadev.cineva/updater',
+    'com.cinevagroup.cinevastream/updater',
   );
 
   /// Previous baseline package name of Cineva

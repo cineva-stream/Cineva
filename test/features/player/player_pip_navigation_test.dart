@@ -5,7 +5,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Player PiP and Back Navigation Channel Tests', () {
-    const channel = MethodChannel('com.primadev.cineva/pip');
+    const channel = MethodChannel('com.cinevagroup.cinevastream/pip');
     final log = <MethodCall>[];
 
     setUp(() {

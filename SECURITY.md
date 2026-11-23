@@ -10,9 +10,9 @@ Only the latest release version receives active security updates and patches.
 
 | Version | Supported          |
 | :---:   | :---:              |
-| v1.1.x  | Yes                |
-| v1.0.x  | No                 |
-| < v1.0  | No                 |
+| v1.2.x  | Yes                |
+| v1.1.x  | No                 |
+| < v1.1  | No                 |
 
 ---
 

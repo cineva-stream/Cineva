@@ -178,7 +178,7 @@ void main() {
     test('getStreamUrl generates valid non-empty clean ID without empty path segments', () {
       final server = LocalStreamServer.instance;
       final url = server.getStreamUrl(
-        dirPath: '/storage/emulated/0/Android/data/com.primadev.cineva/files/offline_media/movie_123',
+        dirPath: '/storage/emulated/0/Android/data/com.cinevagroup.cinevastream/files/offline_media/movie_123',
         fileName: 'master.m3u8',
       );
 

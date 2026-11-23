@@ -1,4 +1,4 @@
-package com.primadev.cineva
+package com.cinevagroup.cinevastream
 
 import android.app.PictureInPictureParams
 import android.content.res.Configuration
@@ -23,7 +23,7 @@ import java.nio.ByteBuffer
 import kotlin.concurrent.thread
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.primadev.cineva/muxer"
+    private val CHANNEL = "com.cinevagroup.cinevastream/muxer"
     private val TAG = "CinevaMuxer"
     private var isPlayerActiveForPip: Boolean = false
     private var pipMethodChannel: MethodChannel? = null
@@ -156,7 +156,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        val deviceChannel = "com.primadev.cineva/device"
+        val deviceChannel = "com.cinevagroup.cinevastream/device"
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, deviceChannel).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isTelevision" -> {
@@ -169,7 +169,7 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        val pipChannel = "com.primadev.cineva/pip"
+        val pipChannel = "com.cinevagroup.cinevastream/pip"
         pipMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, pipChannel)
         pipMethodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -203,7 +203,7 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        val brightnessChannel = "com.primadev.cineva/brightness"
+        val brightnessChannel = "com.cinevagroup.cinevastream/brightness"
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, brightnessChannel).setMethodCallHandler { call, result ->
             when (call.method) {
                 "setBrightness" -> {
@@ -227,7 +227,7 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        val updaterChannel = "com.primadev.cineva/updater"
+        val updaterChannel = "com.cinevagroup.cinevastream/updater"
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, updaterChannel).setMethodCallHandler { call, result ->
             when (call.method) {
                 "canRequestPackageInstalls" -> {

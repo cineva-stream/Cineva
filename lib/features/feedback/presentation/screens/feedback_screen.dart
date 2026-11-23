@@ -29,7 +29,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
   bool _isSubmitting = false;
 
   String _deviceInfo = 'Memuat perangkat...';
-  String _appVersion = 'Cineva v1.1.9';
+  String _appVersion = 'Cineva v1.2.0';
 
   @override
   void initState() {

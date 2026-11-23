@@ -121,7 +121,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <action android:name="com.primadev.cineva.ACTION_CHECK_UPDATE" />
+                <action android:name="com.cinevagroup.cinevastream.ACTION_CHECK_UPDATE" />
             </intent-filter>
         </receiver>
     </application>

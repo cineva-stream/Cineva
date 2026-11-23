@@ -1,5 +1,5 @@
 # Flutter Wrapper & Main Activity
--keep class com.primadev.cineva.MainActivity { *; }
+-keep class com.cinevagroup.cinevastream.MainActivity { *; }
 -keep class io.flutter.app.** { *; }
 -keep class io.flutter.plugin.** { *; }
 -keep class io.flutter.util.** { *; }
@@ -53,8 +53,8 @@
 -dontwarn dev.fluttercommunity.**
 
 # AndroidX WorkManager & Worker classes
--keep class com.primadev.cineva.UpdateCheckWorker { *; }
--keep class com.primadev.cineva.UpdateAlarmReceiver { *; }
+-keep class com.cinevagroup.cinevastream.UpdateCheckWorker { *; }
+-keep class com.cinevagroup.cinevastream.UpdateAlarmReceiver { *; }
 -keep class androidx.work.** { *; }
 -keep class * extends androidx.work.ListenableWorker {
     public <init>(android.content.Context, androidx.work.WorkerParameters);

@@ -258,7 +258,7 @@
     function openCinevaApp() {
       if (!detectedCode) return;
       // 1. Android Intent: forces Android Chrome to open the target package directly, bypassing domain verification
-      const intentUrl = "intent://party/" + detectedCode + "#Intent;scheme=cineva;package=com.primadev.cineva;end";
+      const intentUrl = "intent://party/" + detectedCode + "#Intent;scheme=cineva;package=com.cinevagroup.cinevastream;end";
       // 2. Custom Scheme fallback
       const schemeUrl = "cineva://party/" + detectedCode;
 

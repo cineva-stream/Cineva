@@ -120,7 +120,7 @@ Future<void> main() async {
   bool isTv = false;
   if (!kIsWeb && Platform.isAndroid) {
     try {
-      const channel = MethodChannel('com.primadev.cineva/device');
+      const channel = MethodChannel('com.cinevagroup.cinevastream/device');
       isTv = await channel.invokeMethod<bool>('isTelevision') ?? false;
       gIsTelevision = isTv;
       if (!isTv) {

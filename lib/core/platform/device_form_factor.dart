@@ -12,7 +12,7 @@ enum DeviceFormFactor {
 }
 
 /// Native channel to query Android system features (e.g. Leanback / Television)
-const MethodChannel _deviceChannel = MethodChannel('com.primadev.cineva/device');
+const MethodChannel _deviceChannel = MethodChannel('com.cinevagroup.cinevastream/device');
 
 /// Global flag initialized synchronously during main() for instant TV mode without initial frame delay
 bool gIsTelevision = false;
