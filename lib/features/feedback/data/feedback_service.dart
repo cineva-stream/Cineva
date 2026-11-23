@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/platform/device_form_factor.dart';
 
 /// Categories for user feedback and reports.
