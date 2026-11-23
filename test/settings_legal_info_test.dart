@@ -1,5 +1,6 @@
 import 'package:cineva/core/constants/app_constants.dart';
 import 'package:cineva/core/localization/app_language.dart';
+import 'package:cineva/core/localization/app_language_provider.dart';
 import 'package:cineva/core/localization/app_strings.dart';
 import 'package:cineva/features/settings/data/legal_content.dart';
 import 'package:cineva/features/settings/presentation/screens/about_info_screen.dart';
@@ -320,8 +321,13 @@ void main() {
       'Renders Privacy Policy full width without cards and with back button',
       (tester) async {
         await tester.pumpWidget(
-          const ProviderScope(
-            child: MaterialApp(
+          ProviderScope(
+            overrides: [
+              appLanguageProvider.overrideWith(
+                (ref) => AppLanguageNotifier(AppLanguage.id),
+              ),
+            ],
+            child: const MaterialApp(
               home: LegalDocumentScreen(type: LegalDocType.privacyPolicy),
             ),
           ),
@@ -348,8 +354,13 @@ void main() {
       'Renders Terms and Conditions with all 7 numbered section headers',
       (tester) async {
         await tester.pumpWidget(
-          const ProviderScope(
-            child: MaterialApp(
+          ProviderScope(
+            overrides: [
+              appLanguageProvider.overrideWith(
+                (ref) => AppLanguageNotifier(AppLanguage.id),
+              ),
+            ],
+            child: const MaterialApp(
               home: LegalDocumentScreen(type: LegalDocType.termsAndConditions),
             ),
           ),
@@ -371,8 +382,13 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
+        ProviderScope(
+          overrides: [
+            appLanguageProvider.overrideWith(
+              (ref) => AppLanguageNotifier(AppLanguage.id),
+            ),
+          ],
+          child: const MaterialApp(
             home: LegalDocumentScreen(type: LegalDocType.disclaimer),
           ),
         ),
@@ -391,7 +407,14 @@ void main() {
       'Renders poster collage mosaic, app name, badges, description, and feature tiles',
       (tester) async {
         await tester.pumpWidget(
-          const ProviderScope(child: MaterialApp(home: AboutInfoScreen())),
+          ProviderScope(
+            overrides: [
+              appLanguageProvider.overrideWith(
+                (ref) => AppLanguageNotifier(AppLanguage.id),
+              ),
+            ],
+            child: const MaterialApp(home: AboutInfoScreen()),
+          ),
         );
         await tester.pumpAndSettle();
 
