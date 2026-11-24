@@ -69,4 +69,3 @@ key.properties
 
 # Telegram Auto-Broadcast local dedup cache
 .telegram_posted_cache.json
-scripts/telegram_broadcast.py
