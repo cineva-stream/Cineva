@@ -1,77 +1,69 @@
-# Cineva v1.2.0 - Release Notes 🎬
+# Cineva v1.2.1 - Release Notes 🎬
 
-Pembaruan besar Cineva versi 1.2.0 menghadirkan lompatan besar pada kenyamanan visual, interaktivitas, dan efisiensi performa: notifikasi pesan obrolan bergaya **Dynamic Island**, **Mini Preview & Digital Timecode** presisi tinggi pada timeline video (mendukung geser sentuh di Android dan kursor *hover* di Windows), partikel reaksi melayang **Floating Reactions ala TikTok Live**, sistem keamanan **PIN Ruangan Watch Party**, integrasi tautan langsung **Deep Linking** untuk berbagi ke media sosial, perombakan total **Halaman Info** dengan mosaik poster film dinamis, penyegaran tata letak kartu poster film & serial TV, standardisasi **Lokalisasi Penuh Dua Bahasa (Bilingual ID/EN)**, serta optimalisasi performa yang jauh lebih cepat, responsif, dan hemat daya.
+Pembaruan Cineva versi **1.2.1 (Build 22)** menghadirkan ekspansi katalog konten global, personalisasi tontonan cerdas, serta lonjakan besar pada performa pengunduhan offline: dukungan penuh **Bahasa India (Hindi / हिन्दी)** di seluruh antarmuka (3 bahasa: Indonesia, English, dan Hindi), section rekomendasi personal **"Because You Watched..."** berdasarkan film atau serial TV yang ditonton, halaman **Cineva Insights & Statistik Tontonan** di menu Profil (lengkap dengan kartu identitas member bergaya KTP / ATM Cineva), **Optimalisasi Mesin Unduhan Offline** (*Background Isolate* anti-lag dengan proses *finalizing* instan), penambahan 5 section regional baru (**Indonesia, Anime, K-Drama, Hollywood, dan Bollywood**) di layar utama lengkap dengan halaman katalog penuh *infinite scroll* (*See All*), serta pembaruan **Logika & Filter Pencarian** yang kini secara default menampilkan rilis terbaru terlebih dahulu.
 
 ---
 
-## Ringkasan Fitur Baru & Peningkatan Utama (v1.2.0)
+## Ringkasan Fitur Baru & Peningkatan Utama (v1.2.1)
 
-### 1. Pratinjau Pesan Obrolan Dynamic Island (*Dynamic Island Chat Message Preview*)
-* **Kapsul Notifikasi Melayang yang Elegan**:
-  * Saat ada pesan obrolan baru masuk pada sesi Watch Party ketika panel chat sedang ditutup, pratinjau pesan kini ditampilkan dalam bentuk kapsul hitam obsidian bergaya *Dynamic Island* di bagian atas layar pemutar video.
-  * Dilengkapi animasi ekspansi halus, avatar atau inisial pengirim, nama pengguna dengan aksen warna, dan teks pesan ringkas.
-  * Dirancang tanpa menghalangi pandangan video (*non-intrusive*), otomatis memudar dan menyusut kembali secara mulus setelah beberapa detik.
+### 1. Dukungan Penuh Bahasa India / Hindi (*Full Trilingual Localization: Indonesia, English & Hindi*)
+* **Ekspansi Lokalisasi 3 Bahasa Menyeluruh (`id`, `en`, `hi`)**:
+  * Menambahkan bahasa **India (Hindi / हिन्दी)** sebagai bahasa resmi ketiga di Cineva mendampingi Bahasa Indonesia dan Bahasa Inggris.
+  * Seluruh teks antarmuka aplikasi — mulai dari layar awal (*Splash Screen*), Beranda, Pencarian, Filter & Urutkan, Halaman Detail Film/Serial, Pemutar Video, Subtitle, Watch Party, Unduhan Offline, Profil, hingga Dokumen Legalitas & Halaman Info Aplikasi — telah diterjemahkan secara lengkap dan konsisten ke dalam 3 bahasa.
+  * Dilengkapi pengayaan metadata episode TV cerdas (*automatic `en-US` fallback*) sehingga judul dan sinopsis setiap episode serial TV tetap tampil lengkap meskipun bahasa aplikasi diatur ke Bahasa Indonesia atau Hindi.
 
-### 2. Mini Preview & Indikator Waktu Melayang pada Progress Bar (*Seekbar Scrubbing & Hover Preview*)
-* **Dukungan Penuh Multi-Platform (Android Mobile/Tablet & Windows Desktop)**:
-  * **Windows Desktop**: Kartu mini preview muncul secara otomatis mengikuti posisi kursor *mouse* saat melintasi atau mengarahkan kursor (*hover*) di atas bilah waktu (*progress bar*).
-  * **Android (Ponsel & Tablet)**: Kartu mini preview muncul saat jari pengguna menyentuh dan menggeser (*drag/scrub*) penanda durasi video.
-* **Fitur & Detail Kartu Mini Preview**:
-  * **Rasio Aspek Sinematik 16:9 Glassmorphic**: Kartu mengambang dengan latar kaca gelap berkilau (*dark blur glass*), border tipis modern, dan panah penunjuk (*pointer beak*) yang mengarah tepat ke titik waktu yang dituju.
-  * **Format Waktu Presisi Digital**: Menampilkan timecode target berformat `HH:MM:SS` (untuk video berdurasi lebih dari 1 jam) atau `MM:SS`.
-  * **Kalkulasi Selisih Waktu Loncat (*Seek Delta Indicator*)**: Menampilkan indikator selisih durasi relatif terhadap posisi pemutaran saat ini (misal: `+05:30` saat maju ke depan, atau `-02:15` saat mundur ke belakang).
-  * **Thumbnail Bayangan Vignette & Mini Progress Bar**: Dilengkapi ornamen vignette sinematik dengan ikon film serta progress bar sekunder bergradasi warna di bagian bawah kartu.
-  * **Boundary Clamping Otomatis**: Posisi kartu dijaga agar selalu berada di dalam batas layar (*safe-area clamping*), tidak akan pernah terpotong di tepi kiri maupun kanan layar pemutar video.
+### 2. Rekomendasi Personal Berdasarkan Tontonan (*"Because You Watched..." Personalized Section*)
+* **Saran Konten Cerdas dari Riwayat Tontonan**:
+  * Menampilkan section dinamis **"Karena Anda Menonton [Judul]..."** (*"Because You Watched..."* / *"क्योंकि आपने ... देखा"*) secara otomatis di halaman Beranda berdasarkan film atau serial TV yang terakhir Anda tonton.
+  * Mengkurasi judul-judul serupa yang relevan dan sudah tersedia untuk ditonton, dengan tampilan header rata kiri yang bersih dan minimalis.
 
-### 3. Partikel Reaksi Melayang ala TikTok Live (*Floating Streaming Reactions*)
-* **Aliran Reaksi Emoji Interaktif Real-Time**:
-  * Pengguna dapat mengirim reaksi cepat (❤️, 😂, 😮, 👏, 🔥) saat streaming berlangsung.
-  * Partikel emoji beranimasi melayang mengapung ke atas dari sudut kanan bawah layar dengan lintasan gelombang acak (*random sway & floating curves*), variasi rotasi dinamis, dan efek pemudaran (*fade-out*) bertingkat seperti siaran langsung TikTok Live.
-  * Tersinkronisasi secara instan ke seluruh peserta di dalam ruangan Watch Party, menciptakan suasana menonton bersama yang meriah dan interaktif.
+### 3. Halaman Cineva Insights & Statistik di Menu Profil (*Watch Insights, Stats & Member Card Studio*)
+* **Dasbor Analisis Aktivitas Menonton**:
+  * Menambahkan halaman **Cineva Insights / Statistik Tontonan** yang dapat diakses langsung dari menu Profil.
+  * Menampilkan ringkasan metrik tontonan personal secara visual: total durasi jam menonton, jumlah film dan episode serial TV yang telah diselesaikan, distribusi genre favorit, tren aktivitas harian/mingguan, serta pencapaian (*milestones*) penonton.
+* **Studio Kartu Member Cineva (Gaya KTP & Kartu ATM Premium)**:
+  * Pengguna dapat melihat, menyesuaikan, dan membagikan kartu identitas anggota resmi Cineva (*Cineva Member Card*) dalam desain kartu KTP sinematik maupun kartu ATM modern lengkap dengan statistik tontonan pengguna.
 
-### 4. Proteksi PIN Opsional untuk Ruangan Watch Party (*Optional Room PIN Protection*)
-* **Keamanan & Privasi Sesi Menonton Bersama**:
-  * Saat membuat ruangan (*Host Room*), pengguna kini dapat menyalakan toggle **Proteksi PIN** dan menentukan 4 digit PIN numerik keamanan.
-  * Tamu (*Guests*) yang ingin bergabung ke ruangan terproteksi wajib memasukkan PIN yang sesuai sebelum diizinkan masuk ke ruang pemutaran.
-  * Mencegah akses yang tidak diinginkan dan menjaga kenyamanan nobar privat bersama keluarga atau sahabat.
+### 4. Optimalisasi Mesin Unduhan Offline (*High-Speed Background Isolate Download Engine*)
+* **Zero UI Lag dengan Background Isolate Murni**:
+  * Memindahkan seluruh proses pengunduhan segmen HLS, dekripsi paralel `AES-128-CBC`, ekstraksi *wrapper* Gzip/PNG/WebP, dan penyelarasan paket MPEG-TS (`0x47`) ke dalam `Isolate.spawn` latar belakang khusus dengan 16 *worker* paralel.
+  * Menjaga *frame rate* layar utama tetap mulus 60/120 FPS tanpa beban pada *main UI thread* meskipun sedang mengunduh video berkecepatan lebih dari 10 MB/s.
+* **Finalisasi Instan (`< 0.5 Detik`) & Smart Download Queue**:
+  * Perakitan berkas video dilakukan secara progresif selama pengunduhan berlangsung (*in-memory sliding-window progressive assembler*), sehingga tahap *Finalizing* selesai secara instan tanpa menyalin ulang ratusan segmen di akhir unduhan.
+  * Dilengkapi sistem antrean unduhan cerdas (*Smart Concurrent Download Queue*, maksimal 2 unduhan aktif bersamaan dengan status *"Dalam antrean..."* otomatis) serta pembersihan segmen sementara secara asinkron di latar belakang.
 
-### 5. Tautan Langsung & Berbagi Ruangan ke Media Sosial (*Watch Party Deep Linking*)
-* **Berbagi Sekali Sentuh ke Media Sosial**:
-  * Host Watch Party dapat menyalin tautan ruangan atau membagikannya langsung ke aplikasi perpesanan dan media sosial (WhatsApp, Telegram, X/Twitter, Instagram, Facebook, dll.).
-* **Integrasi Universal Deep Link via GitHub Pages**:
-  * Menggunakan URL resmi `https://cineva-tv.github.io/web/join?room=...` yang ramah pratinjau tautan (*rich link preview*).
-  * Saat tautan diklik di perangkat yang telah terpasang Cineva, aplikasi akan langsung terbuka secara otomatis, mengarahkan pengguna ke ruangan yang dimaksud, dan mengisi kode ruangan tanpa perlu mengetik manual.
+### 5. Section Katalog Regional Baru di Beranda (*Indonesia, Anime, K-Drama, Hollywood & Bollywood*)
+* **5 Kategori Kurasi Regional & Genre Populer**:
+  * Menambahkan 5 section baru di halaman Beranda (**Home Screen**): **Anime**, **K-Drama**, **Indonesia**, **Hollywood**, dan **Bollywood** yang menampilkan tayangan terbaru yang sudah rilis dan siap ditonton.
+* **Halaman Katalog Penuh Infinite Scroll (`See All`) & Immersive Edge-to-Edge**:
+  * Setiap section dilengkapi tombol **"Lihat Semua" (*See All*)** yang membuka halaman katalog penuh dengan *infinite scroll* mulus, tampilan layar penuh *Immersive Edge-to-Edge* (tanpa bilah navigasi bawah yang menghalangi), serta filter tipe media (*Semua, Film, Serial TV*), urutan (*Terbaru, Populer, Rating Tertinggi*), Tahun Rilis, dan Genre.
+* **Perlindungan Cerdas Tayangan Belum Rilis (*Smart "Segera Hadir" Guard*)**:
+  * Film atau episode serial TV yang tanggal rilisnya masih di masa depan dan belum tersedia di server otomatis menonaktifkan tombol tonton menjadi **"Segera Hadir"** (*"Coming Soon"* / *"जल्द आ रहा है"*) serta menyembunyikan tombol unduh, namun tetap melakukan pengecekan latar belakang (*stream availability probe*) agar tayangan yang rilis lebih awal tetap langsung bisa diputar.
 
-### 6. Desain Ulang Halaman Info Aplikasi & Mosaik Poster Sinematik (*Redesigned Info Page*)
-* **Mosaik Poster Film Tanpa Batas (*Seamless Poster Collage*)**:
-  * Halaman Tentang Aplikasi (*About Cineva*) kini dihiasi mosaik poster film beresolusi tinggi dengan efek gradasi gelap elegan (*dark vignette fade*).
-* **Detail Aplikasi Komprehensif**:
-  * Informasi versi dan build dinormalisasi dengan tepat (`v1.2.0 (Build 21)`).
-  * Ringkasan fitur unggulan terorganisir rapi dalam kartu kaca modern, dokumentasi teknologi inti (Flutter, Riverpod, MediaKit/MPV, Torrent Engine), informasi pengembang, dan tautan repositori serta situs resmi.
+### 6. Logika Pencarian Terbaru & Bilah Filter Modern (*Newest-First Search & Unified Filter Bar*)
+* **Urutan Default Hasil Pencarian dari Rilis Terbaru**:
+  * Logika hasil pencarian kini diperbarui agar secara otomatis mengurutkan dan menampilkan film maupun serial TV dari **rilis terbaru terlebih dahulu** (*Newest First*), sambil tetap menjaga relevansi judul dan menyaring item tanpa poster yang tidak valid.
+* **Desain Bilah Filter Satu Baris yang Rapi (*Single-Row Smart Filter Bar*)**:
+  * Halaman hasil pencarian dan halaman katalog *See All* kini menggunakan bilah filter satu baris rata tengah dengan latar hitam khas Cineva dan *smooth border* elegan:
+    * Chip cepat untuk tipe konten (**Semua / Film / Serial TV**).
+    * Satu tombol **Filter & Urutkan** terpadu (dengan lencana indikator jumlah filter aktif) yang membuka panel *Bottom Sheet* modern untuk memilih **Urutkan Berdasarkan** (*Terbaru, Populer, Rating Tertinggi*), **Tahun Rilis**, dan **Genre**.
 
-### 7. Tata Letak Poster Film & Serial TV Lebih Bersih dan Elegan (*Clean Poster & Card Layout*)
-* **Estetika Minimalis & Rasio Bioskop Standar**:
-  * Penyempurnaan rasio aspek kartu film dan serial TV agar seragam, bebas distorsi, dan nyaman dipandang di berbagai ukuran layar (layar ponsel kecil, tablet, hingga monitor PC ultrawide).
-  * Penempatan badge informasi (seperti rating IMDb, tahun rilis, dan indikator resolusi HD/4K) ditata ulang secara rapi dan ergonomis dengan efek *frosted glass* halus tanpa menghalangi gambar poster utama.
-
-### 8. Lokalisasi Penuh Dua Bahasa (*Full Bilingual Localization - ID & EN*)
-* **Standardisasi Bahasa Menyeluruh**:
-  * Memperbaiki dan melengkapi seluruh string antarmuka ke dalam Bahasa Indonesia dan Bahasa Inggris secara menyeluruh.
-  * Tidak ada lagi teks yang terlewat, tercampur, atau gagal diterjemahkan saat berganti bahasa di Pengaturan, Beranda, Halaman Detail, Pemutar Video, Pengaturan Subtitle, Watch Party, hingga Halaman Info dan Syarat Ketentuan / Legalitas.
-
-### 9. Performa Lebih Cepat, Ringan & Efisien (*Faster & More Efficient Performance*)
-* **Optimalisasi Mesin Pemutar & Sinkronisasi**:
-  * Pengurangan beban *thread* dan penggunaan memori RAM saat memutar video beresolusi tinggi dan *multi-stream*.
-  * Efisiensi sinkronisasi status playback pada fitur Watch Party dan Google Cloud Sync, menghasilkan pengalaman menonton yang lebih mulus dengan jeda latensi minimal dan konsumsi daya baterai yang jauh lebih hemat.
-
-### 10. Migrasi Identitas Aplikasi Mandiri (*Application ID Migration*)
-* **Peralihan Bersih ke `com.cinevagroup.cinevastream`**:
-  * Migrasi nama paket resmi untuk memastikan pembaruan jangka panjang yang stabil.
-  * Dilengkapi deteksi cerdas instalasi versi terdahulu disertai aksi penghapusan versi lama secara mudah dan aman.
+### 7. Integrasi Saluran Resmi Telegram & Deep Link Media (*Official Telegram Channel & "Watch on Cineva"*)
+* **Menu "Join Our Channel" di Halaman Info Aplikasi**:
+  * Menambahkan kartu menu **Gabung Saluran Kami (*Join Our Channel* / *हमारे चैनल से जुड़ें*)** lengkap dengan ikon vektor resmi Telegram (`https://t.me/cineva_platform`) di halaman Info Aplikasi sejajar dengan GitHub dan Email Pengembang.
+* **Deep Link Langsung ke Halaman Film & Serial TV**:
+  * Mendukung pembukaan tautan langsung `/Cineva/movie/:id`, `/Cineva/tv/:id`, `cineva://movie/:id`, dan `cineva://tv/:id` dari tombol aksi **Watch on Cineva** di saluran Telegram langsung menuju halaman detail tayangan di dalam aplikasi.
 
 ---
 
 ## Riwayat Versi Sebelumnya
+
+### Cineva v1.2.0
+* **Pratinjau Pesan Obrolan Dynamic Island**: Kapsul notifikasi pesan chat melayang bergaya *Dynamic Island* saat panel obrolan Watch Party ditutup.
+* **Mini Preview & Indikator Waktu Melayang pada Progress Bar**: Kartu pratinjau 16:9 glassmorphic dengan timecode digital presisi dan kalkulasi selisih waktu loncat (*seek delta*) saat *hover* di Windows maupun *scrubbing* sentuh di Android.
+* **Partikel Reaksi Melayang ala TikTok Live**: Aliran emoji interaktif *real-time* yang tersinkronisasi ke seluruh peserta Watch Party.
+* **Proteksi PIN Ruangan Watch Party & Deep Linking**: Keamanan opsional 4 digit PIN ruangan serta pembagian tautan langsung ruangan nobar via GitHub Pages.
+* **Desain Ulang Halaman Info & Migrasi Paket Resmi**: Mosaik poster film tanpa batas pada halaman Info Aplikasi serta migrasi identitas paket ke `com.cinevagroup.cinevastream`.
 
 ### Cineva v1.1.9
 * **Lanjutkan Menonton Cerdas (Seamless Device Hand-Off)**: Pelacakan sesi pemutaran lintas perangkat cerdas via Cloud dengan kapsul notifikasi melanjutkan tontonan di detik yang tepat.
@@ -88,22 +80,17 @@ Pembaruan besar Cineva versi 1.2.0 menghadirkan lompatan besar pada kenyamanan v
 * **Rilis Fitur Unduhan Offline**: Parser HLS m3u8, dekripsi segmen TS terenkripsi AES-128, perakitan MP4 offline mandiri via `OfflineMp4Builder`, UI progress realtime saat *finalizing*, dan pengelompokan serial TV dengan poster resmi serta dropdown season.
 * **Penyempurnaan Pemutar Video & Android PiP**: Urutan kontrol bilah atas yang ergonomis, pemisahan navigasi *Back* bersih dengan aktivasi PiP eksklusif via tombol Home / ikon PiP, serta skala subtitle otomatis 1080p/4K untuk sofa viewing di Windows dan Android TV.
 
-### Cineva v1.1.7
-* **Fitur Cadangan & Pemulihan Data Mandiri (Backup & Restore System)**: Ekspor & impor seluruh data aplikasi ke dalam berkas `.cineva` beserta opsi pemulihan langsung di layar awal (*Splash Screen*).
-* **Masuk dengan Google & Sinkronisasi Cloud**: Integrasi Google Sign-In & Firebase Realtime Database untuk sinkronisasi multi-perangkat otomatis dan pengisian profil cerdas.
-* **Desain Ulang Side Panel Streaming & Subtitle Minimalis**: Panel samping hitam obsidian pada pemutar video dan pengaturan subtitle *real-time* yang ringkas.
-
 ---
 
 ## Informasi Versi
 
-* **Versi Aplikasi**: 1.2.0
-* **Build**: 21
+* **Versi Aplikasi**: 1.2.1
+* **Build**: 22
 * **Target Sistem Operasi**: Android 5.0 (API 21) ke atas (Smartphone, Tablet & Android TV / Google TV), Windows 10/11 (64-bit)
 * **Daftar Varian File Rilis**:
-  * `Cineva_setup_v1.2.0.exe` (Windows Desktop Installer Resmi)
-  * `Cineva_v1.2.0-android-tv.apk` (Khusus Android TV & Smart TV - **Rekomendasi TV**)
-  * `Cineva_v1.2.0-arm64-v8a.apk` (HP & Tablet Android Modern 64-bit)
-  * `Cineva_v1.2.0-armeabi-v7a.apk` (HP & Tablet Android Lawas 32-bit)
-  * `Cineva_v1.2.0-x86_64.apk` (Emulator PC & Android x86)
-  * `Cineva_v1.2.0.apk` (Universal / Semua CPU, Kompatibel Penuh)
+  * `Cineva_setup_v1.2.1.exe` (Windows Desktop Installer Resmi)
+  * `Cineva_v1.2.1-android-tv.apk` (Khusus Android TV & Smart TV - **Rekomendasi TV**)
+  * `Cineva_v1.2.1-arm64-v8a.apk` (HP & Tablet Android Modern 64-bit)
+  * `Cineva_v1.2.1-armeabi-v7a.apk` (HP & Tablet Android Lawas 32-bit)
+  * `Cineva_v1.2.1-x86_64.apk` (Emulator PC & Android x86)
+  * `Cineva_v1.2.1.apk` (Universal / Semua CPU, Kompatibel Penuh)

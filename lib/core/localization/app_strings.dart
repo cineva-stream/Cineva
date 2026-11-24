@@ -1018,6 +1018,16 @@ class AppStrings {
     'Cineva is free and open-source software under the GNU General Public License v3.0 (GPL-3.0), crafted with deep gratitude to the worldwide open-source ecosystem and public APIs: Flutter, MediaKit, Riverpod, The Movie Database (TMDB), OpenSubtitles, Hive, and the Torrentio community.',
     'Cineva GNU General Public License v3.0 (GPL-3.0) के तहत एक मुफ़्त और ओपन-सोर्स सॉफ़्टवेयर है, जिसे वैश्विक ओपन-सोर्स इकोसिस्टम और सार्वजनिक API के प्रति गहरे आभार के साथ बनाया गया है: Flutter, MediaKit, Riverpod, The Movie Database (TMDB), OpenSubtitles, Hive और Torrentio समुदाय।',
   );
+  String get aboutJoinTelegramTitle => tr(
+    'Gabung Saluran Kami',
+    'Join Our Channel',
+    'हमारे चैनल से जुड़ें',
+  );
+  String get aboutJoinTelegramDesc => tr(
+    'Dapatkan info rilis film, serial & pembaruan fitur terbaru secara otomatis',
+    'Get automatic updates on new movies, series & latest feature releases',
+    'नई फ़िल्मों, सीरीज़ और नवीनतम फ़ीचर अपडेट की स्वचालित जानकारी प्राप्त करें',
+  );
 
   // ── Dialogs & Actions ──
   String get dialogExitTitle =>

@@ -304,6 +304,14 @@ void main() {
       expect(sId.filterAllYears, 'Semua Tahun');
       expect(sEn.filterAllYears, 'All Years');
       expect(sHi.filterAllYears, 'सभी वर्ष');
+
+      // Official Telegram Channel strings in AboutInfoScreen (id, en, hi)
+      expect(sId.aboutJoinTelegramTitle, 'Gabung Saluran Kami');
+      expect(sEn.aboutJoinTelegramTitle, 'Join Our Channel');
+      expect(sHi.aboutJoinTelegramTitle, 'हमारे चैनल से जुड़ें');
+      expect(sId.aboutJoinTelegramDesc, isNotEmpty);
+      expect(sEn.aboutJoinTelegramDesc, isNotEmpty);
+      expect(sHi.aboutJoinTelegramDesc, isNotEmpty);
     });
 
     test('MediaReleaseGuard accurately distinguishes released vs unreleased titles with timezone grace buffer', () {

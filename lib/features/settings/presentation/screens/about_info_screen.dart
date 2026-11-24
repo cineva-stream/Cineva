@@ -11,6 +11,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../shared/widgets/github_brand_icon.dart';
+import '../../../../shared/widgets/telegram_brand_icon.dart';
 
 /// Clean and minimalist "Info" screen displaying an edge-to-edge seamless poster
 /// collage hero banner, transparent gradient blend, application branding, version specs,
@@ -380,6 +381,118 @@ class _AboutInfoScreenState extends ConsumerState<AboutInfoScreen> {
                             const Icon(
                               Icons.north_east_rounded,
                               color: AppColors.primaryLight,
+                              size: 18,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Telegram Channel Card: Join Our Channel -> https://t.me/cineva_platform
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _launchUrl('https://t.me/cineva_platform'),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant.withValues(
+                            alpha: 0.45,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF2AABEE,
+                                ).withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: TelegramBrandIcon(
+                                  size: 22,
+                                  color: Color(0xFF2AABEE),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          s.aboutJoinTelegramTitle,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.outfit(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(
+                                            0xFF2AABEE,
+                                          ).withValues(alpha: 0.18),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Telegram',
+                                          style: GoogleFonts.inter(
+                                            color: const Color(0xFF54C1FF),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'https://t.me/cineva_platform',
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFF54C1FF),
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    s.aboutJoinTelegramDesc,
+                                    style: GoogleFonts.inter(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.north_east_rounded,
+                              color: Color(0xFF54C1FF),
                               size: 18,
                             ),
                           ],
