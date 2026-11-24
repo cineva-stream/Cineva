@@ -168,24 +168,28 @@ class ProviderLoaderService {
       if (scraperProviders.isEmpty) {
         list.addAll(fallbackScraperProviders);
       } else {
-        // Prioritize high-performance known scrapers
+        // Prioritize high-performance known scrapers by real-world response latency
         final prioritizedIds = [
           'movy',
-          'vidup',
           'reelix',
+          'vidlink',
+          'vidup',
+          'meowtv',
+          'aether',
           'cinejoy',
           'atlantic',
           'viv',
           'asiaflix',
+          'aethoflix',
+          '4khdhub',
+          'kisskh',
           'animekai',
           'animepahe',
           'anikoto',
           'animeyy',
-          'kisskh',
-          '4khdhub',
           'yoturkish',
-          'aethoflix',
-          'aether',
+          'rive',
+          'dulo',
           'moviepire',
         ];
 

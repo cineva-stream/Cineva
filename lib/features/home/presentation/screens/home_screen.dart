@@ -19,6 +19,7 @@ import '../widgets/section_header.dart';
 import '../../domain/entities/movie.dart';
 import '../../domain/entities/tv_series.dart';
 import '../../../history/presentation/widgets/continue_watching_section.dart';
+import '../widgets/because_you_watched_section.dart';
 import '../../../download/presentation/providers/download_provider.dart';
 import '../widgets/genre_selection_bottom_sheet.dart';
 import '../../../../core/localization/app_strings.dart';
@@ -774,6 +775,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 const SliverToBoxAdapter(child: ContinueWatchingSection()),
 
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+              // PERSONALIZED "BECAUSE YOU WATCHED..." SECTION
+              const SliverToBoxAdapter(child: BecauseYouWatchedSection()),
 
               // TOP 10 SECTION (Netflix-style Giant Rank Numbers)
               SliverToBoxAdapter(

@@ -383,6 +383,60 @@ class TmdbRemoteDatasource {
     }
   }
 
+  /// Fetch personalized movie recommendations based on a movie ID.
+  /// Automatically falls back to `/movie/{id}/similar` if `/recommendations` is empty.
+  Future<List<MovieModel>> getMovieRecommendations(
+    int movieId, {
+    int page = 1,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/movie/$movieId/recommendations',
+        queryParameters: {'page': page, 'language': languageCode},
+      );
+      final recList = _parseMovieList(response.data);
+      if (recList.isNotEmpty) return recList;
+
+      final similarResponse = await _dio.get(
+        '/movie/$movieId/similar',
+        queryParameters: {'page': page, 'language': languageCode},
+      );
+      return _parseMovieList(similarResponse.data);
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.statusMessage ?? 'Failed to fetch movie recommendations',
+        e.response?.statusCode,
+      );
+    }
+  }
+
+  /// Fetch personalized TV series recommendations based on a TV series ID.
+  /// Automatically falls back to `/tv/{id}/similar` if `/recommendations` is empty.
+  Future<List<TvSeriesModel>> getTvRecommendations(
+    int tvId, {
+    int page = 1,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/tv/$tvId/recommendations',
+        queryParameters: {'page': page, 'language': languageCode},
+      );
+      final recList = _parseTvList(response.data);
+      if (recList.isNotEmpty) return recList;
+
+      final similarResponse = await _dio.get(
+        '/tv/$tvId/similar',
+        queryParameters: {'page': page, 'language': languageCode},
+      );
+      return _parseTvList(similarResponse.data);
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.statusMessage ?? 'Failed to fetch TV recommendations',
+        e.response?.statusCode,
+      );
+    }
+  }
+
   List<MovieModel> _parseMovieList(dynamic data) {
     final results = data['results'] as List<dynamic>? ?? [];
     return results.map((json) => MovieModel.fromJson(json)).toList();

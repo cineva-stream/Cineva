@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.util.Base64
 import java.io.FileInputStream
 import java.io.File
 
@@ -16,6 +17,66 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
+val localPropertiesFile = rootProject.file("local.properties")
+val localProperties = Properties()
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+
+val dotEnvFile = File(rootProject.projectDir.parentFile, ".env")
+val dotEnvProperties = Properties()
+if (dotEnvFile.exists()) {
+    FileInputStream(dotEnvFile).use { dotEnvProperties.load(it) }
+}
+
+// Automatically inject API & Scraper credentials from key.properties / local.properties / .env
+// into Flutter's `dart-defines` (Base64-encoded KEY=VALUE pairs).
+run {
+    val secretKeys = listOf(
+        "TMDB_API_KEY",
+        "TMDB_ACCESS_TOKEN",
+        "OPENSUBTITLES_API_KEY",
+        "CINEVA_SCRAPER_API_URL",
+        "CINEVA_SCRAPER_FALLBACK_URL"
+    )
+    val existingDefines = (project.findProperty("dart-defines") as? String)
+        ?.split(",")
+        ?.filter { it.isNotBlank() }
+        ?.toMutableList()
+        ?: mutableListOf()
+
+    val existingDecodedKeys = existingDefines.mapNotNull { encoded ->
+        try {
+            val decoded = String(Base64.getDecoder().decode(encoded), Charsets.UTF_8)
+            decoded.substringBefore("=", "")
+        } catch (_: Exception) {
+            null
+        }
+    }.toSet()
+
+    for (key in secretKeys) {
+        if (existingDecodedKeys.contains(key)) continue
+        val rawValue = (
+            keystoreProperties.getProperty(key)
+                ?: localProperties.getProperty(key)
+                ?: dotEnvProperties.getProperty(key)
+                ?: System.getenv(key)
+            )?.trim()?.removeSurrounding("\"")?.removeSurrounding("'")
+
+        if (!rawValue.isNullOrEmpty()) {
+            val encoded = Base64.getEncoder()
+                .encodeToString("$key=$rawValue".toByteArray(Charsets.UTF_8))
+            existingDefines.add(encoded)
+        }
+    }
+
+    if (existingDefines.isNotEmpty()) {
+        val mergedDefines = existingDefines.joinToString(",")
+        project.extensions.extraProperties.set("dart-defines", mergedDefines)
+        rootProject.extensions.extraProperties.set("dart-defines", mergedDefines)
+    }
 }
 
 android {

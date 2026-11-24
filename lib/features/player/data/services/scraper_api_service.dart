@@ -9,32 +9,21 @@ import '../models/provider_stream_models.dart';
 
 /// Service client for the FlixQuest Multi-Provider Scraper Cluster.
 /// Proxies and extracts direct HLS (.m3u8) streams from over 17+ upstream CDNs.
+///
+/// Cluster endpoints are injected via `--dart-define-from-file=.env` or
+/// `android/key.properties` / `android/local.properties` (`CINEVA_SCRAPER_API_URL`
+/// and `CINEVA_SCRAPER_FALLBACK_URL`) with zero hardcoded URLs in source code.
 class ScraperApiService {
-  // Obfuscated cluster endpoint buffers (decoded at runtime with XOR 0x5C)
-  // to protect endpoints from automated crawlers and public plaintext indexing.
-  static const List<int> _kEncPrimary = [
-    52, 40, 40, 44, 47, 102, 115, 115, 47, 63, 46, 61, 44, 57, 46, 114, 58, 48, 53, 36, 114, 45, 41, 57, 47, 40,
-  ];
-  static const List<int> _kEncFallback = [
-    52, 40, 40, 44, 47, 102, 115, 115, 58, 48, 53, 36, 45, 41, 57, 47, 40, 113, 47, 63, 46, 61, 44, 57, 46, 114, 51, 50, 46, 57, 50, 56, 57, 46, 114, 63, 51, 49,
-  ];
-
-  static String _decodeClusterEndpoint(List<int> bytes) {
-    return String.fromCharCodes(bytes.map((b) => b ^ 0x5C));
-  }
-
   static String get defaultScraperUrl {
-    final env = AppEnv.cinevaScraperApiUrl.trim();
-    if (env.isNotEmpty) return env;
-    return _decodeClusterEndpoint(_kEncPrimary);
+    return AppEnv.cinevaScraperApiUrl.trim();
   }
 
   static List<String> get defaultScraperInstances {
-    final primary = defaultScraperUrl;
-    final fallback = _decodeClusterEndpoint(_kEncFallback);
+    final primary = _normalizeBaseUrl(AppEnv.cinevaScraperApiUrl);
+    final fallback = _normalizeBaseUrl(AppEnv.cinevaScraperFallbackUrl);
     return [
-      primary,
-      if (_normalizeBaseUrl(fallback) != _normalizeBaseUrl(primary)) fallback,
+      if (primary.isNotEmpty) primary,
+      if (fallback.isNotEmpty && fallback != primary) fallback,
     ];
   }
 
@@ -49,7 +38,7 @@ class ScraperApiService {
 
   static String _normalizeBaseUrl(String url) {
     final trimmed = url.trim().replaceAll(RegExp(r'/+$'), '');
-    return trimmed.isEmpty ? defaultScraperUrl : trimmed;
+    return trimmed;
   }
 
   /// Sends a GET request with automatic fallback between cluster instances.
@@ -59,10 +48,16 @@ class ScraperApiService {
     Duration? timeout,
   ]) async {
     final instances = <String>[
-      _baseUrl,
+      if (_baseUrl.isNotEmpty) _baseUrl,
       for (final s in defaultScraperInstances)
-        if (_normalizeBaseUrl(s) != _baseUrl) _normalizeBaseUrl(s),
+        if (s.isNotEmpty && s != _baseUrl) s,
     ];
+
+    if (instances.isEmpty) {
+      throw Exception(
+        'Scraper API URL is not configured. Set CINEVA_SCRAPER_API_URL in .env / key.properties / local.properties.',
+      );
+    }
 
     DioException? lastError;
     for (final base in instances) {
@@ -155,14 +150,12 @@ class ScraperApiService {
     required String providerName,
   }) async {
     try {
-      final uri = _endpoint(path, queryParams);
-      debugPrint('[ScraperApiService] Fetching stream: $uri');
+      debugPrint('[ScraperApiService] Fetching stream: $path ($queryParams)');
 
-      final response = await _dio.get<String>(
-        uri.toString(),
-        options: Options(
-          receiveTimeout: const Duration(seconds: 18),
-        ),
+      final response = await _getWithFallback(
+        path,
+        queryParams,
+        const Duration(seconds: 15),
       );
 
       final body = _decodeJson(response.data);
@@ -237,11 +230,6 @@ class ScraperApiService {
         providerName: providerName,
       );
     }
-  }
-
-  Uri _endpoint(String path, [Map<String, String>? queryParams]) {
-    final root = _baseUrl.endsWith('/api/v2') ? _baseUrl : '$_baseUrl/api/v2';
-    return Uri.parse('$root$path').replace(queryParameters: queryParams);
   }
 
   /// Estimates stream byte size using a Scraper API v2 `sizeToken`.

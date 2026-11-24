@@ -2372,4 +2372,84 @@ class AppStrings {
     'Please enter a description',
     'कृपया अपना विवरण लिखें',
   );
+
+  // ── 17. PERSONALIZED RECOMMENDATIONS ("BECAUSE YOU WATCHED...") ──
+  String homeBecauseYouWatched(String title) => tr(
+    'Karena Anda Menonton $title',
+    'Because You Watched $title',
+    'क्योंकि आपने $title देखा',
+  );
+  String homeBecauseYouSaved(String title) => tr(
+    'Karena Anda Menyimpan $title',
+    'Because You Saved $title',
+    'क्योंकि आपने $title सहेजा',
+  );
+  String get homePersonalizedBadge => tr(
+    'REKOMENDASI PERSONAL',
+    'FOR YOU',
+    'आपके लिए विशेष',
+  );
+
+  // ── 18. CINEVA INSIGHTS / WRAPPED & KTP / ATM MEMBER CARD ──
+  String get insightsScreenTitle => tr(
+    'Cineva Insights & Kartu Member',
+    'Cineva Insights & Member Card',
+    'Cineva इनसाइट्स और मेंबर कार्ड',
+  );
+  String get insightsScreenSubtitle => tr(
+    'Statistik tontonan pribadi & kartu identitas sinema resmi Anda',
+    'Your personal watch statistics & official cinema identity card',
+    'आपके व्यक्तिगत देखने के आँकड़े और आधिकारिक सिनेमा पहचान पत्र',
+  );
+  String get insightsProfileBannerTitle => tr(
+    'Statistik Tontonan & KTP Penonton',
+    'Watch Stats & Cinema Member Card',
+    'देखने के आँकड़े और सिनेमा मेंबर कार्ड',
+  );
+  String get insightsProfileBannerSubtitle => tr(
+    'Lihat total jam terbang nonton & bagikan Kartu KTP/ATM Sinema Anda!',
+    'View your watch hours & share your KTP/ATM Cinema Member Card!',
+    'अपने देखने के घंटे देखें और अपना सिनेमा मेंबर कार्ड साझा करें!',
+  );
+  String get insightsCardModeKtp => tr(
+    'Mode KTP Sinema',
+    'Cinema ID (KTP)',
+    'सिनेमा पहचान पत्र (KTP)',
+  );
+  String get insightsCardModeAtm => tr(
+    'Mode Kartu ATM VIP',
+    'VIP Black ATM Card',
+    'VIP ब्लैक ATM कार्ड',
+  );
+  String get insightsShareCardBtn => tr(
+    'Bagikan Kartu & Caption',
+    'Share Card & Caption',
+    'कार्ड और कैप्शन साझा करें',
+  );
+  String get insightsSaveCardBtn => tr(
+    'Simpan Kartu HD',
+    'Save HD Card',
+    'HD कार्ड सहेजें',
+  );
+  String get insightsShuffleCaptionBtn => tr(
+    'Acak Caption Lucu',
+    'Shuffle Funny Caption',
+    'मज़ेदार कैप्शन बदलें',
+  );
+  String get insightsCopyCaptionBtn => tr(
+    'Salin Caption',
+    'Copy Caption',
+    'कैप्शन कॉपी करें',
+  );
+  String get insightsCaptionCopied => tr(
+    'Caption lucu berhasil disalin ke clipboard!',
+    'Humorous caption copied to clipboard!',
+    'मज़ेदार कैप्शन क्लिपबोर्ड पर कॉपी हो गया!',
+  );
+  String get insightsCardSaved => tr(
+    'Kartu Member HD berhasil disimpan!',
+    'HD Member Card saved successfully!',
+    'HD मेंबर कार्ड सफलतापूर्वक सहेजा गया!',
+  );
 }
+

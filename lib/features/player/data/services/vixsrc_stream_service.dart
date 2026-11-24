@@ -141,7 +141,9 @@ class VixSrcStreamService {
           final src = data['src']?.toString();
           if (src == null || src.isEmpty) continue;
 
-          final embedUrl = src.startsWith('http') ? src : _resolveUrl(src, baseUrl);
+          final embedUrl = src.startsWith('http')
+              ? src
+              : _resolveUrl(src, baseUrl);
           final html = await _httpGet(embedUrl);
           if (html != null && html.isNotEmpty) {
             embedHtml = html;
@@ -156,7 +158,8 @@ class VixSrcStreamService {
       }
 
       // 3. Extract playlist and token from embed HTML
-      final urlMatch = RegExp(
+      final urlMatch =
+          RegExp(
             r"""window\.masterPlaylist\s*=\s*\{[\s\S]*?url:\s*['"]([^'"]+)['"]""",
           ).firstMatch(embedHtml) ??
           RegExp(
@@ -164,8 +167,9 @@ class VixSrcStreamService {
           ).firstMatch(embedHtml) ??
           RegExp(r"""['"]url['"]:\s*['"]([^'"]+)['"]""").firstMatch(embedHtml);
 
-      final tokenMatch =
-          RegExp(r"""['"]token['"]\s*:\s*['"]([^'"]+)['"]""").firstMatch(embedHtml);
+      final tokenMatch = RegExp(
+        r"""['"]token['"]\s*:\s*['"]([^'"]+)['"]""",
+      ).firstMatch(embedHtml);
       final expiresMatch = RegExp(
         r"""['"]expires['"]\s*:\s*['"]([^'"]+)['"]""",
       ).firstMatch(embedHtml);
@@ -177,93 +181,160 @@ class VixSrcStreamService {
 
       final rawUrl = urlMatch.group(1)!.replaceAll(r'\/', '/');
       final uri = Uri.parse(_resolveUrl(rawUrl, baseUrl));
+      final token = tokenMatch.group(1)!;
+      final expires = expiresMatch.group(1)!;
 
-      final masterPlaylistUrl = uri.replace(
-        queryParameters: {
+      // VixSrc only permits `h=1` when `window.canPlayFHD = true` in the embed HTML.
+      // Passing `h=1` when `canPlayFHD = false` causes VixSrc to reject with HTTP 403 Forbidden.
+      final canPlayFhd = RegExp(
+        r'window\.canPlayFHD\s*=\s*true',
+        caseSensitive: false,
+      ).hasMatch(embedHtml);
+
+      String buildCandidateUrl({required bool includeH, String? cfParam}) {
+        final params = <String, String>{
           ...uri.queryParameters,
-          'token': tokenMatch.group(1)!,
-          'expires': expiresMatch.group(1)!,
-          'h': '1',
+          'cf': ?cfParam,
+          'token': token,
+          'expires': expires,
+          if (includeH) 'h': '1',
           'lang': 'en',
-        },
-      ).toString();
+        };
+        return uri.replace(queryParameters: params).toString();
+      }
 
-      debugPrint('[VixSrcStreamService] Master Playlist: $masterPlaylistUrl');
+      final candidateUrls = <String>[
+        if (canPlayFhd) buildCandidateUrl(includeH: true),
+        buildCandidateUrl(includeH: false),
+        buildCandidateUrl(includeH: false, cfParam: '1'),
+        if (!canPlayFhd) buildCandidateUrl(includeH: true),
+      ];
+
+      String? masterPlaylistUrl;
+      String? playlistContent;
+
+      for (final candidate in candidateUrls) {
+        final content = await _httpGet(
+          candidate,
+          customHeaders: {
+            ...headers,
+            'referer': '$baseUrl/embed/$resolvedTmdbId',
+          },
+        );
+        if (content != null && content.contains('#EXTM3U')) {
+          masterPlaylistUrl = candidate;
+          playlistContent = content;
+          break;
+        }
+      }
+
+      // CRITICAL: Do not return a dead/403 URL as a false-positive success,
+      // otherwise PlayerScreen will not failover to backup servers.
+      if (masterPlaylistUrl == null ||
+          playlistContent == null ||
+          playlistContent.isEmpty) {
+        debugPrint(
+          '[VixSrcStreamService] All playlist candidates failed or returned non-M3U8 for tmdbId=$resolvedTmdbId',
+        );
+        return null;
+      }
+
+      debugPrint(
+        '[VixSrcStreamService] Master Playlist verified: $masterPlaylistUrl',
+      );
 
       // 4. Parse quality renditions & stream subtitle tracks from master playlist
-      final qualityMap = <String, String>{
-        'Auto': masterPlaylistUrl,
-      };
+      final qualityMap = <String, String>{'Auto': masterPlaylistUrl};
       final streamSubtitles = <SubtitleInfo>[];
 
       try {
-        final playlistContent = await _httpGet(masterPlaylistUrl);
-        if (playlistContent != null && playlistContent.isNotEmpty) {
-          final lines = playlistContent.split('\n');
-          for (int i = 0; i < lines.length; i++) {
-            final line = lines[i].trim();
-            // Video rendition qualities
-            if (line.startsWith('#EXT-X-STREAM-INF:')) {
-              String label = 'Auto';
-              if (line.contains('1920x1080') || line.contains('rendition=1080p')) {
-                label = '1080p';
-              } else if (line.contains('1280x720') || line.contains('rendition=720p')) {
-                label = '720p';
-              } else if (line.contains('854x480') || line.contains('rendition=480p')) {
-                label = '480p';
-              } else if (line.contains('640x360') || line.contains('rendition=360p')) {
-                label = '360p';
-              }
-              if (i + 1 < lines.length) {
-                final nextLine = lines[i + 1].trim();
-                if (nextLine.isNotEmpty && !nextLine.startsWith('#')) {
-                  final resolvedQualityUrl = HlsUrlResolver.resolve(nextLine, masterPlaylistUrl);
-                  qualityMap[label] = resolvedQualityUrl;
-                }
+        final lines = playlistContent.split('\n');
+        for (int i = 0; i < lines.length; i++) {
+          final line = lines[i].trim();
+          // Video rendition qualities
+          if (line.startsWith('#EXT-X-STREAM-INF:')) {
+            String label = 'Auto';
+            if (line.contains('1920x1080') ||
+                line.contains('rendition=1080p')) {
+              label = '1080p';
+            } else if (line.contains('1280x720') ||
+                line.contains('rendition=720p')) {
+              label = '720p';
+            } else if (line.contains('854x480') ||
+                line.contains('rendition=480p')) {
+              label = '480p';
+            } else if (line.contains('640x360') ||
+                line.contains('rendition=360p')) {
+              label = '360p';
+            }
+            if (i + 1 < lines.length) {
+              final nextLine = lines[i + 1].trim();
+              if (nextLine.isNotEmpty && !nextLine.startsWith('#')) {
+                final resolvedQualityUrl = HlsUrlResolver.resolve(
+                  nextLine,
+                  masterPlaylistUrl,
+                );
+                qualityMap[label] = resolvedQualityUrl;
               }
             }
+          }
 
-            // Subtitle tracks inside the HLS stream
-            if (line.startsWith('#EXT-X-MEDIA:TYPE=SUBTITLES')) {
-              final subUriMatch = RegExp(r'URI="([^"]+)"').firstMatch(line);
-              final nameMatch = RegExp(r'NAME="([^"]+)"').firstMatch(line);
-              final langMatch = RegExp(r'LANGUAGE="([^"]+)"').firstMatch(line);
-              if (subUriMatch != null) {
-                final subUriRaw = subUriMatch.group(1)!;
-                final subUri = HlsUrlResolver.resolve(subUriRaw, masterPlaylistUrl);
-                final name = nameMatch?.group(1) ?? 'Subtitle';
-                final lang = (langMatch?.group(1) ?? 'en').toLowerCase();
-                String normLang = lang;
-                if (normLang == 'eng' || normLang == 'en' || normLang.startsWith('en-')) {
-                  normLang = 'en';
-                } else if (normLang == 'ind' || normLang == 'id' || normLang == 'in' || normLang.contains('indonesia')) {
-                  normLang = 'id';
-                } else if (normLang == 'ita' || normLang == 'it') {
-                  normLang = 'it';
-                } else if (normLang == 'spa' || normLang == 'es') {
-                  normLang = 'es';
-                } else if (normLang == 'fra' || normLang == 'fre' || normLang == 'fr') {
-                  normLang = 'fr';
-                } else if (normLang == 'deu' || normLang == 'ger' || normLang == 'de') {
-                  normLang = 'de';
-                } else if (normLang.length > 2) {
-                  normLang = normLang.substring(0, 2);
-                }
+          // Subtitle tracks inside the HLS stream
+          if (line.startsWith('#EXT-X-MEDIA:TYPE=SUBTITLES')) {
+            final subUriMatch = RegExp(r'URI="([^"]+)"').firstMatch(line);
+            final nameMatch = RegExp(r'NAME="([^"]+)"').firstMatch(line);
+            final langMatch = RegExp(r'LANGUAGE="([^"]+)"').firstMatch(line);
+            if (subUriMatch != null) {
+              final subUriRaw = subUriMatch.group(1)!;
+              final subUri = HlsUrlResolver.resolve(
+                subUriRaw,
+                masterPlaylistUrl,
+              );
+              final name = nameMatch?.group(1) ?? 'Subtitle';
+              final lang = (langMatch?.group(1) ?? 'en').toLowerCase();
+              String normLang = lang;
+              if (normLang == 'eng' ||
+                  normLang == 'en' ||
+                  normLang.startsWith('en-')) {
+                normLang = 'en';
+              } else if (normLang == 'ind' ||
+                  normLang == 'id' ||
+                  normLang == 'in' ||
+                  normLang.contains('indonesia')) {
+                normLang = 'id';
+              } else if (normLang == 'ita' || normLang == 'it') {
+                normLang = 'it';
+              } else if (normLang == 'spa' || normLang == 'es') {
+                normLang = 'es';
+              } else if (normLang == 'fra' ||
+                  normLang == 'fre' ||
+                  normLang == 'fr') {
+                normLang = 'fr';
+              } else if (normLang == 'deu' ||
+                  normLang == 'ger' ||
+                  normLang == 'de') {
+                normLang = 'de';
+              } else if (normLang.length > 2) {
+                normLang = normLang.substring(0, 2);
+              }
 
-                streamSubtitles.add(SubtitleInfo(
+              streamSubtitles.add(
+                SubtitleInfo(
                   id: subUri,
                   language: normLang,
                   languageName: '$name (Stream)',
                   fileName: name,
                   downloadCount: 9999,
                   downloadUrl: subUri,
-                ));
-              }
+                ),
+              );
             }
           }
         }
       } catch (pe) {
-        debugPrint('[VixSrcStreamService] Error parsing master playlist metadata: $pe');
+        debugPrint(
+          '[VixSrcStreamService] Error parsing master playlist metadata: $pe',
+        );
       }
 
       final qualities = qualityMap.keys.toList();
@@ -271,7 +342,9 @@ class VixSrcStreamService {
       return VixSrcStreamResult(
         playlistUrl: masterPlaylistUrl,
         qualityUrls: qualityMap,
-        availableQualities: qualities.isNotEmpty ? qualities : ['Auto', '1080p', '720p', '480p'],
+        availableQualities: qualities.isNotEmpty
+            ? qualities
+            : ['Auto', '1080p', '720p', '480p'],
         subtitles: streamSubtitles,
       );
     } catch (e, st) {
@@ -296,7 +369,8 @@ class VixSrcStreamService {
             ? trimmed
             : Uri.parse(uri).resolve(trimmed).toString();
         final vttContent = await _httpGet(vttUrl);
-        if (vttContent != null && (vttContent.contains('WEBVTT') || vttContent.contains('-->'))) {
+        if (vttContent != null &&
+            (vttContent.contains('WEBVTT') || vttContent.contains('-->'))) {
           return vttContent;
         }
       }
@@ -313,7 +387,10 @@ class VixSrcStreamService {
       final url =
           'https://api.themoviedb.org/3/find/$cleanId?external_source=imdb_id&api_key=$apiKey';
 
-      final res = await _httpGet(url, customHeaders: {'accept': 'application/json'});
+      final res = await _httpGet(
+        url,
+        customHeaders: {'accept': 'application/json'},
+      );
       if (res == null) return null;
 
       final data = jsonDecode(res) as Map<String, dynamic>;
@@ -351,7 +428,9 @@ class VixSrcStreamService {
           responseType: ResponseType.plain,
         ),
       );
-      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+      if (response.statusCode != null &&
+          response.statusCode! >= 200 &&
+          response.statusCode! < 300) {
         return response.data;
       }
       return null;

@@ -11,6 +11,7 @@ import 'app/app.dart';
 import 'app/routes/app_router.dart';
 import 'app/theme/app_colors.dart';
 import 'core/constants/app_constants.dart';
+import 'core/constants/app_env.dart';
 import 'core/platform/device_form_factor.dart';
 import 'core/platform/smooth_mouse_scroll.dart';
 
@@ -19,6 +20,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 
 Future<void> main() async {
   CinevaWidgetsBinding.ensureInitialized();
+  AppEnv.init();
 
   // Initialize Firebase & Analytics safely on supported platforms (Android / iOS)
   if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {

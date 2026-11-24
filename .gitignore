@@ -32,6 +32,7 @@ migrate_working_dir/
 # Android / Gradle related
 .gradle/
 local.properties
+**/local.properties
 **/android/.gradle/
 **/android/.kotlin/
 **/android/captures/
@@ -55,6 +56,8 @@ debug-info/
 
 # Keystore & Signing
 key.properties
+**/key.properties
+!**/key.properties.example
 *.jks
 *.keystore
 

@@ -1,0 +1,12 @@
+# Android Release Keystore Configuration
+storePassword=your_keystore_password_here
+keyPassword=your_key_password_here
+keyAlias=your_key_alias_here
+storeFile=path/to/your/keystore.jks
+
+# Cineva API & Stream Credentials (Automatically injected into dart-defines by Gradle)
+TMDB_API_KEY=your_tmdb_api_key_here
+TMDB_ACCESS_TOKEN=your_tmdb_read_access_token_here
+OPENSUBTITLES_API_KEY=your_opensubtitles_api_key_here
+CINEVA_SCRAPER_API_URL=https://your-primary-scraper-cluster.example.com
+CINEVA_SCRAPER_FALLBACK_URL=https://your-fallback-scraper-cluster.example.com

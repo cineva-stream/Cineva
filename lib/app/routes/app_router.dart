@@ -21,6 +21,7 @@ import '../../features/feedback/presentation/screens/feedback_screen.dart';
 import '../../features/profile/presentation/screens/onboarding_profile_screen.dart';
 import '../../features/profile/presentation/screens/legal_agreement_screen.dart';
 import '../../features/profile/presentation/screens/edit_profile_screen.dart';
+import '../../features/profile/presentation/screens/cineva_insights_screen.dart';
 import '../../features/profile/presentation/screens/tv_pairing_scanner_screen.dart';
 import '../../features/live_tv/presentation/screens/live_tv_screen.dart';
 import '../../features/live_tv/presentation/screens/live_tv_player_screen.dart';
@@ -109,6 +110,26 @@ final GoRouter appRouter = GoRouter(
         child: const EditProfileScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(0.06, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeOutCubic;
+          final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: FadeTransition(opacity: animation, child: child),
+          );
+        },
+      ),
+    ),
+
+    // ── Cineva Insights & KTP / ATM Member Card Studio Screen ──
+    GoRoute(
+      path: '/profile/insights',
+      name: 'profile-insights',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const CinevaInsightsScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 0.06);
           const end = Offset.zero;
           const curve = Curves.easeOutCubic;
           final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
