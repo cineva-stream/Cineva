@@ -44,6 +44,52 @@ class AppStrings {
   String get homeWatchNow => tr('Tonton Sekarang', 'Watch Now', 'अभी देखें');
   String get homeDetail => tr('Detail', 'Details', 'विवरण');
   String get homeAllCategory => tr('Semua', 'All', 'सभी');
+  String get homeSectionAnime =>
+      tr('Anime', 'Anime', 'एनीमे');
+  String get homeSectionKDrama =>
+      tr('K-Drama', 'K-Drama', 'के-ड्रामा');
+  String get homeSectionIndonesia =>
+      tr('Indonesia', 'Indonesian', 'इंडोनेशियाई');
+  String get homeSectionHollywood =>
+      tr('Hollywood', 'Hollywood', 'हॉलीवुड');
+  String get homeSectionBollywood =>
+      tr('Bollywood', 'Bollywood', 'बॉलीवुड');
+  String get homeTopRated =>
+      tr('Rating Tertinggi', 'Top Rated', 'सर्वोच्च रेटेड');
+  String get homeUpcoming => tr(
+    'Segera Tayang di Bioskop',
+    'Coming Soon in Theaters',
+    'सिनेमाघरों में जल्द आ रहा है',
+  );
+  String get detailComingSoon =>
+      tr('Segera Hadir', 'Coming Soon', 'जल्द आ रहा है');
+  String get catalogReleaseYearLabel =>
+      tr('Tahun Rilis', 'Release Year', 'रिलीज़ वर्ष');
+  String get catalogLatestDefault =>
+      tr('Terbaru', 'Latest', 'नवीनतम');
+  String catalogEmptyForYear(String year) => tr(
+    'Belum ada tayangan untuk tahun $year',
+    'No titles available for year $year',
+    'वर्ष $year के लिए कोई शीर्षक उपलब्ध नहीं है',
+  );
+  String get filterAndSortTitle =>
+      tr('Filter & Urutkan', 'Filter & Sort', 'फ़िल्टर और क्रमबद्ध करें');
+  String get filterAndSortSubtitle => tr(
+    'Sesuaikan urutan, tahun rilis, dan genre tayangan',
+    'Customize sort order, release year, and genre',
+    'क्रम, रिलीज़ वर्ष और शैली अनुकूलित करें',
+  );
+  String get filterSortByLabel =>
+      tr('Urutkan Berdasarkan', 'Sort By', 'इसके अनुसार क्रमबद्ध करें');
+  String get filterSortLatest => tr('Terbaru', 'Latest', 'नवीनतम');
+  String get filterSortPopular => tr('Populer', 'Popular', 'लोकप्रिय');
+  String get filterSortTopRated =>
+      tr('Rating Tertinggi', 'Top Rated', 'सर्वोच्च रेटेड');
+  String get filterAllYears => tr('Semua Tahun', 'All Years', 'सभी वर्ष');
+  String get filterApplyButton =>
+      tr('Terapkan Filter', 'Apply Filters', 'फ़िल्टर लागू करें');
+  String get filterResetButton => tr('Reset', 'Reset', 'रीसेट');
+  String get filterButtonShort => tr('Filter', 'Filter', 'फ़िल्टर');
 
   // ── Search & Discover Screen ──
   String get searchTitle => tr('Cari', 'Search', 'खोजें');
@@ -2391,65 +2437,92 @@ class AppStrings {
   );
 
   // ── 18. CINEVA INSIGHTS / WRAPPED & KTP / ATM MEMBER CARD ──
+  String get settingsAccountSection =>
+      tr('Akun', 'Account', 'खाता');
+  String get settingsAccountProfileDesc => tr(
+    'Ubah profil & avatar',
+    'Edit profile & avatar',
+    'प्रोफ़ाइल और अवतार संपादित करें',
+  );
+  String get settingsAccountViewStatsTitle => tr(
+    'Statistik Tontonan',
+    'View Stats',
+    'देखने के आँकड़े',
+  );
+  String get settingsAccountViewStatsDesc => tr(
+    'Ringkasan aktivitas menonton & kartu member',
+    'Watch activity summary & member card',
+    'देखने की गतिविधि का सारांश और मेंबर कार्ड',
+  );
+  String get settingsAccountQrScanTitle => tr(
+    'Pindai QR TV / Windows',
+    'QR Scan',
+    'QR स्कैन',
+  );
+  String get settingsAccountQrScanDesc => tr(
+    'Tautkan akun ke Android TV atau Windows',
+    'Link account to Android TV or Windows',
+    'Android TV या Windows से खाता लिंक करें',
+  );
   String get insightsScreenTitle => tr(
-    'Cineva Insights & Kartu Member',
-    'Cineva Insights & Member Card',
-    'Cineva इनसाइट्स और मेंबर कार्ड',
+    'Statistik Tontonan',
+    'Watch Statistics',
+    'देखने के आँकड़े',
   );
   String get insightsScreenSubtitle => tr(
-    'Statistik tontonan pribadi & kartu identitas sinema resmi Anda',
-    'Your personal watch statistics & official cinema identity card',
-    'आपके व्यक्तिगत देखने के आँकड़े और आधिकारिक सिनेमा पहचान पत्र',
+    'Ringkasan aktivitas menonton & kartu identitas member Anda',
+    'Your watch activity summary & member identity card',
+    'आपकी देखने की गतिविधि और मेंबर पहचान पत्र',
   );
   String get insightsProfileBannerTitle => tr(
-    'Statistik Tontonan & KTP Penonton',
-    'Watch Stats & Cinema Member Card',
-    'देखने के आँकड़े और सिनेमा मेंबर कार्ड',
+    'Statistik Tontonan',
+    'View Stats',
+    'देखने के आँकड़े',
   );
   String get insightsProfileBannerSubtitle => tr(
-    'Lihat total jam terbang nonton & bagikan Kartu KTP/ATM Sinema Anda!',
-    'View your watch hours & share your KTP/ATM Cinema Member Card!',
-    'अपने देखने के घंटे देखें और अपना सिनेमा मेंबर कार्ड साझा करें!',
+    'Lihat total jam menonton & bagikan Kartu Member Anda',
+    'View your watch hours & share your Member Card',
+    'अपने देखने के घंटे देखें और अपना मेंबर कार्ड साझा करें',
   );
   String get insightsCardModeKtp => tr(
-    'Mode KTP Sinema',
-    'Cinema ID (KTP)',
-    'सिनेमा पहचान पत्र (KTP)',
+    'Member ID',
+    'Member ID',
+    'मेंबर ID',
   );
   String get insightsCardModeAtm => tr(
-    'Mode Kartu ATM VIP',
-    'VIP Black ATM Card',
-    'VIP ब्लैक ATM कार्ड',
+    'Metal Card',
+    'Metal Card',
+    'मेटल कार्ड',
   );
   String get insightsShareCardBtn => tr(
-    'Bagikan Kartu & Caption',
-    'Share Card & Caption',
-    'कार्ड और कैप्शन साझा करें',
+    'Bagikan Kartu',
+    'Share Card',
+    'कार्ड साझा करें',
   );
   String get insightsSaveCardBtn => tr(
-    'Simpan Kartu HD',
-    'Save HD Card',
-    'HD कार्ड सहेजें',
+    'Simpan Gambar',
+    'Save Image',
+    'छवि सहेजें',
   );
   String get insightsShuffleCaptionBtn => tr(
-    'Acak Caption Lucu',
-    'Shuffle Funny Caption',
-    'मज़ेदार कैप्शन बदलें',
+    'Acak Caption',
+    'Shuffle',
+    'बदलें',
   );
   String get insightsCopyCaptionBtn => tr(
-    'Salin Caption',
-    'Copy Caption',
-    'कैप्शन कॉपी करें',
+    'Salin',
+    'Copy',
+    'कॉपी',
   );
   String get insightsCaptionCopied => tr(
-    'Caption lucu berhasil disalin ke clipboard!',
-    'Humorous caption copied to clipboard!',
-    'मज़ेदार कैप्शन क्लिपबोर्ड पर कॉपी हो गया!',
+    'Caption berhasil disalin ke clipboard',
+    'Caption copied to clipboard',
+    'कैप्शन क्लिपबोर्ड पर कॉपी हो गया',
   );
   String get insightsCardSaved => tr(
-    'Kartu Member HD berhasil disimpan!',
-    'HD Member Card saved successfully!',
-    'HD मेंबर कार्ड सफलतापूर्वक सहेजा गया!',
+    'Kartu Member berhasil disimpan',
+    'Member Card saved successfully',
+    'मेंबर कार्ड सफलतापूर्वक सहेजा गया',
   );
 }
 

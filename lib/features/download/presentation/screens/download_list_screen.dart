@@ -607,6 +607,8 @@ class _InProgressCard extends ConsumerWidget {
         return s.tr('Gagal', 'Failed', 'विफल');
       case 'Melanjutkan...':
         return s.tr('Melanjutkan...', 'Resuming...', 'जारी किया जा रहा है...');
+      case 'Dalam antrean...':
+        return s.tr('Dalam antrean...', 'In queue...', 'कतार में...');
       case 'Menyelesaikan unduhan...':
       case 'Menyelesaikan berkas...':
         return s.tr('Menyelesaikan unduhan...', 'Finalizing package...', 'डाउनलोड पूर्ण किया जा रहा है...');

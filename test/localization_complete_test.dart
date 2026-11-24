@@ -7,6 +7,8 @@ import 'package:cineva/core/constants/genre_constants.dart';
 import 'package:cineva/core/utils/tmdb_genres.dart';
 import 'package:cineva/features/history/data/models/watch_history_item.dart';
 import 'package:cineva/features/home/data/datasources/tmdb_remote_datasource.dart';
+import 'package:cineva/features/home/presentation/screens/section_catalog_screen.dart';
+import 'package:cineva/features/player/data/services/provider_loader_service.dart';
 import 'package:cineva/features/settings/data/legal_content.dart';
 
 void main() {
@@ -244,6 +246,113 @@ void main() {
       expect(sId.downloadModalStartDownload, 'Mulai Mengunduh');
       expect(sId.downloadModalMovie, 'Film');
       expect(sId.downloadModalTv, 'Serial TV');
+    });
+
+    test('3-language localization for Segera Hadir, 5 regional sections, and SectionCatalogScreen', () {
+      const sId = AppStrings(AppLanguage.id);
+      const sEn = AppStrings(AppLanguage.en);
+      const sHi = AppStrings(AppLanguage.hi);
+
+      // Segera Hadir / Coming Soon
+      expect(sId.detailComingSoon, 'Segera Hadir');
+      expect(sEn.detailComingSoon, 'Coming Soon');
+      expect(sHi.detailComingSoon, 'जल्द आ रहा है');
+
+      // 5 Curated Home Sections
+      expect(sId.homeSectionAnime, 'Anime');
+      expect(sEn.homeSectionAnime, 'Anime');
+      expect(sHi.homeSectionAnime, 'एनीमे');
+
+      expect(sId.homeSectionKDrama, 'K-Drama');
+      expect(sEn.homeSectionKDrama, 'K-Drama');
+      expect(sHi.homeSectionKDrama, 'के-ड्रामा');
+
+      expect(sId.homeSectionIndonesia, 'Indonesia');
+      expect(sEn.homeSectionIndonesia, 'Indonesian');
+      expect(sHi.homeSectionIndonesia, 'इंडोनेशियाई');
+
+      expect(sId.homeSectionHollywood, 'Hollywood');
+      expect(sEn.homeSectionHollywood, 'Hollywood');
+      expect(sHi.homeSectionHollywood, 'हॉलीवुड');
+
+      expect(sId.homeSectionBollywood, 'Bollywood');
+      expect(sEn.homeSectionBollywood, 'Bollywood');
+      expect(sHi.homeSectionBollywood, 'बॉलीवुड');
+
+      // SectionCatalogScreen release year filter strings
+      expect(sId.catalogReleaseYearLabel, 'Tahun Rilis');
+      expect(sEn.catalogReleaseYearLabel, 'Release Year');
+      expect(sHi.catalogReleaseYearLabel, 'रिलीज़ वर्ष');
+
+      expect(sId.catalogLatestDefault, 'Terbaru');
+      expect(sEn.catalogLatestDefault, 'Latest');
+      expect(sHi.catalogLatestDefault, 'नवीनतम');
+
+      expect(HomeCatalogSection.fromKey('anime').localizedTitle(sId), 'Anime');
+      expect(HomeCatalogSection.fromKey('kdrama').localizedTitle(sHi), 'के-ड्रामा');
+      expect(HomeCatalogSection.fromKey('bollywood').localizedTitle(sHi), 'बॉलीवुड');
+
+      // Filter & Sort 3-language strings
+      expect(sId.filterAndSortTitle, 'Filter & Urutkan');
+      expect(sEn.filterAndSortTitle, 'Filter & Sort');
+      expect(sHi.filterAndSortTitle, 'फ़िल्टर और क्रमबद्ध करें');
+
+      expect(sId.filterSortPopular, 'Populer');
+      expect(sEn.filterSortPopular, 'Popular');
+      expect(sHi.filterSortPopular, 'लोकप्रिय');
+
+      expect(sId.filterAllYears, 'Semua Tahun');
+      expect(sEn.filterAllYears, 'All Years');
+      expect(sHi.filterAllYears, 'सभी वर्ष');
+    });
+
+    test('MediaReleaseGuard accurately distinguishes released vs unreleased titles with timezone grace buffer', () {
+      final refNow = DateTime(2026, 6, 15, 10, 0);
+
+      // 1. Past release date is always released (even if TMDB status is stale 'Post Production')
+      expect(
+        MediaReleaseGuard.isUnreleasedByMetadata(
+          releaseDate: '2026-06-01',
+          status: 'Post Production',
+          nowOverride: refNow,
+        ),
+        isFalse,
+      );
+
+      // 2. Today or tomorrow (+24h timezone grace buffer) is treated as released
+      expect(
+        MediaReleaseGuard.isUnreleasedByMetadata(
+          releaseDate: '2026-06-15',
+          nowOverride: refNow,
+        ),
+        isFalse,
+      );
+      expect(
+        MediaReleaseGuard.isUnreleasedByMetadata(
+          releaseDate: '2026-06-16',
+          nowOverride: refNow,
+        ),
+        isFalse,
+      );
+
+      // 3. Far-future release date is marked unreleased ("Segera Hadir")
+      expect(
+        MediaReleaseGuard.isUnreleasedByMetadata(
+          releaseDate: '2026-12-25',
+          nowOverride: refNow,
+        ),
+        isTrue,
+      );
+
+      // 4. Empty release date with 'In Production' or 'Planned' is marked unreleased
+      expect(
+        MediaReleaseGuard.isUnreleasedByMetadata(
+          releaseDate: '',
+          status: 'In Production',
+          nowOverride: refNow,
+        ),
+        isTrue,
+      );
     });
   });
 }

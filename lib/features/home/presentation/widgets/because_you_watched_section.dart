@@ -8,7 +8,6 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/genre_constants.dart';
 import '../../../../core/localization/app_language_provider.dart';
-import '../../../../shared/widgets/tv_focusable.dart';
 import '../../domain/entities/movie.dart';
 import '../providers/home_providers.dart';
 import '../screens/home_screen.dart';
@@ -73,7 +72,6 @@ class BecauseYouWatchedSection extends ConsumerWidget {
                 headerTitle: group.isFromWatchlist
                     ? s.homeBecauseYouSaved(group.seedTitle)
                     : s.homeBecauseYouWatched(group.seedTitle),
-                badgeLabel: s.homePersonalizedBadge,
                 items: adaptedMovies,
                 isTv: true,
               ),
@@ -92,7 +90,6 @@ class BecauseYouWatchedSection extends ConsumerWidget {
                 headerTitle: group.isFromWatchlist
                     ? s.homeBecauseYouSaved(group.seedTitle)
                     : s.homeBecauseYouWatched(group.seedTitle),
-                badgeLabel: s.homePersonalizedBadge,
                 items: filteredMovies,
                 isTv: false,
               ),
@@ -117,14 +114,12 @@ class BecauseYouWatchedSection extends ConsumerWidget {
 class _PersonalizedRowBlock extends StatelessWidget {
   final PersonalizedRecommendationGroup group;
   final String headerTitle;
-  final String badgeLabel;
   final List<Movie> items;
   final bool isTv;
 
   const _PersonalizedRowBlock({
     required this.group,
     required this.headerTitle,
-    required this.badgeLabel,
     required this.items,
     required this.isTv,
   });
@@ -138,17 +133,14 @@ class _PersonalizedRowBlock extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               // Accent indicator bar
               Container(
                 width: 3.5,
-                height: 22,
+                height: 18,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryLight],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(2),
                   boxShadow: [
                     BoxShadow(
@@ -166,59 +158,27 @@ class _PersonalizedRowBlock extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.35),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Text(
-                            badgeLabel,
-                            style: GoogleFonts.inter(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.7,
-                              color: AppColors.primaryLight,
-                            ),
-                          ),
-                        ),
-                      ],
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: GestureDetector(
+                    onTap: () => context.push(
+                      isTv
+                          ? '/tv/${group.seedId}'
+                          : '/movie/${group.seedId}',
                     ),
-                    const SizedBox(height: 3),
-                    TvFocusable(
-                      focusedScale: 1.02,
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () => context.push(
-                        isTv
-                            ? '/tv/${group.seedId}'
-                            : '/movie/${group.seedId}',
-                      ),
-                      child: Text(
-                        headerTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 17.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.2,
-                        ),
+                    child: Text(
+                      headerTitle,
+                      textAlign: TextAlign.left,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],

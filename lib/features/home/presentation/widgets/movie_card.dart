@@ -40,9 +40,10 @@ class MovieCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
+    final effectiveIsTv = isTv || movie.mediaType == 'tv';
     final primaryGenre = TmdbGenres.getPrimaryGenre(
       movie.genreIds,
-      fallback: isTv
+      fallback: effectiveIsTv
           ? (movie.originCountry.contains('JP')
                 ? s.tr('Anime', 'Anime', 'एनीमे')
                 : s.tr('Serial TV', 'TV Show', 'टीवी शो'))
@@ -57,7 +58,7 @@ class MovieCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(14),
         onTap: onTap ??
             () {
-              if (isTv) {
+              if (effectiveIsTv) {
                 context.push('/tv/${movie.id}');
               } else {
                 context.push('/movie/${movie.id}');

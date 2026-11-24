@@ -198,6 +198,90 @@ class TmdbRemoteDatasource {
     }
   }
 
+  String _todayIsoDate() {
+    final now = DateTime.now();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  /// Fetch curated regional/genre movies that are already released and available to watch,
+  /// prioritizing the latest releases or filtering by a specific [releaseYear] and [sortBy].
+  Future<List<MovieModel>> getCuratedSectionMovies({
+    required ContentPreference category,
+    int page = 1,
+    int? releaseYear,
+    String sortBy = 'popularity.desc',
+  }) async {
+    try {
+      final params = _buildDiscoverMovieParams(
+        category,
+        page: page,
+        sortBy: sortBy,
+      );
+      params['primary_release_date.lte'] = _todayIsoDate();
+      if (releaseYear != null && releaseYear > 1900) {
+        params['primary_release_year'] = releaseYear;
+      } else if (sortBy == 'popularity.desc') {
+        // Default "Latest & Available": focus on modern recent releases so old random titles do not dominate
+        final minYear = DateTime.now().year - 2;
+        params['primary_release_date.gte'] = '$minYear-01-01';
+      }
+      if (sortBy == 'primary_release_date.desc') {
+        params['vote_count.gte'] = category == ContentPreference.indonesia
+            ? 2
+            : 5;
+      }
+      final response = await _dio.get(
+        '/discover/movie',
+        queryParameters: params,
+      );
+      return _parseMovieList(response.data);
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.statusMessage ?? 'Failed to fetch curated movies',
+        e.response?.statusCode,
+      );
+    }
+  }
+
+  /// Fetch curated regional/genre TV series that are already released and available to watch,
+  /// prioritizing the latest releases or filtering by a specific [releaseYear] and [sortBy].
+  Future<List<TvSeriesModel>> getCuratedSectionTvSeries({
+    required ContentPreference category,
+    int page = 1,
+    int? releaseYear,
+    String sortBy = 'popularity.desc',
+  }) async {
+    try {
+      final params = _buildDiscoverTvParams(
+        category,
+        page: page,
+        sortBy: sortBy,
+      );
+      params['first_air_date.lte'] = _todayIsoDate();
+      if (releaseYear != null && releaseYear > 1900) {
+        params['first_air_date_year'] = releaseYear;
+      } else if (sortBy == 'popularity.desc') {
+        final minYear = DateTime.now().year - 2;
+        params['first_air_date.gte'] = '$minYear-01-01';
+      }
+      if (sortBy == 'first_air_date.desc') {
+        params['vote_count.gte'] = category == ContentPreference.indonesia
+            ? 1
+            : 3;
+      }
+      final response = await _dio.get('/discover/tv', queryParameters: params);
+      return _parseTvList(response.data);
+    } on DioException catch (e) {
+      throw ServerException(
+        e.response?.statusMessage ?? 'Failed to fetch curated TV series',
+        e.response?.statusCode,
+      );
+    }
+  }
+
   Map<String, dynamic> _buildDiscoverMovieParams(
     ContentPreference preference, {
     int page = 1,
@@ -289,7 +373,11 @@ class TmdbRemoteDatasource {
   }
 
   /// Search multi (movies + TV shows).
-  Future<List<MovieModel>> searchMovies(String query, {int page = 1}) async {
+  Future<List<MovieModel>> searchMovies(
+    String query, {
+    int page = 1,
+    int? year,
+  }) async {
     try {
       final response = await _dio.get(
         '/search/movie',
@@ -297,6 +385,7 @@ class TmdbRemoteDatasource {
           'query': query,
           'page': page,
           'language': languageCode,
+          if (year != null && year > 1900) 'primary_release_year': year,
         },
       );
       return _parseMovieList(response.data);
@@ -312,6 +401,7 @@ class TmdbRemoteDatasource {
   Future<List<TvSeriesModel>> searchTvSeries(
     String query, {
     int page = 1,
+    int? year,
   }) async {
     try {
       final response = await _dio.get(
@@ -320,6 +410,7 @@ class TmdbRemoteDatasource {
           'query': query,
           'page': page,
           'language': languageCode,
+          if (year != null && year > 1900) 'first_air_date_year': year,
         },
       );
       return _parseTvList(response.data);

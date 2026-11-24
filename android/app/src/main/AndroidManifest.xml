@@ -78,13 +78,18 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
             </intent-filter>
-            <!-- Deep Link for Watch Party (GitHub Pages with AutoVerify) -->
+            <!-- Deep Link for Watch Party & Telegram "Watch on Cineva" Media Links (GitHub Pages with AutoVerify) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="cineva-stream.github.io" android:pathPrefix="/Cineva" />
                 <data android:scheme="https" android:host="cineva-stream.github.io" android:pathPrefix="/Cineva/party" />
                 <data android:scheme="https" android:host="cineva-stream.github.io" android:pathPrefix="/party" />
+                <data android:scheme="https" android:host="cineva-stream.github.io" android:pathPrefix="/Cineva/movie" />
+                <data android:scheme="https" android:host="cineva-stream.github.io" android:pathPrefix="/movie" />
+                <data android:scheme="https" android:host="cineva-stream.github.io" android:pathPrefix="/Cineva/tv" />
+                <data android:scheme="https" android:host="cineva-stream.github.io" android:pathPrefix="/tv" />
             </intent-filter>
             <!-- Deep Link Custom Scheme & Fallbacks -->
             <intent-filter>
@@ -92,7 +97,12 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="cineva" android:host="party" />
+                <data android:scheme="cineva" android:host="movie" />
+                <data android:scheme="cineva" android:host="tv" />
+                <data android:scheme="cineva" android:host="open" />
                 <data android:scheme="https" android:host="cineva.app" android:pathPrefix="/party" />
+                <data android:scheme="https" android:host="cineva.app" android:pathPrefix="/movie" />
+                <data android:scheme="https" android:host="cineva.app" android:pathPrefix="/tv" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

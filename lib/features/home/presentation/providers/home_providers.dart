@@ -86,6 +86,87 @@ final topRatedTvProvider = FutureProvider<List<TvSeries>>((ref) {
       .getTopRatedTvSeries(preference: pref);
 });
 
+// ── Curated Regional & Genre Section Providers (Latest & Available to Watch) ──
+
+Future<List<Movie>> _loadCuratedSectionBlend(
+  MovieRepository repo,
+  ContentPreference category, {
+  bool preferTvFirst = false,
+}) async {
+  final results = await Future.wait([
+    repo.getCuratedSectionMovies(category: category, page: 1),
+    repo.getCuratedSectionTvSeries(category: category, page: 1),
+  ]);
+  final movies = results[0] as List<Movie>;
+  final tvShows = (results[1] as List<TvSeries>).map((t) => t.toMovie()).toList();
+
+  final primary = preferTvFirst ? tvShows : movies;
+  final secondary = preferTvFirst ? movies : tvShows;
+
+  final blended = <Movie>[];
+  final maxLen = primary.length > secondary.length
+      ? primary.length
+      : secondary.length;
+  for (int i = 0; i < maxLen; i++) {
+    if (i < primary.length &&
+        primary[i].posterPath != null &&
+        primary[i].posterPath!.isNotEmpty) {
+      blended.add(primary[i]);
+    }
+    if (i < secondary.length &&
+        secondary[i].posterPath != null &&
+        secondary[i].posterPath!.isNotEmpty) {
+      blended.add(secondary[i]);
+    }
+  }
+  return blended;
+}
+
+final animeSectionProvider = FutureProvider<List<Movie>>((ref) {
+  final repo = ref.watch(movieRepositoryProvider);
+  return _loadCuratedSectionBlend(
+    repo,
+    ContentPreference.anime,
+    preferTvFirst: true,
+  );
+});
+
+final kDramaSectionProvider = FutureProvider<List<Movie>>((ref) {
+  final repo = ref.watch(movieRepositoryProvider);
+  return _loadCuratedSectionBlend(
+    repo,
+    ContentPreference.korea,
+    preferTvFirst: true,
+  );
+});
+
+final indonesiaSectionProvider = FutureProvider<List<Movie>>((ref) {
+  final repo = ref.watch(movieRepositoryProvider);
+  return _loadCuratedSectionBlend(
+    repo,
+    ContentPreference.indonesia,
+    preferTvFirst: false,
+  );
+});
+
+final hollywoodSectionProvider = FutureProvider<List<Movie>>((ref) {
+  final repo = ref.watch(movieRepositoryProvider);
+  return _loadCuratedSectionBlend(
+    repo,
+    ContentPreference.hollywood,
+    preferTvFirst: false,
+  );
+});
+
+final bollywoodSectionProvider = FutureProvider<List<Movie>>((ref) {
+  final repo = ref.watch(movieRepositoryProvider);
+  return _loadCuratedSectionBlend(
+    repo,
+    ContentPreference.bollywood,
+    preferTvFirst: false,
+  );
+});
+
 // ── Paginated Infinite Scroll Providers for Home Filter Catalog ──
 
 class PaginatedMediaState<T> {

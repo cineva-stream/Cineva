@@ -947,8 +947,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final currentAppLang = ref.watch(appLanguageProvider);
     final currentSubLang = SubtitleLanguageCatalog.findByCode(_defaultSubtitleLang);
 
-    final isWide = MediaQuery.sizeOf(context).width >= 700;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -992,65 +990,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
-                // ── User Profile Header ──
+                // ── SECTION: ACCOUNT (Profile, View Stats, QR Scan) ──
+                _buildSectionHeader(s.settingsAccountSection, Iconsax.user),
                 Consumer(
                   builder: (context, ref, _) {
                     final profile = ref.watch(userProfileProvider);
-                    return Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isWide ? 20 : 0,
-                      ),
-                      child: TvFocusable(
+                    final insights = ref.watch(watchInsightsProvider);
+                    final isTv = ref.watch(isTvProvider);
+                    final isDesktop = ref.watch(isDesktopProvider);
+                    final showQrScan = !isTv && !isDesktop;
+                    final durationCompact = insights.formattedDurationCompact(
+                      currentAppLang,
+                    );
+
+                    return _buildSettingsCard([
+                      // 1. Profile (Edit Profile)
+                      TvFocusable(
                         onTap: () => context.push('/edit-profile'),
-                        borderRadius: BorderRadius.circular(isWide ? 16 : 0),
-                        scaleOnFocus: 1.01,
-                        child: Container(
-                          width: double.infinity,
+                        borderRadius: BorderRadius.circular(12),
+                        scaleOnFocus: 1.0,
+                        child: Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
-                            vertical: 16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isWide
-                                ? AppColors.surface.withValues(alpha: 0.65)
-                                : AppColors.background,
-                            borderRadius: isWide
-                                ? BorderRadius.circular(16)
-                                : null,
-                            border: isWide
-                                ? Border.all(
-                                    color: Colors.white.withValues(alpha: 0.08),
-                                    width: 1,
-                                  )
-                                : Border(
-                                    top: BorderSide(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.08,
-                                      ),
-                                      width: 0.8,
-                                    ),
-                                    bottom: BorderSide(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.08,
-                                      ),
-                                      width: 0.8,
-                                    ),
-                                  ),
+                            vertical: 14,
                           ),
                           child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               AvatarDisplay(
                                 avatarId: profile.avatarId,
                                 customAvatarPath: profile.customAvatarPath,
-                                size: 54,
+                                size: 46,
                                 showGlow: false,
                                 borderWidth: 1.5,
                                 borderColor: AppColors.primary,
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 14),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1061,21 +1037,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: GoogleFonts.outfit(
-                                        fontSize: 18,
+                                        fontSize: 16.5,
                                         fontWeight: FontWeight.w700,
                                         color: Colors.white,
-                                        letterSpacing: -0.2,
                                       ),
                                     ),
-                                    const SizedBox(height: 3),
+                                    const SizedBox(height: 2),
                                     Text(
-                                      '@${profile.username}',
+                                      '@${profile.username} • ${s.settingsAccountProfileDesc}',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.primary,
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
                                       ),
                                     ),
                                   ],
@@ -1085,263 +1059,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               const Icon(
                                 Icons.arrow_forward_ios_rounded,
                                 color: AppColors.textMuted,
-                                size: 16,
+                                size: 14,
                               ),
                             ],
                           ),
                         ),
                       ),
-                    );
+                      _buildCardDivider(),
+                      // 2. View Stats
+                      _SettingsTileItem(
+                        icon: Iconsax.chart_21,
+                        title: s.settingsAccountViewStatsTitle,
+                        subtitle: s.settingsAccountViewStatsDesc,
+                        trailingText: durationCompact,
+                        onTap: () => context.push('/profile/insights'),
+                      ),
+                      // 3. QR Scan (Mobile & Tablet only)
+                      if (showQrScan) ...[
+                        _buildCardDivider(),
+                        _SettingsTileItem(
+                          icon: Icons.qr_code_scanner_rounded,
+                          title: s.settingsAccountQrScanTitle,
+                          subtitle: s.settingsAccountQrScanDesc,
+                          onTap: () => context.push('/tv-pairing-scanner'),
+                        ),
+                      ],
+                    ]);
                   },
                 ),
 
-            // ── Cineva Insights / Wrapped & KTP / ATM Member Card Studio Banner ──
-            Consumer(
-              builder: (context, ref, _) {
-                final s = ref.watch(appStringsProvider);
-                final lang = ref.watch(appLanguageProvider);
-                final insights = ref.watch(watchInsightsProvider);
-                final persona = insights.personaTitle(lang);
-                final durationCompact = insights.formattedDurationCompact(lang);
+                const SizedBox(height: 20),
 
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: TvFocusable(
-                    focusedScale: 1.02,
-                    borderRadius: BorderRadius.circular(18),
-                    onTap: () => context.push('/profile/insights'),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primary.withValues(alpha: 0.18),
-                            const Color(0xFF131826),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.45),
-                          width: 1.1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [AppColors.primary, Color(0xFFFF8F00)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.badge_rounded,
-                              color: Colors.black,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        s.insightsProfileBannerTitle,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        'KTP / ATM',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'LV.${insights.personaLevel} $persona • $durationCompact • ${insights.moviesWatchedCount}F/${insights.episodesWatchedCount}EP',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.primaryLight,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  s.insightsProfileBannerSubtitle,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 14,
-                            color: AppColors.primaryLight,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            // ── Mobile-Only: Tautkan ke Android TV / PC QR Scanner Banner ──
-            Consumer(
-              builder: (context, ref, _) {
-                final isTv = ref.watch(isTvProvider);
-                final isDesktop = ref.watch(isDesktopProvider);
-                if (isTv || isDesktop) return const SizedBox.shrink();
-                final s = ref.watch(appStringsProvider);
-
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => context.push('/tv-pairing-scanner'),
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppColors.primary.withValues(alpha: 0.12),
-                              const Color(0xFF161622),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.35),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.18),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.primary.withValues(alpha: 0.4),
-                                  width: 1,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.qr_code_scanner_rounded,
-                                color: AppColors.primary,
-                                size: 22,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        s.settingsSyncTvTitle,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 14.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary,
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          s.badgeNew,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.w800,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    s.settingsSyncTvSubtitle,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 14,
-                              color: AppColors.primary,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── SECTION 0: PREFERENSI UMUM (Bahasa Aplikasi & Konten) ──
+                // ── SECTION 0: PREFERENSI UMUM (Bahasa Aplikasi & Konten) ──
             _buildSectionHeader(s.settingsGeneralSection, Iconsax.setting_2),
             _buildSettingsCard([
               _SettingsTileItem(

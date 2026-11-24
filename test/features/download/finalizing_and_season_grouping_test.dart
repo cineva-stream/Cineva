@@ -178,6 +178,57 @@ void main() {
         await tempDir.delete(recursive: true);
       }
     });
+
+    test('OfflineMp4Builder.build instantaneously finalizes pre-assembled video.ts via .assembled marker', () async {
+      final tempDir = await Directory.systemTemp.createTemp('cineva_instant_ts_finalize_');
+      try {
+        final bundleDir = Directory('${tempDir.path}/item_ts');
+        await bundleDir.create(recursive: true);
+
+        final segFiles = <File>[];
+        final totalBytes = <int>[];
+        for (int i = 0; i < 4; i++) {
+          final seg = File('${bundleDir.path}/v_${i.toString().padLeft(4, '0')}.ts');
+          final b = List<int>.filled(188 * 100, 0x47);
+          await seg.writeAsBytes(b);
+          segFiles.add(seg);
+          totalBytes.addAll(b);
+        }
+
+        // Simulate _ProgressiveTrackAssembler having pre-assembled video.ts and its .assembled marker
+        final videoTs = File('${bundleDir.path}/${OfflineMp4Builder.videoTsName}');
+        await videoTs.writeAsBytes(totalBytes);
+        final assembledMarker = File('${videoTs.path}.assembled');
+        await assembledMarker.writeAsString('${segFiles.length}:${totalBytes.length}');
+
+        final ok = await OfflineMp4Builder.build(
+          dir: bundleDir,
+          expectedDurationUs: 16000000,
+          deleteSegmentsOnSuccess: true,
+          deleteSegmentsInBackground: false,
+        );
+
+        expect(ok, isTrue);
+        expect(await videoTs.exists(), isTrue);
+        expect(await assembledMarker.exists(), isFalse);
+        for (final seg in segFiles) {
+          expect(await seg.exists(), isFalse);
+        }
+
+        // Unified manifests must exist and point to video.ts for 100% offline playback compatibility
+        final videoM3u8 = File('${bundleDir.path}/video.m3u8');
+        final masterM3u8 = File('${bundleDir.path}/master.m3u8');
+        expect(await videoM3u8.exists(), isTrue);
+        expect(await masterM3u8.exists(), isTrue);
+        expect(await videoM3u8.readAsString(), contains('video.ts'));
+
+        // findPlayableOfflineFile returns unified video.ts directly
+        final playable = await OfflineMp4Builder.findPlayableOfflineFile(bundleDir);
+        expect(playable?.path, equals(videoTs.path));
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
+    });
   });
 
   group('Download List Screen Finalizing & Season Dropdown Widget Tests', () {

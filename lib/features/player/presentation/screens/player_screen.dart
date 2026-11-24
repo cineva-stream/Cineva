@@ -1944,11 +1944,46 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
       if (ext == 'mp4' || ext == 'mkv') {
         // Direct standalone hardware container
+        try {
+          final mpv = (_player.platform as dynamic);
+          await mpv?.setProperty('audio-files', '');
+        } catch (_) {}
         final media = Media(path);
         await _player.open(media);
         unawaited(_syncPreviewMedia(media));
+      } else if (ext == 'ts') {
+        // Unified MPEG-TS container (`video.ts`) with optional secondary `audio.ts`.
+        // Opened directly by libmpv for instant startup, accurate duration, and smooth seeking.
+        final secondaryAudio = await OfflineMp4Builder.getSecondaryAudioFile(
+          mediaDir,
+        );
+        final hasSecondaryAudio =
+            secondaryAudio != null && await secondaryAudio.exists();
+        try {
+          final mpv = (_player.platform as dynamic);
+          await mpv?.setProperty(
+            'audio-files',
+            hasSecondaryAudio ? secondaryAudio.path : '',
+          );
+        } catch (_) {}
+
+        final media = Media(path);
+        await _player.open(media);
+        unawaited(_syncPreviewMedia(media));
+
+        if (hasSecondaryAudio) {
+          try {
+            final mpv = (_player.platform as dynamic);
+            await mpv?.command([
+              'audio-add',
+              secondaryAudio.path,
+              'select',
+              'Audio',
+            ]);
+          } catch (_) {}
+        }
       } else {
-        // Check if master.m3u8, master.cineva, or video.m3u8 exists in mediaDir to use LocalStreamServer
+        // Legacy multi-segment HLS bundle (`master.m3u8` / `master.cineva` / `video.m3u8`) via LocalStreamServer
         final masterFile = File('${mediaDir.path}/master.m3u8');
         final masterCineva = File('${mediaDir.path}/master.cineva');
         final videoM3u8File = File('${mediaDir.path}/video.m3u8');
@@ -1981,7 +2016,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             unawaited(_syncPreviewMedia(media));
           }
         } else {
-          // Fallback: direct media file (e.g. video.ts without playlist)
+          // Fallback: direct media file
           final media = Media(path);
           await _player.open(media);
           unawaited(_syncPreviewMedia(media));

@@ -288,6 +288,30 @@
         window.location.href = "party/" + code;
       }, 700);
     }
+
+    // Automatically open Cineva App when deep link query params (?watch=tv/123 or ?type=tv&id=123) are present
+    window.addEventListener("DOMContentLoaded", () => {
+      const params = new URLSearchParams(window.location.search);
+      let targetPath = "";
+      const watchParam = params.get("watch") || "";
+      if (/^(movie|tv)\/\d+$/i.test(watchParam)) {
+        targetPath = watchParam.toLowerCase();
+      } else {
+        const qType = (params.get("type") || "").toLowerCase();
+        const qId = params.get("id") || "";
+        if ((qType === "movie" || qType === "tv") && /^\d+$/.test(qId)) {
+          targetPath = qType + "/" + qId;
+        }
+      }
+      if (targetPath) {
+        const intentUrl = "intent://" + targetPath + "#Intent;scheme=cineva;package=com.cinevagroup.cinevastream;end";
+        const schemeUrl = "cineva://" + targetPath;
+        window.location.href = intentUrl;
+        setTimeout(() => {
+          window.location.href = schemeUrl;
+        }, 650);
+      }
+    });
   </script>
 </body>
 </html>

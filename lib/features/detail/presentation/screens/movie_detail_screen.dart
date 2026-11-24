@@ -20,6 +20,7 @@ import '../../../collection/presentation/widgets/franchise_collection_banner.dar
 import '../../../../core/platform/device_form_factor.dart';
 import '../../../watch_party/domain/models/watch_party_room.dart';
 import '../../../watch_party/presentation/widgets/watch_party_modal.dart';
+import '../../../player/data/services/provider_loader_service.dart';
 
 // ── Detail Providers ──
 
@@ -133,7 +134,27 @@ class _DetailContent extends ConsumerWidget {
     final posterPath = data['poster_path'] as String?;
     final voteAverage = (data['vote_average'] as num?)?.toDouble() ?? 0.0;
     final releaseDate = data['release_date'] as String? ?? '';
+    final status = data['status'] as String?;
     final runtime = data['runtime'] as int? ?? 0;
+    final mediaId = data['id'] as int? ?? 0;
+
+    final unreleasedByMeta = MediaReleaseGuard.isUnreleasedByMetadata(
+      releaseDate: releaseDate,
+      status: status,
+    );
+    final serverAvailableOverride = unreleasedByMeta && mediaId > 0
+        ? (ref
+                  .watch(
+                    streamAvailabilityProbeProvider((
+                      tmdbId: mediaId,
+                      season: null,
+                      episode: null,
+                    )),
+                  )
+                  .valueOrNull ??
+              false)
+        : true;
+    final isComingSoon = unreleasedByMeta && !serverAvailableOverride;
     final genres =
         (data['genres'] as List<dynamic>?)
             ?.map((g) => g['name'] as String)
@@ -180,6 +201,7 @@ class _DetailContent extends ConsumerWidget {
         similarList: similarList,
         trailer: trailer,
         imdbId: imdbId,
+        isComingSoon: isComingSoon,
       );
     }
 
@@ -203,6 +225,7 @@ class _DetailContent extends ConsumerWidget {
       trailer: trailer,
       imdbId: imdbId,
       isCompact: isCompact,
+      isComingSoon: isComingSoon,
     );
   }
 
@@ -248,6 +271,7 @@ class _DetailContent extends ConsumerWidget {
     required List<dynamic> similarList,
     required TrailerVideoModel? trailer,
     required String? imdbId,
+    required bool isComingSoon,
   }) {
     final mediaId = data['id'] as int? ?? 0;
     final releaseYear = releaseDate.length >= 4
@@ -605,53 +629,40 @@ class _DetailContent extends ConsumerWidget {
                                   runSpacing: 10,
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
-                                    // Watch Now
-                                    TvFocusable(
-                                      autofocus: true,
-                                      focusedScale: 1.04,
-                                      glowBlurRadius: 16,
-                                      glowColor: AppColors.primary,
-                                      borderRadius: BorderRadius.circular(14),
-                                      onTap: () => _playMovie(
-                                        context,
-                                        title: title,
-                                        imdbId: imdbId,
-                                        data: data,
-                                        overview: overview,
-                                      ),
-                                      child: Container(
+                                    // Watch Now (or Disabled "Segera Hadir" if unreleased & not yet on server)
+                                    if (isComingSoon)
+                                      Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 24,
                                           vertical: 14,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: AppColors.primary,
+                                          color: Colors.white.withValues(
+                                            alpha: 0.10,
+                                          ),
                                           borderRadius: BorderRadius.circular(
                                             14,
                                           ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: AppColors.primary
-                                                  .withValues(alpha: 0.4),
-                                              blurRadius: 18,
-                                              offset: const Offset(0, 4),
+                                          border: Border.all(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.16,
                                             ),
-                                          ],
+                                          ),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             const Icon(
-                                              Icons.play_arrow_rounded,
-                                              color: Colors.black,
-                                              size: 24,
+                                              Icons.schedule_rounded,
+                                              color: AppColors.textMuted,
+                                              size: 20,
                                             ),
                                             const SizedBox(width: 8),
                                             Text(
-                                              s.detailWatchNow,
+                                              s.detailComingSoon,
                                               style:
                                                   GoogleFonts.plusJakartaSans(
-                                                    color: Colors.black,
+                                                    color: AppColors.textMuted,
                                                     fontWeight: FontWeight.w800,
                                                     fontSize: 14,
                                                     letterSpacing: 0.2,
@@ -659,8 +670,63 @@ class _DetailContent extends ConsumerWidget {
                                             ),
                                           ],
                                         ),
+                                      )
+                                    else
+                                      TvFocusable(
+                                        autofocus: true,
+                                        focusedScale: 1.04,
+                                        glowBlurRadius: 16,
+                                        glowColor: AppColors.primary,
+                                        borderRadius: BorderRadius.circular(14),
+                                        onTap: () => _playMovie(
+                                          context,
+                                          title: title,
+                                          imdbId: imdbId,
+                                          data: data,
+                                          overview: overview,
+                                        ),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                            vertical: 14,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary,
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.4),
+                                                blurRadius: 18,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.play_arrow_rounded,
+                                                color: Colors.black,
+                                                size: 24,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                s.detailWatchNow,
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                      color: Colors.black,
+                                                      fontWeight: FontWeight.w800,
+                                                      fontSize: 14,
+                                                      letterSpacing: 0.2,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
-                                    ),
 
                                     if (trailer != null)
                                       TvFocusable(
@@ -824,65 +890,66 @@ class _DetailContent extends ConsumerWidget {
                                       },
                                     ),
 
-                                    // Download Button
-                                    TvFocusable(
-                                      focusedScale: 1.04,
-                                      borderRadius: BorderRadius.circular(12),
-                                      onTap: () {
-                                        DownloadOptionsModal.show(
-                                          context,
-                                          tmdbId: mediaId,
-                                          mediaType: 'movie',
-                                          title: title,
-                                          releaseYear: releaseYear,
-                                          posterPath: posterPath,
-                                          backdropPath: backdropPath,
-                                          imdbId: imdbId,
-                                          runtimeMinutes: runtime > 0
-                                              ? runtime
-                                              : 100,
-                                        );
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 18,
-                                          vertical: 13,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.12,
+                                    // Download Button (Hidden/Disabled when movie is Coming Soon)
+                                    if (!isComingSoon)
+                                      TvFocusable(
+                                        focusedScale: 1.04,
+                                        borderRadius: BorderRadius.circular(12),
+                                        onTap: () {
+                                          DownloadOptionsModal.show(
+                                            context,
+                                            tmdbId: mediaId,
+                                            mediaType: 'movie',
+                                            title: title,
+                                            releaseYear: releaseYear,
+                                            posterPath: posterPath,
+                                            backdropPath: backdropPath,
+                                            imdbId: imdbId,
+                                            runtimeMinutes: runtime > 0
+                                                ? runtime
+                                                : 100,
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 18,
+                                            vertical: 13,
                                           ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          border: Border.all(
+                                          decoration: BoxDecoration(
                                             color: Colors.white.withValues(
-                                              alpha: 0.2,
+                                              alpha: 0.12,
                                             ),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.download_rounded,
-                                              color: Colors.white,
-                                              size: 20,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
                                             ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              s.detailDownloadMovie,
-                                              style: GoogleFonts.inter(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 13,
+                                            border: Border.all(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.2,
                                               ),
+                                              width: 1,
                                             ),
-                                          ],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.download_rounded,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                s.detailDownloadMovie,
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ],
@@ -1156,6 +1223,7 @@ class _DetailContent extends ConsumerWidget {
     required TrailerVideoModel? trailer,
     required String? imdbId,
     required bool isCompact,
+    required bool isComingSoon,
   }) {
     final posterWidth = isCompact ? 100.0 : 120.0;
     final posterHeight = isCompact ? 150.0 : 180.0;
@@ -1378,35 +1446,45 @@ class _DetailContent extends ConsumerWidget {
 
                 const SizedBox(height: 20),
 
-                // ── Action Row: Watch Now, Trailer & Watchlist ──
+                // ── Action Row: Watch Now (or Disabled "Segera Hadir"), Trailer & Watchlist ──
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () => _playMovie(
-                          context,
-                          title: title,
-                          imdbId: imdbId,
-                          data: data,
-                          overview: overview,
-                        ),
-                        icon: const Icon(
-                          Icons.play_arrow_rounded,
-                          size: 28,
-                          color: Colors.black,
+                        onPressed: isComingSoon
+                            ? null
+                            : () => _playMovie(
+                                context,
+                                title: title,
+                                imdbId: imdbId,
+                                data: data,
+                                overview: overview,
+                              ),
+                        icon: Icon(
+                          isComingSoon
+                              ? Icons.schedule_rounded
+                              : Icons.play_arrow_rounded,
+                          size: isComingSoon ? 22 : 28,
+                          color: isComingSoon
+                              ? AppColors.textMuted
+                              : Colors.black,
                         ),
                         label: Text(
-                          s.detailWatchNow,
+                          isComingSoon ? s.detailComingSoon : s.detailWatchNow,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
-                            color: Colors.black,
+                            color: isComingSoon
+                                ? AppColors.textMuted
+                                : Colors.black,
                             letterSpacing: 0.2,
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          elevation: 6,
+                          disabledBackgroundColor: AppColors.surfaceVariant,
+                          disabledForegroundColor: AppColors.textMuted,
+                          elevation: isComingSoon ? 0 : 6,
                           shadowColor: AppColors.primary.withValues(alpha: 0.4),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -1576,50 +1654,51 @@ class _DetailContent extends ConsumerWidget {
                   ],
                 ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
 
-                const SizedBox(height: 12),
-
-                // ── Download Button ──
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      final releaseYear = releaseDate.length >= 4
-                          ? releaseDate.substring(0, 4)
-                          : '';
-                      DownloadOptionsModal.show(
-                        context,
-                        tmdbId: data['id'] as int? ?? 0,
-                        mediaType: 'movie',
-                        title: title,
-                        releaseYear: releaseYear,
-                        posterPath: posterPath,
-                        backdropPath: backdropPath,
-                        imdbId: imdbId,
-                        runtimeMinutes: runtime > 0 ? runtime : 100,
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.download_rounded,
-                      size: 22,
-                      color: AppColors.primary,
-                    ),
-                    label: Text(
-                      s.detailDownloadMovie,
-                      style: const TextStyle(
-                        fontSize: 14,
+                // ── Download Button (Only when released / available) ──
+                if (!isComingSoon) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        final releaseYear = releaseDate.length >= 4
+                            ? releaseDate.substring(0, 4)
+                            : '';
+                        DownloadOptionsModal.show(
+                          context,
+                          tmdbId: data['id'] as int? ?? 0,
+                          mediaType: 'movie',
+                          title: title,
+                          releaseYear: releaseYear,
+                          posterPath: posterPath,
+                          backdropPath: backdropPath,
+                          imdbId: imdbId,
+                          runtimeMinutes: runtime > 0 ? runtime : 100,
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.download_rounded,
+                        size: 22,
                         color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
                       ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                      label: Text(
+                        s.detailDownloadMovie,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      side: const BorderSide(color: AppColors.primary),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        side: const BorderSide(color: AppColors.primary),
+                      ),
                     ),
                   ),
-                ),
+                ],
 
                 const SizedBox(height: 24),
 

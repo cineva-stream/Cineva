@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:encrypt/encrypt.dart' as enc;
@@ -329,14 +330,19 @@ class _ProgressiveTrackAssembler {
   final bool Function() shouldStop;
 
   late final List<bool> _ready = List<bool>.filled(tasks.length, false);
+  final Map<int, List<int>> _inMemorySegments = <int, List<int>>{};
   late final File _buildingFile = File('${finalOutputFile.path}.building');
+  late final File _assembledMarkerFile = File('${finalOutputFile.path}.assembled');
   final Uint8List _buffer = Uint8List(1024 * 1024); // 1 MB reusable buffer
   RandomAccessFile? _outRaf;
   int _nextIndex = 0;
+  int _totalBytesWritten = 0;
   bool _pumping = false;
   bool _initWritten = false;
   bool _failed = false;
   Completer<void>? _idleCompleter;
+
+  static const int _maxInMemoryWindow = 32;
 
   _ProgressiveTrackAssembler({
     required this.targetDir,
@@ -346,8 +352,13 @@ class _ProgressiveTrackAssembler {
     required this.shouldStop,
   });
 
-  void markSegmentReady(int index) {
+  void markSegmentReady(int index, {List<int>? bytes}) {
     if (_failed || index < 0 || index >= tasks.length) return;
+    if (bytes != null &&
+        index >= _nextIndex &&
+        (index - _nextIndex) <= _maxInMemoryWindow) {
+      _inMemorySegments[index] = bytes;
+    }
     _ready[index] = true;
     _pump();
   }
@@ -370,17 +381,25 @@ class _ProgressiveTrackAssembler {
               await _buildingFile.delete();
             }
             _outRaf = await _buildingFile.open(mode: FileMode.write);
+            _totalBytesWritten = 0;
             if (!_initWritten && initFile != null && await initFile!.exists()) {
               await _appendFileToOut(initFile!);
               _initWritten = true;
             }
           }
-          final segFile = File('${targetDir.path}/${tasks[_nextIndex].fileName}');
-          await _appendFileToOut(segFile);
+          final memBytes = _inMemorySegments.remove(_nextIndex);
+          if (memBytes != null) {
+            await _outRaf!.writeFrom(memBytes);
+            _totalBytesWritten += memBytes.length;
+          } else {
+            final segFile = File('${targetDir.path}/${tasks[_nextIndex].fileName}');
+            await _appendFileToOut(segFile);
+          }
           _nextIndex++;
         }
       } catch (e) {
         _failed = true;
+        _inMemorySegments.clear();
         debugPrint('[ProgressiveTrackAssembler] Background append note: $e');
       } finally {
         _pumping = false;
@@ -401,6 +420,7 @@ class _ProgressiveTrackAssembler {
         final read = await inRaf.readInto(_buffer);
         if (read <= 0) break;
         await _outRaf!.writeFrom(_buffer, 0, read);
+        _totalBytesWritten += read;
       }
     } finally {
       try {
@@ -423,13 +443,20 @@ class _ProgressiveTrackAssembler {
               await _buildingFile.delete();
             }
             _outRaf = await _buildingFile.open(mode: FileMode.write);
+            _totalBytesWritten = 0;
             if (!_initWritten && initFile != null && await initFile!.exists()) {
               await _appendFileToOut(initFile!);
               _initWritten = true;
             }
           }
-          final segFile = File('${targetDir.path}/${tasks[_nextIndex].fileName}');
-          await _appendFileToOut(segFile);
+          final memBytes = _inMemorySegments.remove(_nextIndex);
+          if (memBytes != null) {
+            await _outRaf!.writeFrom(memBytes);
+            _totalBytesWritten += memBytes.length;
+          } else {
+            final segFile = File('${targetDir.path}/${tasks[_nextIndex].fileName}');
+            await _appendFileToOut(segFile);
+          }
           _nextIndex++;
         }
         if (_outRaf != null) {
@@ -437,11 +464,18 @@ class _ProgressiveTrackAssembler {
           await _outRaf!.close();
           _outRaf = null;
         }
+        _inMemorySegments.clear();
         if (_nextIndex == tasks.length && await _buildingFile.exists()) {
           if (await finalOutputFile.exists()) {
             await finalOutputFile.delete();
           }
           await _buildingFile.rename(finalOutputFile.path);
+          final expectedParts = tasks.length + (initFile != null ? 1 : 0);
+          try {
+            await _assembledMarkerFile.writeAsString(
+              '$expectedParts:$_totalBytesWritten',
+            );
+          } catch (_) {}
           return;
         }
       } catch (e) {
@@ -449,6 +483,7 @@ class _ProgressiveTrackAssembler {
       }
     }
 
+    _inMemorySegments.clear();
     try {
       await _outRaf?.close();
     } catch (_) {}
@@ -461,6 +496,89 @@ class _ProgressiveTrackAssembler {
   }
 }
 
+class _IsolateDownloadConfig {
+  final SendPort mainSendPort;
+  final String streamUrl;
+  final String masterPlaylistUrl;
+  final Map<String, String>? headers;
+  final String targetFilePath;
+  final int estimatedSizeBytes;
+  final String? preferredQuality;
+  final int? tmdbId;
+  final String? imdbId;
+  final int? season;
+  final int? episode;
+
+  const _IsolateDownloadConfig({
+    required this.mainSendPort,
+    required this.streamUrl,
+    required this.masterPlaylistUrl,
+    required this.headers,
+    required this.targetFilePath,
+    required this.estimatedSizeBytes,
+    required this.preferredQuality,
+    required this.tmdbId,
+    required this.imdbId,
+    required this.season,
+    required this.episode,
+  });
+}
+
+Future<void> _downloadIsolateEntryPoint(_IsolateDownloadConfig config) async {
+  final commandPort = ReceivePort();
+  config.mainSendPort.send(commandPort.sendPort);
+
+  final cancelToken = CancelToken();
+  final sub = commandPort.listen((message) {
+    if (message == 'cancel' && !cancelToken.isCancelled) {
+      cancelToken.cancel('Cancelled by main isolate');
+    }
+  });
+
+  final service = VideoDownloadService(useBackgroundIsolate: false);
+  try {
+    await service._downloadStreamInternal(
+      streamUrl: config.streamUrl,
+      masterPlaylistUrl: config.masterPlaylistUrl,
+      headers: config.headers,
+      targetFilePath: config.targetFilePath,
+      estimatedSizeBytes: config.estimatedSizeBytes,
+      preferredQuality: config.preferredQuality,
+      tmdbId: config.tmdbId,
+      imdbId: config.imdbId,
+      season: config.season,
+      episode: config.episode,
+      cancelToken: cancelToken,
+      onProgress: ({
+        required int downloadedBytes,
+        required int totalBytes,
+        required double progress,
+        required String speed,
+      }) {
+        config.mainSendPort.send(<String, Object>{
+          'type': 'progress',
+          'downloadedBytes': downloadedBytes,
+          'totalBytes': totalBytes,
+          'progress': progress,
+          'speed': speed,
+        });
+      },
+    );
+    config.mainSendPort.send(const <String, Object>{'type': 'done'});
+  } catch (e) {
+    final isCancelled = cancelToken.isCancelled ||
+        (e is DioException && e.type == DioExceptionType.cancel);
+    config.mainSendPort.send(<String, Object>{
+      'type': 'error',
+      'cancelled': isCancelled,
+      'message': e.toString(),
+    });
+  } finally {
+    await sub.cancel();
+    commandPort.close();
+  }
+}
+
 /// Service that handles high-speed multi-connection downloading of video streams to local storage.
 /// Supports seamless decryption of AES-128 HLS streams, disguised segment unwrapping
 /// (WebP EXIF, PNG IEND, PNG TIKTIKPX + Gzip, TIKTIKRAW/TIKTIKTSGZ), and dual video & audio tracks.
@@ -468,12 +586,16 @@ class VideoDownloadService {
   final Dio _dio;
   final ProviderLoaderService _providerLoader;
   final ScraperApiService _scraperApi;
+  final bool _useBackgroundIsolate;
 
   VideoDownloadService({
     Dio? dio,
     ProviderLoaderService? providerLoader,
     ScraperApiService? scraperApi,
-  })  : _dio = dio ??
+    bool? useBackgroundIsolate,
+  })  : _useBackgroundIsolate = useBackgroundIsolate ??
+            (dio == null && providerLoader == null && scraperApi == null),
+        _dio = dio ??
             Dio(
               BaseOptions(
                 connectTimeout: const Duration(seconds: 15),
@@ -632,15 +754,11 @@ class VideoDownloadService {
         await masterM3u8.writeAsString(sb.toString());
       }
 
-      // 5. If raw segments are gone but video.ts exists, construct synthetic m3u8 manifests
+      // 5. If video.ts exists and is valid, ensure unified HLS manifests exist and clean up any leftover raw segments
       final videoTs = File('${dir.path}/video.ts');
       final audioTs = File('${dir.path}/audio.ts');
       if (await videoTs.exists() && (await videoTs.length()) > 50000) {
-        final segments = await OfflineMp4Builder.listSegments(dir, 'v_');
-        if (segments.isEmpty) {
-          debugPrint(
-            '[VideoDownloadService] Synthesizing HLS manifests for unified TS files in ${dir.path}...',
-          );
+        if (await isStoredSegmentUsable(videoTs, allowRawAudio: false)) {
           final hasAudio =
               await audioTs.exists() && (await audioTs.length()) > 1000;
           await videoM3u8.writeAsString(
@@ -665,13 +783,14 @@ class VideoDownloadService {
           }
           sb.writeln('video.m3u8');
           await masterM3u8.writeAsString(sb.toString());
-        } else if (segments.length > 5) {
-          try {
-            await videoTs.delete();
-          } catch (_) {}
-          try {
-            if (await audioTs.exists()) await audioTs.delete();
-          } catch (_) {}
+
+          final leftoverSegments = <File>[
+            ...(await OfflineMp4Builder.listSegments(dir, 'v_')),
+            ...(await OfflineMp4Builder.listSegments(dir, 'a_')),
+          ];
+          if (leftoverSegments.isNotEmpty) {
+            unawaited(OfflineMp4Builder.deleteFilesFast(leftoverSegments));
+          }
         }
       }
 
@@ -700,7 +819,7 @@ class VideoDownloadService {
   }
 
   static final RegExp _workFilePattern = RegExp(
-    r'^(?:[va]_\d+\.(?:ts|m4s|cdat)(?:\.part)?|init_[va]\.mp4|video\.ts(?:\.building)?|audio\.ts(?:\.building)?|video\.mp4(?:\.building)?)$',
+    r'^(?:[va]_\d+\.(?:ts|m4s|cdat)(?:\.part)?|init_[va]\.mp4|video\.ts(?:\.building|\.assembled)?|audio\.ts(?:\.building|\.assembled)?|video\.mp4(?:\.building|\.assembled)?)$',
   );
 
   /// Prepares [dir] before segments are downloaded.
@@ -728,10 +847,13 @@ class VideoDownloadService {
       const artifacts = {
         'video.mp4',
         'video.mp4.building',
+        'video.mp4.assembled',
         'video.ts',
         'video.ts.building',
+        'video.ts.assembled',
         'audio.ts',
         'audio.ts.building',
+        'audio.ts.assembled',
       };
       await for (final entity in dir.list()) {
         if (entity is! File) continue;
@@ -1140,7 +1262,188 @@ class VideoDownloadService {
 
   /// Downloads an HLS stream (video + audio with AES-128 decryption & disguised segment unwrapping)
   /// or direct MP4 URL.
+  ///
+  /// Runs inside a dedicated Background Isolate in production so that AES-128 decryption,
+  /// MPEG-TS byte alignment, and disk I/O never block the Main UI thread.
   Future<void> downloadStream({
+    required String streamUrl,
+    String masterPlaylistUrl = '',
+    Map<String, String>? headers,
+    required String targetFilePath,
+    required int estimatedSizeBytes,
+    String? preferredQuality,
+    int? tmdbId,
+    String? imdbId,
+    int? season,
+    int? episode,
+    CancelToken? cancelToken,
+    void Function({
+      required int downloadedBytes,
+      required int totalBytes,
+      required double progress,
+      required String speed,
+    })? onProgress,
+  }) async {
+    if (_useBackgroundIsolate) {
+      await _downloadInBackgroundIsolate(
+        streamUrl: streamUrl,
+        masterPlaylistUrl: masterPlaylistUrl,
+        headers: headers,
+        targetFilePath: targetFilePath,
+        estimatedSizeBytes: estimatedSizeBytes,
+        preferredQuality: preferredQuality,
+        tmdbId: tmdbId,
+        imdbId: imdbId,
+        season: season,
+        episode: episode,
+        cancelToken: cancelToken,
+        onProgress: onProgress,
+      );
+      return;
+    }
+
+    await _downloadStreamInternal(
+      streamUrl: streamUrl,
+      masterPlaylistUrl: masterPlaylistUrl,
+      headers: headers,
+      targetFilePath: targetFilePath,
+      estimatedSizeBytes: estimatedSizeBytes,
+      preferredQuality: preferredQuality,
+      tmdbId: tmdbId,
+      imdbId: imdbId,
+      season: season,
+      episode: episode,
+      cancelToken: cancelToken,
+      onProgress: onProgress,
+    );
+  }
+
+  Future<void> _downloadInBackgroundIsolate({
+    required String streamUrl,
+    required String masterPlaylistUrl,
+    required Map<String, String>? headers,
+    required String targetFilePath,
+    required int estimatedSizeBytes,
+    required String? preferredQuality,
+    required int? tmdbId,
+    required String? imdbId,
+    required int? season,
+    required int? episode,
+    required CancelToken? cancelToken,
+    required void Function({
+      required int downloadedBytes,
+      required int totalBytes,
+      required double progress,
+      required String speed,
+    })? onProgress,
+  }) async {
+    if (cancelToken?.isCancelled ?? false) {
+      throw DioException(
+        requestOptions: RequestOptions(path: streamUrl),
+        type: DioExceptionType.cancel,
+      );
+    }
+
+    final receivePort = ReceivePort();
+    final completer = Completer<void>();
+    Isolate? isolate;
+    SendPort? workerCommandPort;
+
+    cancelToken?.whenCancel.then((_) {
+      workerCommandPort?.send('cancel');
+    });
+
+    final sub = receivePort.listen((message) {
+      if (message is SendPort) {
+        workerCommandPort = message;
+        if (cancelToken?.isCancelled ?? false) {
+          workerCommandPort?.send('cancel');
+        }
+        return;
+      }
+
+      if (message is Map) {
+        final type = message['type'];
+        if (type == 'progress') {
+          onProgress?.call(
+            downloadedBytes: (message['downloadedBytes'] as num?)?.toInt() ?? 0,
+            totalBytes: (message['totalBytes'] as num?)?.toInt() ?? 0,
+            progress: (message['progress'] as num?)?.toDouble() ?? 0.0,
+            speed: (message['speed'] as String?) ?? '0 KB/s',
+          );
+        } else if (type == 'done') {
+          if (!completer.isCompleted) {
+            completer.complete();
+          }
+        } else if (type == 'error') {
+          if (!completer.isCompleted) {
+            final isCancelled = (message['cancelled'] == true) ||
+                (cancelToken?.isCancelled ?? false);
+            if (isCancelled) {
+              completer.completeError(
+                DioException(
+                  requestOptions: RequestOptions(path: streamUrl),
+                  type: DioExceptionType.cancel,
+                ),
+              );
+            } else {
+              completer.completeError(
+                Exception((message['message'] as String?) ?? 'Gagal mengunduh stream.'),
+              );
+            }
+          }
+        }
+        return;
+      }
+
+      if (message is List && message.length == 2 && !completer.isCompleted) {
+        // Isolate uncaught error
+        completer.completeError(Exception('Background isolate error: ${message.first}'));
+      } else if (message == null && !completer.isCompleted) {
+        // Isolate exited unexpectedly
+        if (cancelToken?.isCancelled ?? false) {
+          completer.completeError(
+            DioException(
+              requestOptions: RequestOptions(path: streamUrl),
+              type: DioExceptionType.cancel,
+            ),
+          );
+        } else {
+          completer.completeError(
+            Exception('Background download isolate berhenti secara tak terduga.'),
+          );
+        }
+      }
+    });
+
+    try {
+      isolate = await Isolate.spawn<_IsolateDownloadConfig>(
+        _downloadIsolateEntryPoint,
+        _IsolateDownloadConfig(
+          mainSendPort: receivePort.sendPort,
+          streamUrl: streamUrl,
+          masterPlaylistUrl: masterPlaylistUrl,
+          headers: headers,
+          targetFilePath: targetFilePath,
+          estimatedSizeBytes: estimatedSizeBytes,
+          preferredQuality: preferredQuality,
+          tmdbId: tmdbId,
+          imdbId: imdbId,
+          season: season,
+          episode: episode,
+        ),
+        onError: receivePort.sendPort,
+        onExit: receivePort.sendPort,
+      );
+      await completer.future;
+    } finally {
+      await sub.cancel();
+      receivePort.close();
+      isolate?.kill(priority: Isolate.immediate);
+    }
+  }
+
+  Future<void> _downloadStreamInternal({
     required String streamUrl,
     String masterPlaylistUrl = '',
     Map<String, String>? headers,
@@ -1446,7 +1749,7 @@ class VideoDownloadService {
     int lastEmitMs = 0;
     String currentSpeed = '0 KB/s (0.0 Mbps)';
 
-    const int concurrency = 12; // High-speed 12 parallel connection workers
+    const int concurrency = 16; // High-speed 16 parallel pipelined connection workers in background isolate
     int nextClaimIndex = 0;
     int completedSegments = 0;
     bool hasError = false;
@@ -1478,11 +1781,11 @@ class VideoDownloadService {
           )
         : null;
 
-    void notifySegmentReady(_HlsSegmentTask task) {
+    void notifySegmentReady(_HlsSegmentTask task, {List<int>? bytes}) {
       if (task.isAudio) {
-        audioAssembler?.markSegmentReady(task.index);
+        audioAssembler?.markSegmentReady(task.index, bytes: bytes);
       } else {
-        videoAssembler.markSegmentReady(task.index);
+        videoAssembler.markSegmentReady(task.index, bytes: bytes);
       }
     }
 
@@ -1544,10 +1847,10 @@ class VideoDownloadService {
       }
     }
 
-    // Throttled progress emitter (also keeps Hive writes in the provider reasonable).
+    // Throttled progress emitter (max 2 updates/sec over isolate SendPort).
     void emitProgress({bool force = false}) {
       final now = DateTime.now().millisecondsSinceEpoch;
-      if (!force && now - lastEmitMs < 400) return;
+      if (!force && now - lastEmitMs < 500) return;
       lastEmitMs = now;
       currentSpeed = speedMeter.formatted;
       onProgress?.call(
@@ -1710,15 +2013,16 @@ class VideoDownloadService {
         }
 
         if (outputBytes != null && outputBytes.isNotEmpty) {
-          // Write atomically so an interrupted write can never be mistaken for a
-          // complete segment when the download is resumed.
+          // Immediately pass in-memory bytes to the progressive track assembler
+          // so it writes directly from RAM without re-reading the segment from disk.
+          downloadedBytes += outputBytes.length;
+          completedSegments++;
+          notifySegmentReady(task, bytes: outputBytes);
+
+          // Write checkpoint segment file atomically for pause/resume resilience.
           final tmp = File('${chunkFile.path}.part');
           await tmp.writeAsBytes(outputBytes);
           await tmp.rename(chunkFile.path);
-
-          downloadedBytes += outputBytes.length;
-          completedSegments++;
-          notifySegmentReady(task);
         }
 
         emitProgress();

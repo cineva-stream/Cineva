@@ -129,6 +129,48 @@ void main() {
       expect(insights.personaLevel, 3);
       expect(insights.activeDaysStreak, 3);
 
+      // Squid Game (4h + 5h = 9h total) must rank #1 in topWatchedTitles ahead of Interstellar (3h)!
+      expect(insights.topWatchedTitles.isNotEmpty, isTrue);
+      expect(insights.topWatchedTitles.first.title, 'Squid Game');
+      expect(insights.topWatchedTitles.first.totalWatchedMs, 9 * 3600 * 1000);
+      expect(insights.topWatchedTitles.first.episodesCount, 2);
+    });
+
+    test('multi-season TV series (e.g. The Rookie at Season 4) aggregates cumulative duration and ranks #1 over a 1.5h movie', () {
+      final historyWithMultiSeason = [
+        WatchHistoryItem(
+          id: 999,
+          mediaType: 'movie',
+          title: 'Spider-Man: Brand New Day',
+          positionMs: 90 * 60 * 1000, // 1h 30m
+          durationMs: 90 * 60 * 1000,
+          lastWatchedAt: now,
+          isCompleted: true,
+        ),
+        WatchHistoryItem(
+          id: 79744,
+          mediaType: 'tv',
+          title: 'The Rookie',
+          season: 4,
+          episode: 3,
+          positionMs: 30 * 60 * 1000, // 30m into S4E3
+          durationMs: 42 * 60 * 1000, // 42m per episode
+          lastWatchedAt: now,
+          isCompleted: false,
+        ),
+      ];
+
+      final insights = computeWatchInsights(
+        history: historyWithMultiSeason,
+        watchlist: const [],
+        profile: testProfile,
+      );
+
+      expect(insights.topWatchedTitles.first.title, 'The Rookie');
+      // 3 prior seasons (30 eps) + 2 prior eps in S4 = 32 eps * 42m + 30m = 1374 mins (> 22 hours)
+      expect(insights.topWatchedTitles.first.totalWatchedMs, greaterThan(20 * 3600 * 1000));
+      expect(insights.topWatchedTitles.first.episodesCount, greaterThanOrEqualTo(33));
+
       // Persona titles in all 3 languages
       expect(insights.personaTitle(AppLanguage.id), 'Duta Maraton Malam');
       expect(insights.personaTitle(AppLanguage.en), 'Midnight Binge Ambassador');

@@ -133,6 +133,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final topRated = ref.watch(topRatedMoviesProvider);
     final upcoming = ref.watch(upcomingMoviesProvider);
     final popularTv = ref.watch(popularTvProvider);
+    final animeSection = ref.watch(animeSectionProvider);
+    final kDramaSection = ref.watch(kDramaSectionProvider);
+    final indonesiaSection = ref.watch(indonesiaSectionProvider);
+    final hollywoodSection = ref.watch(hollywoodSectionProvider);
+    final bollywoodSection = ref.watch(bollywoodSectionProvider);
     final paginatedMoviesState = ref.watch(paginatedPopularMoviesProvider);
     final paginatedTvState = ref.watch(paginatedPopularTvProvider);
 
@@ -787,8 +792,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   asyncData: popular,
                   filter: filterMovies,
                   onRetry: () => ref.invalidate(popularMoviesProvider),
-                  onSeeAll: () => context.go('/search'),
+                  onSeeAll: () => context.push('/catalog/popular_movies'),
                   builder: (movies) => _Top10HorizontalList(movies: movies),
+                ),
+              ),
+
+              // ANIME SECTION (Latest & Available)
+              SliverToBoxAdapter(
+                child: _SectionWithHeader<Movie>(
+                  title: s.homeSectionAnime,
+                  icon: Iconsax.video_play,
+                  asyncData: animeSection,
+                  filter: filterMovies,
+                  onRetry: () => ref.invalidate(animeSectionProvider),
+                  onSeeAll: () => context.push('/catalog/anime'),
+                  builder: (movies) => _MovieHorizontalList(movies: movies),
+                ),
+              ),
+
+              // K-DRAMA SECTION (Latest & Available)
+              SliverToBoxAdapter(
+                child: _SectionWithHeader<Movie>(
+                  title: s.homeSectionKDrama,
+                  icon: Iconsax.heart,
+                  asyncData: kDramaSection,
+                  filter: filterMovies,
+                  onRetry: () => ref.invalidate(kDramaSectionProvider),
+                  onSeeAll: () => context.push('/catalog/kdrama'),
+                  builder: (movies) => _MovieHorizontalList(movies: movies),
+                ),
+              ),
+
+              // INDONESIA SECTION (Latest & Available)
+              SliverToBoxAdapter(
+                child: _SectionWithHeader<Movie>(
+                  title: s.homeSectionIndonesia,
+                  icon: Icons.flag_rounded,
+                  asyncData: indonesiaSection,
+                  filter: filterMovies,
+                  onRetry: () => ref.invalidate(indonesiaSectionProvider),
+                  onSeeAll: () => context.push('/catalog/indonesia'),
+                  builder: (movies) => _MovieHorizontalList(movies: movies),
+                ),
+              ),
+
+              // HOLLYWOOD SECTION (Latest & Available)
+              SliverToBoxAdapter(
+                child: _SectionWithHeader<Movie>(
+                  title: s.homeSectionHollywood,
+                  icon: Iconsax.video,
+                  asyncData: hollywoodSection,
+                  filter: filterMovies,
+                  onRetry: () => ref.invalidate(hollywoodSectionProvider),
+                  onSeeAll: () => context.push('/catalog/hollywood'),
+                  builder: (movies) => _MovieHorizontalList(movies: movies),
+                ),
+              ),
+
+              // BOLLYWOOD SECTION (Latest & Available)
+              SliverToBoxAdapter(
+                child: _SectionWithHeader<Movie>(
+                  title: s.homeSectionBollywood,
+                  icon: Iconsax.music,
+                  asyncData: bollywoodSection,
+                  filter: filterMovies,
+                  onRetry: () => ref.invalidate(bollywoodSectionProvider),
+                  onSeeAll: () => context.push('/catalog/bollywood'),
+                  builder: (movies) => _MovieHorizontalList(movies: movies),
                 ),
               ),
 
@@ -800,7 +870,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   asyncData: popular,
                   filter: filterMovies,
                   onRetry: () => ref.invalidate(popularMoviesProvider),
-                  onSeeAll: () => context.go('/search'),
+                  onSeeAll: () => context.push('/catalog/popular_movies'),
                   builder: (movies) => _MovieHorizontalList(movies: movies),
                 ),
               ),
@@ -813,7 +883,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   asyncData: popularTv,
                   filter: filterTv,
                   onRetry: () => ref.invalidate(popularTvProvider),
-                  onSeeAll: () => context.go('/search'),
+                  onSeeAll: () => context.push('/catalog/popular_tv'),
                   builder: (tvShows) => _TvHorizontalList(tvShows: tvShows),
                 ),
               ),
@@ -821,16 +891,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // TOP RATED MOVIES SECTION
               SliverToBoxAdapter(
                 child: _SectionWithHeader<Movie>(
-                  title: s.tr(
-                    'Rating Tertinggi',
-                    'Top Rated',
-                    'सर्वोच्च रेटेड',
-                  ),
+                  title: s.homeTopRated,
                   icon: Iconsax.star_1,
                   asyncData: topRated,
                   filter: filterMovies,
                   onRetry: () => ref.invalidate(topRatedMoviesProvider),
-                  onSeeAll: () => context.go('/search'),
+                  onSeeAll: () => context.push('/catalog/top_rated'),
                   builder: (movies) => _MovieHorizontalList(movies: movies),
                 ),
               ),
@@ -838,16 +904,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // UPCOMING MOVIES SECTION
               SliverToBoxAdapter(
                 child: _SectionWithHeader<Movie>(
-                  title: s.tr(
-                    'Segera Tayang di Bioskop',
-                    'Coming Soon in Theaters',
-                    'सिनेमाघरों में जल्द आ रहा है',
-                  ),
+                  title: s.homeUpcoming,
                   icon: Iconsax.calendar,
                   asyncData: upcoming,
                   filter: filterMovies,
                   onRetry: () => ref.invalidate(upcomingMoviesProvider),
-                  onSeeAll: () => context.go('/search'),
+                  onSeeAll: () => context.push('/catalog/upcoming'),
                   builder: (movies) => _MovieHorizontalList(movies: movies),
                 ),
               ),
@@ -1122,6 +1184,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   final hasTv = filterTv(
                     popularTv.valueOrNull ?? [],
                   ).isNotEmpty;
+                  final hasAnime = filterMovies(
+                    animeSection.valueOrNull ?? [],
+                  ).isNotEmpty;
+                  final hasKDrama = filterMovies(
+                    kDramaSection.valueOrNull ?? [],
+                  ).isNotEmpty;
+                  final hasIndonesia = filterMovies(
+                    indonesiaSection.valueOrNull ?? [],
+                  ).isNotEmpty;
+                  final hasHollywood = filterMovies(
+                    hollywoodSection.valueOrNull ?? [],
+                  ).isNotEmpty;
+                  final hasBollywood = filterMovies(
+                    bollywoodSection.valueOrNull ?? [],
+                  ).isNotEmpty;
 
                   final anyLoaded = popular.hasValue || trending.hasValue;
                   final noneMatches =
@@ -1130,7 +1207,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       !hasPopular &&
                       !hasTopRated &&
                       !hasUpcoming &&
-                      !hasTv;
+                      !hasTv &&
+                      !hasAnime &&
+                      !hasKDrama &&
+                      !hasIndonesia &&
+                      !hasHollywood &&
+                      !hasBollywood;
 
                   if (!noneMatches) {
                     return const SliverToBoxAdapter(child: SizedBox.shrink());

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import '../../../../core/localization/app_language.dart';
 import '../../../history/data/models/watch_history_item.dart';
 import '../models/user_profile.dart';
@@ -31,6 +32,78 @@ class GenreDistributionItem {
   }
 }
 
+/// Aggregated representation of a Movie or TV Series for the "Most Watched" leaderboard.
+///
+/// For TV Series, [totalWatchedMs] and [episodesCount] aggregate all watched episodes
+/// across all seasons (including cumulative multi-season progress such as Season 1 -> Season 4).
+class TopWatchedTitleItem {
+  final int id;
+  final String mediaType; // 'movie' or 'tv'
+  final String title;
+  final String? posterPath;
+  final int totalWatchedMs;
+  final int episodesCount;
+  final int? latestSeason;
+  final int? latestEpisode;
+
+  const TopWatchedTitleItem({
+    required this.id,
+    required this.mediaType,
+    required this.title,
+    this.posterPath,
+    required this.totalWatchedMs,
+    this.episodesCount = 1,
+    this.latestSeason,
+    this.latestEpisode,
+  });
+
+  bool get isTv => mediaType == 'tv';
+  int get totalMinutes => math.max(1, (totalWatchedMs / 60000).round());
+  int get hours => totalMinutes ~/ 60;
+  int get remainingMinutes => totalMinutes % 60;
+
+  /// Formats aggregated watch duration (e.g. "20j 15m" or "1j 30m" or "45 mnt").
+  String formattedDuration(AppLanguage lang, {double progressFactor = 1.0}) {
+    final scaledMins = math.max(1, (totalMinutes * progressFactor).round());
+    final h = scaledMins ~/ 60;
+    final m = scaledMins % 60;
+
+    if (lang.isHindi) {
+      if (h == 0) return '$m मि';
+      if (m == 0) return '$h घं';
+      return '$hघं $mमि';
+    }
+    if (lang.isIndonesian) {
+      if (h == 0) return '$m mnt';
+      if (m == 0) return '${h}j';
+      return '${h}j ${m}m';
+    }
+    if (h == 0) return '$m min';
+    if (m == 0) return '${h}h';
+    return '${h}h ${m}m';
+  }
+
+  /// Formats subtitle showing multi-season progress & episode count for TV series.
+  String formattedSubtitle(AppLanguage lang) {
+    if (!isTv) {
+      if (lang.isHindi) return 'फ़िल्म';
+      return lang.isIndonesian ? 'Film' : 'Movie';
+    }
+    final s = latestSeason ?? 1;
+    final e = latestEpisode ?? 1;
+    final epLabel = lang.isHindi
+        ? '$episodesCount एपिसोड'
+        : (lang.isIndonesian
+            ? '$episodesCount Episode'
+            : '$episodesCount Episodes');
+
+    if (s > 1) {
+      return 'S1–S$s (E$e) • $epLabel';
+    }
+    return 'S$s • E$e • $epLabel';
+  }
+}
+
 /// Comprehensive personal watch statistics and member card metadata.
 class WatchInsights {
   final int totalWatchTimeMs;
@@ -57,6 +130,7 @@ class WatchInsights {
 
   final List<GenreDistributionItem> topFlavors;
   final List<WatchHistoryItem> topWatchedItems;
+  final List<TopWatchedTitleItem> topWatchedTitles;
 
   const WatchInsights({
     required this.totalWatchTimeMs,
@@ -78,6 +152,7 @@ class WatchInsights {
     required this.memberSinceYear,
     required this.topFlavors,
     required this.topWatchedItems,
+    this.topWatchedTitles = const [],
   });
 
   int get totalMinutes => (totalWatchTimeMs / 60000).round();
@@ -94,9 +169,13 @@ class WatchInsights {
   }
 
   /// Formatted total watch duration (e.g. "14j 25m", "14h 25m", "14घं 25मि").
-  String formattedDurationCompact(AppLanguage lang) {
-    final h = totalHours;
-    final m = remainingMinutes;
+  String formattedDurationCompact(
+    AppLanguage lang, {
+    double progressFactor = 1.0,
+  }) {
+    final scaledMinutes = (totalMinutes * progressFactor).round();
+    final h = scaledMinutes ~/ 60;
+    final m = scaledMinutes % 60;
     if (lang.isHindi) {
       if (h == 0) return '$m मि';
       return '$hघं $mमि';
@@ -223,6 +302,7 @@ class WatchInsights {
       memberSinceYear: memberSinceYear,
       topFlavors: topFlavors,
       topWatchedItems: topWatchedItems,
+      topWatchedTitles: topWatchedTitles,
     );
     return preview.personaTitle(lang);
   }

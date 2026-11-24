@@ -13,20 +13,53 @@ import '../../data/services/offline_mp4_builder.dart';
 import '../../data/services/video_download_service.dart';
 import '../../../player/data/services/subtitle_service.dart';
 
-/// State notifier managing all download tasks, persistent storage, and live progress.
+class _QueuedDownloadTask {
+  final DownloadItem item;
+  final String? imdbId;
+  final String streamUrl;
+  final String masterPlaylistUrl;
+  final Map<String, String>? headers;
+  final SubtitleInfo? selectedSubtitle;
+  final bool autoTranslate;
+  final String targetTranslateLang;
+  final CancelToken cancelToken;
+  final int runtimeMinutes;
+
+  const _QueuedDownloadTask({
+    required this.item,
+    required this.imdbId,
+    required this.streamUrl,
+    required this.masterPlaylistUrl,
+    required this.headers,
+    required this.selectedSubtitle,
+    required this.autoTranslate,
+    required this.targetTranslateLang,
+    required this.cancelToken,
+    required this.runtimeMinutes,
+  });
+}
+
+/// State notifier managing all download tasks, persistent storage, smart concurrency queue, and live progress.
 class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
+  /// Maximum simultaneous video downloads running in parallel background isolates.
+  /// Keeping 2 active downloads (each with 16 pipelined workers = 32 connections)
+  /// saturates 10+ MB/s ISP links without disk I/O thrashing or bandwidth fragmentation.
+  static const int maxConcurrentDownloads = 2;
+
   final DownloadRepository _repository;
   final DownloadSubtitlePipeline _subtitlePipeline;
   final VideoDownloadService _videoService;
   final Map<String, CancelToken> _cancelTokens = {};
+  final Set<String> _activeDownloadIds = <String>{};
+  final List<_QueuedDownloadTask> _downloadQueue = <_QueuedDownloadTask>[];
 
   DownloadNotifier(
     this._repository, {
     DownloadSubtitlePipeline? subtitlePipeline,
     VideoDownloadService? videoService,
-  })  : _subtitlePipeline = subtitlePipeline ?? DownloadSubtitlePipeline(),
-        _videoService = videoService ?? VideoDownloadService(),
-        super([]) {
+  }) : _subtitlePipeline = subtitlePipeline ?? DownloadSubtitlePipeline(),
+       _videoService = videoService ?? VideoDownloadService(),
+       super([]) {
     _loadAll();
   }
 
@@ -81,7 +114,9 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     final videoFileName = mediaType == 'movie'
         ? DownloadFileNamer.formatMovieFileName(title, releaseYear)
         : DownloadFileNamer.formatTvFileName(title, season ?? 1, episode ?? 1);
-    final subtitleFileName = DownloadFileNamer.formatSubtitleFileName(videoFileName);
+    final subtitleFileName = DownloadFileNamer.formatSubtitleFileName(
+      videoFileName,
+    );
 
     final dir = await VideoDownloadService.getDownloadDirectory();
     final itemDir = Directory('${dir.path}/$id');
@@ -90,6 +125,13 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     final videoPath = '${itemDir.path}/master.m3u8';
     final subtitlePath = '${itemDir.path}/$subtitleFileName';
 
+    final cancelToken = CancelToken();
+    _cancelTokens[id] = cancelToken;
+    _downloadQueue.removeWhere((t) => t.item.id == id);
+
+    final shouldQueue =
+        !_activeDownloadIds.contains(id) &&
+        _activeDownloadIds.length >= maxConcurrentDownloads;
 
     var item = DownloadItem(
       id: id,
@@ -107,9 +149,11 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       estimatedSizeBytes: estimatedSizeBytes,
       downloadedBytes: 0,
       totalBytes: estimatedSizeBytes,
-      status: DownloadStatus.downloading,
+      status: shouldQueue
+          ? DownloadStatus.resolving
+          : DownloadStatus.downloading,
       progress: 0.0,
-      speed: '0 KB/s',
+      speed: shouldQueue ? 'Dalam antrean...' : '0 KB/s',
       videoFileName: videoFileName,
       subtitleFileName: subtitleFileName,
       videoPath: videoPath,
@@ -123,11 +167,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     await _repository.saveDownload(item);
     _loadAll();
 
-    final cancelToken = CancelToken();
-    _cancelTokens[id] = cancelToken;
-
-    // Asynchronously execute download task without blocking UI
-    unawaited(_executeDownloadTask(
+    final queuedTask = _QueuedDownloadTask(
       item: item,
       imdbId: imdbId,
       streamUrl: streamUrl,
@@ -138,7 +178,58 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       targetTranslateLang: targetTranslateLang,
       cancelToken: cancelToken,
       runtimeMinutes: runtimeMinutes,
-    ));
+    );
+
+    if (shouldQueue) {
+      _downloadQueue.add(queuedTask);
+      return;
+    }
+
+    _activeDownloadIds.add(id);
+    // Asynchronously execute download task in background isolate without blocking UI
+    unawaited(
+      _executeDownloadTask(
+        item: item,
+        imdbId: imdbId,
+        streamUrl: streamUrl,
+        masterPlaylistUrl: masterPlaylistUrl,
+        headers: headers,
+        selectedSubtitle: selectedSubtitle,
+        autoTranslate: autoTranslate,
+        targetTranslateLang: targetTranslateLang,
+        cancelToken: cancelToken,
+        runtimeMinutes: runtimeMinutes,
+      ),
+    );
+  }
+
+  void _pumpQueue() {
+    while (_activeDownloadIds.length < maxConcurrentDownloads &&
+        _downloadQueue.isNotEmpty) {
+      final next = _downloadQueue.removeAt(0);
+      if (next.cancelToken.isCancelled) continue;
+      final latest = _repository.getDownloadById(next.item.id) ?? next.item;
+      if (latest.status == DownloadStatus.paused ||
+          latest.status == DownloadStatus.completed ||
+          latest.status == DownloadStatus.cancelled) {
+        continue;
+      }
+      _activeDownloadIds.add(next.item.id);
+      unawaited(
+        _executeDownloadTask(
+          item: latest,
+          imdbId: next.imdbId,
+          streamUrl: next.streamUrl,
+          masterPlaylistUrl: next.masterPlaylistUrl,
+          headers: next.headers,
+          selectedSubtitle: next.selectedSubtitle,
+          autoTranslate: next.autoTranslate,
+          targetTranslateLang: next.targetTranslateLang,
+          cancelToken: next.cancelToken,
+          runtimeMinutes: next.runtimeMinutes,
+        ),
+      );
+    }
   }
 
   Future<void> _executeDownloadTask({
@@ -154,9 +245,16 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     required int runtimeMinutes,
   }) async {
     final id = item.id;
+    _activeDownloadIds.add(id);
 
     try {
-      var currentItem = item;
+      var currentItem = item.status == DownloadStatus.resolving
+          ? item.copyWith(status: DownloadStatus.downloading, speed: '0 KB/s')
+          : item;
+      if (item.status == DownloadStatus.resolving && mounted) {
+        await _repository.saveDownload(currentItem);
+        _updateItemInState(currentItem);
+      }
       var targetStreamUrl = streamUrl;
       var targetMasterUrl = masterPlaylistUrl;
       var targetHeaders = headers;
@@ -181,15 +279,20 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
             targetHeaders = matched.headers;
           }
         } catch (e) {
-          debugPrint('[DownloadNotifier] Dynamic stream re-resolution failed: $e');
+          debugPrint(
+            '[DownloadNotifier] Dynamic stream re-resolution failed: $e',
+          );
         }
       }
 
-      // Start Subtitle pipeline concurrently in the background so video download & finalizing never wait on subtitle translation
+      // Start Subtitle pipeline concurrently in the background (slightly deferred so initial
+      // video playlist & encryption keys take 100% network priority).
       bool videoCompleted = false;
       final subtitleFuture = Future<void>(() async {
         if (item.selectedSubtitleLang != 'none') {
           try {
+            await Future<void>.delayed(const Duration(milliseconds: 600));
+            if (cancelToken.isCancelled) return;
             final subResult = await _subtitlePipeline.processSubtitle(
               targetFilePath: item.subtitlePath!,
               title: item.title,
@@ -218,7 +321,9 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
         }
       });
 
-      // Video download starts at full multi-connection speed instantly
+      int lastHiveSaveMs = 0;
+
+      // Video download runs inside a dedicated background isolate at full multi-connection speed
       await _videoService.downloadStream(
         streamUrl: targetStreamUrl,
         masterPlaylistUrl: targetMasterUrl,
@@ -231,22 +336,30 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
         season: item.seasonNumber,
         episode: item.episodeNumber,
         cancelToken: cancelToken,
-        onProgress: ({
-          required int downloadedBytes,
-          required int totalBytes,
-          required double progress,
-          required String speed,
-        }) {
-          if (!mounted) return;
-          currentItem = currentItem.copyWith(
-            downloadedBytes: downloadedBytes,
-            totalBytes: totalBytes,
-            progress: progress,
-            speed: speed,
-          );
-          _repository.saveDownload(currentItem);
-          _updateItemInState(currentItem);
-        },
+        onProgress:
+            ({
+              required int downloadedBytes,
+              required int totalBytes,
+              required double progress,
+              required String speed,
+            }) {
+              if (!mounted) return;
+              currentItem = currentItem.copyWith(
+                downloadedBytes: downloadedBytes,
+                totalBytes: totalBytes,
+                progress: progress,
+                speed: speed,
+              );
+              _updateItemInState(currentItem);
+
+              // Throttle Hive disk persistence to once every 4.5 seconds during active download
+              // so the UI thread never stutters on frequent JSON/Hive serialization.
+              final now = DateTime.now().millisecondsSinceEpoch;
+              if (now - lastHiveSaveMs >= 4500) {
+                lastHiveSaveMs = now;
+                unawaited(_repository.saveDownload(currentItem));
+              }
+            },
       );
 
       // Step 3: Build unified offline media container immediately when video segments finish
@@ -255,10 +368,13 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       bool mp4Built = false;
       try {
         if (await parentDir.exists()) {
-          debugPrint('[DownloadNotifier] Building offline media package in: ${parentDir.path}');
-          final expectedDurUs = await OfflineMp4Builder.expectedDurationUsFromPlaylist(
-            File('${parentDir.path}/video.m3u8'),
+          debugPrint(
+            '[DownloadNotifier] Building offline media package in: ${parentDir.path}',
           );
+          final expectedDurUs =
+              await OfflineMp4Builder.expectedDurationUsFromPlaylist(
+                File('${parentDir.path}/video.m3u8'),
+              );
 
           if (mounted) {
             currentItem = currentItem.copyWith(
@@ -275,16 +391,17 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
             expectedDurationUs: expectedDurUs,
             deleteSegmentsOnSuccess: true,
             deleteSegmentsInBackground: true,
-            onProgress: ({required double progress, required String statusMessage}) {
-              if (!mounted) return;
-              currentItem = currentItem.copyWith(
-                status: DownloadStatus.finalizing,
-                progress: progress.clamp(0.0, 1.0),
-                speed: statusMessage,
-              );
-              // Update UI state in-memory without writing to Hive on every progress tick
-              _updateItemInState(currentItem);
-            },
+            onProgress:
+                ({required double progress, required String statusMessage}) {
+                  if (!mounted) return;
+                  currentItem = currentItem.copyWith(
+                    status: DownloadStatus.finalizing,
+                    progress: progress.clamp(0.0, 1.0),
+                    speed: statusMessage,
+                  );
+                  // Update UI state in-memory without writing to Hive on every progress tick
+                  _updateItemInState(currentItem);
+                },
           );
         }
       } catch (e) {
@@ -297,7 +414,9 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       if (!mp4Built && !await OfflineMp4Builder.verifyHlsBundle(parentDir)) {
         // Drop the suspicious segments so a retry downloads everything fresh.
         try {
-          final junk = RegExp(r'^(?:[va]_\d+\.(?:ts|m4s)|init_[va]\.mp4|\.dl_state)$');
+          final junk = RegExp(
+            r'^(?:[va]_\d+\.(?:ts|m4s)|init_[va]\.mp4|\.dl_state)$',
+          );
           await for (final f in parentDir.list()) {
             if (f is! File) continue;
             final name = f.path.split(RegExp(r'[\\/]')).last;
@@ -315,18 +434,23 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       }
 
       // Step 4: Resolve the best validated playable file and compute actual size
-      // When mp4Built is true, video.mp4 is already validated and old .ts segments are deleting
-      // asynchronously in the background, so read video.mp4 directly without re-probing or scanning .ts files.
-      final File? playableFile;
+      // When mp4Built is true, the unified container (`video.mp4` or `video.ts`) is already validated
+      // and old .ts segments are deleting asynchronously in the background, so read the unified file(s)
+      // directly without scanning 1,500 deleting segment files.
+      final File? playableFile =
+          await OfflineMp4Builder.findPlayableOfflineFile(parentDir);
       int actualTotalBytes = 0;
-      if (mp4Built) {
-        final mp4File = File('${parentDir.path}/${OfflineMp4Builder.mp4Name}');
-        playableFile = mp4File;
+      if (mp4Built && playableFile != null) {
         try {
-          actualTotalBytes = await mp4File.length();
+          actualTotalBytes = await playableFile.length();
+          final secondaryAudio = await OfflineMp4Builder.getSecondaryAudioFile(
+            parentDir,
+          );
+          if (secondaryAudio != null) {
+            actualTotalBytes += await secondaryAudio.length();
+          }
         } catch (_) {}
       } else {
-        playableFile = await OfflineMp4Builder.findPlayableOfflineFile(parentDir);
         try {
           if (await parentDir.exists()) {
             await for (final f in parentDir.list(recursive: true)) {
@@ -340,15 +464,21 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       final masterCineva = File('${parentDir.path}/master.cineva');
       final fallbackPath = (await masterM3u8.exists())
           ? masterM3u8.path
-          : ((await masterCineva.exists()) ? masterCineva.path : currentItem.videoPath);
+          : ((await masterCineva.exists())
+                ? masterCineva.path
+                : currentItem.videoPath);
 
       final actualVideoPath = playableFile?.path ?? fallbackPath;
 
       currentItem = currentItem.copyWith(
         status: DownloadStatus.completed,
         videoPath: actualVideoPath,
-        downloadedBytes: actualTotalBytes > 0 ? actualTotalBytes : currentItem.downloadedBytes,
-        totalBytes: actualTotalBytes > 0 ? actualTotalBytes : currentItem.totalBytes,
+        downloadedBytes: actualTotalBytes > 0
+            ? actualTotalBytes
+            : currentItem.downloadedBytes,
+        totalBytes: actualTotalBytes > 0
+            ? actualTotalBytes
+            : currentItem.totalBytes,
         progress: 1.0,
         speed: 'Selesai',
         completedAt: DateTime.now(),
@@ -380,28 +510,36 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
       }
     } finally {
       _cancelTokens.remove(id);
+      _activeDownloadIds.remove(id);
+      _pumpQueue();
     }
   }
 
   void _updateItemInState(DownloadItem item) {
     state = [
       for (final existing in state)
-        if (existing.id == item.id) item else existing
+        if (existing.id == item.id) item else existing,
     ];
   }
 
-  /// Pauses an active download.
+  /// Pauses an active or queued download.
   void pauseDownload(String id) {
+    _downloadQueue.removeWhere((t) => t.item.id == id);
+    _activeDownloadIds.remove(id);
     final token = _cancelTokens[id];
     if (token != null && !token.isCancelled) {
       token.cancel('User paused download');
     }
     final item = _repository.getDownloadById(id);
     if (item != null) {
-      final paused = item.copyWith(status: DownloadStatus.paused, speed: 'Dijeda');
+      final paused = item.copyWith(
+        status: DownloadStatus.paused,
+        speed: 'Dijeda',
+      );
       _repository.saveDownload(paused);
       _updateItemInState(paused);
     }
+    _pumpQueue();
   }
 
   /// Resumes a paused or failed download.
@@ -411,25 +549,55 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
 
     final token = CancelToken();
     _cancelTokens[id] = token;
+    _downloadQueue.removeWhere((t) => t.item.id == id);
+
+    final shouldQueue =
+        !_activeDownloadIds.contains(id) &&
+        _activeDownloadIds.length >= maxConcurrentDownloads;
 
     final updated = item.copyWith(
-      status: DownloadStatus.downloading,
-      speed: 'Melanjutkan...',
+      status: shouldQueue
+          ? DownloadStatus.resolving
+          : DownloadStatus.downloading,
+      speed: shouldQueue ? 'Dalam antrean...' : 'Melanjutkan...',
       errorMessage: null,
     );
     await _repository.saveDownload(updated);
     _updateItemInState(updated);
 
-    unawaited(_executeDownloadTask(
-      item: updated,
-      streamUrl: '', // Will be resolved dynamically
-      cancelToken: token,
-      runtimeMinutes: 100,
-    ));
+    if (shouldQueue) {
+      _downloadQueue.add(
+        _QueuedDownloadTask(
+          item: updated,
+          imdbId: null,
+          streamUrl: '',
+          masterPlaylistUrl: '',
+          headers: null,
+          selectedSubtitle: null,
+          autoTranslate: true,
+          targetTranslateLang: updated.selectedSubtitleLang,
+          cancelToken: token,
+          runtimeMinutes: 100,
+        ),
+      );
+      return;
+    }
+
+    _activeDownloadIds.add(id);
+    unawaited(
+      _executeDownloadTask(
+        item: updated,
+        streamUrl: '', // Will be resolved dynamically
+        cancelToken: token,
+        runtimeMinutes: 100,
+      ),
+    );
   }
 
-  /// Cancels and deletes an active or completed download.
+  /// Cancels and deletes an active, queued, or completed download.
   Future<void> deleteDownload(String id) async {
+    _downloadQueue.removeWhere((t) => t.item.id == id);
+    _activeDownloadIds.remove(id);
     final token = _cancelTokens[id];
     if (token != null && !token.isCancelled) {
       token.cancel('User deleted download');
@@ -437,6 +605,7 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
     }
     await _repository.deleteDownload(id);
     _loadAll();
+    _pumpQueue();
   }
 
   /// Cancels an active download.
@@ -446,13 +615,16 @@ class DownloadNotifier extends StateNotifier<List<DownloadItem>> {
 // ── Providers ──
 final downloadManagerProvider =
     StateNotifierProvider<DownloadNotifier, List<DownloadItem>>((ref) {
-  final repo = ref.watch(downloadRepositoryProvider);
-  return DownloadNotifier(repo);
-});
+      final repo = ref.watch(downloadRepositoryProvider);
+      return DownloadNotifier(repo);
+    });
 
 final activeDownloadsCountProvider = Provider<int>((ref) {
-  final items = ref.watch(downloadManagerProvider);
-  return items.where((item) => item.isDownloading).length;
+  return ref.watch(
+    downloadManagerProvider.select(
+      (items) => items.where((item) => item.isDownloading).length,
+    ),
+  );
 });
 
 final completedDownloadsProvider = Provider<List<DownloadItem>>((ref) {

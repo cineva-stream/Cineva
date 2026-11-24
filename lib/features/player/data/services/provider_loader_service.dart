@@ -1,9 +1,100 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/provider_stream_models.dart';
 import 'scraper_api_service.dart';
 import 'vixsrc_stream_service.dart';
+
+/// Determines whether a movie or TV episode has not been released yet according to TMDB metadata,
+/// with a 24-hour timezone grace buffer and a background server availability override
+/// so titles already available on strict ID-based scrapers are never falsely blocked.
+class MediaReleaseGuard {
+  static const Set<String> _unreleasedStatuses = {
+    'rumored',
+    'planned',
+    'in production',
+    'post production',
+    'upcoming',
+  };
+
+  /// Returns `true` ONLY when [releaseDate] is strictly in the future (beyond a +24h timezone buffer)
+  /// or when [releaseDate] is empty and [status] is explicitly an unreleased production stage.
+  static bool isUnreleasedByMetadata({
+    String? releaseDate,
+    String? status,
+    DateTime? nowOverride,
+  }) {
+    final now = nowOverride ?? DateTime.now();
+    // +24h timezone grace buffer so regional release dates (e.g. Asia vs UTC/US)
+    // never falsely mark a today/tomorrow premiere as unreleased.
+    final cutoff = DateTime(now.year, now.month, now.day).add(
+      const Duration(days: 1, hours: 12),
+    );
+
+    final rawDate = (releaseDate ?? '').trim();
+    if (rawDate.isNotEmpty) {
+      final parsed = DateTime.tryParse(rawDate);
+      if (parsed != null) {
+        return parsed.isAfter(cutoff);
+      }
+    }
+
+    final cleanStatus = (status ?? '').trim().toLowerCase();
+    if (cleanStatus.isNotEmpty && _unreleasedStatuses.contains(cleanStatus)) {
+      return true;
+    }
+
+    return false;
+  }
+}
+
+/// Probes strict TMDB-ID-based upstream providers (`VixSrc` and primary ID-based scrapers `movy`/`vidup`)
+/// in the background when a movie or episode is marked unreleased by future TMDB date.
+///
+/// If the stream is already available on the server (e.g. early digital release or festival premiere),
+/// returns `true` so the UI immediately unlocks "Watch Now" instead of keeping "Segera Hadir".
+/// Never queries fuzzy-title anime scrapers so unrelated older titles can never trigger a false positive.
+final streamAvailabilityProbeProvider = FutureProvider.autoDispose
+    .family<bool, ({int tmdbId, int? season, int? episode})>((ref, args) async {
+      if (args.tmdbId <= 0) return false;
+
+      // 1. Check Direct VixSrc (strict TMDB ID lookup)
+      try {
+        final vix = await VixSrcStreamService.loadProviderResult(
+          tmdbId: args.tmdbId,
+          season: args.season,
+          episode: args.episode,
+        ).timeout(const Duration(seconds: 6));
+        if (vix.hasPlayableStreams) return true;
+      } catch (_) {}
+
+      // 2. Check primary strict TMDB-ID scrapers ('movy', 'vidup')
+      final scraper = ScraperApiService();
+      for (final providerId in const ['movy', 'vidup']) {
+        try {
+          final isTv = args.season != null && args.episode != null;
+          final res = isTv
+              ? await scraper
+                    .loadTVEpisode(
+                      providerId: providerId,
+                      tvId: args.tmdbId,
+                      seasonNumber: args.season!,
+                      episodeNumber: args.episode!,
+                    )
+                    .timeout(const Duration(seconds: 7))
+              : await scraper
+                    .loadMovie(
+                      providerId: providerId,
+                      movieId: args.tmdbId,
+                    )
+                    .timeout(const Duration(seconds: 7));
+          if (res.hasPlayableStreams) return true;
+        } catch (_) {}
+      }
+
+      return false;
+    });
 
 class ProviderSelection {
   final VideoProvider provider;
@@ -212,11 +303,21 @@ class ProviderLoaderService {
     return list;
   }
 
+  static const Set<String> _animeOnlyProviderIds = {
+    'animekai',
+    'animepahe',
+    'anikoto',
+    'animeyy',
+  };
+
   /// Tries each provider in order until one returns playable HLS/MP4 streams.
+  /// When [isAnime] is explicitly `false`, anime-only fuzzy-title scrapers are skipped
+  /// so live-action movies/series can never be mismatched with an anime of a similar title.
   Future<ProviderSelection?> loadFirstSuccessful({
     required int tmdbId,
     int? season,
     int? episode,
+    bool? isAnime,
     ProviderProgressCallback? onProgress,
     void Function(VideoProvider provider)? onStartAttempt,
   }) async {
@@ -226,6 +327,12 @@ class ProviderLoaderService {
       // Moviepire upstream scraper frequently returns unrelated content (e.g. random anime
       // or short clips) when requested media is missing. Exclude from automatic failover.
       if (provider.apiId == 'moviepire') continue;
+
+      if (isAnime == false &&
+          provider.apiId != null &&
+          _animeOnlyProviderIds.contains(provider.apiId)) {
+        continue;
+      }
 
       onStartAttempt?.call(provider);
       debugPrint('[ProviderLoaderService] Trying provider: ${provider.displayName} (${provider.codeName})');

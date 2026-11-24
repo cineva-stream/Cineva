@@ -9,14 +9,14 @@ import '../../domain/entities/watch_insights.dart';
 import '../../domain/models/user_profile.dart';
 import 'avatar_display.dart';
 
-/// Standard ISO/IEC 7810 ID-1 (KTP / ATM Card) aspect ratio: 85.60mm × 53.98mm = 1.5858.
+/// Standard ISO/IEC 7810 ID-1 (ID / ATM Card) aspect ratio: 85.60mm × 53.98mm = 1.5858.
 const double kMemberCardAspectRatio = 1.586;
 
-/// Renders a high-precision, shareable KTP (Kartu Tanda Penonton) or VIP Black Titanium ATM Card.
-///
-/// Uses an internal fixed logical resolution (540 × 340.5) inside a [FittedBox]
-/// so that proportions, typography, QR code, and holographic details remain
-/// razor-sharp at any display width and when exported at 3.0x pixelRatio.
+/// Instagram-inspired Verified Blue color for the user's name badge.
+const Color kVerifiedBlueColor = Color(0xFF0095F6);
+
+/// Renders an executive, modern, high-legibility shareable Cineva Member Card
+/// with an Instagram-style Blue Verified Badge (`Icons.verified_rounded`) next to the user's name.
 class CinevaMemberCardWidget extends StatelessWidget {
   final UserProfile profile;
   final WatchInsights insights;
@@ -43,12 +43,12 @@ class CinevaMemberCardWidget extends StatelessWidget {
           width: 540,
           height: 540 / kMemberCardAspectRatio, // ~340.48
           child: style == MemberCardStyle.ktp
-              ? _KtpSinemaCardLayout(
+              ? _ModernMemberIdCardLayout(
                   profile: profile,
                   insights: insights,
                   language: language,
                 )
-              : _AtmBlackTitaniumCardLayout(
+              : _ExecutiveMetalCardLayout(
                   profile: profile,
                   insights: insights,
                   language: language,
@@ -68,16 +68,58 @@ class CinevaMemberCardWidget extends StatelessWidget {
   }
 }
 
+/// Reusable Instagram-style Blue Verified Badge (`Icons.verified_rounded`)
+/// adapted from the Version Badge in `AboutInfoScreen`.
+class _BlueVerifiedNameBadge extends StatelessWidget {
+  final double size;
+  const _BlueVerifiedNameBadge({this.size = 22});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: kVerifiedBlueColor.withValues(alpha: 0.45),
+            blurRadius: 8,
+            spreadRadius: 0.5,
+          ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // White inner backing so the checkmark inside Icons.verified_rounded pops cleanly
+          Container(
+            width: size * 0.48,
+            height: size * 0.48,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+          Icon(
+            Icons.verified_rounded,
+            size: size,
+            color: kVerifiedBlueColor,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
-// EDITION 1: KTP REPUBLIK SINEMA (KARTU TANDA PENONTON)
+// STYLE 1: MODERN MEMBER ID CARD (Rich Obsidian, Blue Verified Badge & Glass Dock)
 // ═══════════════════════════════════════════════════════════════════════════
 
-class _KtpSinemaCardLayout extends StatelessWidget {
+class _ModernMemberIdCardLayout extends StatelessWidget {
   final UserProfile profile;
   final WatchInsights insights;
   final AppLanguage language;
 
-  const _KtpSinemaCardLayout({
+  const _ModernMemberIdCardLayout({
     required this.profile,
     required this.insights,
     required this.language,
@@ -92,36 +134,33 @@ class _KtpSinemaCardLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final persona = insights.personaTitle(language);
-    final durationStr = insights.formattedDurationVerbose(language);
-    final movies = insights.moviesWatchedCount;
-    final episodes = insights.episodesWatchedCount;
-    final rating = insights.averageRating.toStringAsFixed(1);
+    final durationStr = insights.formattedDurationCompact(language);
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(26),
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF0E1B2A),
-            Color(0xFF0C1322),
-            Color(0xFF171324),
+            Color(0xFF0E1422),
+            Color(0xFF0A0D16),
+            Color(0xFF141122),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.55),
-          width: 1.6,
+          color: Colors.white.withValues(alpha: 0.14),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.55),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
           ),
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.14),
-            blurRadius: 20,
+            color: AppColors.primary.withValues(alpha: 0.10),
+            blurRadius: 24,
             spreadRadius: 1,
           ),
         ],
@@ -129,42 +168,25 @@ class _KtpSinemaCardLayout extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          // Subtle Holographic Guilloche Security Lines
+          // Subtle geometric luxury wave mesh
           const Positioned.fill(
             child: CustomPaint(
-              painter: _GuillochePatternPainter(isKtp: true),
+              painter: _ModernCardMeshPainter(isMetal: false),
             ),
           ),
 
-          // Ambient holographic cyan & amber glow orbs
+          // Top-right Cinema Amber ambient glow
           Positioned(
-            top: -50,
-            right: -30,
+            top: -75,
+            right: -45,
             child: Container(
-              width: 180,
-              height: 180,
+              width: 240,
+              height: 240,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF00E5FF).withValues(alpha: 0.14),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -60,
-            left: 40,
-            child: Container(
-              width: 220,
-              height: 220,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppColors.primary.withValues(alpha: 0.16),
+                    AppColors.primary.withValues(alpha: 0.22),
                     Colors.transparent,
                   ],
                 ),
@@ -172,322 +194,288 @@ class _KtpSinemaCardLayout extends StatelessWidget {
             ),
           ),
 
-          // Card Content
+          // Bottom-left Verified Blue ambient glow
+          Positioned(
+            bottom: -85,
+            left: -40,
+            child: Container(
+              width: 230,
+              height: 230,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    kVerifiedBlueColor.withValues(alpha: 0.16),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
           Padding(
-            padding: const EdgeInsets.fromLTRB(22, 16, 22, 14),
+            padding: const EdgeInsets.fromLTRB(28, 22, 28, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // ── Official KTP Top Header ──
+                // ── 1. Top Header: CINEVA. Brand + Frosted Member ID Pill ──
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppColors.primary, Color(0xFFFF8F00)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            color: Colors.black,
+                            size: 19,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'CINEVA',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 3.0,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.only(left: 3, top: 4),
+                          width: 5.5,
+                          height: 5.5,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 11,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        child: Text(
+                          'ID • ${insights.ktpNikNumber}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // ── 2. Center Hero: Framed Avatar + Name with Blue Verified Badge ──
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Dual-ring glowing avatar frame
                     Container(
-                      width: 34,
-                      height: 34,
+                      padding: const EdgeInsets.all(3.5),
                       decoration: BoxDecoration(
+                        shape: BoxShape.circle,
                         gradient: const LinearGradient(
-                          colors: [AppColors.primary, Color(0xFFFF8F00)],
+                          colors: [
+                            AppColors.primary,
+                            kVerifiedBlueColor,
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(9),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.35),
-                            blurRadius: 8,
+                            color: AppColors.primary.withValues(alpha: 0.25),
+                            blurRadius: 14,
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.local_movies_rounded,
-                        color: Colors.black,
-                        size: 20,
+                      child: AvatarDisplay(
+                        avatarId: profile.avatarId,
+                        customAvatarPath: profile.customAvatarPath,
+                        size: 74,
+                        borderWidth: 2.0,
+                        borderColor: const Color(0xFF0A0D16),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 20),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
+                          // Name + Instagram-style Blue Verified Badge
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  profile.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 25,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    letterSpacing: -0.4,
+                                    height: 1.15,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 7),
+                              const _BlueVerifiedNameBadge(size: 22),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
                           Text(
-                            _tr(
-                              'REPUBLIK SINEMA CINEVA',
-                              'REPUBLIC OF CINEVA CINEMA',
-                              'सिनेवा सिनेमा गणराज्य',
-                            ),
-                            style: GoogleFonts.outfit(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.8,
-                              color: AppColors.primaryLight,
+                            '@${profile.username}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
                             ),
                           ),
-                          Text(
-                            _tr(
-                              'KARTU TANDA PENONTON (KTP) • WARGA VIP',
-                              'OFFICIAL VIEWER IDENTITY CARD (KTP) • VIP CITIZEN',
-                              'आधिकारिक दर्शक पहचान पत्र (KTP) • VIP नागरिक',
+                          const SizedBox(height: 8),
+                          // Subtle frosted persona pill
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
                             ),
-                            style: GoogleFonts.inter(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.8,
-                              color: const Color(0xFF7CE8FF),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.35),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              persona,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primaryLight,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.18),
-                        ),
-                      ),
-                      child: Text(
-                        'CINEVA.${insights.memberSinceYear}',
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
 
-                const SizedBox(height: 8),
+                // ── 3. Bottom Bar: Frosted Glass Stats Dock + Scannable QR ──
                 Container(
-                  height: 1.2,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 13,
+                  ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        AppColors.primary,
-                        const Color(0xFF00E5FF).withValues(alpha: 0.6),
-                        Colors.transparent,
+                        Colors.white.withValues(alpha: 0.07),
+                        Colors.white.withValues(alpha: 0.03),
                       ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.10),
                     ),
                   ),
-                ),
-                const SizedBox(height: 10),
-
-                // ── NIK Sinema Bar ──
-                Row(
-                  children: [
-                    Text(
-                      _tr('NIK SINEMA', 'CINEMA ID', 'सिनेमा आईडी'),
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.8,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        ':  ${insights.ktpNikNumber}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.1,
-                          color: AppColors.primaryLight,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // ── Main Body: Left Fields + Right Photo & QR ──
-                Expanded(
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Left Biodata & Watch Record Column
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _KtpFieldRow(
-                              label: _tr('Nama Lengkap', 'Full Name', 'पूरा नाम'),
-                              value: profile.name.toUpperCase(),
-                              isBoldValue: true,
-                            ),
-                            _KtpFieldRow(
-                              label: _tr('Username', 'Username', 'यूज़रनेम'),
-                              value: '@${profile.username}',
-                              valueColor: const Color(0xFF7CE8FF),
-                            ),
-                            _KtpFieldRow(
-                              label: _tr('Pangkat / Gelar', 'Official Rank', 'आधिकारिक पद'),
-                              value: 'LV.${insights.personaLevel} • $persona',
-                              isHighlightBadge: true,
-                            ),
-                            _KtpFieldRow(
-                              label: _tr('Jam Terbang', 'Watch Hours', 'देखने का समय'),
-                              value: durationStr,
-                              isBoldValue: true,
-                            ),
-                            _KtpFieldRow(
-                              label: _tr('Rekor Tamat', 'Watch Record', 'रिकॉर्ड'),
-                              value: _tr(
-                                '$movies Film • $episodes Episode ($rating ⭐)',
-                                '$movies Movies • $episodes Episodes ($rating ⭐)',
-                                '$movies फ़िल्में • $episodes एपिसोड ($rating ⭐)',
-                              ),
-                            ),
-                            _KtpFieldRow(
-                              label: _tr('Domisili', 'Domicile', 'निवास'),
-                              value: _tr(
-                                'Kasur & Sofa Rebahan 4K',
-                                'VIP Couch & 4K Home Theater',
-                                'VIP सोफ़ा और 4K होम थिएटर',
-                              ),
-                            ),
-                            _KtpFieldRow(
-                              label: _tr('Berlaku Hingga', 'Valid Thru', 'वैधता'),
-                              value: _tr(
-                                'SEUMUR HIDUP (100% GRATIS)',
-                                'LIFETIME (100% FREE FOREVER)',
-                                'आजीवन (100% मुफ़्त)',
-                              ),
-                              valueColor: AppColors.success,
-                              isBoldValue: true,
+                        child: _LargeCardMetric(
+                          label: _tr('WAKTU NONTON', 'WATCH TIME', 'देखने का समय'),
+                          value: durationStr,
+                          valueColor: AppColors.primaryLight,
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 34,
+                        color: Colors.white.withValues(alpha: 0.10),
+                      ),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: _LargeCardMetric(
+                          label: _tr('FILM', 'MOVIES', 'फ़िल्में'),
+                          value: '${insights.moviesWatchedCount}',
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 34,
+                        color: Colors.white.withValues(alpha: 0.10),
+                      ),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: _LargeCardMetric(
+                          label: _tr('EPISODE', 'EPISODES', 'एपिसोड'),
+                          value: '${insights.episodesWatchedCount}',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 8,
                             ),
                           ],
                         ),
-                      ),
-
-                      const SizedBox(width: 14),
-
-                      // Right Column: Framed Avatar Photo + QR Download Stamp
-                      SizedBox(
-                        width: 132,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            // Framed KTP Avatar Photo Box
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(5),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          AppColors.primary.withValues(alpha: 0.25),
-                                          const Color(0xFF00E5FF).withValues(alpha: 0.15),
-                                        ],
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                      ),
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(
-                                        color: AppColors.primary.withValues(alpha: 0.6),
-                                        width: 1.2,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        AvatarDisplay(
-                                          avatarId: profile.avatarId,
-                                          customAvatarPath: profile.customAvatarPath,
-                                          size: 58,
-                                          borderWidth: 1.5,
-                                          borderColor: AppColors.primaryLight,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 1.5,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary,
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            'VERIFIED',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 7.5,
-                                              fontWeight: FontWeight.w900,
-                                              letterSpacing: 0.8,
-                                              color: Colors.black,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  // QR Code + Callout
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        SizedBox(
-                                          width: 44,
-                                          height: 44,
-                                          child: QrImageView(
-                                            data:
-                                                'https://github.com/cineva-stream/Cineva/releases',
-                                            size: 44,
-                                            padding: EdgeInsets.zero,
-                                            backgroundColor: Colors.white,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                'GET APP',
-                                                style: GoogleFonts.outfit(
-                                                  fontSize: 8.5,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: Colors.black,
-                                                ),
-                                              ),
-                                              Text(
-                                                'Scan & Stream Free on Cineva',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 6.8,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.black87,
-                                                  height: 1.15,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        child: SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: QrImageView(
+                            data:
+                                'https://github.com/cineva-stream/Cineva/releases',
+                            size: 48,
+                            padding: EdgeInsets.zero,
+                            backgroundColor: Colors.white,
+                          ),
                         ),
                       ),
                     ],
@@ -502,86 +490,45 @@ class _KtpSinemaCardLayout extends StatelessWidget {
   }
 }
 
-class _KtpFieldRow extends StatelessWidget {
+class _LargeCardMetric extends StatelessWidget {
   final String label;
   final String value;
-  final bool isBoldValue;
-  final bool isHighlightBadge;
   final Color? valueColor;
 
-  const _KtpFieldRow({
+  const _LargeCardMetric({
     required this.label,
     required this.value,
-    this.isBoldValue = false,
-    this.isHighlightBadge = false,
     this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          width: 96,
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
         Text(
-          ': ',
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.inter(
             fontSize: 10,
             fontWeight: FontWeight.w700,
-            color: AppColors.textSecondary,
+            letterSpacing: 0.8,
+            color: AppColors.textMuted,
           ),
         ),
-        Expanded(
-          child: isHighlightBadge
-              ? Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.55),
-                        width: 0.9,
-                      ),
-                    ),
-                    child: Text(
-                      value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primaryLight,
-                      ),
-                    ),
-                  ),
-                )
-              : Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 10.8,
-                    fontWeight: isBoldValue ? FontWeight.w800 : FontWeight.w600,
-                    color: valueColor ?? Colors.white,
-                  ),
-                ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.outfit(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: valueColor ?? Colors.white,
+            height: 1.1,
+          ),
         ),
       ],
     );
@@ -589,15 +536,15 @@ class _KtpFieldRow extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// EDITION 2: CINEVA BLACK TITANIUM VIP ATM CARD
+// STYLE 2: EXECUTIVE METAL CARD (Brushed Titanium, Blue Verified Badge & EMV Chip)
 // ═══════════════════════════════════════════════════════════════════════════
 
-class _AtmBlackTitaniumCardLayout extends StatelessWidget {
+class _ExecutiveMetalCardLayout extends StatelessWidget {
   final UserProfile profile;
   final WatchInsights insights;
   final AppLanguage language;
 
-  const _AtmBlackTitaniumCardLayout({
+  const _ExecutiveMetalCardLayout({
     required this.profile,
     required this.insights,
     required this.language,
@@ -616,50 +563,50 @@ class _AtmBlackTitaniumCardLayout extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(26),
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF14141B),
-            Color(0xFF0A0A0F),
-            Color(0xFF1B1610),
+            Color(0xFF1A1B23),
+            Color(0xFF0D0E13),
+            Color(0xFF1C1712),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         border: Border.all(
-          color: const Color(0xFFFFC107).withValues(alpha: 0.45),
-          width: 1.6,
+          color: AppColors.primary.withValues(alpha: 0.38),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.65),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            color: Colors.black.withValues(alpha: 0.6),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
           ),
         ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          // Brushed Titanium Metallic Lines
+          // Brushed Titanium diagonal sheen
           const Positioned.fill(
             child: CustomPaint(
-              painter: _GuillochePatternPainter(isKtp: false),
+              painter: _ModernCardMeshPainter(isMetal: true),
             ),
           ),
 
-          // Gold Metallic Specular Sheen
+          // Warm gold top-right specular sheen
           Positioned(
-            top: -80,
-            right: -60,
+            top: -85,
+            right: -50,
             child: Container(
-              width: 240,
-              height: 240,
+              width: 250,
+              height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.primary.withValues(alpha: 0.22),
+                    AppColors.primary.withValues(alpha: 0.18),
                     Colors.transparent,
                   ],
                 ),
@@ -668,20 +615,20 @@ class _AtmBlackTitaniumCardLayout extends StatelessWidget {
           ),
 
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 18),
+            padding: const EdgeInsets.fromLTRB(28, 22, 28, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // ── Top Row: Brand Logo + VIP Black Reserve + Contactless Icon ──
+                // ── 1. Top Row: Brand Wordmark + Persona + Avatar ──
                 Row(
                   children: [
                     Text(
                       'CINEVA',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 22,
+                        fontSize: 21,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 3.5,
+                        letterSpacing: 3.4,
                         color: Colors.white,
                       ),
                     ),
@@ -695,79 +642,20 @@ class _AtmBlackTitaniumCardLayout extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 3.5,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primary.withValues(alpha: 0.22),
-                            AppColors.primary.withValues(alpha: 0.08),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.5),
-                          width: 0.8,
-                        ),
-                      ),
+                    Expanded(
                       child: Text(
-                        'BLACK TITANIUM • VIP STREAM',
+                        persona,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
                         style: GoogleFonts.inter(
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.0,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.primaryLight,
                         ),
                       ),
                     ),
-                    const Spacer(),
-                    const Icon(
-                      Icons.contactless_rounded,
-                      color: AppColors.primaryLight,
-                      size: 26,
-                    ),
-                  ],
-                ),
-
-                // ── Middle Row: EMV Gold Smart Chip + Persona Tier Pill ──
-                Row(
-                  children: [
-                    const _EmvSmartChipWidget(),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _tr(
-                              'PANGKAT & STATUS REBAHAN',
-                              'OFFICIAL BINGE TIER',
-                              'आधिकारिक सिनेमा रैंक',
-                            ),
-                            style: GoogleFonts.inter(
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.0,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'LV.${insights.personaLevel} • $persona',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primaryLight,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(width: 14),
                     AvatarDisplay(
                       avatarId: profile.avatarId,
                       customAvatarPath: profile.customAvatarPath,
@@ -778,78 +666,94 @@ class _AtmBlackTitaniumCardLayout extends StatelessWidget {
                   ],
                 ),
 
-                // ── Embossed 16-Digit ATM Card Number ──
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Text(
-                    insights.atmCardNumber,
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 21,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 2.4,
-                      color: const Color(0xFFF5E6C8),
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withValues(alpha: 0.85),
-                          offset: const Offset(0, 2),
-                          blurRadius: 4,
+                // ── 2. Middle Row: Metallic Smart Chip + Crisp 16-Digit Number ──
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const _MinimalSmartChip(),
+                        const SizedBox(width: 12),
+                        Icon(
+                          Icons.contactless_rounded,
+                          color: Colors.white.withValues(alpha: 0.55),
+                          size: 24,
                         ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 15),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        insights.atmCardNumber,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 2.8,
+                          color: const Color(0xFFF5E8D0),
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.75),
+                              offset: const Offset(0, 2),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
-                // ── Bottom Row: Cardholder, Watch Balance, Catalog, QR Code ──
+                // ── 3. Bottom Row: Cardholder (with Blue Verified Badge), Watch Time, Titles + QR ──
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Cardholder Name
                     Expanded(
-                      flex: 4,
-                      child: _AtmMetaColumn(
-                        label: _tr('PEMEGANG KARTU', 'CARDHOLDER', 'कार्डधारक'),
-                        value: profile.name.toUpperCase(),
+                      flex: 5,
+                      child: _MetalMetaColumn(
+                        label: _tr('PEMILIK KARTU', 'CARDHOLDER', 'कार्डधारक'),
+                        value: profile.name,
                         subValue: '@${profile.username}',
+                        showVerifiedBadge: true,
                       ),
                     ),
-                    // Watch Hours Balance
                     Expanded(
                       flex: 3,
-                      child: _AtmMetaColumn(
-                        label: _tr('SALDO JAM NONTON', 'WATCH BALANCE', 'कुल समय'),
+                      child: _MetalMetaColumn(
+                        label: _tr('TOTAL DURASI', 'WATCH TIME', 'कुल समय'),
                         value: compactDuration,
                         subValue: _tr(
-                          'Hemat ~${insights.estimatedTicketsSaved} Tiket',
-                          '~${insights.estimatedTicketsSaved} Tickets Saved',
-                          '~${insights.estimatedTicketsSaved} टिकट बचत',
+                          '${insights.activeDaysCount} hari aktif',
+                          '${insights.activeDaysCount} active days',
+                          '${insights.activeDaysCount} सक्रिय दिन',
                         ),
-                        highlightColor: AppColors.primaryLight,
+                        valueColor: AppColors.primaryLight,
                       ),
                     ),
-                    // Catalog Completed
                     Expanded(
                       flex: 3,
-                      child: _AtmMetaColumn(
-                        label: _tr('REKOR TONTONAN', 'WATCH RECORD', 'रिकॉर्ड'),
+                      child: _MetalMetaColumn(
+                        label: _tr('TONTONAN', 'WATCHED', 'देखे गए'),
                         value:
-                            '${insights.moviesWatchedCount}F / ${insights.episodesWatchedCount}EP',
-                        subValue: 'VALID: SELAMANYA',
+                            '${insights.moviesWatchedCount}F • ${insights.episodesWatchedCount}EP',
+                        subValue: '${insights.completionRatePercent}% selesai',
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    // Mini QR Code for App Download
+                    const SizedBox(width: 10),
                     Container(
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: SizedBox(
-                        width: 46,
-                        height: 46,
+                        width: 48,
+                        height: 48,
                         child: QrImageView(
-                          data: 'https://github.com/cineva-stream/Cineva/releases',
-                          size: 46,
+                          data:
+                              'https://github.com/cineva-stream/Cineva/releases',
+                          size: 48,
                           padding: EdgeInsets.zero,
                           backgroundColor: Colors.white,
                         ),
@@ -866,17 +770,19 @@ class _AtmBlackTitaniumCardLayout extends StatelessWidget {
   }
 }
 
-class _AtmMetaColumn extends StatelessWidget {
+class _MetalMetaColumn extends StatelessWidget {
   final String label;
   final String value;
   final String subValue;
-  final Color? highlightColor;
+  final Color? valueColor;
+  final bool showVerifiedBadge;
 
-  const _AtmMetaColumn({
+  const _MetalMetaColumn({
     required this.label,
     required this.value,
     required this.subValue,
-    this.highlightColor,
+    this.valueColor,
+    this.showVerifiedBadge = false,
   });
 
   @override
@@ -890,30 +796,42 @@ class _AtmMetaColumn extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.inter(
-            fontSize: 8,
+            fontSize: 10,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.8,
             color: AppColors.textMuted,
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.outfit(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w800,
-            color: highlightColor ?? Colors.white,
-          ),
+        const SizedBox(height: 3),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.outfit(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: valueColor ?? Colors.white,
+                ),
+              ),
+            ),
+            if (showVerifiedBadge) ...[
+              const SizedBox(width: 5),
+              const _BlueVerifiedNameBadge(size: 17),
+            ],
+          ],
         ),
+        const SizedBox(height: 1),
         Text(
           subValue,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.inter(
-            fontSize: 8.5,
-            fontWeight: FontWeight.w600,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
             color: AppColors.textSecondary,
           ),
         ),
@@ -922,60 +840,48 @@ class _AtmMetaColumn extends StatelessWidget {
   }
 }
 
-/// Realistic metallic gold EMV Smart Chip widget.
-class _EmvSmartChipWidget extends StatelessWidget {
-  const _EmvSmartChipWidget();
+class _MinimalSmartChip extends StatelessWidget {
+  const _MinimalSmartChip();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 50,
-      height: 38,
+      width: 48,
+      height: 35,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(7),
         gradient: const LinearGradient(
           colors: [
-            Color(0xFFFFE082),
-            Color(0xFFFFB300),
-            Color(0xFFD4AF37),
-            Color(0xFFFFE082),
+            Color(0xFFF3D98B),
+            Color(0xFFC89D28),
+            Color(0xFFF3D98B),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         border: Border.all(
-          color: const Color(0xFFFFF8E1).withValues(alpha: 0.7),
-          width: 0.9,
+          color: Colors.white.withValues(alpha: 0.35),
+          width: 0.7,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      child: const CustomPaint(
-        painter: _EmvChipLinesPainter(),
+      child: CustomPaint(
+        painter: _ChipLinePainter(),
       ),
     );
   }
 }
 
-class _EmvChipLinesPainter extends CustomPainter {
-  const _EmvChipLinesPainter();
-
+class _ChipLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF7A5901).withValues(alpha: 0.65)
+      ..color = const Color(0xFF5E4708).withValues(alpha: 0.55)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
     final w = size.width;
     final h = size.height;
 
-    // Center rounded pad
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(w * 0.30, h * 0.22, w * 0.40, h * 0.56),
@@ -983,8 +889,6 @@ class _EmvChipLinesPainter extends CustomPainter {
       ),
       paint,
     );
-
-    // Horizontal contact dividers
     canvas.drawLine(Offset(0, h * 0.36), Offset(w * 0.30, h * 0.36), paint);
     canvas.drawLine(Offset(0, h * 0.64), Offset(w * 0.30, h * 0.64), paint);
     canvas.drawLine(Offset(w * 0.70, h * 0.36), Offset(w, h * 0.36), paint);
@@ -995,26 +899,26 @@ class _EmvChipLinesPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _GuillochePatternPainter extends CustomPainter {
-  final bool isKtp;
-  const _GuillochePatternPainter({required this.isKtp});
+class _ModernCardMeshPainter extends CustomPainter {
+  final bool isMetal;
+  const _ModernCardMeshPainter({required this.isMetal});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = isKtp
-          ? const Color(0xFF00E5FF).withValues(alpha: 0.045)
-          : AppColors.primary.withValues(alpha: 0.04)
+      ..color = isMetal
+          ? Colors.white.withValues(alpha: 0.028)
+          : kVerifiedBlueColor.withValues(alpha: 0.04)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
-    for (int wave = 0; wave < 6; wave++) {
+    for (int i = 0; i < 5; i++) {
       final path = Path();
-      final yOffset = size.height * (0.2 + wave * 0.13);
-      path.moveTo(0, yOffset);
-      for (double x = 0; x <= size.width; x += 12) {
+      final startY = size.height * (0.18 + i * 0.16);
+      path.moveTo(0, startY);
+      for (double x = 0; x <= size.width; x += 14) {
         final y =
-            yOffset + math.sin((x / size.width) * math.pi * 2.5 + wave) * 18;
+            startY + math.sin((x / size.width) * math.pi * 2.2 + i * 0.7) * 16;
         path.lineTo(x, y);
       }
       canvas.drawPath(path, paint);

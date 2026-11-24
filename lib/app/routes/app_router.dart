@@ -6,6 +6,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 
 import '../../features/splash/presentation/screens/splash_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/home/presentation/screens/section_catalog_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/detail/presentation/screens/movie_detail_screen.dart';
 import '../../features/detail/presentation/screens/tv_detail_screen.dart';
@@ -43,6 +44,46 @@ import '../../shared/widgets/shell_pop_scope.dart';
 /// the shell (full-screen) with smooth transitions.
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
+  redirect: (context, state) {
+    final uri = state.uri;
+    // Normalize custom scheme deep links: cineva://movie/123, cineva://tv/456, cineva://party/CNV-XXXX
+    if (uri.scheme == 'cineva') {
+      final host = uri.host.toLowerCase();
+      final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      if ((host == 'movie' || host == 'tv' || host == 'party') &&
+          segments.isNotEmpty) {
+        return '/$host/${segments.first}';
+      }
+      if (host == 'open') {
+        return '/';
+      }
+    }
+    // Check query parameters (?watch=movie/123 or ?type=tv&id=456)
+    final watchParam = uri.queryParameters['watch'] ?? '';
+    final watchMatch =
+        RegExp(r'^(movie|tv)/(\d+)$', caseSensitive: false).firstMatch(watchParam);
+    if (watchMatch != null) {
+      return '/${watchMatch.group(1)!.toLowerCase()}/${watchMatch.group(2)}';
+    }
+    final qType = (uri.queryParameters['type'] ?? '').toLowerCase();
+    final qId = uri.queryParameters['id'] ?? '';
+    if ((qType == 'movie' || qType == 'tv') && RegExp(r'^\d+$').hasMatch(qId)) {
+      return '/$qType/$qId';
+    }
+    // Normalize GitHub Pages repository prefix (/Cineva/movie/:id, /Cineva/tv/:id)
+    final path = uri.path;
+    final movieMatch =
+        RegExp(r'^/Cineva/movie/(\d+)', caseSensitive: false).firstMatch(path);
+    if (movieMatch != null) {
+      return '/movie/${movieMatch.group(1)}';
+    }
+    final tvMatch =
+        RegExp(r'^/Cineva/tv/(\d+)', caseSensitive: false).firstMatch(path);
+    if (tvMatch != null) {
+      return '/tv/${tvMatch.group(1)}';
+    }
+    return null;
+  },
   observers: [
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS))
       FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
@@ -236,6 +277,33 @@ final GoRouter appRouter = GoRouter(
 
     // ── Full-screen routes (outside bottom nav shell) ──
     GoRoute(
+      path: '/catalog/:sectionKey',
+      name: 'sectionCatalog',
+      pageBuilder: (context, state) {
+        final sectionKey =
+            state.pathParameters['sectionKey'] ?? 'popular_movies';
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: SectionCatalogScreen(sectionKey: sectionKey),
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 250),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curved = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            );
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.06, 0),
+                end: Offset.zero,
+              ).animate(curved),
+              child: FadeTransition(opacity: curved, child: child),
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
       path: '/movie/:id',
       name: 'movieDetail',
       pageBuilder: (context, state) {
@@ -277,6 +345,34 @@ final GoRouter appRouter = GoRouter(
               ).animate(curved),
               child: FadeTransition(opacity: curved, child: child),
             );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: '/Cineva/movie/:id',
+      name: 'movieDetailDeepLinkRepoPath',
+      pageBuilder: (context, state) {
+        final id = int.parse(state.pathParameters['id']!);
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: MovieDetailScreen(movieId: id),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: '/Cineva/tv/:id',
+      name: 'tvDetailDeepLinkRepoPath',
+      pageBuilder: (context, state) {
+        final id = int.parse(state.pathParameters['id']!);
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: TvDetailScreen(tvId: id),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
           },
         );
       },

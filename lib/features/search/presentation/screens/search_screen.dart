@@ -21,6 +21,7 @@ import '../providers/search_history_provider.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/platform/device_form_factor.dart';
+import '../../../../shared/widgets/media_filter_bottom_sheet.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
 import '../../domain/entities/streaming_platform.dart';
 
@@ -28,15 +29,107 @@ import '../../domain/entities/streaming_platform.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
+/// Selected release year filter for search results (`null` = Default "Semua Tahun").
+final selectedSearchYearProvider = StateProvider<int?>((ref) => null);
+
+/// Selected sort option for search results (default: [MediaSortOption.latest]).
+final searchSortOptionProvider =
+    StateProvider<MediaSortOption>((ref) => MediaSortOption.latest);
+
+/// Sorts [movies] by [sort] (defaulting to newest first), optionally filtering by [year].
+List<Movie> sortAndFilterMoviesNewestFirst(
+  List<Movie> movies, {
+  int? year,
+  MediaSortOption sort = MediaSortOption.latest,
+}) {
+  final filtered = year == null
+      ? List<Movie>.from(movies)
+      : movies.where((m) => m.year == '$year').toList();
+  switch (sort) {
+    case MediaSortOption.latest:
+      filtered.sort((a, b) {
+        final dateA = a.releaseDate.trim();
+        final dateB = b.releaseDate.trim();
+        if (dateA.isEmpty && dateB.isEmpty) {
+          return b.popularity.compareTo(a.popularity);
+        }
+        if (dateA.isEmpty) return 1;
+        if (dateB.isEmpty) return -1;
+        final cmp = dateB.compareTo(dateA);
+        if (cmp != 0) return cmp;
+        return b.popularity.compareTo(a.popularity);
+      });
+      break;
+    case MediaSortOption.popular:
+      filtered.sort((a, b) => b.popularity.compareTo(a.popularity));
+      break;
+    case MediaSortOption.topRated:
+      filtered.sort((a, b) {
+        final cmp = b.voteAverage.compareTo(a.voteAverage);
+        if (cmp != 0) return cmp;
+        return b.popularity.compareTo(a.popularity);
+      });
+      break;
+  }
+  return filtered;
+}
+
+/// Sorts [tvShows] by [sort] (defaulting to newest first), optionally filtering by [year].
+List<TvSeries> sortAndFilterTvNewestFirst(
+  List<TvSeries> tvShows, {
+  int? year,
+  MediaSortOption sort = MediaSortOption.latest,
+}) {
+  final filtered = year == null
+      ? List<TvSeries>.from(tvShows)
+      : tvShows.where((t) => t.year == '$year').toList();
+  switch (sort) {
+    case MediaSortOption.latest:
+      filtered.sort((a, b) {
+        final dateA = a.firstAirDate.trim();
+        final dateB = b.firstAirDate.trim();
+        if (dateA.isEmpty && dateB.isEmpty) {
+          return b.popularity.compareTo(a.popularity);
+        }
+        if (dateA.isEmpty) return 1;
+        if (dateB.isEmpty) return -1;
+        final cmp = dateB.compareTo(dateA);
+        if (cmp != 0) return cmp;
+        return b.popularity.compareTo(a.popularity);
+      });
+      break;
+    case MediaSortOption.popular:
+      filtered.sort((a, b) => b.popularity.compareTo(a.popularity));
+      break;
+    case MediaSortOption.topRated:
+      filtered.sort((a, b) {
+        final cmp = b.voteAverage.compareTo(a.voteAverage);
+        if (cmp != 0) return cmp;
+        return b.popularity.compareTo(a.popularity);
+      });
+      break;
+  }
+  return filtered;
+}
+
 final searchMovieResultsProvider = FutureProvider<List<Movie>>((ref) async {
   final query = ref.watch(searchQueryProvider);
   if (query.isEmpty) return [];
   final pref = ref.watch(contentPreferenceProvider);
-  final movies = await ref.watch(movieRepositoryProvider).searchMovies(query);
-  if (pref == ContentPreference.all) return movies;
+  final selectedYear = ref.watch(selectedSearchYearProvider);
+  final sortOption = ref.watch(searchSortOptionProvider);
+  final movies = await ref
+      .watch(movieRepositoryProvider)
+      .searchMovies(query, year: selectedYear);
+  final sorted = sortAndFilterMoviesNewestFirst(
+    movies,
+    year: selectedYear,
+    sort: sortOption,
+  );
+  if (pref == ContentPreference.all) return sorted;
 
-  final matches = movies.where((m) => pref.matchesMovie(m)).toList();
-  final others = movies.where((m) => !pref.matchesMovie(m)).toList();
+  final matches = sorted.where((m) => pref.matchesMovie(m)).toList();
+  final others = sorted.where((m) => !pref.matchesMovie(m)).toList();
   return [...matches, ...others];
 });
 
@@ -44,25 +137,34 @@ final searchTvResultsProvider = FutureProvider<List<TvSeries>>((ref) async {
   final query = ref.watch(searchQueryProvider);
   if (query.isEmpty) return [];
   final pref = ref.watch(contentPreferenceProvider);
+  final selectedYear = ref.watch(selectedSearchYearProvider);
+  final sortOption = ref.watch(searchSortOptionProvider);
   final tvShows = await ref
       .watch(movieRepositoryProvider)
-      .searchTvSeries(query);
-  if (pref == ContentPreference.all) return tvShows;
+      .searchTvSeries(query, year: selectedYear);
+  final sorted = sortAndFilterTvNewestFirst(
+    tvShows,
+    year: selectedYear,
+    sort: sortOption,
+  );
+  if (pref == ContentPreference.all) return sorted;
 
-  final matches = tvShows.where((t) => pref.matchesTv(t)).toList();
-  final others = tvShows.where((t) => !pref.matchesTv(t)).toList();
+  final matches = sorted.where((t) => pref.matchesTv(t)).toList();
+  final others = sorted.where((t) => !pref.matchesTv(t)).toList();
   return [...matches, ...others];
 });
 
 /// Search tab index: 0 = All, 1 = Movies, 2 = TV Series
 final searchTabProvider = StateProvider<int>((ref) => 0);
 
-/// Resets all search-related state (query, tab filter, genre filter) to defaults.
+/// Resets all search-related state (query, tab filter, genre filter, year filter, sort option) to defaults.
 void resetSearchState(WidgetRef ref) {
   ref.read(searchQueryProvider.notifier).state = '';
   ref.read(searchTabProvider.notifier).state = 0;
   ref.read(selectedSearchGenreProvider.notifier).state =
       GenreConstants.filters.first;
+  ref.read(selectedSearchYearProvider.notifier).state = null;
+  ref.read(searchSortOptionProvider.notifier).state = MediaSortOption.latest;
 }
 
 /// Search screen with real-time TMDB search, history, trends, and top searches.
@@ -127,6 +229,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final tvResults = ref.watch(searchTvResultsProvider);
     final pref = ref.watch(contentPreferenceProvider);
     final activeGenre = ref.watch(selectedSearchGenreProvider);
+    final selectedYear = ref.watch(selectedSearchYearProvider);
+    final sortOption = ref.watch(searchSortOptionProvider);
+    final hasActiveSearchFilters =
+        activeGenre.id != 'all' ||
+        selectedYear != null ||
+        sortOption != MediaSortOption.latest;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -223,142 +331,186 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
             ),
 
-            // ── Genre Filter Chips Row ──
+            // ── Single Centered Smart Filter & Media Type Bar ──
             Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 2),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: GenreConstants.filters.map((genre) {
-                    final isSelected = activeGenre.id == genre.id;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: TvFocusable(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Center(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (query.isNotEmpty) ...[
+                        _FilterChip(
+                          label: s.searchTabAll,
+                          isSelected: tabIndex == 0,
+                          onTap: () =>
+                              ref.read(searchTabProvider.notifier).state = 0,
+                        ),
+                        const SizedBox(width: 8),
+                        _FilterChip(
+                          label: s.searchTabMovies,
+                          isSelected: tabIndex == 1,
+                          onTap: () =>
+                              ref.read(searchTabProvider.notifier).state = 1,
+                        ),
+                        const SizedBox(width: 8),
+                        _FilterChip(
+                          label: s.searchTabTv,
+                          isSelected: tabIndex == 2,
+                          onTap: () =>
+                              ref.read(searchTabProvider.notifier).state = 2,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      TvFocusable(
+                        focusedScale: 1.04,
+                        borderRadius: BorderRadius.circular(20),
                         onTap: () {
-                          ref.read(selectedSearchGenreProvider.notifier).state =
-                              genre;
+                          MediaFilterBottomSheet.show(
+                            context,
+                            initialSort: sortOption,
+                            initialYear: selectedYear,
+                            initialGenre: activeGenre,
+                            showGenreFilter: true,
+                            onApply: (selection) {
+                              ref
+                                      .read(searchSortOptionProvider.notifier)
+                                      .state =
+                                  selection.sortOption;
+                              ref
+                                      .read(
+                                        selectedSearchYearProvider.notifier,
+                                      )
+                                      .state =
+                                  selection.releaseYear;
+                              if (selection.genre != null) {
+                                ref
+                                        .read(
+                                          selectedSearchGenreProvider.notifier,
+                                        )
+                                        .state =
+                                    selection.genre!;
+                              }
+                            },
+                          );
                         },
-                        borderRadius: BorderRadius.circular(16),
-                        scaleOnFocus: 1.04,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOutCubic,
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
+                            horizontal: 14,
+                            vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.primary.withValues(alpha: 0.18)
-                                : AppColors.surface,
-                            borderRadius: BorderRadius.circular(16),
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: isSelected
+                              color: hasActiveSearchFilters
                                   ? AppColors.primary
-                                  : Colors.white.withValues(alpha: 0.08),
-                              width: isSelected ? 1.2 : 0.8,
+                                  : Colors.white.withValues(alpha: 0.14),
+                              width: hasActiveSearchFilters ? 1.3 : 1.0,
                             ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: AppColors.primary.withValues(
-                                        alpha: 0.25,
-                                      ),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
-                                : null,
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (genre.icon != null) ...[
-                                Icon(
-                                  genre.icon,
-                                  size: 13,
-                                  color: isSelected
-                                      ? AppColors.primary
-                                      : AppColors.textMuted,
-                                ),
-                                const SizedBox(width: 5),
-                              ],
+                              Icon(
+                                Icons.tune_rounded,
+                                size: 14,
+                                color: hasActiveSearchFilters
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 6),
                               Text(
-                                genre.getLocalizedLabel(
-                                  s.isIndonesian,
-                                  s.language,
-                                ),
+                                hasActiveSearchFilters
+                                    ? '${sortOption.localizedLabel(s)}${selectedYear != null ? ' • $selectedYear' : ''}${activeGenre.id != 'all' ? ' • ${activeGenre.getLocalizedLabel(s.isIndonesian, s.language)}' : ''}'
+                                    : s.filterAndSortTitle,
                                 style: GoogleFonts.inter(
-                                  fontSize: 11.5,
-                                  fontWeight: isSelected
+                                  fontSize: 12,
+                                  fontWeight: hasActiveSearchFilters
                                       ? FontWeight.w700
                                       : FontWeight.w500,
-                                  color: isSelected
-                                      ? AppColors.primaryLight
+                                  color: hasActiveSearchFilters
+                                      ? AppColors.primary
                                       : AppColors.textSecondary,
                                 ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 16,
+                                color: hasActiveSearchFilters
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
                               ),
                             ],
                           ),
                         ),
                       ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-
-            // ── Tab Filter (When query is present) ──
-            if (query.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: [
-                      _FilterChip(
-                        label: s.searchTabAll,
-                        isSelected: tabIndex == 0,
-                        onTap: () =>
-                            ref.read(searchTabProvider.notifier).state = 0,
-                      ),
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: s.searchTabMovies,
-                        isSelected: tabIndex == 1,
-                        onTap: () =>
-                            ref.read(searchTabProvider.notifier).state = 1,
-                      ),
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: s.searchTabTv,
-                        isSelected: tabIndex == 2,
-                        onTap: () =>
-                            ref.read(searchTabProvider.notifier).state = 2,
-                      ),
+                      if (hasActiveSearchFilters) ...[
+                        const SizedBox(width: 6),
+                        TvFocusable(
+                          focusedScale: 1.08,
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () {
+                            ref
+                                    .read(
+                                      selectedSearchGenreProvider.notifier,
+                                    )
+                                    .state =
+                                GenreConstants.filters.first;
+                            ref
+                                    .read(selectedSearchYearProvider.notifier)
+                                    .state =
+                                null;
+                            ref.read(searchSortOptionProvider.notifier).state =
+                                MediaSortOption.latest;
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.16),
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
-            ],
+            ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             // ── Results or Discovery View ──
             Expanded(
               child: query.isEmpty
-                  ? (activeGenre.id == 'all'
+                  ? (activeGenre.id == 'all' && selectedYear == null
                         ? _SearchDiscoveryView(onSelectQuery: _selectQuery)
-                        : _GenreExplorerView(activeGenre: activeGenre))
+                        : _GenreExplorerView(
+                            activeGenre: activeGenre,
+                            selectedYear: selectedYear,
+                            sortOption: sortOption,
+                          ))
                   : tabIndex == 0
                   ? _buildAllResults(
                       movieResults: movieResults,
                       tvResults: tvResults,
                       activeGenre: activeGenre,
+                      selectedYear: selectedYear,
+                      sortOption: sortOption,
                       query: query,
                       s: s,
                       ref: ref,
@@ -366,14 +518,21 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   : tabIndex == 1
                   ? movieResults.when(
                       data: (movies) {
-                        final filtered = activeGenre.id == 'all'
+                        final genreFiltered = activeGenre.id == 'all'
                             ? movies
                             : movies
                                   .where((m) => activeGenre.matchesMovie(m))
                                   .toList();
+                        final filtered = sortAndFilterMoviesNewestFirst(
+                          genreFiltered,
+                          year: selectedYear,
+                          sort: sortOption,
+                        );
                         if (filtered.isEmpty) {
                           return AppErrorWidget.empty(
-                            message: s.searchNoMovies(query),
+                            message: selectedYear != null
+                                ? s.catalogEmptyForYear('$selectedYear')
+                                : s.searchNoMovies(query),
                           );
                         }
                         return _MovieGrid(movies: filtered);
@@ -387,14 +546,21 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     )
                   : tvResults.when(
                       data: (tvShows) {
-                        final filtered = activeGenre.id == 'all'
+                        final genreFiltered = activeGenre.id == 'all'
                             ? tvShows
                             : tvShows
                                   .where((t) => activeGenre.matchesTv(t))
                                   .toList();
+                        final filtered = sortAndFilterTvNewestFirst(
+                          genreFiltered,
+                          year: selectedYear,
+                          sort: sortOption,
+                        );
                         if (filtered.isEmpty) {
                           return AppErrorWidget.empty(
-                            message: s.searchNoTv(query),
+                            message: selectedYear != null
+                                ? s.catalogEmptyForYear('$selectedYear')
+                                : s.searchNoTv(query),
                           );
                         }
                         return _TvGrid(tvShows: filtered);
@@ -416,6 +582,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     required AsyncValue<List<Movie>> movieResults,
     required AsyncValue<List<TvSeries>> tvResults,
     required GenreFilter activeGenre,
+    required int? selectedYear,
+    required MediaSortOption sortOption,
     required String query,
     required AppStrings s,
     required WidgetRef ref,
@@ -436,15 +604,30 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final movies = movieResults.valueOrNull ?? [];
     final tvShows = tvResults.valueOrNull ?? [];
 
-    final filteredMovies = activeGenre.id == 'all'
+    final genreMovies = activeGenre.id == 'all'
         ? movies
         : movies.where((m) => activeGenre.matchesMovie(m)).toList();
-    final filteredTv = activeGenre.id == 'all'
+    final genreTv = activeGenre.id == 'all'
         ? tvShows
         : tvShows.where((t) => activeGenre.matchesTv(t)).toList();
 
+    final filteredMovies = sortAndFilterMoviesNewestFirst(
+      genreMovies,
+      year: selectedYear,
+      sort: sortOption,
+    );
+    final filteredTv = sortAndFilterTvNewestFirst(
+      genreTv,
+      year: selectedYear,
+      sort: sortOption,
+    );
+
     if (filteredMovies.isEmpty && filteredTv.isEmpty) {
-      return AppErrorWidget.empty(message: s.searchNoResults(query));
+      return AppErrorWidget.empty(
+        message: selectedYear != null
+            ? s.catalogEmptyForYear('$selectedYear')
+            : s.searchNoResults(query),
+      );
     }
 
     return _AllSearchResultsView(movies: filteredMovies, tvShows: filteredTv);
@@ -470,17 +653,23 @@ class _FilterChip extends StatelessWidget {
       scaleOnFocus: 1.04,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
+          color: AppColors.background,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primary
+                : Colors.white.withValues(alpha: 0.14),
+            width: isSelected ? 1.3 : 1.0,
+          ),
         ),
         child: Text(
           label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? AppColors.background : AppColors.textSecondary,
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? AppColors.primary : AppColors.textSecondary,
           ),
         ),
       ),
@@ -1679,7 +1868,13 @@ class _SearchLoadingGrid extends ConsumerWidget {
 /// Rich Genre Explorer View shown when a specific genre is selected without search query.
 class _GenreExplorerView extends ConsumerStatefulWidget {
   final GenreFilter activeGenre;
-  const _GenreExplorerView({required this.activeGenre});
+  final int? selectedYear;
+  final MediaSortOption sortOption;
+  const _GenreExplorerView({
+    required this.activeGenre,
+    this.selectedYear,
+    this.sortOption = MediaSortOption.latest,
+  });
 
   @override
   ConsumerState<_GenreExplorerView> createState() => _GenreExplorerViewState();
@@ -1733,13 +1928,22 @@ class _GenreExplorerViewState extends ConsumerState<_GenreExplorerView> {
                     for (final m in allMovies) {
                       unique[m.id] = m;
                     }
-                    final filtered = unique.values
-                        .where((m) => widget.activeGenre.matchesMovie(m))
-                        .toList();
+                    final genreMatched = widget.activeGenre.id == 'all'
+                        ? unique.values.toList()
+                        : unique.values
+                              .where((m) => widget.activeGenre.matchesMovie(m))
+                              .toList();
+                    final filtered = sortAndFilterMoviesNewestFirst(
+                      genreMatched,
+                      year: widget.selectedYear,
+                      sort: widget.sortOption,
+                    );
 
                     if (filtered.isEmpty) {
                       return AppErrorWidget.empty(
-                        message: s.searchNoGenreMovies(genreLabel),
+                        message: widget.selectedYear != null
+                            ? s.catalogEmptyForYear('${widget.selectedYear}')
+                            : s.searchNoGenreMovies(genreLabel),
                       );
                     }
                     return _MovieGrid(movies: filtered);
@@ -1752,12 +1956,21 @@ class _GenreExplorerViewState extends ConsumerState<_GenreExplorerView> {
                 )
               : popularTv.when(
                   data: (tvShows) {
-                    final filtered = tvShows
-                        .where((t) => widget.activeGenre.matchesTv(t))
-                        .toList();
+                    final genreMatched = widget.activeGenre.id == 'all'
+                        ? tvShows
+                        : tvShows
+                              .where((t) => widget.activeGenre.matchesTv(t))
+                              .toList();
+                    final filtered = sortAndFilterTvNewestFirst(
+                      genreMatched,
+                      year: widget.selectedYear,
+                      sort: widget.sortOption,
+                    );
                     if (filtered.isEmpty) {
                       return AppErrorWidget.empty(
-                        message: s.searchNoGenreTv(genreLabel),
+                        message: widget.selectedYear != null
+                            ? s.catalogEmptyForYear('${widget.selectedYear}')
+                            : s.searchNoGenreTv(genreLabel),
                       );
                     }
                     return _TvGrid(tvShows: filtered);

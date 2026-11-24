@@ -20,6 +20,7 @@ import '../../../tv_universe/presentation/widgets/tv_universe_banner.dart';
 import '../../../../core/platform/device_form_factor.dart';
 import '../../../watch_party/domain/models/watch_party_room.dart';
 import '../../../watch_party/presentation/widgets/watch_party_modal.dart';
+import '../../../player/data/services/provider_loader_service.dart';
 
 // ── TV Detail Provider ──
 
@@ -78,23 +79,88 @@ final tvSeasonEpisodesProvider =
       final lang = ref.watch(appLanguageProvider);
       final tmdbLang = lang.tmdbLanguageCode;
       final dio = DioClient.createTmdbClient();
+      final genericTitlePattern = RegExp(
+        r'^(?:episode|episod|ep|एपिसोड)\s*\d+$',
+        caseSensitive: false,
+      );
+
+      bool isGenericTitle(String? name) {
+        final clean = (name ?? '').trim();
+        return clean.isEmpty || genericTitlePattern.hasMatch(clean);
+      }
+
       try {
         final response = await dio.get(
           '/tv/${arg.tvId}/season/${arg.seasonNumber}',
           queryParameters: {'language': tmdbLang},
         );
-        final episodes = response.data['episodes'] as List<dynamic>? ?? [];
-        return episodes.cast<Map<String, dynamic>>();
+        final rawEpisodes = response.data['episodes'] as List<dynamic>? ?? [];
+        final episodes = rawEpisodes
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+
+        // TMDB frequently lacks localized (id-ID / hi-IN) episode titles and synopses (`overview`),
+        // returning empty `overview: ""` and generic `name: "Episode 1"`.
+        // Automatically enrich missing titles and synopses from `en-US` so every episode displays its title & synopsis.
+        final needsEnFallback =
+            tmdbLang != 'en-US' &&
+            episodes.any(
+              (ep) =>
+                  (ep['overview'] as String? ?? '').trim().isEmpty ||
+                  isGenericTitle(ep['name'] as String?),
+            );
+
+        if (needsEnFallback) {
+          try {
+            final enResponse = await dio.get(
+              '/tv/${arg.tvId}/season/${arg.seasonNumber}',
+              queryParameters: {'language': 'en-US'},
+            );
+            final enRaw = enResponse.data['episodes'] as List<dynamic>? ?? [];
+            final enByEpNum = <int, Map<String, dynamic>>{};
+            for (final item in enRaw) {
+              if (item is Map) {
+                final map = Map<String, dynamic>.from(item);
+                final num = map['episode_number'] as int?;
+                if (num != null) {
+                  enByEpNum[num] = map;
+                }
+              }
+            }
+
+            for (final ep in episodes) {
+              final epNum = ep['episode_number'] as int?;
+              final enEp = epNum != null ? enByEpNum[epNum] : null;
+              if (enEp == null) continue;
+
+              final curOverview = (ep['overview'] as String? ?? '').trim();
+              final enOverview = (enEp['overview'] as String? ?? '').trim();
+              if (curOverview.isEmpty && enOverview.isNotEmpty) {
+                ep['overview'] = enOverview;
+              }
+
+              final curName = (ep['name'] as String? ?? '').trim();
+              final enName = (enEp['name'] as String? ?? '').trim();
+              if (isGenericTitle(curName) && enName.isNotEmpty) {
+                ep['name'] = enName;
+              }
+            }
+          } catch (_) {}
+        }
+
+        return episodes;
       } catch (e) {
-        // Fallback to alternate language
+        // Fallback to en-US if primary language request fails
         try {
           final fallbackLang = tmdbLang == 'en-US' ? 'id-ID' : 'en-US';
           final response = await dio.get(
             '/tv/${arg.tvId}/season/${arg.seasonNumber}',
             queryParameters: {'language': fallbackLang},
           );
-          final episodes = response.data['episodes'] as List<dynamic>? ?? [];
-          return episodes.cast<Map<String, dynamic>>();
+          final rawEpisodes = response.data['episodes'] as List<dynamic>? ?? [];
+          return rawEpisodes
+              .map((item) => Map<String, dynamic>.from(item as Map))
+              .toList();
         } catch (_) {
           return [];
         }
@@ -203,6 +269,25 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
     final imdbId = data['external_ids']?['imdb_id'] as String?;
     final tvId = data['id'] as int? ?? 0;
     final trailer = TrailerVideoModel.findBestTrailer(data['videos']);
+    final status = data['status'] as String?;
+
+    final unreleasedByMeta = MediaReleaseGuard.isUnreleasedByMetadata(
+      releaseDate: firstAirDate,
+      status: status,
+    );
+    final serverAvailableOverride = unreleasedByMeta && tvId > 0
+        ? (ref
+                  .watch(
+                    streamAvailabilityProbeProvider((
+                      tmdbId: tvId,
+                      season: _selectedSeasonNumber,
+                      episode: 1,
+                    )),
+                  )
+                  .valueOrNull ??
+              false)
+        : true;
+    final isComingSoon = unreleasedByMeta && !serverAvailableOverride;
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isTv = ref.watch(isTvProvider);
@@ -231,6 +316,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
         imdbId: imdbId,
         tvId: tvId,
         trailer: trailer,
+        isComingSoon: isComingSoon,
       );
     }
 
@@ -255,6 +341,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
       tvId: tvId,
       trailer: trailer,
       isCompact: isCompact,
+      isComingSoon: isComingSoon,
     );
   }
 
@@ -309,6 +396,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
     required String? imdbId,
     required int tvId,
     required TrailerVideoModel? trailer,
+    required bool isComingSoon,
   }) {
     final firstAirYear = firstAirDate.length >= 4
         ? firstAirDate.substring(0, 4)
@@ -664,62 +752,40 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                   runSpacing: 10,
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
-                                    // Watch Now
-                                    TvFocusable(
-                                      autofocus: true,
-                                      focusedScale: 1.04,
-                                      glowBlurRadius: 16,
-                                      glowColor: AppColors.primary,
-                                      borderRadius: BorderRadius.circular(14),
-                                      onTap: () => _playTvEpisode(
-                                        context,
-                                        name: name,
-                                        episodeTitle:
-                                            'Season $_selectedSeasonNumber Episode 1',
-                                        imdbId: imdbId,
-                                        season: _selectedSeasonNumber,
-                                        episode: 1,
-                                        tvId: tvId,
-                                        posterPath: posterPath,
-                                        backdropPath: backdropPath,
-                                        overview: overview,
-                                      ),
-                                      child: Container(
+                                    // Watch Now (or Disabled "Segera Hadir" if unreleased)
+                                    if (isComingSoon)
+                                      Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 24,
                                           vertical: 14,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: AppColors.primary,
+                                          color: Colors.white.withValues(
+                                            alpha: 0.10,
+                                          ),
                                           borderRadius: BorderRadius.circular(
                                             14,
                                           ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: AppColors.primary
-                                                  .withValues(alpha: 0.4),
-                                              blurRadius: 18,
-                                              offset: const Offset(0, 4),
+                                          border: Border.all(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.16,
                                             ),
-                                          ],
+                                          ),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             const Icon(
-                                              Icons.play_arrow_rounded,
-                                              color: Colors.black,
-                                              size: 24,
+                                              Icons.schedule_rounded,
+                                              color: AppColors.textMuted,
+                                              size: 20,
                                             ),
                                             const SizedBox(width: 8),
                                             Text(
-                                              s.detailWatchTv(
-                                                _selectedSeasonNumber,
-                                                1,
-                                              ),
+                                              s.detailComingSoon,
                                               style:
                                                   GoogleFonts.plusJakartaSans(
-                                                    color: Colors.black,
+                                                    color: AppColors.textMuted,
                                                     fontWeight: FontWeight.w800,
                                                     fontSize: 14,
                                                     letterSpacing: 0.2,
@@ -727,8 +793,72 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                             ),
                                           ],
                                         ),
+                                      )
+                                    else
+                                      TvFocusable(
+                                        autofocus: true,
+                                        focusedScale: 1.04,
+                                        glowBlurRadius: 16,
+                                        glowColor: AppColors.primary,
+                                        borderRadius: BorderRadius.circular(14),
+                                        onTap: () => _playTvEpisode(
+                                          context,
+                                          name: name,
+                                          episodeTitle:
+                                              'Season $_selectedSeasonNumber Episode 1',
+                                          imdbId: imdbId,
+                                          season: _selectedSeasonNumber,
+                                          episode: 1,
+                                          tvId: tvId,
+                                          posterPath: posterPath,
+                                          backdropPath: backdropPath,
+                                          overview: overview,
+                                        ),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                            vertical: 14,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary,
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.4),
+                                                blurRadius: 18,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.play_arrow_rounded,
+                                                color: Colors.black,
+                                                size: 24,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                s.detailWatchTv(
+                                                  _selectedSeasonNumber,
+                                                  1,
+                                                ),
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                      color: Colors.black,
+                                                      fontWeight: FontWeight.w800,
+                                                      fontSize: 14,
+                                                      letterSpacing: 0.2,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
-                                    ),
 
                                     if (trailer != null)
                                       TvFocusable(
@@ -898,63 +1028,66 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                       },
                                     ),
 
-                                    // Download Button
-                                    TvFocusable(
-                                      focusedScale: 1.04,
-                                      borderRadius: BorderRadius.circular(12),
-                                      onTap: () {
-                                        DownloadOptionsModal.show(
-                                          context,
-                                          tmdbId: tvId,
-                                          mediaType: 'tv',
-                                          title: name,
-                                          releaseYear: firstAirYear,
-                                          posterPath: posterPath,
-                                          backdropPath: backdropPath,
-                                          imdbId: imdbId,
-                                          runtimeMinutes: 45,
-                                        );
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 18,
-                                          vertical: 13,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.12,
+                                    // Download Button (Only when released)
+                                    if (!isComingSoon)
+                                      TvFocusable(
+                                        focusedScale: 1.04,
+                                        borderRadius: BorderRadius.circular(12),
+                                        onTap: () {
+                                          DownloadOptionsModal.show(
+                                            context,
+                                            tmdbId: tvId,
+                                            mediaType: 'tv',
+                                            title: name,
+                                            releaseYear: firstAirYear,
+                                            season: _selectedSeasonNumber,
+                                            episode: 1,
+                                            posterPath: posterPath,
+                                            backdropPath: backdropPath,
+                                            imdbId: imdbId,
+                                            runtimeMinutes: 45,
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 18,
+                                            vertical: 13,
                                           ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          border: Border.all(
+                                          decoration: BoxDecoration(
                                             color: Colors.white.withValues(
-                                              alpha: 0.2,
+                                              alpha: 0.12,
                                             ),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.download_rounded,
-                                              color: Colors.white,
-                                              size: 20,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
                                             ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              s.navDownloads,
-                                              style: GoogleFonts.inter(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 13,
+                                            border: Border.all(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.2,
                                               ),
+                                              width: 1,
                                             ),
-                                          ],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.download_rounded,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                s.navDownloads,
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ],
@@ -1181,6 +1314,12 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                     final epRuntime = ep['runtime'] as int?;
                                     final epAirDate =
                                         ep['air_date'] as String? ?? '';
+                                    final isEpComingSoon =
+                                        isComingSoon ||
+                                        (epAirDate.isNotEmpty &&
+                                            MediaReleaseGuard.isUnreleasedByMetadata(
+                                              releaseDate: epAirDate,
+                                            ));
 
                                     return SizedBox(
                                       width: cardWidth,
@@ -1188,21 +1327,24 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                         focusedScale: 1.02,
                                         glowBlurRadius: 12,
                                         borderRadius: BorderRadius.circular(14),
-                                        onTap: () => _playTvEpisode(
-                                          context,
-                                          name: name,
-                                          episodeTitle:
-                                              'S$_selectedSeasonNumber:E$epNum $epName',
-                                          imdbId: imdbId,
-                                          season: _selectedSeasonNumber,
-                                          episode: epNum,
-                                          tvId: tvId,
-                                          posterPath: posterPath,
-                                          backdropPath: epStill ?? backdropPath,
-                                          overview: epOverview.isNotEmpty
-                                              ? epOverview
-                                              : overview,
-                                        ),
+                                        onTap: isEpComingSoon
+                                            ? null
+                                            : () => _playTvEpisode(
+                                                context,
+                                                name: name,
+                                                episodeTitle:
+                                                    'S$_selectedSeasonNumber:E$epNum $epName',
+                                                imdbId: imdbId,
+                                                season: _selectedSeasonNumber,
+                                                episode: epNum,
+                                                tvId: tvId,
+                                                posterPath: posterPath,
+                                                backdropPath:
+                                                    epStill ?? backdropPath,
+                                                overview: epOverview.isNotEmpty
+                                                    ? epOverview
+                                                    : overview,
+                                              ),
                                         child: Container(
                                           decoration: BoxDecoration(
                                             color: AppColors.surfaceVariant
@@ -1338,22 +1480,23 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                                           ),
                                                       ],
                                                     ),
-                                                    if (epOverview
-                                                        .isNotEmpty) ...[
-                                                      const SizedBox(height: 6),
-                                                      Text(
-                                                        epOverview,
-                                                        maxLines: 2,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                        style: const TextStyle(
-                                                          color: AppColors
-                                                              .textSecondary,
-                                                          fontSize: 11,
-                                                          height: 1.3,
-                                                        ),
+                                                    const SizedBox(height: 6),
+                                                    Text(
+                                                      epOverview.isNotEmpty
+                                                          ? epOverview
+                                                          : (overview.isNotEmpty
+                                                                ? overview
+                                                                : s.detailNoSynopsis),
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                        color: AppColors
+                                                            .textSecondary,
+                                                        fontSize: 11,
+                                                        height: 1.3,
                                                       ),
-                                                    ],
+                                                    ),
                                                   ],
                                                 ),
                                               ),
@@ -1495,6 +1638,7 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
     required int tvId,
     required TrailerVideoModel? trailer,
     required bool isCompact,
+    required bool isComingSoon,
   }) {
     final posterWidth = isCompact ? 100.0 : 120.0;
     final posterHeight = isCompact ? 150.0 : 180.0;
@@ -1705,35 +1849,45 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
 
                 const SizedBox(height: 20),
 
-                // ── Action Row: Watch Now, Trailer & Watchlist ──
+                // ── Action Row: Watch Now (or Disabled "Segera Hadir"), Trailer & Watchlist ──
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () => _playTvEpisode(
-                          context,
-                          name: name,
-                          episodeTitle:
-                              'Season $_selectedSeasonNumber Episode 1',
-                          imdbId: imdbId,
-                          season: _selectedSeasonNumber,
-                          episode: 1,
-                          tvId: tvId,
-                          posterPath: posterPath,
-                          backdropPath: backdropPath,
-                          overview: overview,
-                        ),
-                        icon: const Icon(
-                          Icons.play_arrow_rounded,
-                          size: 28,
-                          color: Colors.black,
+                        onPressed: isComingSoon
+                            ? null
+                            : () => _playTvEpisode(
+                                context,
+                                name: name,
+                                episodeTitle:
+                                    'Season $_selectedSeasonNumber Episode 1',
+                                imdbId: imdbId,
+                                season: _selectedSeasonNumber,
+                                episode: 1,
+                                tvId: tvId,
+                                posterPath: posterPath,
+                                backdropPath: backdropPath,
+                                overview: overview,
+                              ),
+                        icon: Icon(
+                          isComingSoon
+                              ? Icons.schedule_rounded
+                              : Icons.play_arrow_rounded,
+                          size: isComingSoon ? 22 : 28,
+                          color: isComingSoon
+                              ? AppColors.textMuted
+                              : Colors.black,
                         ),
                         label: Text(
-                          s.detailWatchTv(_selectedSeasonNumber, 1),
+                          isComingSoon
+                              ? s.detailComingSoon
+                              : s.detailWatchTv(_selectedSeasonNumber, 1),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
-                            color: Colors.black,
+                            color: isComingSoon
+                                ? AppColors.textMuted
+                                : Colors.black,
                             letterSpacing: 0.2,
                           ),
                           maxLines: 1,
@@ -1741,7 +1895,9 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          elevation: 6,
+                          disabledBackgroundColor: AppColors.surfaceVariant,
+                          disabledForegroundColor: AppColors.textMuted,
+                          elevation: isComingSoon ? 0 : 6,
                           shadowColor: AppColors.primary.withValues(alpha: 0.4),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -2123,27 +2279,35 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                 .trim();
                             final epRuntime = ep['runtime'] as int?;
                             final epAirDate = ep['air_date'] as String? ?? '';
+                            final isEpComingSoon =
+                                isComingSoon ||
+                                (epAirDate.isNotEmpty &&
+                                    MediaReleaseGuard.isUnreleasedByMetadata(
+                                      releaseDate: epAirDate,
+                                    ));
 
                             return TvFocusable(
                               borderRadius: BorderRadius.circular(8),
                               scaleOnFocus: 1.01,
-                              onTap: () => _playTvEpisode(
-                                context,
-                                name: name,
-                                episodeTitle:
-                                    'S$_selectedSeasonNumber:E$epNum $epName',
-                                imdbId: imdbId,
-                                season: _selectedSeasonNumber,
-                                episode: epNum,
-                                tvId: tvId,
-                                posterPath: posterPath,
-                                backdropPath:
-                                    (ep['still_path'] as String?) ??
-                                    backdropPath,
-                                overview: epOverview.isNotEmpty
-                                    ? epOverview
-                                    : overview,
-                              ),
+                              onTap: isEpComingSoon
+                                  ? null
+                                  : () => _playTvEpisode(
+                                      context,
+                                      name: name,
+                                      episodeTitle:
+                                          'S$_selectedSeasonNumber:E$epNum $epName',
+                                      imdbId: imdbId,
+                                      season: _selectedSeasonNumber,
+                                      episode: epNum,
+                                      tvId: tvId,
+                                      posterPath: posterPath,
+                                      backdropPath:
+                                          (ep['still_path'] as String?) ??
+                                          backdropPath,
+                                      overview: epOverview.isNotEmpty
+                                          ? epOverview
+                                          : overview,
+                                    ),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 12,
@@ -2283,86 +2447,117 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                                 ),
                                             ],
                                           ),
-                                          if (epOverview.isNotEmpty) ...[
-                                            const SizedBox(height: 5),
-                                            Text(
-                                              epOverview,
-                                              style: TextStyle(
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.65,
-                                                ),
-                                                fontSize: 12,
-                                                height: 1.35,
+                                          const SizedBox(height: 5),
+                                          Text(
+                                            epOverview.isNotEmpty
+                                                ? epOverview
+                                                : (overview.isNotEmpty
+                                                      ? overview
+                                                      : s.detailNoSynopsis),
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.65,
                                               ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
+                                              fontSize: 12,
+                                              height: 1.35,
                                             ),
-                                          ],
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ],
                                       ),
                                     ),
 
                                     const SizedBox(width: 8),
 
-                                    // Episode Action Buttons: Download & Play
-                                    Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(
-                                            minWidth: 32,
-                                            minHeight: 32,
+                                    // Episode Action Buttons: Download & Play (or Disabled "Segera Hadir" badge)
+                                    if (isEpComingSoon)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.08,
                                           ),
-                                          onPressed: () {
-                                            DownloadOptionsModal.show(
-                                              context,
-                                              tmdbId: tvId,
-                                              mediaType: 'tv',
-                                              title: name,
-                                              season: _selectedSeasonNumber,
-                                              episode: epNum,
-                                              episodeTitle: epName,
-                                              posterPath: posterPath,
-                                              episodeStillPath: epStill,
-                                              backdropPath: backdropPath,
-                                              imdbId: imdbId,
-                                              runtimeMinutes: epRuntime ?? 45,
-                                            );
-                                          },
-                                          icon: const Icon(
-                                            Icons.download_rounded,
-                                            size: 20,
-                                            color: AppColors.primary,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
                                           ),
-                                          tooltip: s.detailDownloadEpisode(
-                                            epNum,
+                                          border: Border.all(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.14,
+                                            ),
                                           ),
                                         ),
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary.withValues(
-                                              alpha: 0.15,
+                                        child: Text(
+                                          s.detailComingSoon,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textMuted,
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          IconButton(
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(
+                                              minWidth: 32,
+                                              minHeight: 32,
                                             ),
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
+                                            onPressed: () {
+                                              DownloadOptionsModal.show(
+                                                context,
+                                                tmdbId: tvId,
+                                                mediaType: 'tv',
+                                                title: name,
+                                                season: _selectedSeasonNumber,
+                                                episode: epNum,
+                                                episodeTitle: epName,
+                                                posterPath: posterPath,
+                                                episodeStillPath: epStill,
+                                                backdropPath: backdropPath,
+                                                imdbId: imdbId,
+                                                runtimeMinutes: epRuntime ?? 45,
+                                              );
+                                            },
+                                            icon: const Icon(
+                                              Icons.download_rounded,
+                                              size: 20,
+                                              color: AppColors.primary,
+                                            ),
+                                            tooltip: s.detailDownloadEpisode(
+                                              epNum,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
                                               color: AppColors.primary
-                                                  .withValues(alpha: 0.4),
-                                              width: 0.8,
+                                                  .withValues(alpha: 0.15),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.4),
+                                                width: 0.8,
+                                              ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.play_arrow_rounded,
+                                              color: AppColors.primary,
+                                              size: 18,
                                             ),
                                           ),
-                                          child: const Icon(
-                                            Icons.play_arrow_rounded,
-                                            color: AppColors.primary,
-                                            size: 18,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                        ],
+                                      ),
                                   ],
                                 ),
                               ),

@@ -59,13 +59,17 @@ class MovieRepositoryImpl implements MovieRepository {
   }
 
   @override
-  Future<List<Movie>> searchMovies(String query, {int page = 1}) {
-    return _remoteDatasource.searchMovies(query, page: page);
+  Future<List<Movie>> searchMovies(String query, {int page = 1, int? year}) {
+    return _remoteDatasource.searchMovies(query, page: page, year: year);
   }
 
   @override
-  Future<List<TvSeries>> searchTvSeries(String query, {int page = 1}) {
-    return _remoteDatasource.searchTvSeries(query, page: page);
+  Future<List<TvSeries>> searchTvSeries(
+    String query, {
+    int page = 1,
+    int? year,
+  }) {
+    return _remoteDatasource.searchTvSeries(query, page: page, year: year);
   }
 
   @override
@@ -86,5 +90,35 @@ class MovieRepositoryImpl implements MovieRepository {
   @override
   Future<List<TvSeries>> getTvRecommendations(int tvId, {int page = 1}) {
     return _remoteDatasource.getTvRecommendations(tvId, page: page);
+  }
+
+  @override
+  Future<List<Movie>> getCuratedSectionMovies({
+    required ContentPreference category,
+    int page = 1,
+    int? releaseYear,
+    String sortBy = 'popularity.desc',
+  }) {
+    return _remoteDatasource.getCuratedSectionMovies(
+      category: category,
+      page: page,
+      releaseYear: releaseYear,
+      sortBy: sortBy,
+    );
+  }
+
+  @override
+  Future<List<TvSeries>> getCuratedSectionTvSeries({
+    required ContentPreference category,
+    int page = 1,
+    int? releaseYear,
+    String sortBy = 'popularity.desc',
+  }) {
+    return _remoteDatasource.getCuratedSectionTvSeries(
+      category: category,
+      page: page,
+      releaseYear: releaseYear,
+      sortBy: sortBy,
+    );
   }
 }

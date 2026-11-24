@@ -28,10 +28,22 @@ abstract class MovieRepository {
     int page = 1,
     ContentPreference preference = ContentPreference.all,
   });
-  Future<List<Movie>> searchMovies(String query, {int page = 1});
-  Future<List<TvSeries>> searchTvSeries(String query, {int page = 1});
+  Future<List<Movie>> searchMovies(String query, {int page = 1, int? year});
+  Future<List<TvSeries>> searchTvSeries(String query, {int page = 1, int? year});
   Future<List<Movie>> getMoviesByWatchProvider({required dynamic providerId, int page = 1});
   Future<List<TvSeries>> getTvByWatchProvider({required dynamic providerId, int page = 1});
   Future<List<Movie>> getMovieRecommendations(int movieId, {int page = 1});
   Future<List<TvSeries>> getTvRecommendations(int tvId, {int page = 1});
+  Future<List<Movie>> getCuratedSectionMovies({
+    required ContentPreference category,
+    int page = 1,
+    int? releaseYear,
+    String sortBy = 'popularity.desc',
+  });
+  Future<List<TvSeries>> getCuratedSectionTvSeries({
+    required ContentPreference category,
+    int page = 1,
+    int? releaseYear,
+    String sortBy = 'popularity.desc',
+  });
 }

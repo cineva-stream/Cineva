@@ -1,0 +1,93 @@
+name: Telegram Channel Auto-Broadcast
+
+on:
+  # 1. Automated New Release Broadcast every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
+  schedule:
+    - cron: '0 */6 * * *'
+
+  # 2. Automated App Update / New Feature Broadcast when a GitHub Release is published
+  release:
+    types: [published]
+
+  # 3. Manual Trigger from GitHub Actions UI (for testing or on-demand broadcast)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Broadcast mode (releases, app-update, test)'
+        required: true
+        default: 'releases'
+        type: choice
+        options:
+          - releases
+          - app-update
+          - test
+      max_posts:
+        description: 'Number of new Movies/Series to broadcast (for releases mode)'
+        required: false
+        default: '2'
+        type: string
+      tmdb_id:
+        description: 'Optional specific TMDB ID to broadcast'
+        required: false
+        default: ''
+        type: string
+      media_type:
+        description: 'Media type if TMDB ID is specified (movie or tv)'
+        required: false
+        default: 'movie'
+        type: choice
+        options:
+          - movie
+          - tv
+
+jobs:
+  telegram-broadcast:
+    name: Broadcast to Cineva Telegram Channel
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Restore Broadcast De-duplication Cache
+        uses: actions/cache@v4
+        with:
+          path: .telegram_posted_cache.json
+          key: telegram-posted-cache-${{ github.run_id }}
+          restore-keys: |
+            telegram-posted-cache-
+
+      - name: Run Automated Telegram Broadcast
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID || '@cineva_platform' }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_ACCESS_TOKEN: ${{ secrets.TMDB_ACCESS_TOKEN }}
+          CINEVA_SCRAPER_API_URL: ${{ secrets.CINEVA_SCRAPER_API_URL }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MODE: ${{ inputs.mode }}
+          INPUT_MAX_POSTS: ${{ inputs.max_posts }}
+          INPUT_TMDB_ID: ${{ inputs.tmdb_id }}
+          INPUT_MEDIA_TYPE: ${{ inputs.media_type }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TITLE: ${{ github.event.release.name }}
+          RELEASE_NOTES: ${{ github.event.release.body }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        run: |
+          if [ "$EVENT_NAME" = "release" ]; then
+            python3 scripts/telegram_broadcast.py --mode app-update
+          else
+            MODE="${INPUT_MODE:-releases}"
+            MAX_POSTS="${INPUT_MAX_POSTS:-2}"
+            EXTRA_ARGS=""
+            if [ -n "$INPUT_TMDB_ID" ]; then
+              EXTRA_ARGS="--tmdb-id $INPUT_TMDB_ID --media-type ${INPUT_MEDIA_TYPE:-movie}"
+            fi
+            python3 scripts/telegram_broadcast.py --mode "$MODE" --max-posts "$MAX_POSTS" $EXTRA_ARGS
+          fi
