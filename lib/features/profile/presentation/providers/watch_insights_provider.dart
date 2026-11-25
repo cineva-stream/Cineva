@@ -10,7 +10,7 @@ import 'profile_provider.dart';
 
 /// Currently selected card design mode (Member ID vs Metal Card).
 final memberCardStyleProvider = StateProvider<MemberCardStyle>(
-  (ref) => MemberCardStyle.ktp,
+  (ref) => MemberCardStyle.idCard,
 );
 
 /// Currently selected humorous caption index (0..5).
@@ -340,7 +340,7 @@ WatchInsights computeWatchInsights({
               1000)
           .toString();
 
-  final ktpNikNumber = '3273 • $earliestYear • $block3 • $block4';
+  final idCardNumber = '3273 • $earliestYear • $block3 • $block4';
   final atmCardNumber = '8842  $earliestYear  $block3  $block4';
 
   final topFlavors = _computeContentDna(
@@ -366,7 +366,7 @@ WatchInsights computeWatchInsights({
     personaLevel: personaLevel,
     nextLevelTargetHours: nextLevelTargetHours,
     levelProgress: levelProgress,
-    ktpNikNumber: ktpNikNumber,
+    idCardNumber: idCardNumber,
     atmCardNumber: atmCardNumber,
     memberSinceYear: earliestYear.toString(),
     topFlavors: topFlavors,

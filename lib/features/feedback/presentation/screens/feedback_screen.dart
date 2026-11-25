@@ -7,8 +7,10 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/localization/app_strings.dart';
+import '../../../backup/presentation/providers/backup_providers.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../data/feedback_service.dart';
+import '../../data/feedback_smtp_service.dart';
 
 /// Screen allowing Cineva users to report bugs, suggest new features,
 /// or submit media/subtitle issues directly to the developer's Telegram Bot.
@@ -22,6 +24,7 @@ class FeedbackScreen extends ConsumerStatefulWidget {
 class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
+  late final TextEditingController _emailController;
   late final TextEditingController _titleController;
   late final TextEditingController _descController;
 
@@ -30,13 +33,15 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
   bool _isSubmitting = false;
 
   String _deviceInfo = 'Memuat perangkat...';
-  String _appVersion = 'Cineva v1.2.0';
+  String _appVersion = 'Cineva v1.2.1';
 
   @override
   void initState() {
     super.initState();
     final profile = ref.read(userProfileProvider);
+    final googleEmail = (ref.read(googleSyncProvider).email ?? '').trim();
     _nameController = TextEditingController(text: profile.name);
+    _emailController = TextEditingController(text: googleEmail);
     _titleController = TextEditingController();
     _descController = TextEditingController();
 
@@ -57,6 +62,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _emailController.dispose();
     _titleController.dispose();
     _descController.dispose();
     super.dispose();
@@ -64,6 +70,12 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
 
   Future<void> _handleSubmit() async {
     final s = ref.read(appStringsProvider);
+
+    final email = _emailController.text.trim();
+    if (email.isNotEmpty && !FeedbackSmtpService.isValidEmail(email)) {
+      _showSnack(s.feedbackValidationEmailInvalid, isError: true);
+      return;
+    }
 
     final title = _titleController.text.trim();
     if (title.isEmpty) {
@@ -82,6 +94,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
     final service = FeedbackService();
     final success = await service.submitFeedback(
       name: _nameController.text.trim(),
+      email: email,
       category: _selectedCategory.idLabel,
       title: title,
       description: desc,
@@ -228,6 +241,14 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
   Widget build(BuildContext context) {
     final s = ref.watch(appStringsProvider);
 
+    // Auto-fill email if Google Sign-In state finishes loading after screen opens
+    ref.listen(googleSyncProvider, (prev, next) {
+      final newEmail = (next.email ?? '').trim();
+      if (newEmail.isNotEmpty && _emailController.text.trim().isEmpty) {
+        _emailController.text = newEmail;
+      }
+    });
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -337,6 +358,52 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                   controller: _nameController,
                   hintText: s.feedbackNameHint,
                   prefixIcon: Iconsax.user,
+                ),
+                const SizedBox(height: 18),
+
+                // ── Email Field (Optional, Auto-Filled from Google Account) ──
+                Text(
+                  s.feedbackEmailLabel,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildTextField(
+                  controller: _emailController,
+                  hintText: s.feedbackEmailHint,
+                  prefixIcon: Iconsax.sms,
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1.5),
+                        child: Icon(
+                          Icons.info_outline_rounded,
+                          size: 14,
+                          color: AppColors.primary.withValues(alpha: 0.85),
+                        ),
+                      ),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          s.feedbackEmailHelperNote,
+                          style: GoogleFonts.inter(
+                            fontSize: 11.5,
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 18),
 
@@ -603,6 +670,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
     required TextEditingController controller,
     required String hintText,
     required IconData prefixIcon,
+    TextInputType? keyboardType,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -611,6 +679,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
       ),
       child: TextField(
         controller: controller,
+        keyboardType: keyboardType,
         style: GoogleFonts.inter(color: Colors.white, fontSize: 13.5),
         cursorColor: AppColors.primary,
         decoration: InputDecoration(

@@ -67,7 +67,7 @@ void main() {
     });
   });
 
-  group('Cineva Insights & Humorous KTP / ATM Member Card Calculations', () {
+  group('Cineva Insights & Humorous ID / ATM Member Card Calculations', () {
     final now = DateTime(2026, 11, 24, 20, 0);
     final testProfile = UserProfile(
       name: 'Budi Santoso',
@@ -177,7 +177,7 @@ void main() {
       expect(insights.personaTitle(AppLanguage.hi), 'मिडनाइट बिंज एंबेसडर');
 
       // Card numbers formatted properly
-      expect(insights.ktpNikNumber.startsWith('3273 • '), isTrue);
+      expect(insights.idCardNumber.startsWith('3273 • '), isTrue);
       expect(insights.atmCardNumber.startsWith('8842  '), isTrue);
 
       // Humorous captions contain download link and watch metrics in all 3 languages
@@ -196,7 +196,7 @@ void main() {
       }
     });
 
-    testWidgets('renders CinevaMemberCardWidget in KTP and ATM styles without overflow', (tester) async {
+    testWidgets('renders CinevaMemberCardWidget in ID and ATM styles without overflow', (tester) async {
       final insights = computeWatchInsights(
         history: testHistory,
         watchlist: const [],

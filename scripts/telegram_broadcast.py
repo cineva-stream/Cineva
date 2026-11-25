@@ -30,6 +30,7 @@ import datetime as dt
 import html
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -285,14 +286,14 @@ def classify_category_badge(item: dict[str, Any], media_type: str) -> str:
     genre_ids = set(item.get("genre_ids") or [g.get("id") for g in (item.get("genres") or [])])
 
     if 16 in genre_ids and (orig_lang == "ja" or "JP" in origin_countries):
-        return "🎌 NEW ANIME ON CINEVA"
+        return "NEW ANIME"
     if orig_lang == "ko" or "KR" in origin_countries:
-        return "🇰🇷 NEW K-DRAMA ON CINEVA" if media_type == "tv" else "🇰🇷 NEW KOREAN MOVIE"
+        return "NEW K-DRAMA" if media_type == "tv" else "NEW KOREAN MOVIE"
     if orig_lang == "id" or "ID" in origin_countries:
-        return "🇮🇩 NEW INDONESIAN RELEASE"
+        return "NEW INDONESIAN RELEASE"
     if orig_lang == "hi" or "IN" in origin_countries:
-        return "🇮🇳 NEW BOLLYWOOD RELEASE"
-    return "🎬 NEW MOVIE ON CINEVA" if media_type == "movie" else "📺 NEW TV SERIES ON CINEVA"
+        return "NEW BOLLYWOOD RELEASE"
+    return "NEW MOVIE" if media_type == "movie" else "NEW TV SERIES"
 
 
 def format_media_caption(item: dict[str, Any], media_type: str) -> str:
@@ -320,8 +321,8 @@ def format_media_caption(item: dict[str, Any], media_type: str) -> str:
             f"Stream {title} ({year}) in Full HD with multi-language subtitles, "
             f"completely free and ad-free on Cineva Stream."
         )
-    if len(overview) > 360:
-        overview = overview[:357].rstrip() + "..."
+    if len(overview) > 340:
+        overview = overview[:337].rstrip() + "..."
 
     badge = classify_category_badge(item, media_type)
     esc_title = html.escape(title)
@@ -332,12 +333,11 @@ def format_media_caption(item: dict[str, Any], media_type: str) -> str:
         f"<b>{badge}</b>",
         "",
         f"<b>{esc_title} ({html.escape(year)})</b>",
-        f"<b>Rating:</b> {rating_str}  •  <b>Genre:</b> {esc_genre}",
-        f"<b>Status:</b> Available &amp; Ready to Stream",
+        f"Rating: {rating_str}  •  {esc_genre}",
         "",
-        f"<b>Synopsis:</b>\n{esc_overview}",
+        f"<blockquote>{esc_overview}</blockquote>",
         "",
-        "<i>Tap <b>Watch on Cineva</b> below to open this title directly in the Cineva app!</i>",
+        "<i>Available now on Cineva Stream.</i>",
     ]
     return "\n".join(lines)
 
@@ -413,17 +413,17 @@ def build_media_inline_keyboard(
         "inline_keyboard": [
             [
                 {
-                    "text": "🎬 Watch on Cineva",
+                    "text": "Watch on Cineva",
                     "url": watch_url,
                 }
             ],
             [
                 {
-                    "text": "📲 Download App",
+                    "text": "Download App",
                     "url": CINEVA_RELEASES_URL,
                 },
                 {
-                    "text": "🍿 Watch Party",
+                    "text": "Watch Party",
                     "url": f"{CINEVA_DEEP_LINK_BASE}/",
                 },
             ],
@@ -614,6 +614,137 @@ def run_releases_broadcast(
     return 0
 
 
+def translate_to_english(text: str) -> str:
+    """
+    Automatically translates Indonesian/non-English release note lines into natural English
+    so Telegram broadcasts on @cineva_platform are always 100% English.
+    """
+    cleaned = text.strip()
+    if not cleaned:
+        return cleaned
+    qs = urllib.parse.urlencode(
+        {
+            "client": "gtx",
+            "sl": "auto",
+            "tl": "en",
+            "dt": "t",
+            "q": cleaned,
+        }
+    )
+    url = f"https://translate.googleapis.com/translate_a/single?{qs}"
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode("utf-8", errors="replace"))
+                if isinstance(data, list) and data and isinstance(data[0], list):
+                    parts = [
+                        str(seg[0])
+                        for seg in data[0]
+                        if isinstance(seg, list) and seg and seg[0] is not None
+                    ]
+                    translated = "".join(parts).strip()
+                    if translated:
+                        return translated
+    except Exception:
+        pass
+    return cleaned
+
+
+def _clean_markdown_line(text: str) -> str:
+    """Strips Markdown formatting tokens (#, **, *, `, links) from a single line."""
+    s = text.strip()
+    # Convert markdown links [label](url) -> label
+    s = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", s)
+    # Remove heading hashes and numbered prefix like "### 1. "
+    s = re.sub(r"^#{1,6}\s*(?:\d+\.\s*)?", "", s)
+    # Remove leading bullet symbols
+    s = re.sub(r"^[-*•+]\s+", "", s)
+    # Strip bold/italic/code markers
+    s = s.replace("**", "").replace("__", "").replace("`", "")
+    s = re.sub(r"\s+", " ", s).strip(" :-–—")
+    return s
+
+
+def extract_core_release_highlights(raw_notes: str, max_items: int = 6) -> list[str]:
+    """
+    Extracts only the core feature highlights from a full Markdown release body,
+    stripping raw Markdown symbols and verbose sub-bullets.
+    """
+    if not raw_notes or not raw_notes.strip():
+        return [
+            "Full Hindi (India) language support alongside Indonesian and English",
+            "Personalized 'Because You Watched' recommendations on Home",
+            "Cineva Insights & Watch Stats page in Profile",
+            "Optimized background download engine with instant finalizing",
+            "Added Anime, K-Drama, Indonesia, Hollywood & Bollywood sections",
+            "Search results now default to newest releases first",
+        ]
+
+    lines = raw_notes.splitlines()
+    heading_highlights: list[str] = []
+    bullet_highlights: list[str] = []
+
+    for raw_line in lines:
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("---"):
+            continue
+        # Stop before older version history or build file lists
+        if re.match(r"^#{1,3}\s*(?:Riwayat Versi|Previous Versions|Informasi Versi|Version Info)", stripped, re.I):
+            break
+
+        # 1. Capture numbered feature headings like "### 1. Feature Name (*English Subtitle*)"
+        m_head = re.match(r"^###\s+(?:\d+\.\s*)?(.+)$", stripped)
+        if m_head:
+            raw_heading = m_head.group(1).strip()
+            # If there is an English parenthetical (*...*), prefer the English title for the English Telegram channel
+            paren_match = re.search(r"\(\*([^*]+)\*\)", raw_heading)
+            if paren_match:
+                cleaned = _clean_markdown_line(paren_match.group(1))
+            else:
+                cleaned = _clean_markdown_line(raw_heading)
+            if cleaned and len(cleaned) >= 4:
+                heading_highlights.append(cleaned)
+            continue
+
+        # 2. Capture top-level bullets (not deeply indented sub-bullets)
+        indent = len(raw_line) - len(raw_line.lstrip(" "))
+        if indent <= 2 and re.match(r"^[-*•]\s+", stripped):
+            cleaned = _clean_markdown_line(stripped)
+            # Keep only concise summary part before a colon if the line is very long
+            if ":" in cleaned and len(cleaned) > 95:
+                head_part, tail_part = cleaned.split(":", 1)
+                if 10 <= len(head_part.strip()) <= 75:
+                    cleaned = head_part.strip()
+                else:
+                    cleaned = f"{head_part.strip()}: {tail_part.strip()[:70].rstrip()}..."
+            elif len(cleaned) > 105:
+                cleaned = cleaned[:102].rstrip() + "..."
+            if cleaned and not cleaned.lower().startswith("cineva_"):
+                bullet_highlights.append(cleaned)
+
+    chosen = heading_highlights if len(heading_highlights) >= 2 else bullet_highlights
+    if not chosen:
+        for raw_line in lines:
+            cleaned = _clean_markdown_line(raw_line)
+            if len(cleaned) >= 8:
+                chosen.append(cleaned[:100])
+            if len(chosen) >= max_items:
+                break
+
+    # Ensure every extracted highlight is in English
+    english_highlights: list[str] = []
+    for item in chosen[:max_items]:
+        en_item = _clean_markdown_line(translate_to_english(item))
+        if en_item:
+            english_highlights.append(en_item)
+    return english_highlights
+
+
 def run_app_update_broadcast(
     bot_token: str,
     chat_id: str,
@@ -624,28 +755,23 @@ def run_app_update_broadcast(
     dry_run: bool,
 ) -> int:
     clean_tag = html.escape(version_tag or "Latest")
-    clean_title = html.escape(release_title or f"Cineva Stream {version_tag}")
-    clean_notes = (release_notes or "").strip()
-    if not clean_notes:
-        clean_notes = (
-            "• Faster streaming & background offline downloads\n"
-            "• Expanded Anime, K-Drama, Hollywood, Bollywood & Indonesian catalogs\n"
-            "• Performance & stability improvements"
-        )
-    if len(clean_notes) > 700:
-        clean_notes = clean_notes[:697].rstrip() + "..."
-    esc_notes = html.escape(clean_notes)
+    raw_title = (release_title or f"Cineva Stream {version_tag}").strip()
+    # Remove trailing emojis/clutter from title
+    raw_title = re.sub(r"[\U0001F300-\U0001FAFF]+", "", raw_title).strip(" -–—")
+    clean_title = html.escape(raw_title or f"Cineva Stream {version_tag}")
+
+    highlights = extract_core_release_highlights(release_notes, max_items=6)
+    bullet_lines = [f"• {html.escape(item)}" for item in highlights]
 
     caption = "\n".join(
         [
-            "🚀 <b>NEW CINEVA APP UPDATE AVAILABLE!</b>",
+            f"<b>{clean_title}</b> (<code>{clean_tag}</code>)",
+            "<i>New App Update Available</i>",
             "",
-            f"📦 <b>{clean_title}</b> (<code>{clean_tag}</code>)",
+            "<b>Key Updates</b>",
+            *bullet_lines,
             "",
-            "✨ <b>What's New:</b>",
-            esc_notes,
-            "",
-            "📲 <i>Update your Cineva app now to enjoy the latest features and performance improvements!</i>",
+            "<i>Update your Cineva app to get the latest features and performance improvements.</i>",
         ]
     )
 
@@ -654,13 +780,13 @@ def run_app_update_broadcast(
         "inline_keyboard": [
             [
                 {
-                    "text": f"📲 Download Update ({version_tag or 'APK'})",
+                    "text": f"Download Update ({version_tag or 'Latest'})",
                     "url": target_download_url,
                 }
             ],
             [
                 {
-                    "text": "🎬 Watch on Cineva",
+                    "text": "Open Cineva",
                     "url": f"{CINEVA_DEEP_LINK_BASE}/",
                 }
             ],

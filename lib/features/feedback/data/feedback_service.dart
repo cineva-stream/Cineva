@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_language.dart';
 import '../../../../core/platform/device_form_factor.dart';
+import 'feedback_smtp_service.dart';
 
 /// Categories for user feedback and reports.
 enum FeedbackCategory {
@@ -105,9 +106,12 @@ class FeedbackService {
     }
   }
 
-  /// Submits the feedback payload to the Google Apps Script Webhook.
+  /// Submits the feedback payload to the Google Apps Script Webhook, and if a
+  /// valid [email] is provided, dispatches an automated professional English
+  /// confirmation email from `noreply.cineva@gmail.com` via Google SMTP.
   Future<bool> submitFeedback({
     required String name,
+    String? email,
     required String category,
     required String title,
     required String description,
@@ -116,9 +120,13 @@ class FeedbackService {
   }) async {
     final devInfo = deviceInfo ?? await getDeviceInfo();
     final ver = appVersion ?? await getAppVersion();
+    final cleanName = name.trim().isEmpty ? 'Anonim' : name.trim();
+    final cleanEmail = (email ?? '').trim();
+    final hasValidEmail = FeedbackSmtpService.isValidEmail(cleanEmail);
 
     final payload = {
-      'name': name.trim().isEmpty ? 'Anonim' : name.trim(),
+      'name': cleanName,
+      'email': hasValidEmail ? cleanEmail : '',
       'category': category,
       'title': title.trim(),
       'description': description.trim(),
@@ -140,9 +148,23 @@ class FeedbackService {
         final data = response.data;
         if (data is Map && data['status'] == 'error') {
           debugPrint('[FeedbackService] Warning: Script returned error status: ${data['message']}');
-          // Even if Google Sheets failed to append a row, the Telegram notification might have triggered,
-          // or vice versa. Return true if HTTP succeeded, or false if explicit script error.
           return false;
+        }
+
+        // Send non-blocking auto-reply email via Google SMTP if user provided a valid email
+        if (hasValidEmail) {
+          try {
+            await FeedbackSmtpService.sendAutoReplyEmail(
+              recipientEmail: cleanEmail,
+              userName: cleanName,
+              category: category,
+              title: title.trim(),
+              description: description.trim(),
+              appVersion: ver,
+            );
+          } catch (smtpErr) {
+            debugPrint('[FeedbackService] SMTP auto-reply non-fatal error: $smtpErr');
+          }
         }
         return true;
       }

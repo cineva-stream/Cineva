@@ -7,7 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Service responsible for rendering the KTP / ATM Member Card [RepaintBoundary]
+/// Service responsible for rendering the ID / ATM Member Card [RepaintBoundary]
 /// into an Ultra-HD PNG image and sharing it with a humorous default caption
 /// across Android (Native Share Sheet) and Windows Desktop.
 class MemberCardShareService {
@@ -35,7 +35,7 @@ class MemberCardShareService {
     }
   }
 
-  /// Shares the captured KTP / ATM Member Card PNG along with [captionText].
+  /// Shares the captured ID / ATM Member Card PNG along with [captionText].
   ///
   /// - On **Android**: Copies caption to clipboard as a handy backup and opens the
   ///   native Android `Intent.ACTION_SEND` share sheet with both the PNG card image

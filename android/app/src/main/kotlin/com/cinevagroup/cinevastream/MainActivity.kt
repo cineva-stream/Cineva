@@ -254,8 +254,16 @@ class MainActivity : FlutterActivity() {
                             "$packageName.fileprovider",
                             file
                         )
+                        val mimeType = if (
+                            file.name.endsWith(".jpg", ignoreCase = true) ||
+                            file.name.endsWith(".jpeg", ignoreCase = true)
+                        ) {
+                            "image/jpeg"
+                        } else {
+                            "image/png"
+                        }
                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "image/png"
+                            type = mimeType
                             putExtra(Intent.EXTRA_STREAM, uri)
                             putExtra(Intent.EXTRA_TEXT, text)
                             clipData = android.content.ClipData.newRawUri("", uri)
@@ -268,6 +276,24 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to share image with text: ${e.message}", e)
+                        result.error("SHARE_ERROR", e.message, null)
+                    }
+                }
+                "shareText" -> {
+                    val text = call.argument<String>("text") ?: ""
+                    val title = call.argument<String>("title") ?: "Share via Cineva"
+                    try {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, text)
+                        }
+                        val chooser = Intent.createChooser(shareIntent, title).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(chooser)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to share text: ${e.message}", e)
                         result.error("SHARE_ERROR", e.message, null)
                     }
                 }

@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/platform/device_form_factor.dart';
+import '../../../settings/data/settings_service.dart';
 import '../../domain/entities/app_update_info.dart';
 import '../providers/app_update_provider.dart';
 import 'install_permission_dialog.dart';
@@ -45,7 +46,10 @@ class _UpdateDetailModalState extends ConsumerState<UpdateDetailModal> {
   @override
   void initState() {
     super.initState();
-    _originalText = widget.info.changelog.trim();
+    final isIndo = SettingsService.getAppLanguage() == 'id';
+    _originalText = widget.info
+        .formatCoreChangelogMarkdown(preferEnglish: !isIndo)
+        .trim();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initLanguageAdaptation();
     });

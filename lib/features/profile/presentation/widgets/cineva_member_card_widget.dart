@@ -42,7 +42,7 @@ class CinevaMemberCardWidget extends StatelessWidget {
         child: SizedBox(
           width: 540,
           height: 540 / kMemberCardAspectRatio, // ~340.48
-          child: style == MemberCardStyle.ktp
+          child: style == MemberCardStyle.idCard
               ? _ModernMemberIdCardLayout(
                   profile: profile,
                   insights: insights,
@@ -280,7 +280,7 @@ class _ModernMemberIdCardLayout extends StatelessWidget {
                           ),
                         ),
                         child: Text(
-                          'ID • ${insights.ktpNikNumber}',
+                          'ID • ${insights.idCardNumber}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.right,

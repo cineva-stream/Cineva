@@ -1,6 +1,6 @@
 # Cineva v1.2.1 - Release Notes 🎬
 
-Pembaruan Cineva versi **1.2.1 (Build 22)** menghadirkan ekspansi katalog konten global, personalisasi tontonan cerdas, serta lonjakan besar pada performa pengunduhan offline: dukungan penuh **Bahasa India (Hindi / हिन्दी)** di seluruh antarmuka (3 bahasa: Indonesia, English, dan Hindi), section rekomendasi personal **"Because You Watched..."** berdasarkan film atau serial TV yang ditonton, halaman **Cineva Insights & Statistik Tontonan** di menu Profil (lengkap dengan kartu identitas member bergaya KTP / ATM Cineva), **Optimalisasi Mesin Unduhan Offline** (*Background Isolate* anti-lag dengan proses *finalizing* instan), penambahan 5 section regional baru (**Indonesia, Anime, K-Drama, Hollywood, dan Bollywood**) di layar utama lengkap dengan halaman katalog penuh *infinite scroll* (*See All*), serta pembaruan **Logika & Filter Pencarian** yang kini secara default menampilkan rilis terbaru terlebih dahulu.
+Pembaruan Cineva versi **1.2.1 (Build 22)** menghadirkan ekspansi katalog konten global, personalisasi tontonan cerdas, serta lonjakan besar pada performa pengunduhan offline: dukungan penuh **Bahasa India (Hindi / हिन्दी)** di seluruh antarmuka (3 bahasa: Indonesia, English, dan Hindi), section rekomendasi personal **"Because You Watched..."** berdasarkan film atau serial TV yang ditonton, halaman **Cineva Insights & Statistik Tontonan** di menu Profil (lengkap dengan kartu identitas member bergaya ID / ATM Cineva), **Optimalisasi Mesin Unduhan Offline** (*Background Isolate* anti-lag dengan proses *finalizing* instan), penambahan 5 section regional baru (**Indonesia, Anime, K-Drama, Hollywood, dan Bollywood**) di layar utama lengkap dengan halaman katalog penuh *infinite scroll* (*See All*), serta pembaruan **Logika & Filter Pencarian** yang kini secara default menampilkan rilis terbaru terlebih dahulu.
 
 ---
 
@@ -21,8 +21,8 @@ Pembaruan Cineva versi **1.2.1 (Build 22)** menghadirkan ekspansi katalog konten
 * **Dasbor Analisis Aktivitas Menonton**:
   * Menambahkan halaman **Cineva Insights / Statistik Tontonan** yang dapat diakses langsung dari menu Profil.
   * Menampilkan ringkasan metrik tontonan personal secara visual: total durasi jam menonton, jumlah film dan episode serial TV yang telah diselesaikan, distribusi genre favorit, tren aktivitas harian/mingguan, serta pencapaian (*milestones*) penonton.
-* **Studio Kartu Member Cineva (Gaya KTP & Kartu ATM Premium)**:
-  * Pengguna dapat melihat, menyesuaikan, dan membagikan kartu identitas anggota resmi Cineva (*Cineva Member Card*) dalam desain kartu KTP sinematik maupun kartu ATM modern lengkap dengan statistik tontonan pengguna.
+* **Studio Kartu Member Cineva (Gaya Kartu ID & Kartu ATM Premium)**:
+  * Pengguna dapat melihat, menyesuaikan, dan membagikan kartu identitas anggota resmi Cineva (*Cineva Member Card*) dalam desain Kartu ID sinematik maupun kartu ATM modern lengkap dengan statistik tontonan pengguna.
 
 ### 4. Optimalisasi Mesin Unduhan Offline (*High-Speed Background Isolate Download Engine*)
 * **Zero UI Lag dengan Background Isolate Murni**:

@@ -21,6 +21,7 @@ import '../../../../core/platform/device_form_factor.dart';
 import '../../../watch_party/domain/models/watch_party_room.dart';
 import '../../../watch_party/presentation/widgets/watch_party_modal.dart';
 import '../../../player/data/services/provider_loader_service.dart';
+import '../../data/services/media_share_service.dart';
 
 // ── TV Detail Provider ──
 
@@ -747,129 +748,68 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                 const SizedBox(height: 18),
 
                                 // Action Buttons Row (Widescreen wrap for safety)
-                                Wrap(
-                                  spacing: 12,
-                                  runSpacing: 10,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                // Action Buttons: 2-Row Layout
+                                // Row 1: Watch Now + Watchlist (icon-only)
+                                // Row 2: Trailer, Watch Party, Download, Share (all icon-only)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Watch Now (or Disabled "Segera Hadir" if unreleased)
-                                    if (isComingSoon)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 24,
-                                          vertical: 14,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.10,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.16,
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // Watch Now (or Disabled "Segera Hadir" if unreleased)
+                                        if (isComingSoon)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 24,
+                                              vertical: 14,
                                             ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.schedule_rounded,
-                                              color: AppColors.textMuted,
-                                              size: 20,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.10,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                              border: Border.all(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.16,
+                                                ),
+                                              ),
                                             ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              s.detailComingSoon,
-                                              style:
-                                                  GoogleFonts.plusJakartaSans(
-                                                    color: AppColors.textMuted,
-                                                    fontWeight: FontWeight.w800,
-                                                    fontSize: 14,
-                                                    letterSpacing: 0.2,
-                                                  ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.schedule_rounded,
+                                                  color: AppColors.textMuted,
+                                                  size: 20,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  s.detailComingSoon,
+                                                  style:
+                                                      GoogleFonts.plusJakartaSans(
+                                                        color:
+                                                            AppColors.textMuted,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        fontSize: 14,
+                                                        letterSpacing: 0.2,
+                                                      ),
+                                                ),
+                                              ],
                                             ),
-                                          ],
-                                        ),
-                                      )
-                                    else
-                                      TvFocusable(
-                                        autofocus: true,
-                                        focusedScale: 1.04,
-                                        glowBlurRadius: 16,
-                                        glowColor: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(14),
-                                        onTap: () => _playTvEpisode(
-                                          context,
-                                          name: name,
-                                          episodeTitle:
-                                              'Season $_selectedSeasonNumber Episode 1',
-                                          imdbId: imdbId,
-                                          season: _selectedSeasonNumber,
-                                          episode: 1,
-                                          tvId: tvId,
-                                          posterPath: posterPath,
-                                          backdropPath: backdropPath,
-                                          overview: overview,
-                                        ),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 24,
-                                            vertical: 14,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary,
+                                          )
+                                        else
+                                          TvFocusable(
+                                            autofocus: true,
+                                            focusedScale: 1.04,
+                                            glowBlurRadius: 16,
+                                            glowColor: AppColors.primary,
                                             borderRadius: BorderRadius.circular(
                                               14,
                                             ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: AppColors.primary
-                                                    .withValues(alpha: 0.4),
-                                                blurRadius: 18,
-                                                offset: const Offset(0, 4),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.play_arrow_rounded,
-                                                color: Colors.black,
-                                                size: 24,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                s.detailWatchTv(
-                                                  _selectedSeasonNumber,
-                                                  1,
-                                                ),
-                                                style:
-                                                    GoogleFonts.plusJakartaSans(
-                                                      color: Colors.black,
-                                                      fontWeight: FontWeight.w800,
-                                                      fontSize: 14,
-                                                      letterSpacing: 0.2,
-                                                    ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-
-                                    if (trailer != null)
-                                      TvFocusable(
-                                        focusedScale: 1.04,
-                                        borderRadius: BorderRadius.circular(12),
-                                        onTap: () {
-                                          InAppTrailerModal.show(
-                                            context,
-                                            trailer: trailer,
-                                            title: name,
-                                            onWatchNow: () => _playTvEpisode(
+                                            onTap: () => _playTvEpisode(
                                               context,
                                               name: name,
                                               episodeTitle:
@@ -882,212 +822,350 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                                               backdropPath: backdropPath,
                                               overview: overview,
                                             ),
-                                          );
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 18,
-                                            vertical: 13,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.12,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            border: Border.all(
-                                              color: Colors.redAccent
-                                                  .withValues(alpha: 0.5),
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.smart_display_rounded,
-                                                color: Colors.redAccent,
-                                                size: 20,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                s.trailerTitle,
-                                                style: GoogleFonts.inter(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-
-                                    // Watchlist Button
-                                    Consumer(
-                                      builder: (context, ref, _) {
-                                        final isInWatchlist = ref.watch(
-                                          isInWatchlistProvider((
-                                            id: tvId,
-                                            type: 'tv',
-                                          )),
-                                        );
-                                        return TvFocusable(
-                                          focusedScale: 1.04,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          onTap: () async {
-                                            final item = WatchlistItem(
-                                              id: tvId,
-                                              title: name,
-                                              posterPath: posterPath,
-                                              voteAverage: voteAverage,
-                                              type: 'tv',
-                                              addedAt: DateTime.now(),
-                                            );
-                                            final added = await ref
-                                                .read(
-                                                  watchlistProvider.notifier,
-                                                )
-                                                .toggle(item);
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                    added
-                                                        ? s.detailAddedToWatchlist
-                                                        : s.detailRemovedFromWatchlist,
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 24,
+                                                    vertical: 14,
                                                   ),
-                                                  backgroundColor:
-                                                      AppColors.surfaceVariant,
-                                                  duration: const Duration(
-                                                    seconds: 2,
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary,
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: AppColors.primary
+                                                        .withValues(alpha: 0.4),
+                                                    blurRadius: 18,
+                                                    offset: const Offset(0, 4),
                                                   ),
-                                                ),
-                                              );
-                                            }
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 18,
-                                              vertical: 13,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: isInWatchlist
-                                                  ? AppColors.primary
-                                                        .withValues(alpha: 0.15)
-                                                  : Colors.white.withValues(
-                                                      alpha: 0.12,
+                                                ],
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.play_arrow_rounded,
+                                                    color: Colors.black,
+                                                    size: 24,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    s.detailWatchTv(
+                                                      _selectedSeasonNumber,
+                                                      1,
                                                     ),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              border: Border.all(
-                                                color: isInWatchlist
-                                                    ? AppColors.primary
-                                                          .withValues(
-                                                            alpha: 0.6,
-                                                          )
-                                                    : Colors.white.withValues(
-                                                        alpha: 0.2,
-                                                      ),
-                                                width: 1,
+                                                    style:
+                                                        GoogleFonts.plusJakartaSans(
+                                                          color: Colors.black,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          fontSize: 14,
+                                                          letterSpacing: 0.2,
+                                                        ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  isInWatchlist
-                                                      ? Icons.bookmark_rounded
-                                                      : Icons
-                                                            .bookmark_border_rounded,
-                                                  color: isInWatchlist
-                                                      ? AppColors.primary
-                                                      : Colors.white,
-                                                  size: 20,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  'Watchlist',
-                                                  style: GoogleFonts.inter(
+                                          ),
+                                        const SizedBox(width: 10),
+                                        // Watchlist Icon-Only Button
+                                        Consumer(
+                                          builder: (context, ref, _) {
+                                            final isInWatchlist = ref.watch(
+                                              isInWatchlistProvider((
+                                                id: tvId,
+                                                type: 'tv',
+                                              )),
+                                            );
+                                            return Tooltip(
+                                              message: isInWatchlist
+                                                  ? s.detailWatchlistRemoveTooltip
+                                                  : s.detailWatchlistAddTooltip,
+                                              child: TvFocusable(
+                                                focusedScale: 1.04,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                onTap: () async {
+                                                  final item = WatchlistItem(
+                                                    id: tvId,
+                                                    title: name,
+                                                    posterPath: posterPath,
+                                                    voteAverage: voteAverage,
+                                                    type: 'tv',
+                                                    addedAt: DateTime.now(),
+                                                  );
+                                                  final added = await ref
+                                                      .read(
+                                                        watchlistProvider
+                                                            .notifier,
+                                                      )
+                                                      .toggle(item);
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          added
+                                                              ? s.detailAddedToWatchlist
+                                                              : s.detailRemovedFromWatchlist,
+                                                        ),
+                                                        backgroundColor:
+                                                            AppColors
+                                                                .surfaceVariant,
+                                                        duration:
+                                                            const Duration(
+                                                              seconds: 2,
+                                                            ),
+                                                      ),
+                                                    );
+                                                  }
+                                                },
+                                                child: Container(
+                                                  width: 48,
+                                                  height: 48,
+                                                  decoration: BoxDecoration(
+                                                    color: isInWatchlist
+                                                        ? AppColors.primary
+                                                              .withValues(
+                                                                alpha: 0.15,
+                                                              )
+                                                        : Colors.white
+                                                              .withValues(
+                                                                alpha: 0.12,
+                                                              ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: isInWatchlist
+                                                          ? AppColors.primary
+                                                                .withValues(
+                                                                  alpha: 0.6,
+                                                                )
+                                                          : Colors.white
+                                                                .withValues(
+                                                                  alpha: 0.2,
+                                                                ),
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: Icon(
+                                                    isInWatchlist
+                                                        ? Icons.bookmark_rounded
+                                                        : Icons
+                                                              .bookmark_border_rounded,
                                                     color: isInWatchlist
                                                         ? AppColors.primary
                                                         : Colors.white,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 13,
+                                                    size: 22,
                                                   ),
                                                 ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      },
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ],
                                     ),
-
-                                    // Download Button (Only when released)
-                                    if (!isComingSoon)
-                                      TvFocusable(
-                                        focusedScale: 1.04,
-                                        borderRadius: BorderRadius.circular(12),
-                                        onTap: () {
-                                          DownloadOptionsModal.show(
-                                            context,
-                                            tmdbId: tvId,
-                                            mediaType: 'tv',
-                                            title: name,
-                                            releaseYear: firstAirYear,
-                                            season: _selectedSeasonNumber,
-                                            episode: 1,
-                                            posterPath: posterPath,
-                                            backdropPath: backdropPath,
-                                            imdbId: imdbId,
-                                            runtimeMinutes: 45,
-                                          );
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 18,
-                                            vertical: 13,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.12,
+                                    const SizedBox(height: 10),
+                                    // Row 2: Secondary Icon-Only Buttons (Trailer, Watch Party, Download, Share)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (trailer != null) ...[
+                                          Tooltip(
+                                            message: s.trailerTitle,
+                                            child: TvFocusable(
+                                              focusedScale: 1.04,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              onTap: () {
+                                                InAppTrailerModal.show(
+                                                  context,
+                                                  trailer: trailer,
+                                                  title: name,
+                                                  onWatchNow: () => _playTvEpisode(
+                                                    context,
+                                                    name: name,
+                                                    episodeTitle:
+                                                        'Season $_selectedSeasonNumber Episode 1',
+                                                    imdbId: imdbId,
+                                                    season:
+                                                        _selectedSeasonNumber,
+                                                    episode: 1,
+                                                    tvId: tvId,
+                                                    posterPath: posterPath,
+                                                    backdropPath: backdropPath,
+                                                    overview: overview,
+                                                  ),
+                                                );
+                                              },
+                                              child: Container(
+                                                width: 48,
+                                                height: 48,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: Colors.redAccent
+                                                        .withValues(alpha: 0.5),
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.smart_display_rounded,
+                                                  color: Colors.redAccent,
+                                                  size: 22,
+                                                ),
+                                              ),
                                             ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                        ],
+                                        // Watch Party Icon-Only
+                                        Tooltip(
+                                          message: s.watchPartyTitle,
+                                          child: TvFocusable(
+                                            focusedScale: 1.04,
                                             borderRadius: BorderRadius.circular(
                                               12,
                                             ),
-                                            border: Border.all(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.2,
+                                            onTap: () {
+                                              WatchPartyModal.show(
+                                                context,
+                                                media: WatchPartyMedia(
+                                                  title: name,
+                                                  mediaType: 'tv',
+                                                  tmdbId: tvId,
+                                                  imdbId: imdbId,
+                                                  season: _selectedSeasonNumber,
+                                                  episode: 1,
+                                                  episodeTitle:
+                                                      'Season $_selectedSeasonNumber Episode 1',
+                                                  posterPath: posterPath,
+                                                  backdropPath: backdropPath,
+                                                ),
+                                              );
+                                            },
+                                            child: Container(
+                                              width: 48,
+                                              height: 48,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.12,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color: AppColors.primary
+                                                      .withValues(alpha: 0.5),
+                                                  width: 1,
+                                                ),
                                               ),
-                                              width: 1,
+                                              child: const Icon(
+                                                Iconsax.people,
+                                                color: AppColors.primary,
+                                                size: 21,
+                                              ),
                                             ),
                                           ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.download_rounded,
+                                        ),
+                                        if (!isComingSoon) ...[
+                                          const SizedBox(width: 10),
+                                          Tooltip(
+                                            message: s.navDownloads,
+                                            child: TvFocusable(
+                                              focusedScale: 1.04,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              onTap: () {
+                                                DownloadOptionsModal.show(
+                                                  context,
+                                                  tmdbId: tvId,
+                                                  mediaType: 'tv',
+                                                  title: name,
+                                                  releaseYear: firstAirYear,
+                                                  season: _selectedSeasonNumber,
+                                                  episode: 1,
+                                                  posterPath: posterPath,
+                                                  backdropPath: backdropPath,
+                                                  imdbId: imdbId,
+                                                  runtimeMinutes: 45,
+                                                );
+                                              },
+                                              child: Container(
+                                                width: 48,
+                                                height: 48,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: Colors.white
+                                                        .withValues(alpha: 0.2),
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.download_rounded,
+                                                  color: Colors.white,
+                                                  size: 22,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(width: 10),
+                                        // Share Deep-Link Icon-Only Button
+                                        Tooltip(
+                                          message: s.detailShareTooltip,
+                                          child: TvFocusable(
+                                            focusedScale: 1.04,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            onTap: () =>
+                                                MediaShareService.shareMedia(
+                                                  context,
+                                                  mediaType: 'tv',
+                                                  tmdbId: tvId,
+                                                  title: name,
+                                                  year: firstAirYear,
+                                                  rating: voteAverage,
+                                                  posterPath: posterPath,
+                                                  overview: overview,
+                                                  s: s,
+                                                ),
+                                            child: Container(
+                                              width: 48,
+                                              height: 48,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.12,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                border: Border.all(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.2),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: const Icon(
+                                                Icons.share_rounded,
                                                 color: Colors.white,
                                                 size: 20,
                                               ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                s.navDownloads,
-                                                style: GoogleFonts.inter(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                            ],
+                                            ),
                                           ),
                                         ),
-                                      ),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ],
@@ -1849,7 +1927,9 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
 
                 const SizedBox(height: 20),
 
-                // ── Action Row: Watch Now (or Disabled "Segera Hadir"), Trailer & Watchlist ──
+                // ── Action Rows (2-Row Layout):
+                // Row 1: Watch Now (or Disabled "Segera Hadir") + Watchlist (Icon-Only)
+                // Row 2: Trailer, Watch Party, Download, Share (All Icon-Only) ──
                 Row(
                   children: [
                     Expanded(
@@ -1906,100 +1986,8 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                         ),
                       ),
                     ),
-                    if (trailer != null) ...[
-                      const SizedBox(width: 10),
-                      Tooltip(
-                        message: s.trailerTitle,
-                        child: InkWell(
-                          onTap: () {
-                            InAppTrailerModal.show(
-                              context,
-                              trailer: trailer,
-                              title: name,
-                              onWatchNow: () => _playTvEpisode(
-                                context,
-                                name: name,
-                                episodeTitle:
-                                    'Season $_selectedSeasonNumber Episode 1',
-                                imdbId: imdbId,
-                                season: _selectedSeasonNumber,
-                                episode: 1,
-                                tvId: tvId,
-                                posterPath: posterPath,
-                                backdropPath: backdropPath,
-                                overview: overview,
-                              ),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(14),
-                          child: Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceVariant.withValues(
-                                alpha: 0.6,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: Colors.redAccent.withValues(alpha: 0.6),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.smart_display_rounded,
-                              color: Colors.redAccent,
-                              size: 26,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
                     const SizedBox(width: 10),
-                    // Watch Party Button (Nonton Bareng)
-                    Tooltip(
-                      message: s.watchPartyTitle,
-                      child: InkWell(
-                        onTap: () {
-                          WatchPartyModal.show(
-                            context,
-                            media: WatchPartyMedia(
-                              title: name,
-                              mediaType: 'tv',
-                              tmdbId: tvId,
-                              imdbId: imdbId,
-                              season: _selectedSeasonNumber,
-                              episode: 1,
-                              episodeTitle:
-                                  'Season $_selectedSeasonNumber Episode 1',
-                              posterPath: posterPath,
-                              backdropPath: backdropPath,
-                            ),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(14),
-                        child: Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant.withValues(
-                              alpha: 0.6,
-                            ),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.6),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: const Icon(
-                            Iconsax.people,
-                            color: AppColors.primary,
-                            size: 24,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // Watchlist Button (Outlined when not added, Filled icon when added)
+                    // Watchlist Icon-Only Button
                     Consumer(
                       builder: (context, ref, _) {
                         final mediaId = data['id'] as int? ?? 0;
@@ -2076,6 +2064,201 @@ class _TvDetailContentState extends ConsumerState<_TvDetailContent> {
                     ),
                   ],
                 ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+
+                const SizedBox(height: 10),
+
+                // ── Row 2: Secondary Icon-Only Buttons (Trailer, Watch Party, Download, Share) ──
+                Row(
+                  children: [
+                    if (trailer != null) ...[
+                      Expanded(
+                        child: Tooltip(
+                          message: s.trailerTitle,
+                          child: InkWell(
+                            onTap: () {
+                              InAppTrailerModal.show(
+                                context,
+                                trailer: trailer,
+                                title: name,
+                                onWatchNow: () => _playTvEpisode(
+                                  context,
+                                  name: name,
+                                  episodeTitle:
+                                      'Season $_selectedSeasonNumber Episode 1',
+                                  imdbId: imdbId,
+                                  season: _selectedSeasonNumber,
+                                  episode: 1,
+                                  tvId: tvId,
+                                  posterPath: posterPath,
+                                  backdropPath: backdropPath,
+                                  overview: overview,
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(14),
+                            child: Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceVariant.withValues(
+                                  alpha: 0.6,
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: Colors.redAccent.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.smart_display_rounded,
+                                color: Colors.redAccent,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    // Watch Party Icon-Only Button
+                    Expanded(
+                      child: Tooltip(
+                        message: s.watchPartyTitle,
+                        child: InkWell(
+                          onTap: () {
+                            WatchPartyModal.show(
+                              context,
+                              media: WatchPartyMedia(
+                                title: name,
+                                mediaType: 'tv',
+                                tmdbId: tvId,
+                                imdbId: imdbId,
+                                season: _selectedSeasonNumber,
+                                episode: 1,
+                                episodeTitle:
+                                    'Season $_selectedSeasonNumber Episode 1',
+                                posterPath: posterPath,
+                                backdropPath: backdropPath,
+                              ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceVariant.withValues(
+                                alpha: 0.6,
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.14),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Iconsax.people,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (!isComingSoon) ...[
+                      const SizedBox(width: 10),
+                      // Download Icon-Only Button
+                      Expanded(
+                        child: Tooltip(
+                          message: s.navDownloads,
+                          child: InkWell(
+                            onTap: () {
+                              final firstAirYear = firstAirDate.length >= 4
+                                  ? firstAirDate.substring(0, 4)
+                                  : '';
+                              DownloadOptionsModal.show(
+                                context,
+                                tmdbId: tvId,
+                                mediaType: 'tv',
+                                title: name,
+                                releaseYear: firstAirYear,
+                                season: _selectedSeasonNumber,
+                                episode: 1,
+                                posterPath: posterPath,
+                                backdropPath: backdropPath,
+                                imdbId: imdbId,
+                                runtimeMinutes: 45,
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(14),
+                            child: Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceVariant.withValues(
+                                  alpha: 0.6,
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.14),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.download_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 10),
+                    // Share Deep-Link Icon-Only Button
+                    Expanded(
+                      child: Tooltip(
+                        message: s.detailShareTooltip,
+                        child: InkWell(
+                          onTap: () {
+                            final firstAirYear = firstAirDate.length >= 4
+                                ? firstAirDate.substring(0, 4)
+                                : '';
+                            MediaShareService.shareMedia(
+                              context,
+                              mediaType: 'tv',
+                              tmdbId: tvId,
+                              title: name,
+                              year: firstAirYear,
+                              rating: voteAverage,
+                              posterPath: posterPath,
+                              overview: overview,
+                              s: s,
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceVariant.withValues(
+                                alpha: 0.6,
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.14),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.share_rounded,
+                              color: Colors.white,
+                              size: 21,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ).animate().fadeIn(delay: 240.ms).slideY(begin: 0.1),
 
                 const SizedBox(height: 24),
 

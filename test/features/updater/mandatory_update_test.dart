@@ -146,6 +146,71 @@ void main() {
       },
     );
 
+    test(
+      'extractCoreFeatures extracts only concise key features in ID and EN from full RELEASE.md markdown',
+      () {
+        const sampleReleaseBody = '''
+# Cineva v1.2.1 - Release Notes 🎬
+
+Pembaruan besar Cineva v1.2.1 menghadirkan fitur baru.
+
+---
+
+## Ringkasan Fitur Baru & Peningkatan Utama (v1.2.1)
+
+### 1. Dukungan Penuh Bahasa India / Hindi (*Full Trilingual Localization: Indonesia, English & Hindi*)
+* **Ekspansi Lokalisasi 3 Bahasa Menyeluruh**:
+  * Menambahkan bahasa Hindi.
+
+### 2. Rekomendasi Personal Berdasarkan Tontonan (*"Because You Watched..." Personalized Section*)
+* **Saran Konten Cerdas**:
+  * Menampilkan section dinamis.
+
+### 3. Optimalisasi Mesin Unduhan Offline (*High-Speed Background Isolate Download Engine*)
+* **Zero UI Lag**:
+  * Memindahkan unduhan ke Isolate.
+
+---
+
+## Riwayat Versi Sebelumnya
+
+### Cineva v1.2.0
+* Fitur lama yang tidak boleh ikut tampil.
+''';
+
+        const info = AppUpdateInfo(
+          latestVersion: '1.2.1',
+          releaseTitle: 'Cineva v1.2.1',
+          changelog: sampleReleaseBody,
+          apkUrl: 'https://example.com/Cineva_v1.2.1.apk',
+          apkFileName: 'Cineva_v1.2.1.apk',
+          apkSizeBytes: 17301504,
+          currentVersion: '1.2.0',
+        );
+
+        final idFeatures = info.extractCoreFeatures(preferEnglish: false);
+        expect(idFeatures.length, 3);
+        expect(idFeatures[0], 'Dukungan Penuh Bahasa India / Hindi');
+        expect(idFeatures[1], 'Rekomendasi Personal Berdasarkan Tontonan');
+        expect(idFeatures[2], 'Optimalisasi Mesin Unduhan Offline');
+
+        final enFeatures = info.extractCoreFeatures(preferEnglish: true);
+        expect(enFeatures.length, 3);
+        expect(
+          enFeatures[0],
+          'Full Trilingual Localization: Indonesia, English & Hindi',
+        );
+        expect(
+          enFeatures[1],
+          '"Because You Watched..." Personalized Section',
+        );
+        expect(
+          enFeatures[2],
+          'High-Speed Background Isolate Download Engine',
+        );
+      },
+    );
+
     testWidgets(
       'MandatoryUpdateScreen renders minimalist UI with Unduh and Batal buttons and exits on Batal',
       (tester) async {

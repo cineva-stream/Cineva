@@ -289,11 +289,11 @@ class _CinevaInsightsScreenState extends ConsumerState<CinevaInsightsScreen> {
             children: [
               Expanded(
                 child: _StyleToggleSegment(
-                  label: s.insightsCardModeKtp,
-                  isSelected: cardStyle == MemberCardStyle.ktp,
+                  label: s.insightsCardModeId,
+                  isSelected: cardStyle == MemberCardStyle.idCard,
                   onTap: () => ref
                       .read(memberCardStyleProvider.notifier)
-                      .state = MemberCardStyle.ktp,
+                      .state = MemberCardStyle.idCard,
                 ),
               ),
               const SizedBox(width: 4),

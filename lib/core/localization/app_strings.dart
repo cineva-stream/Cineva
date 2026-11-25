@@ -2469,7 +2469,7 @@ class AppStrings {
     'आपके लिए विशेष',
   );
 
-  // ── 18. CINEVA INSIGHTS / WRAPPED & KTP / ATM MEMBER CARD ──
+  // ── 18. CINEVA INSIGHTS / WRAPPED & ID / ATM MEMBER CARD ──
   String get settingsAccountSection =>
       tr('Akun', 'Account', 'खाता');
   String get settingsAccountProfileDesc => tr(
@@ -2517,7 +2517,7 @@ class AppStrings {
     'View your watch hours & share your Member Card',
     'अपने देखने के घंटे देखें और अपना मेंबर कार्ड साझा करें',
   );
-  String get insightsCardModeKtp => tr(
+  String get insightsCardModeId => tr(
     'Member ID',
     'Member ID',
     'मेंबर ID',
@@ -2556,6 +2556,83 @@ class AppStrings {
     'Kartu Member berhasil disimpan',
     'Member Card saved successfully',
     'मेंबर कार्ड सफलतापूर्वक सहेजा गया',
+  );
+
+  // ── 19. SHARE DEEP LINK & SCENE BOOKMARKS / QUOTE CARD ──
+  String get detailShareTooltip =>
+      tr('Bagikan Tayangan', 'Share Title', 'शो साझा करें');
+  String get detailShareCopied => tr(
+    'Tautan tayangan disalin ke papan klip',
+    'Title link copied to clipboard',
+    'शो का लिंक क्लिपबोर्ड पर कॉपी किया गया',
+  );
+  String detailShareMessage(String title, String url) => tr(
+    'Tonton "$title" gratis kualitas HD di Cineva Stream:\n$url',
+    'Watch "$title" in Full HD for free on Cineva Stream:\n$url',
+    'Cineva Stream पर "$title" मुफ़्त Full HD में देखें:\n$url',
+  );
+  String get sceneBookmarkTitle =>
+      tr('Momen & Kutipan Adegan', 'Scene Moments & Quote', 'सीन मोमेंट्स और कोट');
+  String get sceneBookmarkTabMoments =>
+      tr('Bookmark Adegan', 'Scene Bookmarks', 'सीन बुकमार्क');
+  String get sceneBookmarkTabQuote =>
+      tr('Kartu Kutipan', 'Quote Card', 'कोट कार्ड');
+  String get sceneBookmarkSaveBtn =>
+      tr('Simpan Momen Ini', 'Save This Moment', 'यह पल सहेजें');
+  String get sceneBookmarkInputHint => tr(
+    'Tulis kutipan dialog atau catatan adegan...',
+    'Write dialogue quote or scene note...',
+    'संवाद उद्धरण या दृश्य नोट लिखें...',
+  );
+  String get sceneBookmarkEmpty => tr(
+    'Belum ada momen adegan yang disimpan untuk tayangan ini.',
+    'No scene moments saved for this title yet.',
+    'इस शो के लिए अभी तक कोई सीन मोमेंट सहेजा नहीं गया है।',
+  );
+  String get sceneBookmarkSavedToast => tr(
+    'Momen adegan berhasil disimpan',
+    'Scene moment saved',
+    'सीन मोमेंट सहेजा गया',
+  );
+  String get sceneQuoteShareBtn =>
+      tr('Bagikan Kutipan', 'Share Quote Card', 'कोट कार्ड साझा करें');
+  String get sceneQuoteDefaultText => tr(
+    'Momen sinematik favorit di Cineva Stream.',
+    'A favorite cinematic moment on Cineva Stream.',
+    'Cineva Stream पर एक पसंदीदा सिनेमाई पल।',
+  );
+
+  // ── 20. RELEASE NOTES TIMELINE ──
+  String get settingsReleaseNotesTitle =>
+      tr('Catatan Rilis', 'Release Notes', 'रिलीज़ नोट्स');
+  String get settingsReleaseNotesSubtitle => tr(
+    'Riwayat pembaruan dan fitur inti di setiap versi',
+    'Update history and core features across versions',
+    'प्रत्येक संस्करण में अपडेट इतिहास और मुख्य विशेषताएं',
+  );
+  String get releaseNotesLatestTag =>
+      tr('Terbaru', 'Latest', 'नवीनतम');
+
+  // ── 21. FEEDBACK EMAIL AUTO-FILL & SMTP AUTO-REPLY ──
+  String get feedbackEmailLabel => tr(
+    'Alamat Email (Opsional)',
+    'Email Address (Optional)',
+    'ईमेल पता (वैकल्पिक)',
+  );
+  String get feedbackEmailHint => tr(
+    'contoh: nama@gmail.com',
+    'e.g. name@gmail.com',
+    'उदा: name@gmail.com',
+  );
+  String get feedbackEmailHelperNote => tr(
+    'Cantumkan email aktif agar pengembang dapat menghubungi Anda lebih lanjut (melalui cineva.dev@gmail.com) jika penjelasan yang diberikan belum jelas.',
+    'Include an active email address so our developer can contact you further (via cineva.dev@gmail.com) if your explanation needs more clarity.',
+    'अपना सक्रिय ईमेल पता दर्ज करें ताकि यदि आपका विवरण स्पष्ट न हो तो डेवलपर आपसे (cineva.dev@gmail.com के माध्यम से) आगे संपर्क कर सकें।',
+  );
+  String get feedbackValidationEmailInvalid => tr(
+    'Format alamat email tidak valid',
+    'Please enter a valid email address',
+    'कृपया एक मान्य ईमेल पता दर्ज करें',
   );
 }
 

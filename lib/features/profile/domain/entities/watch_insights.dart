@@ -3,9 +3,9 @@ import '../../../../core/localization/app_language.dart';
 import '../../../history/data/models/watch_history_item.dart';
 import '../models/user_profile.dart';
 
-/// Card visual style for the shareable KTP / ATM Member Card.
+/// Card visual style for the shareable ID / ATM Member Card.
 enum MemberCardStyle {
-  ktp,
+  idCard,
   atm,
 }
 
@@ -124,7 +124,7 @@ class WatchInsights {
   final int nextLevelTargetHours;
   final double levelProgress; // 0.0..1.0
 
-  final String ktpNikNumber;
+  final String idCardNumber;
   final String atmCardNumber;
   final String memberSinceYear;
 
@@ -147,7 +147,7 @@ class WatchInsights {
     required this.personaLevel,
     required this.nextLevelTargetHours,
     required this.levelProgress,
-    required this.ktpNikNumber,
+    required this.idCardNumber,
     required this.atmCardNumber,
     required this.memberSinceYear,
     required this.topFlavors,
@@ -297,7 +297,7 @@ class WatchInsights {
       personaLevel: personaLevel + 1,
       nextLevelTargetHours: nextLevelTargetHours,
       levelProgress: levelProgress,
-      ktpNikNumber: ktpNikNumber,
+      idCardNumber: idCardNumber,
       atmCardNumber: atmCardNumber,
       memberSinceYear: memberSinceYear,
       topFlavors: topFlavors,
@@ -321,7 +321,7 @@ class WatchInsights {
 
     if (lang.isHindi) {
       return [
-        'सिनेमा गणराज्य Cineva का आधिकारिक KTP (दर्शक पहचान पत्र) मिल गया! 🪪🎬 कुल सोफ़ा मैराथन: $durationText ($moviesWatchedCount फ़िल्में और $episodesWatchedCount एपिसोड)। वर्तमान पद: "$persona" 🏆। महंगे सब्सक्रिप्शन पर पैसे खर्च करने के बजाय Cineva पर आएं—हज़ारों फ़िल्में, वेब सीरीज़ और एनीमे 100% मुफ़्त और बिना किसी फालतू विज्ञापन के! अभी डाउनलोड करें: $downloadUrl 🚀🍿',
+        'सिनेमा गणराज्य Cineva का आधिकारिक ID (दर्शक पहचान पत्र) मिल गया! 🪪🎬 कुल सोफ़ा मैराथन: $durationText ($moviesWatchedCount फ़िल्में और $episodesWatchedCount एपिसोड)। वर्तमान पद: "$persona" 🏆। महंगे सब्सक्रिप्शन पर पैसे खर्च करने के बजाय Cineva पर आएं—हज़ारों फ़िल्में, वेब सीरीज़ और एनीमे 100% मुफ़्त और बिना किसी फालतू विज्ञापन के! अभी डाउनलोड करें: $downloadUrl 🚀🍿',
         'बैंक ATM कार्ड में बैलेंस कम ❌ Cineva ATM कार्ड में मूवी घंटों का बैलेंस फुल ✅💳 "$persona" के खिताब के साथ $durationText सिनेमा की दुनिया में बिताए! अगर आप भी मुफ़्त में HD फ़िल्में, K-Drama और Live TV देखना चाहते हैं, तो अभी Cineva इंस्टॉल करें: $downloadUrl 🔥🎥',
         'मेरे खाली समय की आधिकारिक ऑडिट रिपोर्ट 📊🍿: Cineva पर $durationText की स्ट्रीमिंग, $totalCount फ़िल्में/एपिसोड पूरे, और लगभग $tickets सिनेमा टिकटों की बचत! ऐप एकदम प्रीमियम है, ऑफ़लाइन डाउनलोड और Watch Party भी मुफ़्त है। अपना दर्शक कार्ड यहाँ बनाएं: $downloadUrl ✨🎬',
         'डॉक्टर ने आराम करने को कहा था, मैंने Cineva खोलकर $durationText फ़िल्में देख डालीं 😎🛋️। अब मेरा आधिकारिक दर्जा "$persona" है! बिना किसी मासिक शुल्क के अनलिमिटेड HD स्ट्रीमिंग के लिए Cineva डाउनलोड करें: $downloadUrl 🍿👑',
@@ -332,17 +332,17 @@ class WatchInsights {
 
     if (lang.isIndonesian) {
       return [
-        'Resmi mengantongi KTP (Kartu Tanda Penonton) Republik Sinema Cineva! 🪪🎬 Total jam terbang rebahan produktif: $durationText ($moviesWatchedCount film & $episodesWatchedCount episode). Jabatan resmi saat ini: "$persona" 🏆. Daripada bayar langganan banyak aplikasi bikin dompet menangis, mending pindah ke Cineva — nonton ribuan film, drakor, anime & TV lokal 100% GRATIS tanpa iklan judol! Download di sini: $downloadUrl 🚀🍿',
+        'Resmi mengantongi Kartu ID Penonton Republik Sinema Cineva! 🪪🎬 Total jam terbang rebahan produktif: $durationText ($moviesWatchedCount film & $episodesWatchedCount episode). Jabatan resmi saat ini: "$persona" 🏆. Daripada bayar langganan banyak aplikasi bikin dompet menangis, mending pindah ke Cineva — nonton ribuan film, drakor, anime & TV lokal 100% GRATIS tanpa iklan judol! Download di sini: $downloadUrl 🚀🍿',
         'Kartu ATM isi saldo ❌ Kartu ATM isi Jam Terbang Nonton Cineva ✅💳 Tercatat sudah $durationText menghilang dari peradaban demi menamatkan $totalCount tontonan dengan pangkat "$persona". Buat kaum rebahan elit yang mau nonton film & series HD gratis seumur hidup, wajib install Cineva sekarang! 👉 $downloadUrl 🔥🎥',
-        'LPJ (Laporan Pertanggungjawaban) waktu luangku tahun ini 📊🍿: $durationText nonton di Cineva, hemat setara $tickets tiket bioskop, dan resmi menyandang gelar "$persona"! Aplikasinya gratis, desainnya mewah, bisa download offline & nobar Watch Party pula. Yuk cetak KTP Penontonmu sendiri di Cineva: $downloadUrl ✨🎬',
+        'LPJ (Laporan Pertanggungjawaban) waktu luangku tahun ini 📊🍿: $durationText nonton di Cineva, hemat setara $tickets tiket bioskop, dan resmi menyandang gelar "$persona"! Aplikasinya gratis, desainnya mewah, bisa download offline & nobar Watch Party pula. Yuk cetak Kartu ID Penontonmu sendiri di Cineva: $downloadUrl ✨🎬',
         'Kata dokter disuruh banyak istirahat, eh keterusan rebahan $durationText nonton di Cineva sampai dapet pangkat "$persona" 😎🛋️. Nonton film bioskop, anime & drakor subtitle Indonesia super ngebut tanpa biaya bulanan. Gas download Cineva: $downloadUrl 🍿👑',
-        'Berawal dari kalimat "Satu episode lagi deh, janji tidur!", tahu-tahu sudah terkumpul $durationText ($totalCount tontonan) di Kartu ATM Cineva-ku 😂🎬. Yang belum punya KTP Penonton resmi dan mau streaming gratis tanpa batas, langsung meluncur ke: $downloadUrl 🚀🎞️',
+        'Berawal dari kalimat "Satu episode lagi deh, janji tidur!", tahu-tahu sudah terkumpul $durationText ($totalCount tontonan) di Kartu ATM Cineva-ku 😂🎬. Yang belum punya Kartu ID Penonton resmi dan mau streaming gratis tanpa batas, langsung meluncur ke: $downloadUrl 🚀🎞️',
         'Pamer kartu ATM saldo miliaran sudah biasa. Pamer Black Card Cineva dengan rekor $durationText nonton & gelar "$persona" baru luar biasa 💳✨! Bebas biaya langganan selamanya, tinggal duduk manis langsung play. Download aplikasinya di: $downloadUrl 🍿🔥',
       ];
     }
 
     return [
-      'Officially received my Cinema ID Card (KTP) from the Republic of Cineva! 🪪🎬 Total productive couch time: $durationText ($moviesWatchedCount movies & $episodesWatchedCount episodes). Current official rank: "$persona" 🏆. Why pay for 5 different streaming subscriptions when Cineva gives you thousands of HD movies, anime, K-dramas & Live TV 100% FREE with zero annoying ads? Download here: $downloadUrl 🚀🍿',
+      'Officially received my Cinema ID Card from the Republic of Cineva! 🪪🎬 Total productive couch time: $durationText ($moviesWatchedCount movies & $episodesWatchedCount episodes). Current official rank: "$persona" 🏆. Why pay for 5 different streaming subscriptions when Cineva gives you thousands of HD movies, anime, K-dramas & Live TV 100% FREE with zero annoying ads? Download here: $downloadUrl 🚀🍿',
       'Bank ATM card balance: questionable ❌ Cineva VIP Black ATM Card watch hours: legendary ✅💳 Officially logged $durationText in the cinema universe with the title "$persona". For fellow elite binge-watchers who want free HD movies & series forever, grab Cineva now! 👉 $downloadUrl 🔥🎥',
       'My official free-time audit report 📊🍿: $durationText streamed on Cineva, $totalCount titles/episodes watched, saving roughly $tickets movie tickets, and earning the rank "$persona"! Free offline downloads, Watch Party with friends, and a sleek UI. Mint your own Cinema ID Card on Cineva: $downloadUrl ✨🎬',
       'The doctor told me to get plenty of rest, so I spent $durationText binge-watching on Cineva and unlocked the "$persona" rank 😎🛋️. Unlimited HD movies, series & auto-translated subtitles without monthly fees. Download Cineva today: $downloadUrl 🍿👑',

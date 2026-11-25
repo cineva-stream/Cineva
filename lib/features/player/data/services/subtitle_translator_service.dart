@@ -652,7 +652,7 @@ class SubtitleTranslatorService {
 
     // Tech, Media & Corporate
     'NASA', 'CEO', 'CFO', 'CTO', 'COO', 'CMO', 'CIO', 'VIP', 'VVIP',
-    'DJ', 'PC', 'AI', 'GPS', 'USB', 'PIN', 'ATM', 'SIM', 'KTP', 'BOM',
+    'DJ', 'PC', 'AI', 'GPS', 'USB', 'PIN', 'ATM', 'SIM', 'BOM',
     'UFO', 'AC', 'CD', 'DVD', 'HD', 'FHD', '4K', 'TV', 'ID', 'OK',
     'HQ', 'WIB', 'WITA', 'WIT', 'SOS', 'RIP', 'ETA', 'ASAP', 'AKA',
     'FYI', 'DIY', 'POV', 'FAQ', 'HRD', 'PR',

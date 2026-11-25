@@ -106,8 +106,11 @@ class MandatoryUpdateScreen extends ConsumerWidget {
     final isError = updateState.status == AppUpdateStatus.error;
 
     final double maxContentWidth = (isTv || isDesktop) ? 560.0 : 460.0;
-    final String changelogText = info.changelog.trim().isNotEmpty
-        ? info.changelog.trim()
+    final String conciseChangelog = info
+        .formatCoreChangelogMarkdown(preferEnglish: !s.isIndonesian)
+        .trim();
+    final String changelogText = conciseChangelog.isNotEmpty
+        ? conciseChangelog
         : s.updateNewVersionSubtitle(info.latestVersion);
 
     return PopScope(

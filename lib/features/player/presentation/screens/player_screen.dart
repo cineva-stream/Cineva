@@ -45,7 +45,9 @@ import '../../../download/presentation/providers/download_provider.dart';
 import '../providers/mini_player_provider.dart';
 import '../providers/player_providers.dart';
 import '../widgets/custom_subtitle_overlay.dart';
+import '../widgets/scene_bookmark_quote_sheet.dart';
 import '../widgets/timeline_mini_preview_bubble.dart';
+import '../../data/services/scene_bookmark_service.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language.dart';
 import '../../../../core/localization/app_language_provider.dart';
@@ -120,6 +122,23 @@ class PlayerScreen extends ConsumerStatefulWidget {
     this.localSubtitlePath,
     this.overview,
   });
+
+  /// Computes the smooth micro-speed catch-up playback rate for Watch Party
+  /// when a participant drifts slightly from the target playback position.
+  ///
+  /// - [driftSeconds] = `targetSeconds - currentSeconds`
+  /// - If `1.0 <= driftSeconds <= 3.5` (behind target): returns `1.05`
+  /// - If `-3.0 <= driftSeconds <= -1.0` (ahead of target): returns `0.95`
+  /// - Otherwise: returns `1.0`
+  static double computeWatchPartyCatchUpRate(double driftSeconds) {
+    if (driftSeconds >= 1.0 && driftSeconds <= 3.5) {
+      return 1.05;
+    }
+    if (driftSeconds <= -1.0 && driftSeconds >= -3.0) {
+      return 0.95;
+    }
+    return 1.0;
+  }
 
   @override
   ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
@@ -201,6 +220,156 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
+  /// Minimalist, badge-free, borderless loading overlay displaying the movie or
+  /// TV episode backdrop thumbnail with a smooth dark cinema vignette.
+  Widget _buildMinimalistLoadingOverlay(AppStrings s) {
+    final rawPath = _currentBackdropPath ?? _currentPosterPath;
+    final hasImage = rawPath != null && rawPath.trim().isNotEmpty;
+    final imageUrl = hasImage
+        ? (rawPath.startsWith('http')
+              ? rawPath
+              : ApiConstants.imageUrl(
+                  rawPath,
+                  size: ApiConstants.backdropLarge,
+                ))
+        : null;
+    final isTvEpisode = _currentSeason != null && _currentEpisode != null;
+    final statusText = _getLoadingStatusText(s);
+
+    return Positioned.fill(
+      child: ColoredBox(
+        color: AppColors.background,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. Episode Still or Movie Backdrop Thumbnail
+            if (imageUrl != null)
+              CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                fadeInDuration: const Duration(milliseconds: 280),
+                placeholder: (_, _) => const ColoredBox(color: Colors.black),
+                errorWidget: (_, _, _) => const ColoredBox(color: Colors.black),
+              ),
+
+            // 2. Smooth Dark Cinema Vignette (keeps thumbnail subtle & foreground legible)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: hasImage ? 0.86 : 0.96),
+                    Colors.black.withValues(alpha: hasImage ? 0.64 : 0.94),
+                    Colors.black.withValues(alpha: hasImage ? 0.64 : 0.94),
+                    Colors.black.withValues(alpha: hasImage ? 0.90 : 0.98),
+                  ],
+                  stops: const [0.0, 0.32, 0.68, 1.0],
+                ),
+              ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 0.95,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.20),
+                    Colors.black.withValues(alpha: 0.65),
+                  ],
+                ),
+              ),
+            ),
+
+            // 3. Minimalist Foreground (No borders, no badges, no excess color)
+            SafeArea(
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: 8,
+                    left: 12,
+                    child: IconButton(
+                      onPressed: _handleExit,
+                      splashRadius: 22,
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 36),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 34,
+                            height: 34,
+                            child: CircularProgressIndicator(
+                              color: Colors.white.withValues(alpha: 0.88),
+                              strokeWidth: 2.2,
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          Text(
+                            widget.title,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.outfit(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.2,
+                              height: 1.22,
+                            ),
+                          ),
+                          if (isTvEpisode) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              _formattedEpisodeSubtitle,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                color: Colors.white.withValues(alpha: 0.72),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            child: Text(
+                              statusText,
+                              key: ValueKey<String>(statusText),
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                color: AppColors.textSecondary,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: 0.15,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   String _getTargetTranslateLang() {
     final prefLang = SettingsService.getDefaultSubtitleLang();
     if (prefLang != 'off') {
@@ -268,6 +437,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _showControls = false;
   Timer? _controlsTimer;
   Timer? _watchPartyHostSyncTimer;
+  Timer? _watchPartyCatchUpTimer;
+  bool _isWatchPartyCatchUpActive = false;
   _PlayerMiniPopup _activePopup = _PlayerMiniPopup.none;
   int _subtitleSettingsTab = 0; // 0: Waktu (Sync), 1: Tampilan
   bool _isShowingSubtitleSettingsInPopup = false;
@@ -782,9 +953,114 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  /// Activates Picture-in-Picture mode on demand.
-  /// On Android (phones/tablets), triggers Android OS native PiP window.
-  /// On Desktop/TV or when native PiP is unavailable, falls back to In-App Floating Mini-Player.
+  void _startWatchPartyCatchUp(double rate) {
+    if (_isHolding2x) return;
+    _isWatchPartyCatchUpActive = true;
+    if (_useNativePlayer) {
+      _player.setRate(rate);
+    } else {
+      _webViewController?.runJavaScript(
+        'var v = document.querySelector("video"); if (v) v.playbackRate = $rate;',
+      );
+    }
+    _watchPartyCatchUpTimer?.cancel();
+    _watchPartyCatchUpTimer = Timer.periodic(
+      const Duration(milliseconds: 500),
+      (_) {
+        if (!mounted || !_isWatchPartyCatchUpActive) {
+          _stopWatchPartyCatchUp();
+          return;
+        }
+        final wp = ref.read(watchPartyProvider);
+        final playback = wp.room?.playback;
+        if (!wp.isInRoom ||
+            playback == null ||
+            !playback.isPlaying ||
+            !_isPlaying) {
+          _stopWatchPartyCatchUp();
+          return;
+        }
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final elapsed = (now - playback.updatedAt) / 1000.0;
+        final safeElapsed = elapsed > 0 ? elapsed : 0.0;
+        final targetSec = playback.positionSeconds + safeElapsed;
+        final currentSec = _position.inMilliseconds / 1000.0;
+        final driftSec = targetSec - currentSec;
+        if (driftSec.abs() <= 0.35 ||
+            (rate > 1.0 && driftSec <= 0.2) ||
+            (rate < 1.0 && driftSec >= -0.2)) {
+          _stopWatchPartyCatchUp();
+        }
+      },
+    );
+  }
+
+  void _stopWatchPartyCatchUp() {
+    _watchPartyCatchUpTimer?.cancel();
+    _watchPartyCatchUpTimer = null;
+    if (!_isWatchPartyCatchUpActive) return;
+    _isWatchPartyCatchUpActive = false;
+    if (_isHolding2x) return;
+    final restoreRate = _playbackSpeed;
+    if (_useNativePlayer) {
+      _player.setRate(restoreRate);
+    } else {
+      _webViewController?.runJavaScript(
+        'var v = document.querySelector("video"); if (v) v.playbackRate = $restoreRate;',
+      );
+    }
+  }
+
+  String _getCurrentActiveSubtitleText() {
+    final cues = ref.read(activeSubtitleCuesProvider);
+    if (cues.isEmpty) return '';
+    final syncOffsetMs = ref.read(subtitleStyleProvider).syncOffsetMs;
+    final adjustedPos = _position - Duration(milliseconds: syncOffsetMs);
+    for (final cue in cues) {
+      if (adjustedPos >= cue.start && adjustedPos <= cue.end) {
+        return cue.text.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+      }
+    }
+    return '';
+  }
+
+  void _openSceneBookmarkSheet(AppStrings s) {
+    final mediaKey = SceneBookmarkService.buildMediaKey(
+      tmdbId: _currentTmdbId ?? widget.tmdbId,
+      imdbId: _currentImdbId ?? widget.imdbId,
+      title: widget.title,
+      season: _currentSeason,
+      episode: _currentEpisode,
+    );
+    final episodeLabel = (_currentSeason != null && _currentEpisode != null)
+        ? 'S${_currentSeason.toString().padLeft(2, '0')}E${_currentEpisode.toString().padLeft(2, '0')}'
+        : null;
+    final activeSubText = _getCurrentActiveSubtitleText();
+
+    SceneBookmarkQuoteSheet.show(
+      context,
+      mediaKey: mediaKey,
+      title: widget.title,
+      episodeLabel: episodeLabel,
+      currentPositionMs: _position.inMilliseconds,
+      initialQuoteText: activeSubText,
+      backdropPath: _currentBackdropPath ?? _currentPosterPath,
+      s: s,
+      onSeekTo: (targetDuration) {
+        _position = targetDuration;
+        _positionNotifier.value = targetDuration;
+        if (_useNativePlayer) {
+          _player.seek(targetDuration);
+        } else {
+          final targetSec = targetDuration.inMilliseconds / 1000.0;
+          _webViewController?.runJavaScript(
+            'var v = document.querySelector("video"); if (v) v.currentTime = $targetSec;',
+          );
+        }
+      },
+    );
+  }
+
   Future<void> _handlePipAction() async {
     if (_isExiting || !_useNativePlayer || _isLoading || _streamNotFound) return;
 
@@ -826,6 +1102,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _sleepTimer?.cancel();
     _watchPartyHostSyncTimer?.cancel();
     _watchPartyHostSyncTimer = null;
+    _watchPartyCatchUpTimer?.cancel();
+    _watchPartyCatchUpTimer = null;
     await _posSub?.cancel();
     await _durSub?.cancel();
     await _playingSub?.cancel();
@@ -1033,6 +1311,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _sleepTimer?.cancel();
     _watchPartyHostSyncTimer?.cancel();
     _watchPartyHostSyncTimer = null;
+    _watchPartyCatchUpTimer?.cancel();
+    _watchPartyCatchUpTimer = null;
     _posSub?.cancel();
     _durSub?.cancel();
     _playingSub?.cancel();
@@ -7671,6 +7951,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           // 3. Sleep Timer Toggle
           _buildSleepTimerTopBarButton(s),
 
+          // 3b. Scene Bookmark & Cinematic Quote Card Button
+          _buildTopBarIconButton(
+            icon: Icons.bookmark_add_outlined,
+            isActive: false,
+            onTap: () => _openSceneBookmarkSheet(s),
+          ),
+
           // 4. Screen Lock Button
           _buildTopBarIconButton(
             icon: _isScreenLocked
@@ -7820,7 +8107,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           }
         }
 
-        // Sync Seek position with latency compensation
+        // Sync Seek position with latency compensation & 1.05x Micro-Speed Catch-Up
         final now = DateTime.now().millisecondsSinceEpoch;
         final elapsed = (now - playback.updatedAt) / 1000.0;
         final safeElapsed = elapsed > 0 ? elapsed : 0.0;
@@ -7829,20 +8116,54 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             : playback.positionSeconds;
 
         final currentSec = _position.inMilliseconds / 1000.0;
-        // Avoid seeking on minor network jitter (threshold 3.0s)
-        if ((currentSec - targetSec).abs() > 3.0 && !_isLoading) {
-          final targetDuration =
-              Duration(milliseconds: (targetSec * 1000).toInt());
-          _position = targetDuration;
-          _positionNotifier.value = targetDuration;
-          if (_useNativePlayer) {
-            _player.seek(targetDuration);
+        final driftSec = targetSec - currentSec;
+        final isExplicitSeekAction = isInitialSync ||
+            playback.action == 'seek' ||
+            playback.action == 'forward' ||
+            playback.action == 'rewind' ||
+            !playback.isPlaying ||
+            !_isPlaying;
+
+        if (!_isLoading) {
+          if (isExplicitSeekAction) {
+            _stopWatchPartyCatchUp();
+            if (driftSec.abs() > 1.5) {
+              final targetDuration =
+                  Duration(milliseconds: (targetSec * 1000).toInt());
+              _position = targetDuration;
+              _positionNotifier.value = targetDuration;
+              if (_useNativePlayer) {
+                _player.seek(targetDuration);
+              } else {
+                _webViewController?.runJavaScript(
+                    'var v = document.querySelector("video"); if (v) v.currentTime = $targetSec;');
+              }
+            }
+          } else if (driftSec.abs() > 3.5) {
+            // Drift exceeds 3.5s during playback: fall back to immediate hard seek
+            _stopWatchPartyCatchUp();
+            final targetDuration =
+                Duration(milliseconds: (targetSec * 1000).toInt());
+            _position = targetDuration;
+            _positionNotifier.value = targetDuration;
+            if (_useNativePlayer) {
+              _player.seek(targetDuration);
+            } else {
+              _webViewController?.runJavaScript(
+                  'var v = document.querySelector("video"); if (v) v.currentTime = $targetSec;');
+            }
           } else {
-            _webViewController?.runJavaScript(
-                'var v = document.querySelector("video"); if (v) v.currentTime = $targetSec;');
+            final catchUpRate =
+                PlayerScreen.computeWatchPartyCatchUpRate(driftSec);
+            if (catchUpRate != 1.0) {
+              _startWatchPartyCatchUp(catchUpRate);
+            } else if (driftSec.abs() <= 0.35 && _isWatchPartyCatchUpActive) {
+              _stopWatchPartyCatchUp();
+            }
           }
         }
       } else {
+        _stopWatchPartyCatchUp();
         if (_watchPartyHostSyncTimer != null) {
           _watchPartyHostSyncTimer?.cancel();
           _watchPartyHostSyncTimer = null;
@@ -8290,80 +8611,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                               ),
                             ),
 
-                          // ── 4. Loading & Buffering Overlay ──
+                          // ── 4. Minimalist & Elegant Loading Overlay with Media Backdrop Thumbnail ──
                           if (_isLoading)
-                            Container(
-                              color: Colors.black.withValues(alpha: 0.94),
-                              child: SafeArea(
-                                child: Stack(
-                                  children: [
-                                    // Top back button so user can always cancel/exit during loading
-                                    Positioned(
-                                      top: 8,
-                                      left: 16,
-                                      child: IconButton(
-                                        onPressed: _handleExit,
-                                        icon: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.1,
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.arrow_back,
-                                            color: Colors.white,
-                                            size: 20,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    // Center Loading Indicator: pure orange spinner, no background box
-                                    Center(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const SizedBox(
-                                            width: 50,
-                                            height: 50,
-                                            child: CircularProgressIndicator(
-                                              color: AppColors.primary,
-                                              strokeWidth: 3.5,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 20),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 40,
-                                            ),
-                                            child: Text(
-                                              widget.title,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            _getLoadingStatusText(s),
-                                            style: const TextStyle(
-                                              color: AppColors.textSecondary,
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                            _buildMinimalistLoadingOverlay(s),
 
                           // Unified center buffering indicator when controls are hidden: pure orange spinner, no background box
                           if (_useNativePlayer &&
