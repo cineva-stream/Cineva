@@ -34,7 +34,7 @@ function doPost(e) {
     }
 
     const data = JSON.parse(e.postData.contents);
-    const timestamp = data.timestamp || new Date().toISOString();
+    const timestamp = _formatJakartaTimestamp(data.timestamp);
     const name = (data.name || 'Anonim').toString().trim();
     const email = (data.email || '').toString().trim();
     const category = (data.category || 'Lainnya').toString().trim();
@@ -184,6 +184,17 @@ function _sendToTelegram(entry) {
   });
 
   return response.getResponseCode() >= 200 && response.getResponseCode() < 300;
+}
+
+function _formatJakartaTimestamp(rawTimestamp) {
+  let dateObj = new Date();
+  if (rawTimestamp) {
+    const parsed = new Date(rawTimestamp);
+    if (!isNaN(parsed.getTime())) {
+      dateObj = parsed;
+    }
+  }
+  return Utilities.formatDate(dateObj, 'Asia/Jakarta', 'dd/MM/yyyy HH:mm:ss');
 }
 
 function _escapeHtml(str) {

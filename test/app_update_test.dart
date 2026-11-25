@@ -375,9 +375,9 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Verify MarkdownBody is rendered
+      // Verify MarkdownBody renders the extracted core feature bullets cleanly
       expect(find.byType(MarkdownBody), findsOneWidget);
-      expect(find.textContaining("What's Changed"), findsOneWidget);
+      expect(find.textContaining('Resolved player subtitle crash'), findsOneWidget);
       expect(find.textContaining('Support QR sync'), findsOneWidget);
     });
   });
