@@ -220,17 +220,41 @@ def is_stream_available(
     return False
 
 
-def build_watch_on_cineva_url(tmdb_id: int, media_type: str, title: str = "") -> str:
+def build_watch_on_cineva_url(
+    tmdb_id: int,
+    media_type: str,
+    title: str = "",
+    details: dict[str, Any] | None = None,
+) -> str:
     """
     Constructs the HTTPS App Link URL for the Telegram inline button.
     Clicking this button in Telegram on Android opens the Cineva app directly
-    to MovieDetailScreen (/movie/:id) or TvDetailScreen (/tv/:id).
+    to MovieDetailScreen (/movie/:id) or TvDetailScreen (/tv/:id), and passes
+    lightweight metadata query params for the web fallback card if the app is not installed.
     """
     clean_type = "tv" if media_type == "tv" else "movie"
     base_url = f"{CINEVA_DEEP_LINK_BASE}/{clean_type}/{tmdb_id}"
+    q: dict[str, str] = {}
     if title:
-        encoded_title = urllib.parse.quote(title[:60])
-        return f"{base_url}?title={encoded_title}"
+        q["title"] = title[:60]
+    if details:
+        rel_date = str(details.get("release_date") or details.get("first_air_date") or "").strip()
+        if len(rel_date) >= 4:
+            q["year"] = rel_date[:4]
+        vote = float(details.get("vote_average") or 0.0)
+        if vote > 0:
+            q["rating"] = f"{vote:.1f}/10"
+        raw_genre_ids = details.get("genre_ids") or [
+            g.get("id") for g in (details.get("genres") or []) if isinstance(g, dict)
+        ]
+        genre_names = [GENRE_MAP_EN[gid] for gid in raw_genre_ids if gid in GENRE_MAP_EN][:2]
+        if genre_names:
+            q["genre"] = ", ".join(genre_names)
+        poster = str(details.get("poster_path") or "").strip()
+        if poster.startswith("/"):
+            q["poster"] = poster
+    if q:
+        return f"{base_url}?{urllib.parse.urlencode(q)}"
     return base_url
 
 
@@ -309,7 +333,7 @@ def format_media_caption(item: dict[str, Any], media_type: str) -> str:
         f"<b>{badge}</b>",
         "",
         f"<b>{esc_title} ({html.escape(year)})</b>",
-        f"<b>Rating:</b> {rating_str}  •  🏷️ <b>Genre:</b> {esc_genre}",
+        f"<b>Rating:</b> {rating_str}  •  <b>Genre:</b> {esc_genre}",
         f"<b>Status:</b> Available &amp; Ready to Stream",
         "",
         f"<b>Synopsis:</b>\n{esc_overview}",
@@ -379,8 +403,13 @@ def send_telegram_post(
         return False
 
 
-def build_media_inline_keyboard(tmdb_id: int, media_type: str, title: str) -> dict[str, Any]:
-    watch_url = build_watch_on_cineva_url(tmdb_id, media_type, title)
+def build_media_inline_keyboard(
+    tmdb_id: int,
+    media_type: str,
+    title: str,
+    details: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    watch_url = build_watch_on_cineva_url(tmdb_id, media_type, title, details)
     return {
         "inline_keyboard": [
             [
@@ -563,7 +592,7 @@ def run_releases_broadcast(
             or "Cineva Title"
         )
         caption = format_media_caption(details, media_type)
-        reply_markup = build_media_inline_keyboard(tmdb_id, media_type, title)
+        reply_markup = build_media_inline_keyboard(tmdb_id, media_type, title, details)
         photo_url = f"{TMDB_IMAGE_BASE}{poster_path}"
 
         ok = send_telegram_post(
