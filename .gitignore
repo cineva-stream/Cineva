@@ -69,3 +69,7 @@ key.properties
 
 # Telegram Auto-Broadcast local dedup cache
 .telegram_posted_cache.json
+
+# Google Apps Script local reference files
+*.gs
+scripts/google_apps_script_feedback.gs
