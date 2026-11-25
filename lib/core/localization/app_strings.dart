@@ -1211,6 +1211,29 @@ class AppStrings {
   );
   String get updateRetry => tr('Coba Lagi', 'Retry', 'पुनः प्रयास करें');
   String get updateCancel => tr('Batal', 'Cancel', 'रद्द करें');
+  String get updateDownloadButton => tr('Unduh', 'Download', 'डाउनलोड करें');
+  String get mandatoryUpdateTitle => tr(
+    'Pembaruan Aplikasi Diperlukan',
+    'App Update Required',
+    'ऐप अपडेट आवश्यक है',
+  );
+  String mandatoryUpdateDescription(
+    String currentVer,
+    String latestVer,
+    int missedCount,
+  ) => tr(
+    'Versi aplikasi yang Anda gunakan saat ini (v$currentVer) telah melewati $missedCount pembaruan. Silakan perbarui ke versi terbaru (v$latestVer) segera untuk menjaga kompatibilitas layanan streaming, keamanan, dan stabilitas pemutar.',
+    'Your current application version (v$currentVer) has missed $missedCount updates. Please update to the latest version (v$latestVer) immediately to maintain streaming compatibility, security, and player stability.',
+    'आपका वर्तमान ऐप संस्करण (v$currentVer) $missedCount अपडेट पीछे है। स्ट्रीमिंग संगतता, सुरक्षा और प्लेयर स्थिरता बनाए रखने के लिए कृपया तुरंत नवीनतम संस्करण (v$latestVer) पर अपडेट करें।',
+  );
+  String get mandatoryUpdateCurrentLabel =>
+      tr('Versi Saat Ini', 'Current Version', 'वर्तमान संस्करण');
+  String get mandatoryUpdateLatestLabel =>
+      tr('Versi Terbaru', 'Latest Version', 'नवीनतम संस्करण');
+  String get mandatoryUpdateSizeLabel =>
+      tr('Ukuran Unduhan', 'Download Size', 'डाउनलोड आकार');
+  String get mandatoryUpdateWhatsNewLabel =>
+      tr('Informasi Pembaruan', 'Update Information', 'अपडेट की जानकारी');
   String get updateDismissTooltip =>
       tr('Tutup notifikasi', 'Dismiss notice', 'सूचना बंद करें');
   String get updatePermissionTitle => tr(

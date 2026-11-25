@@ -243,16 +243,15 @@ def build_watch_on_cineva_url(
             q["year"] = rel_date[:4]
         vote = float(details.get("vote_average") or 0.0)
         if vote > 0:
-            q["rating"] = f"{vote:.1f}/10"
-        raw_genre_ids = details.get("genre_ids") or [
-            g.get("id") for g in (details.get("genres") or []) if isinstance(g, dict)
-        ]
-        genre_names = [GENRE_MAP_EN[gid] for gid in raw_genre_ids if gid in GENRE_MAP_EN][:2]
-        if genre_names:
-            q["genre"] = ", ".join(genre_names)
+            q["rating"] = f"{vote:.1f}"
         poster = str(details.get("poster_path") or "").strip()
         if poster.startswith("/"):
             q["poster"] = poster
+        overview = str(details.get("overview") or "").strip()
+        if overview:
+            if len(overview) > 210:
+                overview = overview[:207].rstrip() + "..."
+            q["overview"] = overview
     if q:
         return f"{base_url}?{urllib.parse.urlencode(q)}"
     return base_url

@@ -27,6 +27,12 @@ class AppUpdateInfo {
   /// Target CPU architecture of this APK asset (e.g. "arm64-v8a", "armeabi-v7a", "x86_64", or "universal").
   final String targetAbi;
 
+  /// Number of releases/updates missed between [currentVersion] and [latestVersion].
+  final int missedUpdateCount;
+
+  /// Minimum number of missed updates required to trigger the mandatory full-screen update gate.
+  static const int mandatoryUpdateThreshold = 3;
+
   const AppUpdateInfo({
     required this.latestVersion,
     required this.releaseTitle,
@@ -37,7 +43,11 @@ class AppUpdateInfo {
     this.publishedAt,
     required this.currentVersion,
     this.targetAbi = 'universal',
+    this.missedUpdateCount = 1,
   });
+
+  /// True when the user has skipped [mandatoryUpdateThreshold] (3) or more updates.
+  bool get isMandatoryUpdate => missedUpdateCount >= mandatoryUpdateThreshold;
 
   /// True if this update asset is optimized specifically for the device's CPU architecture.
   bool get isArchitectureSpecific => targetAbi.isNotEmpty && targetAbi != 'universal';

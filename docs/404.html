@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#08080C">
-  <title>Cineva Stream • Open in App</title>
+  <meta name="theme-color" content="#000000">
+  <title>Cineva • Stream Freely</title>
   <link rel="icon" type="image/png" href="/Cineva/assets/cineva_icon.png">
 
   <!-- =========================================================================
        PRIORITY 1: SYNCHRONOUS HEAD-LEVEL DEEP-LINK LAUNCHER (0ms BEFORE PAINT)
        Immediately opens the installed Cineva app via Android Intent / Custom Scheme.
-       The web UI below acts purely as a fallback when the app is not installed
-       or when an in-app browser requires manual confirmation.
+       The page below acts as a fallback when the app is not installed.
        ========================================================================= -->
   <script>
     (function () {
@@ -59,9 +58,10 @@
           id: mediaTarget.id,
           title: params.get("title") || "",
           year: params.get("year") || "",
-          rating: params.get("rating") || "",
+          rating: (params.get("rating") || "").replace(/\/10$/i, ""),
           genre: params.get("genre") || "",
-          poster: params.get("poster") || ""
+          poster: params.get("poster") || "",
+          overview: params.get("overview") || params.get("desc") || ""
         } : null,
         isFallbackReturn: isFallbackReturn,
         targetPath: roomCode
@@ -78,7 +78,6 @@
         const ua = navigator.userAgent || "";
         const isAndroid = /android/i.test(ua);
 
-        // Build fallback URL pointing back to this page with fallback=1 if app is not installed
         const fallbackUrlObj = new URL(window.location.href);
         fallbackUrlObj.searchParams.set("fallback", "1");
         const encodedFallback = encodeURIComponent(fallbackUrlObj.toString());
@@ -91,16 +90,13 @@
           ";end";
 
         if (isAndroid) {
-          // Primary: Android Intent with explicit package & browser_fallback_url
           window.location.replace(intentUrl);
-          // Secondary fallback for custom in-app WebViews that block intent://
           setTimeout(function () {
             if (document.visibilityState === "visible" || forceManual) {
               window.location.href = schemeUrl;
             }
           }, 450);
         } else {
-          // Desktop / iOS / Other: try custom scheme directly
           window.location.href = schemeUrl;
         }
       };
@@ -118,17 +114,16 @@
 
   <style>
     :root {
-      --bg-dark: #08080C;
-      --card-bg: rgba(20, 20, 28, 0.78);
-      --card-border: rgba(255, 255, 255, 0.09);
-      --primary: #E50914;
-      --primary-hover: #F6121D;
-      --primary-glow: rgba(229, 9, 20, 0.35);
-      --telegram: #2AABEE;
+      --bg-black: #000000;
+      --primary: #FF9500;
+      --primary-hover: #FFA726;
+      --primary-glow: rgba(255, 149, 0, 0.28);
+      --btn-dark: #222226;
+      --btn-dark-hover: #2C2C32;
       --text-main: #FFFFFF;
       --text-secondary: #A1A1AA;
       --text-muted: #71717A;
-      --surface-elevated: rgba(255, 255, 255, 0.05);
+      --border-subtle: rgba(255, 255, 255, 0.10);
     }
 
     * {
@@ -138,264 +133,253 @@
     }
 
     html, body {
-      background-color: var(--bg-dark);
+      background-color: var(--bg-black);
       color: var(--text-main);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      width: 100%;
+      max-width: 100%;
       min-height: 100vh;
       min-height: 100dvh;
+      overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
     }
 
     body {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      justify-content: space-between;
       overflow-x: hidden;
       position: relative;
     }
 
-    /* Ambient cinema spotlight glow */
-    body::before {
-      content: '';
+    /* Ambient blurred backdrop layer behind content */
+    .ambient-backdrop {
       position: fixed;
-      top: -18%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: min(850px, 140vw);
-      height: min(650px, 110vh);
-      background: radial-gradient(circle, rgba(229, 9, 20, 0.18) 0%, rgba(42, 171, 238, 0.05) 45%, rgba(8, 8, 12, 0) 72%);
-      pointer-events: none;
+      inset: 0;
       z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 18%, rgba(255, 149, 0, 0.14) 0%, rgba(0, 0, 0, 0.96) 70%);
     }
 
-    .container {
+    .ambient-backdrop-img {
+      position: absolute;
+      top: -10%;
+      left: -10%;
+      width: 120%;
+      height: 85%;
+      object-fit: cover;
+      filter: blur(55px) brightness(0.32) saturate(1.25);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .ambient-backdrop::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.35) 0%,
+        rgba(0, 0, 0, 0.55) 45%,
+        rgba(0, 0, 0, 0.94) 78%,
+        #000000 100%
+      );
+    }
+
+    /* Top Header Bar (Cineva Logo + What's Cineva? ->) */
+    .top-nav {
       position: relative;
-      z-index: 1;
+      z-index: 2;
       width: 100%;
-      max-width: 500px;
-      transition: max-width 0.3s ease;
+      max-width: 560px;
+      margin: 0 auto;
+      padding: max(18px, env(safe-area-inset-top)) 22px 12px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
-    .card {
-      width: 100%;
-      background: var(--card-bg);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border: 1px solid var(--card-border);
-      border-radius: 26px;
-      padding: clamp(22px, 5vw, 36px);
-      text-align: center;
-      box-shadow: 0 24px 56px rgba(0, 0, 0, 0.68), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    }
-
-    /* Status banner indicating automatic launch / fallback state */
-    .launch-banner {
+    .brand-link {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #E4E4E7;
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 18px;
+      gap: 10px;
+      text-decoration: none;
     }
 
-    .pulse-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: #22C55E;
-      box-shadow: 0 0 10px #22C55E;
-      animation: pulse 1.6s infinite ease-in-out;
-    }
-
-    .pulse-dot.fallback {
-      background-color: #F59E0B;
-      box-shadow: 0 0 10px #F59E0B;
-      animation: none;
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(0.95); opacity: 0.7; }
-      50% { transform: scale(1.25); opacity: 1; }
-    }
-
-    .app-icon {
-      width: clamp(68px, 15vw, 84px);
-      height: clamp(68px, 15vw, 84px);
-      border-radius: 20px;
-      box-shadow: 0 12px 28px var(--primary-glow);
-      margin: 0 auto 16px auto;
-      display: block;
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
       object-fit: cover;
+      box-shadow: 0 4px 12px rgba(255, 149, 0, 0.25);
     }
 
-    /* Media Poster Preview Layout */
-    .media-showcase {
+    .brand-wordmark {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      color: #FFFFFF;
+    }
+
+    .brand-wordmark span {
+      color: var(--primary);
+    }
+
+    .whats-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #D4D4D8;
+      font-size: 13.5px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .whats-link:hover {
+      color: var(--primary);
+    }
+
+    /* Main Content Wrapper */
+    .main-stage {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 460px;
+      margin: 0 auto;
+      padding: 16px 24px 28px 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 18px;
-      margin-bottom: 22px;
+      text-align: center;
+      flex: 1;
     }
 
-    .poster-wrapper {
-      position: relative;
-      width: clamp(135px, 36vw, 175px);
+    /* Poster Card */
+    .hero-poster-wrap {
+      width: clamp(185px, 50vw, 232px);
       aspect-ratio: 2 / 3;
-      border-radius: 18px;
+      border-radius: 20px;
       overflow: hidden;
-      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 0 24px rgba(229, 9, 20, 0.22);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: #14141D;
-      flex-shrink: 0;
+      background: #14141A;
+      box-shadow: 0 22px 48px rgba(0, 0, 0, 0.78), 0 0 0 1px rgba(255, 255, 255, 0.10);
+      margin-bottom: 24px;
+      position: relative;
     }
 
-    .poster-img {
+    .hero-poster-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
 
-    .media-info {
+    .hero-poster-fallback {
+      width: 100%;
+      height: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
-      text-align: center;
-      width: 100%;
+      justify-content: center;
+      gap: 12px;
+      background: linear-gradient(145deg, #161622 0%, #0C0C12 100%);
+      padding: 20px;
     }
 
-    .badge {
+    .hero-poster-fallback img {
+      width: 68px;
+      height: 68px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px var(--primary-glow);
+    }
+
+    /* Media Type Eyebrow (Logo + SERIES / MOVIE) */
+    .eyebrow-row {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      background: rgba(229, 9, 20, 0.15);
-      border: 1px solid rgba(229, 9, 20, 0.3);
-      color: #FF6B7B;
-      padding: 5px 13px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.7px;
-      text-transform: uppercase;
-      margin-bottom: 12px;
+      justify-content: center;
+      gap: 7px;
+      margin-bottom: 8px;
     }
 
-    h1 {
+    .eyebrow-icon {
+      width: 15px;
+      height: 15px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .eyebrow-text {
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 2.8px;
+      text-transform: uppercase;
+      color: #D4D4D8;
+    }
+
+    /* Title */
+    .media-title {
       font-family: 'Outfit', sans-serif;
-      font-size: clamp(22px, 5vw, 28px);
+      font-size: clamp(26px, 6.5vw, 34px);
       font-weight: 800;
-      line-height: 1.2;
-      margin-bottom: 8px;
-      color: var(--text-main);
+      line-height: 1.18;
+      color: #FFFFFF;
+      margin-bottom: 14px;
+      letter-spacing: -0.4px;
       word-break: break-word;
     }
 
+    /* Meta Pills (Year + Star Rating) */
     .meta-pills {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      margin-top: 4px;
-      margin-bottom: 12px;
+      margin-bottom: 18px;
     }
 
     .meta-pill {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      background: rgba(255, 255, 255, 0.07);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 4px 11px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #E4E4E7;
-    }
-
-    .meta-pill.rating {
-      background: rgba(245, 158, 11, 0.15);
-      border-color: rgba(245, 158, 11, 0.35);
-      color: #FBBF24;
-    }
-
-    .subtitle {
-      color: var(--text-secondary);
-      font-size: clamp(13px, 2.8vw, 14.5px);
-      line-height: 1.55;
-      margin-bottom: 22px;
-    }
-
-    /* Watch Party Room Code Ticket Box */
-    .code-box {
-      background: #12121A;
-      border: 1.5px dashed rgba(229, 9, 20, 0.45);
-      border-radius: 18px;
-      padding: 18px 16px;
-      margin-bottom: 22px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .code-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1.2px;
-      color: var(--text-secondary);
-    }
-
-    .code-value {
-      font-family: 'Outfit', monospace;
-      font-size: clamp(24px, 6vw, 30px);
-      font-weight: 800;
-      letter-spacing: 3px;
-      color: var(--text-main);
-    }
-
-    .btn-copy {
-      background: rgba(229, 9, 20, 0.12);
-      color: #FF6B7B;
-      font-size: 12.5px;
-      font-weight: 600;
-      padding: 7px 14px;
-      border-radius: 10px;
-      cursor: pointer;
-      border: 1px solid rgba(229, 9, 20, 0.3);
-      display: inline-flex;
-      align-items: center;
       gap: 6px;
-      transition: all 0.2s ease;
+      padding: 5px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      font-size: 13px;
+      font-weight: 700;
+      color: #FFFFFF;
     }
 
-    .btn-copy:hover {
-      background: rgba(229, 9, 20, 0.22);
+    .meta-pill .star-icon {
+      color: var(--primary);
+      font-size: 13.5px;
+      line-height: 1;
     }
 
-    /* Buttons */
+    /* Synopsis */
+    .media-synopsis {
+      color: var(--text-secondary);
+      font-size: clamp(13.5px, 3.4vw, 15px);
+      line-height: 1.6;
+      margin-bottom: 28px;
+      max-width: 420px;
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Stacked Action Buttons */
     .actions-stack {
+      width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      width: 100%;
-    }
-
-    .btn-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      width: 100%;
+      gap: 12px;
+      margin-bottom: 16px;
     }
 
     .btn {
@@ -404,10 +388,10 @@
       justify-content: center;
       gap: 10px;
       width: 100%;
-      min-height: 48px;
-      padding: 13px 18px;
+      height: 52px;
+      padding: 0 20px;
       border-radius: 14px;
-      font-size: 14.5px;
+      font-size: 15px;
       font-weight: 700;
       text-decoration: none;
       cursor: pointer;
@@ -416,43 +400,87 @@
       font-family: inherit;
     }
 
+    /* Primary Button: Cinema Amber Orange with Dark Bold Text */
     .btn-primary {
       background: var(--primary);
-      color: #FFFFFF;
-      box-shadow: 0 10px 24px var(--primary-glow);
+      color: #000000;
+      box-shadow: 0 10px 28px var(--primary-glow);
     }
 
     .btn-primary:hover {
       background: var(--primary-hover);
       transform: translateY(-1px);
-      box-shadow: 0 14px 28px rgba(229, 9, 20, 0.48);
     }
 
+    /* Secondary Button: Clean Charcoal Surface */
     .btn-secondary {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--btn-dark);
       color: #FFFFFF;
-      border: 1px solid rgba(255, 255, 255, 0.13);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.14);
+      background: var(--btn-dark-hover);
     }
 
-    .btn-telegram {
-      background: rgba(42, 171, 238, 0.14);
-      color: #54C1FF;
-      border: 1px solid rgba(42, 171, 238, 0.3);
-      font-size: 13.5px;
+    .helper-note {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      max-width: 340px;
+      margin: 0 auto;
     }
 
-    .btn-telegram:hover {
-      background: rgba(42, 171, 238, 0.24);
+    /* Watch Party Ticket Box */
+    .code-box {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1.5px dashed rgba(255, 149, 0, 0.45);
+      border-radius: 18px;
+      padding: 20px 16px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
     }
 
-    /* Manual Watch Party Input Box */
+    .code-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      color: var(--text-secondary);
+    }
+
+    .code-value {
+      font-family: 'Outfit', monospace;
+      font-size: clamp(26px, 6vw, 32px);
+      font-weight: 800;
+      letter-spacing: 3px;
+      color: #FFFFFF;
+    }
+
+    .btn-copy {
+      background: rgba(255, 149, 0, 0.14);
+      color: var(--primary);
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      border: 1px solid rgba(255, 149, 0, 0.35);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    /* Portal Manual Room Input */
     .join-box {
-      background: rgba(18, 18, 26, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.09);
+      width: 100%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
       border-radius: 18px;
       padding: 18px;
       margin-bottom: 20px;
@@ -462,11 +490,8 @@
     .join-title {
       font-size: 13.5px;
       font-weight: 700;
-      color: var(--text-main);
+      color: #FFFFFF;
       margin-bottom: 4px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
 
     .join-subtitle {
@@ -483,12 +508,12 @@
     .input-code {
       flex: 1;
       min-width: 0;
-      background: #1B1B26;
-      border: 1px solid rgba(255, 255, 255, 0.13);
+      background: #14141A;
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 12px;
       padding: 12px 14px;
       font-size: 15px;
-      color: var(--text-main);
+      color: #FFFFFF;
       font-family: 'Outfit', monospace;
       font-weight: 700;
       letter-spacing: 1.5px;
@@ -502,276 +527,215 @@
 
     .btn-join {
       background: var(--primary);
-      color: #FFFFFF;
+      color: #000000;
       border: none;
       border-radius: 12px;
       padding: 0 18px;
       font-weight: 700;
       font-size: 13.5px;
       cursor: pointer;
-      transition: background 0.2s;
-      white-space: nowrap;
     }
 
-    .btn-join:hover {
-      background: var(--primary-hover);
+    /* Bottom Legal & Attribution Footer */
+    .bottom-footer {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 460px;
+      margin: 0 auto;
+      padding: 0 24px max(24px, env(safe-area-inset-bottom)) 24px;
     }
 
-    .features {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 20px;
+    .footer-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.09);
+      margin-bottom: 16px;
+    }
+
+    .footer-disclaimer {
+      font-size: 11.5px;
+      color: #63636B;
+      line-height: 1.55;
       text-align: left;
     }
 
-    .feature-item {
-      background: var(--surface-elevated);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 14px;
-      padding: 12px;
-      font-size: 12px;
-      color: var(--text-secondary);
-      line-height: 1.4;
-    }
-
-    .feature-item strong {
-      color: var(--text-main);
-      display: block;
-      font-size: 12.5px;
-      margin-bottom: 3px;
-    }
-
-    .instructions {
-      font-size: 12px;
-      color: var(--text-muted);
-      line-height: 1.55;
-      margin-top: 18px;
-      border-top: 1px solid rgba(255, 255, 255, 0.07);
-      padding-top: 16px;
-    }
-
-    .footer {
-      margin-top: 22px;
-      font-size: 12px;
-      color: #52525B;
-      text-align: center;
-    }
-
-    .footer a {
-      color: var(--text-secondary);
-      text-decoration: none;
-    }
-
-    .footer a:hover {
-      text-decoration: underline;
-    }
-
-    #roomState, #mediaState, #portalState {
+    #mediaState, #roomState, #portalState {
       display: none;
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
     }
 
-    /* Small Mobile Screens (< 380px) */
-    @media (max-width: 380px) {
-      .btn-row, .features {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width: 360px) {
       .input-row {
         flex-direction: column;
       }
       .btn-join {
-        min-height: 44px;
-      }
-    }
-
-    /* Tablet & Desktop Wide Layout (>= 768px) */
-    @media (min-width: 768px) {
-      .container.wide-media {
-        max-width: 680px;
-      }
-      .container.wide-media .media-showcase {
-        flex-direction: row;
-        align-items: center;
-        text-align: left;
-        gap: 24px;
-      }
-      .container.wide-media .media-info {
-        align-items: flex-start;
-        text-align: left;
-      }
-      .container.wide-media .meta-pills {
-        justify-content: flex-start;
+        height: 44px;
       }
     }
   </style>
 </head>
 <body>
 
-  <div class="container" id="mainContainer">
+  <!-- Dynamic Blurred Poster Backdrop -->
+  <div class="ambient-backdrop">
+    <img id="ambientBackdropImg" class="ambient-backdrop-img" src="" alt="">
+  </div>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <a href="https://cineva.primadev.id" class="brand-link">
+      <img src="/Cineva/assets/cineva_icon.png" onerror="this.onerror=null;this.src='assets/cineva_icon.png';" alt="Cineva" class="brand-logo">
+      <span class="brand-wordmark">Cine<span>va</span></span>
+    </a>
+    <a href="https://cineva.primadev.id" target="_blank" rel="noopener" class="whats-link">
+      What's Cineva? <span>&rarr;</span>
+    </a>
+  </header>
+
+  <!-- Center Stage -->
+  <main class="main-stage">
 
     <!-- =====================================================================
-         STATE 1: WATCH PARTY ROOM DEEP-LINK FALLBACK (#roomState)
+         STATE 1: MOVIE / TV SERIES DEEP-LINK FALLBACK (#mediaState)
+         Matches the clean cinematic vertical showcase layout
          ===================================================================== -->
-    <div class="card" id="roomState">
-      <div class="launch-banner" id="roomLaunchBanner">
-        <span class="pulse-dot" id="roomPulseDot"></span>
-        <span id="roomLaunchStatusText">Opening Cineva Stream App...</span>
+    <div id="mediaState">
+      <div class="hero-poster-wrap">
+        <img id="mediaPosterImg" class="hero-poster-img" src="" alt="Poster" style="display: none;">
+        <div id="mediaPosterFallback" class="hero-poster-fallback">
+          <img src="/Cineva/assets/cineva_icon.png" onerror="this.onerror=null;this.src='assets/cineva_icon.png';" alt="Cineva">
+        </div>
       </div>
 
-      <img src="/Cineva/assets/cineva_icon.png" onerror="this.onerror=null;this.src='assets/cineva_icon.png';" alt="Cineva Icon" class="app-icon">
+      <div class="eyebrow-row">
+        <img src="/Cineva/assets/cineva_icon.png" onerror="this.onerror=null;this.src='assets/cineva_icon.png';" alt="" class="eyebrow-icon">
+        <span class="eyebrow-text" id="mediaTypeEyebrow">SERIES</span>
+      </div>
 
-      <div class="badge">🍿 Watch Party • Live Sync</div>
+      <h1 class="media-title" id="mediaTitleText">Cineva Stream</h1>
 
-      <h1>Join Watch Party Room</h1>
-      <p class="subtitle">You've been invited to watch together on Cineva Stream. If the app did not open automatically, tap the button below.</p>
+      <div class="meta-pills" id="mediaMetaPills">
+        <span class="meta-pill" id="mediaYearPill" style="display: none;"></span>
+        <span class="meta-pill" id="mediaRatingPill" style="display: none;">
+          <span class="star-icon">&#9733;</span>
+          <span id="mediaRatingValue"></span>
+        </span>
+      </div>
+
+      <p class="media-synopsis" id="mediaSynopsisText">
+        Stream this title in Full HD with multi-language subtitles, hardware-accelerated playback, and real-time P2P Watch Party synchronization on Cineva.
+      </p>
+
+      <div class="actions-stack">
+        <button class="btn btn-primary" onclick="window.triggerCinevaNativeLaunch(true)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Open in Cineva
+        </button>
+
+        <a href="https://github.com/cineva-stream/Cineva/releases/latest" class="btn btn-secondary">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Get the app
+        </a>
+      </div>
+
+      <p class="helper-note">
+        Once Cineva is installed, links like this open straight in the app.
+      </p>
+    </div>
+
+    <!-- =====================================================================
+         STATE 2: WATCH PARTY ROOM DEEP-LINK FALLBACK (#roomState)
+         ===================================================================== -->
+    <div id="roomState">
+      <div class="eyebrow-row" style="margin-top: 12px;">
+        <img src="/Cineva/assets/cineva_icon.png" onerror="this.onerror=null;this.src='assets/cineva_icon.png';" alt="" class="eyebrow-icon">
+        <span class="eyebrow-text">WATCH PARTY</span>
+      </div>
+
+      <h1 class="media-title">Join Watch Party Room</h1>
+
+      <p class="media-synopsis" style="margin-bottom: 22px;">
+        You've been invited to watch together in real time on Cineva. Open the room directly in the app or copy the invitation code below.
+      </p>
 
       <div class="code-box">
         <span class="code-label">Room Invitation Code</span>
         <span class="code-value" id="roomCodeText">CNV-....</span>
         <button class="btn-copy" id="copyBtn" onclick="copyRoomCode()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
           Copy Room Code
         </button>
       </div>
 
       <div class="actions-stack">
         <button class="btn btn-primary" onclick="window.triggerCinevaNativeLaunch(true)">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          Open Room in Cineva App
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Open in Cineva
         </button>
 
         <a href="https://github.com/cineva-stream/Cineva/releases/latest" class="btn btn-secondary">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          App Not Installed? Download Cineva
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Get the app
         </a>
       </div>
 
-      <div class="instructions">
-        Already have Cineva installed? You can also open the <b>Cineva</b> app manually and paste the code above into the <b>Join Watch Party</b> menu.
-      </div>
-    </div>
-
-    <!-- =====================================================================
-         STATE 2: MOVIE / TV SERIES DETAIL DEEP-LINK FALLBACK (#mediaState)
-         ===================================================================== -->
-    <div class="card" id="mediaState">
-      <div class="launch-banner" id="mediaLaunchBanner">
-        <span class="pulse-dot" id="mediaPulseDot"></span>
-        <span id="mediaLaunchStatusText">Launching Cineva Stream App...</span>
-      </div>
-
-      <div class="media-showcase">
-        <div class="poster-wrapper" id="mediaPosterWrapper" style="display: none;">
-          <img id="mediaPosterImg" src="" alt="Media Poster" class="poster-img">
-        </div>
-        <img id="mediaFallbackIcon" src="/Cineva/assets/cineva_icon.png" onerror="this.onerror=null;this.src='assets/cineva_icon.png';" alt="Cineva Icon" class="app-icon">
-
-        <div class="media-info">
-          <div class="badge" id="mediaBadge">🎬 Watch on Cineva</div>
-          <h1 id="mediaTitleText">Watch on Cineva Stream</h1>
-
-          <div class="meta-pills" id="mediaMetaPills" style="display: none;">
-            <span class="meta-pill rating" id="mediaRatingPill" style="display: none;"></span>
-            <span class="meta-pill" id="mediaYearPill" style="display: none;"></span>
-            <span class="meta-pill" id="mediaGenrePill" style="display: none;"></span>
-          </div>
-
-          <p class="subtitle" id="mediaSubtitleText">
-            Redirecting directly to this title inside the Cineva app. If Cineva is not installed yet, download the latest release below.
-          </p>
-        </div>
-      </div>
-
-      <div class="actions-stack">
-        <button class="btn btn-primary" onclick="window.triggerCinevaNativeLaunch(true)">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          Open in Cineva App
-        </button>
-
-        <div class="btn-row">
-          <a href="https://github.com/cineva-stream/Cineva/releases/latest" class="btn btn-secondary">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Download App
-          </a>
-
-          <a href="https://t.me/cineva_platform" target="_blank" rel="noopener" class="btn btn-telegram">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M20.665 3.717l-17.735 6.837c-1.21.486-1.203 1.161-.222 1.462l4.553 1.42 10.536-6.645c.498-.303.953-.14.579.192l-8.536 7.701-.314 4.69c.46 0 .664-.211.922-.461l2.213-2.151 4.604 3.402c.849.467 1.458.227 1.669-.788l3.023-14.245c.309-1.239-.473-1.8-1.292-1.414z"/></svg>
-            Telegram Channel
-          </a>
-        </div>
-      </div>
-
-      <div class="instructions">
-        Opening from <b>Telegram</b>? If the in-app browser blocks automatic app launch, tap <b>Open in Cineva App</b> above or choose <b>Open in External Browser</b> from the top-right menu.
-      </div>
+      <p class="helper-note">
+        Once Cineva is installed, links like this open straight in the app.
+      </p>
     </div>
 
     <!-- =====================================================================
          STATE 3: DEFAULT PORTAL / LANDING PAGE (#portalState)
          ===================================================================== -->
-    <div class="card" id="portalState">
-      <img src="/Cineva/assets/cineva_icon.png" onerror="this.onerror=null;this.src='assets/cineva_icon.png';" alt="Cineva Icon" class="app-icon">
+    <div id="portalState">
+      <div class="hero-poster-wrap" style="width: 112px; height: 112px; aspect-ratio: 1/1; border-radius: 26px; margin-top: 12px; margin-bottom: 20px;">
+        <img src="/Cineva/assets/cineva_icon.png" onerror="this.onerror=null;this.src='assets/cineva_icon.png';" alt="Cineva" class="hero-poster-img">
+      </div>
 
-      <div class="badge">Open Source • Ad-Free</div>
+      <div class="eyebrow-row">
+        <img src="/Cineva/assets/cineva_icon.png" onerror="this.onerror=null;this.src='assets/cineva_icon.png';" alt="" class="eyebrow-icon">
+        <span class="eyebrow-text">OPEN SOURCE MEDIA PLAYER</span>
+      </div>
 
-      <h1>Cineva Stream</h1>
-      <p class="subtitle">Modern decentralized media player with real-time P2P Watch Party synchronization, 4K hardware acceleration, and 65+ subtitle languages.</p>
+      <h1 class="media-title">Cineva Stream</h1>
+
+      <p class="media-synopsis" style="margin-bottom: 22px;">
+        Modern decentralized media player with real-time P2P Watch Party synchronization, 4K 60FPS hardware acceleration, and 65+ subtitle languages.
+      </p>
 
       <div class="join-box">
-        <div class="join-title">
-          <span>🍿</span> Have a Watch Party Code?
-        </div>
+        <div class="join-title">Have a Watch Party Code?</div>
         <div class="join-subtitle">Enter the 8-character room code shared by your friend</div>
         <div class="input-row">
           <input type="text" id="manualCodeInput" class="input-code" placeholder="CNV-XXXX" maxlength="8">
-          <button class="btn-join" onclick="handleManualJoin()">Join Room</button>
+          <button class="btn-join" onclick="handleManualJoin()">Join</button>
         </div>
       </div>
 
       <div class="actions-stack">
         <a href="https://github.com/cineva-stream/Cineva/releases/latest" class="btn btn-primary">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download Latest Release (Android &amp; Windows)
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Get the app
         </a>
 
-        <div class="btn-row">
-          <a href="https://t.me/cineva_platform" target="_blank" rel="noopener" class="btn btn-telegram">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M20.665 3.717l-17.735 6.837c-1.21.486-1.203 1.161-.222 1.462l4.553 1.42 10.536-6.645c.498-.303.953-.14.579.192l-8.536 7.701-.314 4.69c.46 0 .664-.211.922-.461l2.213-2.151 4.604 3.402c.849.467 1.458.227 1.669-.788l3.023-14.245c.309-1.239-.473-1.8-1.292-1.414z"/></svg>
-            Join Telegram
-          </a>
-
-          <a href="https://github.com/cineva-stream/Cineva" target="_blank" rel="noopener" class="btn btn-secondary">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-            GitHub Repo
-          </a>
-        </div>
-      </div>
-
-      <div class="features">
-        <div class="feature-item">
-          <strong>P2P Watch Party</strong>
-          Real-time playback sync &amp; live reactions with friends.
-        </div>
-        <div class="feature-item">
-          <strong>4K Hardware Engine</strong>
-          Smooth 60FPS GPU-accelerated MediaKit playback.
-        </div>
-        <div class="feature-item">
-          <strong>65+ Subtitles</strong>
-          Automated subtitle search &amp; instant translation.
-        </div>
-        <div class="feature-item">
-          <strong>Offline Downloads</strong>
-          High-speed background downloader for offline viewing.
-        </div>
+        <a href="https://t.me/cineva_platform" target="_blank" rel="noopener" class="btn btn-secondary">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M20.665 3.717l-17.735 6.837c-1.21.486-1.203 1.161-.222 1.462l4.553 1.42 10.536-6.645c.498-.303.953-.14.579.192l-8.536 7.701-.314 4.69c.46 0 .664-.211.922-.461l2.213-2.151 4.604 3.402c.849.467 1.458.227 1.669-.788l3.023-14.245c.309-1.239-.473-1.8-1.292-1.414z"/></svg>
+          Join Telegram Channel
+        </a>
       </div>
     </div>
 
-  </div>
+  </main>
 
-  <div class="footer">
-    Crafted with ❤️ by <a href="https://github.com/cineva-stream" target="_blank" rel="noopener">Cineva Group</a> • <a href="https://t.me/cineva_platform" target="_blank" rel="noopener">@cineva_platform</a>
-  </div>
+  <!-- Legal & TMDB Attribution Footer -->
+  <footer class="bottom-footer">
+    <div class="footer-divider"></div>
+    <p class="footer-disclaimer">
+      Title information from TMDB. Cineva is not endorsed or certified by TMDB and does not host media.
+    </p>
+  </footer>
 
   <script>
     function copyRoomCode() {
@@ -779,11 +743,11 @@
       if (!dl.roomCode) return;
       navigator.clipboard.writeText(dl.roomCode).then(function () {
         const btn = document.getElementById("copyBtn");
-        btn.innerHTML = "✓ Code Copied!";
-        btn.style.color = "#4ADE80";
+        btn.innerHTML = "&#10003; Code Copied!";
+        btn.style.color = "#30D158";
         setTimeout(function () {
           btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy Room Code';
-          btn.style.color = "#FF6B7B";
+          btn.style.color = "#FF9500";
         }, 2000);
       });
     }
@@ -801,92 +765,61 @@
       window.triggerCinevaNativeLaunch(true);
     }
 
+    // Automatically enrich metadata from public TMDB OEmbed / page params on DOMContentLoaded
     window.addEventListener("DOMContentLoaded", function () {
       const dl = window.__CINEVA_DEEP_LINK__ || {};
-      const container = document.getElementById("mainContainer");
 
       if (dl.roomCode) {
         document.getElementById("roomCodeText").innerText = dl.roomCode;
-        document.title = "Join Room " + dl.roomCode + " • Cineva Stream";
-        document.getElementById("roomState").style.display = "block";
-
-        if (dl.isFallbackReturn) {
-          document.getElementById("roomPulseDot").classList.add("fallback");
-          document.getElementById("roomLaunchStatusText").innerText = "Cineva App Not Detected — Install or Open Manually";
-        } else {
-          setTimeout(function () {
-            if (document.visibilityState === "visible") {
-              document.getElementById("roomPulseDot").classList.add("fallback");
-              document.getElementById("roomLaunchStatusText").innerText = "Ready to Open in Cineva Stream";
-            }
-          }, 1800);
-        }
+        document.title = "Join Room " + dl.roomCode + " • Cineva";
+        document.getElementById("roomState").style.display = "flex";
       } else if (dl.media) {
         const m = dl.media;
         const isTv = m.type === "tv";
-        document.getElementById("mediaBadge").innerText = isTv
-          ? "📺 TV Series • Cineva Stream"
-          : "🎬 Movie • Cineva Stream";
+        document.getElementById("mediaTypeEyebrow").innerText = isTv ? "SERIES" : "MOVIE";
 
         if (m.title) {
           document.getElementById("mediaTitleText").innerText = m.title;
-          document.title = m.title + " • Watch on Cineva Stream";
+          document.title = m.title + " • Cineva";
         } else {
-          document.title = "Watch on Cineva Stream";
+          document.getElementById("mediaTitleText").innerText = isTv ? "TV Series #" + m.id : "Movie #" + m.id;
+          document.title = "Watch on Cineva";
         }
 
-        // Render HD Poster if provided in query parameters
+        if (m.year) {
+          const yPill = document.getElementById("mediaYearPill");
+          yPill.innerText = m.year;
+          yPill.style.display = "inline-flex";
+        }
+
+        if (m.rating) {
+          const rPill = document.getElementById("mediaRatingPill");
+          document.getElementById("mediaRatingValue").innerText = m.rating;
+          rPill.style.display = "inline-flex";
+        }
+
+        if (m.overview) {
+          document.getElementById("mediaSynopsisText").innerText = m.overview;
+        }
+
         if (m.poster && m.poster.startsWith("/")) {
+          const fullPosterUrl = "https://image.tmdb.org/t/p/w500" + m.poster;
           const posterImg = document.getElementById("mediaPosterImg");
-          const posterWrapper = document.getElementById("mediaPosterWrapper");
-          const fallbackIcon = document.getElementById("mediaFallbackIcon");
-          posterImg.src = "https://image.tmdb.org/t/p/w500" + m.poster;
+          const posterFallback = document.getElementById("mediaPosterFallback");
+          const ambientImg = document.getElementById("ambientBackdropImg");
+
+          posterImg.src = fullPosterUrl;
+          ambientImg.src = fullPosterUrl;
           posterImg.onload = function () {
-            posterWrapper.style.display = "block";
-            fallbackIcon.style.display = "none";
-            container.classList.add("wide-media");
+            posterImg.style.display = "block";
+            posterFallback.style.display = "none";
+            ambientImg.style.opacity = "1";
           };
         }
 
-        // Render Rating, Year & Genre pills if provided
-        let hasMeta = false;
-        if (m.rating) {
-          const rPill = document.getElementById("mediaRatingPill");
-          rPill.innerText = "⭐ " + m.rating;
-          rPill.style.display = "inline-flex";
-          hasMeta = true;
-        }
-        if (m.year) {
-          const yPill = document.getElementById("mediaYearPill");
-          yPill.innerText = "📅 " + m.year;
-          yPill.style.display = "inline-flex";
-          hasMeta = true;
-        }
-        if (m.genre) {
-          const gPill = document.getElementById("mediaGenrePill");
-          gPill.innerText = m.genre;
-          gPill.style.display = "inline-flex";
-          hasMeta = true;
-        }
-        if (hasMeta) {
-          document.getElementById("mediaMetaPills").style.display = "flex";
-        }
-
-        document.getElementById("mediaState").style.display = "block";
-
-        if (dl.isFallbackReturn) {
-          document.getElementById("mediaPulseDot").classList.add("fallback");
-          document.getElementById("mediaLaunchStatusText").innerText = "Cineva App Not Detected — Download or Open Manually";
-        } else {
-          setTimeout(function () {
-            if (document.visibilityState === "visible") {
-              document.getElementById("mediaPulseDot").classList.add("fallback");
-              document.getElementById("mediaLaunchStatusText").innerText = "Tap 'Open in Cineva App' or Download Below";
-            }
-          }, 1800);
-        }
+        document.getElementById("mediaState").style.display = "flex";
       } else {
-        document.getElementById("portalState").style.display = "block";
+        document.getElementById("portalState").style.display = "flex";
       }
     });
   </script>

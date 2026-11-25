@@ -16,6 +16,12 @@ class AppUpdateService {
   );
   static const String _latestReleaseUrl =
       'https://api.github.com/repos/cineva-stream/Cineva/releases/latest';
+  static const String _releasesListUrl =
+      'https://api.github.com/repos/cineva-stream/Cineva/releases?per_page=15';
+
+  /// Threshold of missed updates that triggers a mandatory update screen.
+  static const int mandatoryUpdateThreshold =
+      AppUpdateInfo.mandatoryUpdateThreshold;
 
   final Dio _dio;
 
@@ -64,6 +70,68 @@ class AppUpdateService {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Calculates the semantic version step distance between [remoteVer] and [currentVer].
+  ///
+  /// For example:
+  /// - `1.2.1` -> `1.2.4` = `3` updates
+  /// - `1.1.8` -> `1.2.1` = `3` updates (treating each minor bump as 10 patch steps)
+  /// Returns `0` if [remoteVer] is not newer than [currentVer].
+  static int calculateVersionDistance(String remoteVer, String currentVer) {
+    if (!isVersionNewer(remoteVer, currentVer)) return 0;
+    try {
+      final cleanRemote = remoteVer.toLowerCase().replaceAll(
+        RegExp(r'[^0-9.]'),
+        '',
+      );
+      final cleanCurrent = currentVer.toLowerCase().replaceAll(
+        RegExp(r'[^0-9.]'),
+        '',
+      );
+
+      final rParts = cleanRemote
+          .split('.')
+          .map((p) => int.tryParse(p) ?? 0)
+          .toList();
+      final cParts = cleanCurrent
+          .split('.')
+          .map((p) => int.tryParse(p) ?? 0)
+          .toList();
+
+      final rMajor = rParts.isNotEmpty ? rParts[0] : 0;
+      final rMinor = rParts.length > 1 ? rParts[1] : 0;
+      final rPatch = rParts.length > 2 ? rParts[2] : 0;
+
+      final cMajor = cParts.isNotEmpty ? cParts[0] : 0;
+      final cMinor = cParts.length > 1 ? cParts[1] : 0;
+      final cPatch = cParts.length > 2 ? cParts[2] : 0;
+
+      final diff =
+          ((rMajor - cMajor) * 100) + ((rMinor - cMinor) * 10) + (rPatch - cPatch);
+      return diff >= 1 ? diff : 1;
+    } catch (_) {
+      return 1;
+    }
+  }
+
+  /// Counts how many published (non-draft, non-prerelease) releases in [releases]
+  /// have a version tag strictly newer than [currentVersion].
+  static int countMissedReleases(
+    List<dynamic> releases,
+    String currentVersion,
+  ) {
+    int count = 0;
+    for (final item in releases) {
+      if (item is! Map) continue;
+      if (item['draft'] == true || item['prerelease'] == true) continue;
+      final tag = item['tag_name']?.toString() ?? '';
+      final cleanTag = tag.replaceFirst(RegExp(r'^[vV]'), '').trim();
+      if (cleanTag.isNotEmpty && isVersionNewer(cleanTag, currentVersion)) {
+        count++;
+      }
+    }
+    return count;
   }
 
   /// Retrieves the list of CPU ABIs supported by the current device.
@@ -143,18 +211,46 @@ class AppUpdateService {
     };
   }
 
-  /// Checks the official GitHub repository for a newer release.
+  /// Checks the official GitHub repository for a newer release and counts missed updates.
   Future<AppUpdateInfo?> checkForUpdate() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
 
-      final response = await _dio.get(_latestReleaseUrl);
-      if (response.statusCode != 200 || response.data is! Map) {
-        return null;
+      Map<String, dynamic>? data;
+      int newerReleasesFromList = 0;
+
+      // 1. Fetch recent releases list to accurately count how many updates the user has missed
+      try {
+        final listResponse = await _dio.get(_releasesListUrl);
+        if (listResponse.statusCode == 200 && listResponse.data is List) {
+          final releaseList = listResponse.data as List<dynamic>;
+          newerReleasesFromList = countMissedReleases(
+            releaseList,
+            currentVersion,
+          );
+          for (final item in releaseList) {
+            if (item is Map &&
+                item['draft'] != true &&
+                item['prerelease'] != true) {
+              data = Map<String, dynamic>.from(item);
+              break;
+            }
+          }
+        }
+      } catch (_) {
+        // Fallback to /releases/latest below
       }
 
-      final data = response.data as Map<String, dynamic>;
+      // 2. Fallback to /releases/latest if list endpoint didn't yield a release
+      if (data == null) {
+        final response = await _dio.get(_latestReleaseUrl);
+        if (response.statusCode != 200 || response.data is! Map) {
+          return null;
+        }
+        data = Map<String, dynamic>.from(response.data as Map);
+      }
+
       final tagName = data['tag_name']?.toString() ?? '';
       final cleanRemoteVersion = tagName
           .replaceFirst(RegExp(r'^[vV]'), '')
@@ -163,6 +259,14 @@ class AppUpdateService {
       if (!isVersionNewer(cleanRemoteVersion, currentVersion)) {
         return null;
       }
+
+      final semverDistance = calculateVersionDistance(
+        cleanRemoteVersion,
+        currentVersion,
+      );
+      final missedUpdateCount = newerReleasesFromList > semverDistance
+          ? newerReleasesFromList
+          : semverDistance;
 
       final releaseTitle =
           data['name']?.toString() ?? 'Cineva v$cleanRemoteVersion';
@@ -223,6 +327,7 @@ class AppUpdateService {
         publishedAt: publishedAt,
         currentVersion: currentVersion,
         targetAbi: targetAbi,
+        missedUpdateCount: missedUpdateCount,
       );
     } catch (e) {
       debugPrint('[AppUpdateService] Check update error: $e');
