@@ -11,8 +11,11 @@ import android.os.Bundle
 import android.util.Log
 import android.util.Rational
 import android.view.WindowManager
+import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
+import android.os.Environment
+import android.provider.MediaStore
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
@@ -295,6 +298,54 @@ class MainActivity : FlutterActivity() {
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to share text: ${e.message}", e)
                         result.error("SHARE_ERROR", e.message, null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        val autoBackupChannel = "com.cinevagroup.cinevastream/autobackup"
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, autoBackupChannel).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "saveToPublicDocuments" -> {
+                    val fileName = call.argument<String>("fileName") ?: "Cineva_AutoBackup.cineva"
+                    val bytes = call.argument<ByteArray>("bytes")
+                    if (bytes == null) {
+                        result.error("INVALID_ARGS", "bytes is required", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            val resolver = applicationContext.contentResolver
+                            val contentValues = ContentValues().apply {
+                                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                                put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+                                put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOCUMENTS}/Cineva")
+                            }
+                            val collection = MediaStore.Files.getContentUri("external")
+                            val itemUri = resolver.insert(collection, contentValues)
+                            if (itemUri != null) {
+                                resolver.openOutputStream(itemUri)?.use { out ->
+                                    out.write(bytes)
+                                    out.flush()
+                                }
+                                result.success("/storage/emulated/0/Documents/Cineva/$fileName")
+                                return@setMethodCallHandler
+                            }
+                        }
+                        val docsDir = File(
+                            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
+                            "Cineva"
+                        )
+                        if (!docsDir.exists()) {
+                            docsDir.mkdirs()
+                        }
+                        val targetFile = File(docsDir, fileName)
+                        targetFile.writeBytes(bytes)
+                        result.success(targetFile.absolutePath)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "saveToPublicDocuments error: ${e.message}", e)
+                        result.error("AUTO_BACKUP_ERROR", e.message, null)
                     }
                 }
                 else -> result.notImplemented()

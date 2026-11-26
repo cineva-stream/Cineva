@@ -20,7 +20,7 @@ class MediaShareService {
   );
 
   static const String deepLinkBaseUrl =
-      'https://cineva-stream.github.io/Cineva';
+      'https://cineva-stream.github.io';
 
   /// Constructs a rich deep-link URL with query parameters for the web fallback preview.
   static String buildShareUrl({

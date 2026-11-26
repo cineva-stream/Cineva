@@ -41,7 +41,7 @@ from typing import Any
 
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w780"
-CINEVA_DEEP_LINK_BASE = "https://cineva-stream.github.io/Cineva"
+CINEVA_DEEP_LINK_BASE = "https://cineva-stream.github.io"
 CINEVA_RELEASES_URL = "https://github.com/cineva-stream/Cineva/releases/latest"
 DEFAULT_TELEGRAM_CHANNEL = "@cineva_platform"
 DEFAULT_CACHE_PATH = Path(".telegram_posted_cache.json")

@@ -2634,5 +2634,92 @@ class AppStrings {
     'Please enter a valid email address',
     'कृपया एक मान्य ईमेल पता दर्ज करें',
   );
+
+  // ── 22. LOCAL AUTO BACKUP TO DOCUMENTS/CINEVA ──
+  String get autoBackupMenuTitle => tr(
+    'Cadangan Otomatis Lokal',
+    'Local Auto Backup',
+    'लोकल ऑटो बैकअप',
+  );
+  String get autoBackupMenuSubtitle => tr(
+    'Jadwalkan penyimpanan otomatis ke Documents/Cineva',
+    'Schedule automatic backups to Documents/Cineva',
+    'Documents/Cineva में स्वचालित बैकअप शेड्यूल करें',
+  );
+  String get autoBackupScreenTitle => tr(
+    'Cadangan Otomatis',
+    'Auto Backup',
+    'ऑटो बैकअप',
+  );
+  String get autoBackupScreenDesc => tr(
+    'Data tontonan, watchlist, profil, dan pengaturan akan dicadangkan otomatis ke folder Documents/Cineva tanpa perlu login akun.',
+    'Your watch history, watchlist, profile, and settings are automatically backed up to Documents/Cineva without requiring an account.',
+    'आपका देखने का इतिहास, वॉचलिस्ट, प्रोफ़ाइल और सेटिंग्स बिना किसी खाते के स्वचालित रूप से Documents/Cineva में बैकअप हो जाते हैं।',
+  );
+  String get autoBackupScheduleSection => tr(
+    'Jadwal Pencadangan',
+    'Backup Schedule',
+    'बैकअप शेड्यूल',
+  );
+  String get autoBackupFreqOff => tr('Nonaktif', 'Off', 'बंद');
+  String get autoBackupFreqOffDesc => tr(
+    'Tidak melakukan pencadangan otomatis',
+    'Do not run automatic local backups',
+    'स्वचालित लोकल बैकअप न चलाएं',
+  );
+  String get autoBackupFreqWeekly => tr('Mingguan', 'Weekly', 'साप्ताहिक');
+  String get autoBackupFreqWeeklyDesc => tr(
+    'Cadangkan otomatis setiap 7 hari ke Documents/Cineva',
+    'Automatically back up every 7 days to Documents/Cineva',
+    'हर 7 दिनों में स्वचालित रूप से Documents/Cineva में बैकअप लें',
+  );
+  String get autoBackupFreqMonthly => tr('Bulanan', 'Monthly', 'मासिक');
+  String get autoBackupFreqMonthlyDesc => tr(
+    'Cadangkan otomatis setiap 30 hari ke Documents/Cineva',
+    'Automatically back up every 30 days to Documents/Cineva',
+    'हर 30 दिनों में स्वचालित रूप से Documents/Cineva में बैकअप लें',
+  );
+  String get autoBackupLocationLabel => tr(
+    'Lokasi Penyimpanan',
+    'Storage Location',
+    'स्टोरेज स्थान',
+  );
+  String get autoBackupLastRunLabel => tr(
+    'Cadangan Terakhir',
+    'Last Backup',
+    'अंतिम बैकअप',
+  );
+  String get autoBackupNextRunLabel => tr(
+    'Jadwal Berikutnya',
+    'Next Scheduled',
+    'अगला शेड्यूल',
+  );
+  String get autoBackupNever => tr('Belum pernah', 'Never', 'कभी नहीं');
+  String get autoBackupRunNowBtn => tr(
+    'Cadangkan Sekarang',
+    'Back Up Now',
+    'अभी बैकअप लें',
+  );
+  String get autoBackupSavedFilesSection => tr(
+    'Berkas Cadangan Tersimpan',
+    'Saved Backup Files',
+    'सहेजी गई बैकअप फ़ाइलें',
+  );
+  String get autoBackupEmptyFiles => tr(
+    'Belum ada berkas cadangan otomatis di Documents/Cineva.',
+    'No automatic backup files in Documents/Cineva yet.',
+    'Documents/Cineva में अभी तक कोई ऑटो बैकअप फ़ाइल नहीं है।',
+  );
+  String get autoBackupRestoreBtn => tr('Pulihkan', 'Restore', 'पुनर्स्थापित करें');
+  String get autoBackupSuccessToast => tr(
+    'Cadangan berhasil disimpan ke Documents/Cineva',
+    'Backup saved to Documents/Cineva',
+    'बैकअप Documents/Cineva में सहेजा गया',
+  );
+  String get autoBackupDeletedToast => tr(
+    'Berkas cadangan dihapus',
+    'Backup file deleted',
+    'बैकअप फ़ाइल हटाई गई',
+  );
 }
 

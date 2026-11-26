@@ -72,15 +72,13 @@ CINEVA_SMTP_APP_PASSWORD="abcd efgh ijkl mnop"
         );
         expect(mime, contains('To: <viewer@gmail.com>'));
         expect(mime, contains('Reply-To: <cineva.dev@gmail.com>'));
+        expect(mime, contains('Content-Type: text/plain; charset="UTF-8"'));
+        expect(mime.contains('text/html'), isFalse);
 
-        // Decode base64 chunks in the MIME body to verify plain text & HTML content
+        // Decode base64 plain-text body
+        final bodyPart = mime.split('Content-Transfer-Encoding: base64\r\n\r\n').last;
         final decodedString = utf8.decode(
-          base64.decode(
-            RegExp(r'Content-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+/=\r\n]+?)\r\n--')
-                .firstMatch(mime)!
-                .group(1)!
-                .replaceAll(RegExp(r'\s+'), ''),
-          ),
+          base64.decode(bodyPart.replaceAll(RegExp(r'\s+'), '')),
         );
 
         expect(decodedString, contains('Dear Rizky Pratama,'));

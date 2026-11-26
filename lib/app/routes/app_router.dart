@@ -20,6 +20,7 @@ import '../../features/settings/presentation/screens/app_language_screen.dart';
 import '../../features/settings/presentation/screens/legal_document_screen.dart';
 import '../../features/settings/presentation/screens/about_info_screen.dart';
 import '../../features/settings/presentation/screens/release_notes_screen.dart';
+import '../../features/backup/presentation/screens/auto_backup_screen.dart';
 import '../../features/feedback/presentation/screens/feedback_screen.dart';
 import '../../features/profile/presentation/screens/onboarding_profile_screen.dart';
 import '../../features/profile/presentation/screens/legal_agreement_screen.dart';
@@ -608,6 +609,29 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const ReleaseNotesScreen(),
+        transitionDuration: const Duration(milliseconds: 280),
+        reverseTransitionDuration: const Duration(milliseconds: 230),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          );
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.06, 0),
+              end: Offset.zero,
+            ).animate(curved),
+            child: FadeTransition(opacity: curved, child: child),
+          );
+        },
+      ),
+    ),
+    GoRoute(
+      path: '/settings/auto-backup',
+      name: 'autoBackup',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const AutoBackupScreen(),
         transitionDuration: const Duration(milliseconds: 280),
         reverseTransitionDuration: const Duration(milliseconds: 230),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {

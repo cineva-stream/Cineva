@@ -13,6 +13,7 @@ import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/platform/device_form_factor.dart';
 import '../../../../shared/widgets/modern_flag_badge.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
+import '../../../backup/data/auto_backup_service.dart';
 import '../../../backup/data/backup_restore_service.dart';
 import '../../../home/presentation/providers/home_providers.dart';
 import '../../data/settings_service.dart';
@@ -1453,6 +1454,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Iconsax.cloud_connection,
                 ),
                 _buildSettingsCard([
+                  // 0. Cadangan Otomatis Lokal (Documents/Cineva)
+                  _SettingsTileItem(
+                    icon: Icons.schedule_send_rounded,
+                    title: s.autoBackupMenuTitle,
+                    subtitle: s.autoBackupMenuSubtitle,
+                    trailingText: AutoBackupService.getFrequency().localizedTitle(s),
+                    onTap: () async {
+                      await context.push('/settings/auto-backup');
+                      if (mounted) setState(() {});
+                    },
+                  ),
+                  _buildCardDivider(),
                   // 1. Cadangkan Data (Backup to File)
                   _SettingsTileItem(
                     icon: Iconsax.export_3,

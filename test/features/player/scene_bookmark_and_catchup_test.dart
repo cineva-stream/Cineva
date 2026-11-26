@@ -38,7 +38,7 @@ void main() {
 
       expect(
         movieUrl,
-        startsWith('https://cineva-stream.github.io/Cineva/movie/27205?'),
+        startsWith('https://cineva-stream.github.io/movie/27205?'),
       );
       final parsed = Uri.parse(movieUrl);
       expect(parsed.queryParameters['title'], 'Inception');
