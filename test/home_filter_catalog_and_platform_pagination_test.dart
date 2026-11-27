@@ -37,7 +37,7 @@ void main() {
     test('All platforms provide valid multi-channel TMDB provider queries', () {
       final max = StreamingPlatform.fromId('max');
       expect(max.providerId, 1899);
-      expect(max.watchProviderQuery, '1899|1825');
+      expect(max.watchProviderQuery, '1899|1825|384');
 
       final paramount = StreamingPlatform.fromId('paramount');
       expect(paramount.providerId, 531);
@@ -55,7 +55,16 @@ void main() {
       expect(netflix.watchProviderQuery, '8');
 
       final disney = StreamingPlatform.fromId('disney');
-      expect(disney.watchProviderQuery, '337');
+      expect(disney.watchProviderQuery, '337|122');
+
+      final vidio = StreamingPlatform.fromId('vidio');
+      expect(vidio.watchProviderQuery, '489');
+
+      final wetv = StreamingPlatform.fromId('wetv');
+      expect(wetv.watchProviderQuery, '623|160');
+
+      final viu = StreamingPlatform.fromId('viu');
+      expect(viu.watchProviderQuery, '158');
     });
   });
 
