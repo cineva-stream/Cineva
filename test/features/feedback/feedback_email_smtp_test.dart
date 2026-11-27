@@ -63,7 +63,7 @@ CINEVA_SMTP_APP_PASSWORD="abcd efgh ijkl mnop"
           category: 'Bug / Kendala Teknis',
           title: 'Subtitle delay on Episode 3',
           description: 'The subtitle is 2 seconds late.',
-          appVersion: 'v1.2.1+22',
+          appVersion: 'v1.2.2+23',
         );
 
         expect(
@@ -76,7 +76,9 @@ CINEVA_SMTP_APP_PASSWORD="abcd efgh ijkl mnop"
         expect(mime.contains('text/html'), isFalse);
 
         // Decode base64 plain-text body
-        final bodyPart = mime.split('Content-Transfer-Encoding: base64\r\n\r\n').last;
+        final bodyPart = mime
+            .split('Content-Transfer-Encoding: base64\r\n\r\n')
+            .last;
         final decodedString = utf8.decode(
           base64.decode(bodyPart.replaceAll(RegExp(r'\s+'), '')),
         );
@@ -103,10 +105,8 @@ CINEVA_SMTP_APP_PASSWORD="abcd efgh ijkl mnop"
               (ref) => AppLanguageNotifier()..setLanguage(AppLanguage.id),
             ),
             googleSyncProvider.overrideWith(
-              (ref) => _FakeGoogleSyncService(
-                ref,
-                email: 'logged.user@gmail.com',
-              ),
+              (ref) =>
+                  _FakeGoogleSyncService(ref, email: 'logged.user@gmail.com'),
             ),
             userProfileProvider.overrideWith(
               (ref) => _FakeUserProfileNotifier(),
@@ -118,9 +118,7 @@ CINEVA_SMTP_APP_PASSWORD="abcd efgh ijkl mnop"
         await tester.pumpWidget(
           UncontrolledProviderScope(
             container: container,
-            child: const MaterialApp(
-              home: FeedbackScreen(),
-            ),
+            child: const MaterialApp(home: FeedbackScreen()),
           ),
         );
         await tester.pumpAndSettle();
@@ -128,10 +126,7 @@ CINEVA_SMTP_APP_PASSWORD="abcd efgh ijkl mnop"
         // Auto-filled Google email is present in the Email TextField
         expect(find.text('logged.user@gmail.com'), findsOneWidget);
         expect(find.text('Alamat Email (Opsional)'), findsOneWidget);
-        expect(
-          find.textContaining('cineva.dev@gmail.com'),
-          findsOneWidget,
-        );
+        expect(find.textContaining('cineva.dev@gmail.com'), findsOneWidget);
 
         // Switch to English
         await container
