@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:cineva/core/constants/content_preference.dart';
+import 'package:cineva/core/localization/app_language.dart';
 import 'package:cineva/features/history/data/models/watch_history_item.dart';
+import 'package:cineva/features/home/presentation/providers/home_providers.dart';
 import 'package:cineva/features/history/data/repositories/watch_history_repository.dart';
 import 'package:cineva/core/constants/app_constants.dart';
 import 'package:cineva/features/live_tv/data/datasources/live_tv_channels_data.dart';
@@ -40,8 +43,8 @@ void main() {
   });
 
   group('StreamingPlatform Entity Tests', () {
-    test('Supported platforms list contains all 8 major networks', () {
-      expect(StreamingPlatform.supportedPlatforms.length, 8);
+    test('Supported platforms list contains all 11 major networks including Vidio, WeTV, and Viu with trilingual taglines', () {
+      expect(StreamingPlatform.supportedPlatforms.length, 11);
       expect(StreamingPlatform.fromId('netflix').providerId, 8);
       expect(StreamingPlatform.fromId('prime').providerId, 9);
       expect(StreamingPlatform.fromId('disney').providerId, 337);
@@ -50,6 +53,41 @@ void main() {
       expect(StreamingPlatform.fromId('hulu').providerId, 15);
       expect(StreamingPlatform.fromId('paramount').providerId, 531);
       expect(StreamingPlatform.fromId('peacock').providerId, 387);
+
+      // Verify Vidio, WeTV, and Viu multi-source TMDB configuration
+      final vidio = StreamingPlatform.fromId('vidio');
+      expect(vidio.providerId, 489);
+      expect(vidio.watchRegion, 'ID');
+      expect(vidio.primaryNetworkIds, '3579');
+      expect(vidio.companyIds, '147819|78913');
+      expect(vidio.logoAsset, 'assets/images/platforms/vidio.png');
+
+      final wetv = StreamingPlatform.fromId('wetv');
+      expect(wetv.providerId, 623);
+      expect(wetv.watchProviderQuery, '623|160');
+      expect(wetv.watchRegion, 'ID');
+      expect(wetv.primaryNetworkIds, '3732|2224');
+      expect(wetv.secondaryNetworkIds, '2007');
+      expect(wetv.companyIds, '174410|74457|84946|81620');
+      expect(wetv.logoAsset, 'assets/images/platforms/wetv.png');
+
+      final viu = StreamingPlatform.fromId('viu');
+      expect(viu.providerId, 158);
+      expect(viu.watchRegion, 'ID');
+      expect(viu.extraWatchRegions, containsAll(['SG', 'MY', 'HK']));
+      expect(viu.primaryNetworkIds, '7237|2980');
+      expect(viu.logoAsset, 'assets/images/platforms/viu.png');
+
+      // Verify tryFromQueryOrId and trilingual taglines (ID, EN, HI)
+      expect(StreamingPlatform.tryFromQueryOrId('623|160')?.id, 'wetv');
+      expect(StreamingPlatform.tryFromQueryOrId('489')?.id, 'vidio');
+      expect(StreamingPlatform.tryFromQueryOrId('158')?.id, 'viu');
+
+      for (final p in StreamingPlatform.supportedPlatforms) {
+        expect(p.localizedTagline(AppLanguage.id).trim(), isNotEmpty);
+        expect(p.localizedTagline(AppLanguage.en).trim(), isNotEmpty);
+        expect(p.localizedTagline(AppLanguage.hi).trim(), isNotEmpty);
+      }
     });
 
     test('Fallback to first platform for unknown id', () {
@@ -213,6 +251,103 @@ void main() {
       expect(find.text('Stranger Things: The Movie'), findsOneWidget);
       expect(find.text('Wednesday'), findsOneWidget);
     });
+
+    testWidgets(
+      'Prioritizes Indonesian movies and TV series first when ContentPreference.indonesia is set, with global fallback below',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 2400);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final mixedMovies = [
+          const Movie(
+            id: 501,
+            title: 'Global Blockbuster US',
+            overview: 'High popularity global movie',
+            posterPath: '/global.jpg',
+            voteAverage: 8.9,
+            popularity: 950.0,
+            releaseDate: '2025-01-10',
+            originalLanguage: 'en',
+            originCountry: ['US'],
+          ),
+          const Movie(
+            id: 502,
+            title: 'Ipar Adalah Maut',
+            overview: 'Film drama Indonesia populer',
+            posterPath: '/ipar.jpg',
+            voteAverage: 8.4,
+            popularity: 120.0,
+            releaseDate: '2024-06-13',
+            originalLanguage: 'id',
+            originCountry: ['ID'],
+          ),
+        ];
+
+        final mixedTv = [
+          const TvSeries(
+            id: 601,
+            name: 'Gadis Kretek',
+            overview: 'Serial Netflix Indonesia',
+            posterPath: '/gadis.jpg',
+            voteAverage: 8.6,
+            popularity: 180.0,
+            firstAirDate: '2023-11-02',
+            originalLanguage: 'id',
+            originCountry: ['ID'],
+          ),
+        ];
+
+        final platform = StreamingPlatform.fromId('netflix');
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              contentPreferenceProvider.overrideWith(
+                (ref) => ContentPreferenceNotifier()
+                  ..state = ContentPreference.indonesia,
+              ),
+              paginatedPlatformMoviesProvider(platform.watchProviderQuery)
+                  .overrideWith(
+                    (ref) => PlatformMoviesNotifier.withInitial(mixedMovies),
+                  ),
+              paginatedPlatformTvProvider(platform.watchProviderQuery)
+                  .overrideWith(
+                    (ref) => PlatformTvNotifier.withInitial(mixedTv),
+                  ),
+            ],
+            child: MaterialApp(
+              home: PlatformCatalogScreen(platform: platform),
+            ),
+          ),
+        );
+
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        // Indonesian titles ("Gadis Kretek" and "Ipar Adalah Maut") must appear
+        // before "Global Blockbuster US" despite lower global popularity score.
+        final gadisTopLeft = tester.getTopLeft(find.text('Gadis Kretek'));
+        final iparTopLeft = tester.getTopLeft(find.text('Ipar Adalah Maut'));
+        final globalTopLeft = tester.getTopLeft(
+          find.text('Global Blockbuster US'),
+        );
+
+        expect(
+          gadisTopLeft.dx < globalTopLeft.dx ||
+              gadisTopLeft.dy < globalTopLeft.dy,
+          isTrue,
+        );
+        expect(
+          iparTopLeft.dx < globalTopLeft.dx ||
+              iparTopLeft.dy < globalTopLeft.dy,
+          isTrue,
+        );
+      },
+    );
   });
 
   group('MainShell Navigation Tests', () {

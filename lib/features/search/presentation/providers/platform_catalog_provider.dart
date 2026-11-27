@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/content_preference.dart';
 import '../../../home/domain/entities/movie.dart';
 import '../../../home/domain/entities/tv_series.dart';
 import '../../../home/domain/repositories/movie_repository.dart';
@@ -46,16 +47,21 @@ class PaginatedPlatformState<T> {
 class PlatformMoviesNotifier extends StateNotifier<PaginatedPlatformState<Movie>> {
   final MovieRepository? _repo;
   final String _providerQuery;
+  final ContentPreference preference;
 
-  PlatformMoviesNotifier(MovieRepository repo, this._providerQuery)
-      : _repo = repo,
-        super(const PaginatedPlatformState(isLoading: true)) {
+  PlatformMoviesNotifier(
+    MovieRepository repo,
+    this._providerQuery, {
+    this.preference = ContentPreference.all,
+  }) : _repo = repo,
+       super(const PaginatedPlatformState(isLoading: true)) {
     _loadInitial();
   }
 
   PlatformMoviesNotifier.withInitial(List<Movie> initialItems)
       : _repo = null,
         _providerQuery = '',
+        preference = ContentPreference.all,
         super(PaginatedPlatformState(
           items: initialItems,
           isLoading: false,
@@ -68,6 +74,7 @@ class PlatformMoviesNotifier extends StateNotifier<PaginatedPlatformState<Movie>
       final initial = await _repo.getMoviesByWatchProvider(
         providerId: _providerQuery,
         page: 1,
+        preference: preference,
       );
       state = PaginatedPlatformState(
         items: initial,
@@ -91,6 +98,7 @@ class PlatformMoviesNotifier extends StateNotifier<PaginatedPlatformState<Movie>
       final nextItems = await _repo.getMoviesByWatchProvider(
         providerId: _providerQuery,
         page: nextPage,
+        preference: preference,
       );
       if (nextItems.isEmpty) {
         state = state.copyWith(isLoadingMore: false, hasMore: false);
@@ -101,7 +109,7 @@ class PlatformMoviesNotifier extends StateNotifier<PaginatedPlatformState<Movie>
           items: [...state.items, ...newItems],
           page: nextPage,
           isLoadingMore: false,
-          hasMore: nextItems.length >= 20,
+          hasMore: newItems.isNotEmpty,
         );
       }
     } catch (_) {
@@ -119,16 +127,21 @@ class PlatformMoviesNotifier extends StateNotifier<PaginatedPlatformState<Movie>
 class PlatformTvNotifier extends StateNotifier<PaginatedPlatformState<TvSeries>> {
   final MovieRepository? _repo;
   final String _providerQuery;
+  final ContentPreference preference;
 
-  PlatformTvNotifier(MovieRepository repo, this._providerQuery)
-      : _repo = repo,
-        super(const PaginatedPlatformState(isLoading: true)) {
+  PlatformTvNotifier(
+    MovieRepository repo,
+    this._providerQuery, {
+    this.preference = ContentPreference.all,
+  }) : _repo = repo,
+       super(const PaginatedPlatformState(isLoading: true)) {
     _loadInitial();
   }
 
   PlatformTvNotifier.withInitial(List<TvSeries> initialItems)
       : _repo = null,
         _providerQuery = '',
+        preference = ContentPreference.all,
         super(PaginatedPlatformState(
           items: initialItems,
           isLoading: false,
@@ -141,6 +154,7 @@ class PlatformTvNotifier extends StateNotifier<PaginatedPlatformState<TvSeries>>
       final initial = await _repo.getTvByWatchProvider(
         providerId: _providerQuery,
         page: 1,
+        preference: preference,
       );
       state = PaginatedPlatformState(
         items: initial,
@@ -164,6 +178,7 @@ class PlatformTvNotifier extends StateNotifier<PaginatedPlatformState<TvSeries>>
       final nextItems = await _repo.getTvByWatchProvider(
         providerId: _providerQuery,
         page: nextPage,
+        preference: preference,
       );
       if (nextItems.isEmpty) {
         state = state.copyWith(isLoadingMore: false, hasMore: false);
@@ -174,7 +189,7 @@ class PlatformTvNotifier extends StateNotifier<PaginatedPlatformState<TvSeries>>
           items: [...state.items, ...newItems],
           page: nextPage,
           isLoadingMore: false,
-          hasMore: nextItems.length >= 20,
+          hasMore: newItems.isNotEmpty,
         );
       }
     } catch (_) {
@@ -188,31 +203,41 @@ class PlatformTvNotifier extends StateNotifier<PaginatedPlatformState<TvSeries>>
   }
 }
 
-/// Paginated provider family for platform movies.
+/// Paginated provider family for platform movies (reacts to [contentPreferenceProvider]).
 final paginatedPlatformMoviesProvider = StateNotifierProvider.autoDispose
     .family<PlatformMoviesNotifier, PaginatedPlatformState<Movie>, String>((ref, providerQuery) {
   final repo = ref.watch(movieRepositoryProvider);
-  return PlatformMoviesNotifier(repo, providerQuery);
+  final pref = ref.watch(contentPreferenceProvider);
+  return PlatformMoviesNotifier(repo, providerQuery, preference: pref);
 });
 
-/// Paginated provider family for platform TV series.
+/// Paginated provider family for platform TV series (reacts to [contentPreferenceProvider]).
 final paginatedPlatformTvProvider = StateNotifierProvider.autoDispose
     .family<PlatformTvNotifier, PaginatedPlatformState<TvSeries>, String>((ref, providerQuery) {
   final repo = ref.watch(movieRepositoryProvider);
-  return PlatformTvNotifier(repo, providerQuery);
+  final pref = ref.watch(contentPreferenceProvider);
+  return PlatformTvNotifier(repo, providerQuery, preference: pref);
 });
 
 /// Legacy compatibility providers (first page fetch).
 final platformMoviesProvider =
     FutureProvider.family<List<Movie>, int>((ref, providerId) async {
   final repo = ref.watch(movieRepositoryProvider);
-  return repo.getMoviesByWatchProvider(providerId: providerId);
+  final pref = ref.watch(contentPreferenceProvider);
+  return repo.getMoviesByWatchProvider(
+    providerId: providerId,
+    preference: pref,
+  );
 });
 
 final platformTvProvider =
     FutureProvider.family<List<TvSeries>, int>((ref, providerId) async {
   final repo = ref.watch(movieRepositoryProvider);
-  return repo.getTvByWatchProvider(providerId: providerId);
+  final pref = ref.watch(contentPreferenceProvider);
+  return repo.getTvByWatchProvider(
+    providerId: providerId,
+    preference: pref,
+  );
 });
 
 /// Filter tab for platform catalog screen: 0 = All, 1 = Movies, 2 = TV Shows.

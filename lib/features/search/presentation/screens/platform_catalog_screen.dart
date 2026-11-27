@@ -7,6 +7,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/constants/content_preference.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/platform/device_form_factor.dart';
 import '../../../../shared/widgets/app_error_widget.dart';
@@ -14,6 +15,7 @@ import '../../../../shared/widgets/shimmer_loading.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
 import '../../../home/domain/entities/movie.dart';
 import '../../../home/domain/entities/tv_series.dart';
+import '../../../home/presentation/providers/home_providers.dart';
 import '../../domain/entities/streaming_platform.dart';
 import '../providers/platform_catalog_provider.dart';
 
@@ -31,6 +33,7 @@ class PlatformCatalogScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(appStringsProvider);
+    final appLang = ref.watch(appLanguageProvider);
     final isTv = ref.watch(isTvProvider);
     final activeTab = ref.watch(platformTabProvider);
     final moviesState = ref.watch(paginatedPlatformMoviesProvider(platform.watchProviderQuery));
@@ -128,7 +131,7 @@ class PlatformCatalogScreen extends ConsumerWidget {
                             ),
                           ),
                           Text(
-                            platform.tagline,
+                            platform.localizedTagline(appLang),
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               color: AppColors.textMuted,
@@ -262,12 +265,24 @@ class PlatformCatalogScreen extends ConsumerWidget {
       );
     }
 
-    // Merge movies and TV series into a single unified stream, ordered by popularity
-    final allMedia = <Movie>[
+    // Merge movies and TV series into a single unified stream, prioritizing
+    // items matching the user's active ContentPreference (e.g. Indonesia) first,
+    // then ordering by popularity within each tier.
+    final pref = ref.watch(contentPreferenceProvider);
+    final rawAllMedia = <Movie>[
       ...movies,
       ...tvShows.map((t) => t.toMovie()),
     ];
-    allMedia.sort((a, b) => b.popularity.compareTo(a.popularity));
+    final List<Movie> allMedia;
+    if (pref == ContentPreference.all) {
+      allMedia = rawAllMedia..sort((a, b) => b.popularity.compareTo(a.popularity));
+    } else {
+      final preferred = rawAllMedia.where((m) => pref.matchesMovie(m)).toList()
+        ..sort((a, b) => b.popularity.compareTo(a.popularity));
+      final others = rawAllMedia.where((m) => !pref.matchesMovie(m)).toList()
+        ..sort((a, b) => b.popularity.compareTo(a.popularity));
+      allMedia = [...preferred, ...others];
+    }
 
     return NotificationListener<ScrollNotification>(
       onNotification: (scrollInfo) {
@@ -339,10 +354,17 @@ class PlatformCatalogScreen extends ConsumerWidget {
       );
     }
 
-    final movies = moviesState.items;
-    if (movies.isEmpty) {
+    final rawMovies = moviesState.items;
+    if (rawMovies.isEmpty) {
       return AppErrorWidget.empty(message: s.searchNoMovies(platform.name));
     }
+    final pref = ref.watch(contentPreferenceProvider);
+    final movies = pref == ContentPreference.all
+        ? rawMovies
+        : [
+            ...rawMovies.where((m) => pref.matchesMovie(m)),
+            ...rawMovies.where((m) => !pref.matchesMovie(m)),
+          ];
 
     return NotificationListener<ScrollNotification>(
       onNotification: (scrollInfo) {
@@ -412,10 +434,17 @@ class PlatformCatalogScreen extends ConsumerWidget {
       );
     }
 
-    final tvShows = tvState.items;
-    if (tvShows.isEmpty) {
+    final rawTvShows = tvState.items;
+    if (rawTvShows.isEmpty) {
       return AppErrorWidget.empty(message: s.searchNoTv(platform.name));
     }
+    final pref = ref.watch(contentPreferenceProvider);
+    final tvShows = pref == ContentPreference.all
+        ? rawTvShows
+        : [
+            ...rawTvShows.where((t) => pref.matchesTv(t)),
+            ...rawTvShows.where((t) => !pref.matchesTv(t)),
+          ];
 
     return NotificationListener<ScrollNotification>(
       onNotification: (scrollInfo) {

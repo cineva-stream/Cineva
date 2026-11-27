@@ -17,6 +17,7 @@ import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/download/presentation/screens/download_list_screen.dart';
 import '../../features/settings/data/legal_content.dart';
 import '../../features/settings/presentation/screens/app_language_screen.dart';
+import '../../features/settings/presentation/screens/content_preference_screen.dart';
 import '../../features/settings/presentation/screens/legal_document_screen.dart';
 import '../../features/settings/presentation/screens/about_info_screen.dart';
 import '../../features/settings/presentation/screens/release_notes_screen.dart';
@@ -586,6 +587,29 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const AppLanguageScreen(),
+        transitionDuration: const Duration(milliseconds: 280),
+        reverseTransitionDuration: const Duration(milliseconds: 230),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          );
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.06, 0),
+              end: Offset.zero,
+            ).animate(curved),
+            child: FadeTransition(opacity: curved, child: child),
+          );
+        },
+      ),
+    ),
+    GoRoute(
+      path: '/settings/content-preference',
+      name: 'contentPreference',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const ContentPreferenceScreen(),
         transitionDuration: const Duration(milliseconds: 280),
         reverseTransitionDuration: const Duration(milliseconds: 230),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {

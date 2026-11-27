@@ -36,12 +36,22 @@ final movieRepositoryProvider = Provider<MovieRepository>((ref) {
 // ── Content Preference Provider ──
 
 class ContentPreferenceNotifier extends StateNotifier<ContentPreference> {
-  ContentPreferenceNotifier()
-    : super(ContentPreference.fromCode(SettingsService.getContentPreference()));
+  ContentPreferenceNotifier([ContentPreference? initial])
+    : super(initial ?? _safeLoadInitial());
+
+  static ContentPreference _safeLoadInitial() {
+    try {
+      return ContentPreference.fromCode(SettingsService.getContentPreference());
+    } catch (_) {
+      return ContentPreference.all;
+    }
+  }
 
   Future<void> setPreference(ContentPreference pref) async {
     state = pref;
-    await SettingsService.setContentPreference(pref.code);
+    try {
+      await SettingsService.setContentPreference(pref.code);
+    } catch (_) {}
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../core/constants/content_preference.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../search/domain/entities/streaming_platform.dart';
 import '../models/movie_model.dart';
 import '../models/tv_series_model.dart';
 
@@ -422,24 +423,156 @@ class TmdbRemoteDatasource {
     }
   }
 
-  /// Discover movies available on a specific streaming provider (e.g. Netflix = 8, Prime = 9, Disney+ = 337).
+  /// Discover movies available on a specific streaming provider (e.g. Netflix = 8,
+  /// Prime = 9, Disney+ = 337|122, Vidio = 489, WeTV = 623|160, Viu = 158).
+  ///
+  /// When [preference] is set (for example, [ContentPreference.indonesia]):
+  /// 1. Prioritizes movies originating from that preference (e.g. Indonesian movies
+  ///    `with_original_language=id` on Netflix Indonesia, Prime Video Indonesia,
+  ///    Disney+ Hotstar Indonesia, Vidio, WeTV, Viu, etc.).
+  /// 2. Queries the platform's regional Indonesia catalog (`watch_region: 'ID'`).
+  /// 3. Automatically falls back to the platform's global region (`watch_region: 'US'`)
+  ///    if the platform has no Indonesia storefront (e.g. Hulu, Peacock, Paramount+)
+  ///    or after regional results.
   Future<List<MovieModel>> getMoviesByWatchProvider({
     required dynamic providerId,
     int page = 1,
     String watchRegion = 'US',
+    ContentPreference preference = ContentPreference.all,
   }) async {
+    final queryStr = providerId.toString();
+    final platform = StreamingPlatform.tryFromQueryOrId(queryStr);
+    final effectiveProviderQuery = platform?.watchProviderQuery ?? queryStr;
+    final effectiveRegion = platform?.watchRegion ?? watchRegion;
+
     try {
-      final response = await _dio.get(
-        '/discover/movie',
-        queryParameters: {
-          'page': page,
-          'language': languageCode,
-          'sort_by': 'popularity.desc',
-          'with_watch_providers': providerId.toString(),
-          'watch_region': watchRegion,
-        },
-      );
-      return _parseMovieList(response.data);
+      final preferredFutures = <Future<List<MovieModel>>>[];
+      final regionalAndGlobalFutures = <Future<List<MovieModel>>>[];
+
+      if (preference == ContentPreference.indonesia) {
+        // Tier 1: Indonesian-language / Indonesian-origin movies on this platform (in ID & default region)
+        preferredFutures.add(
+          _fetchDiscoverMoviesSafe({
+            'page': page,
+            'language': languageCode,
+            'sort_by': 'popularity.desc',
+            'with_watch_providers': effectiveProviderQuery,
+            'watch_region': 'ID',
+            'with_original_language': 'id',
+          }),
+        );
+        if (effectiveRegion != 'ID') {
+          preferredFutures.add(
+            _fetchDiscoverMoviesSafe({
+              'page': page,
+              'language': languageCode,
+              'sort_by': 'popularity.desc',
+              'with_watch_providers': effectiveProviderQuery,
+              'watch_region': effectiveRegion,
+              'with_original_language': 'id',
+            }),
+          );
+        }
+        if (platform?.companyIds != null && platform!.companyIds!.isNotEmpty) {
+          preferredFutures.add(
+            _fetchDiscoverMoviesSafe({
+              'page': page,
+              'language': languageCode,
+              'sort_by': 'popularity.desc',
+              'with_companies': platform.companyIds,
+              'with_original_language': 'id',
+            }),
+          );
+        }
+
+        // Tier 2: Full platform catalog in Region Indonesia ('ID')
+        regionalAndGlobalFutures.add(
+          _fetchDiscoverMoviesSafe({
+            'page': page,
+            'language': languageCode,
+            'sort_by': 'popularity.desc',
+            'with_watch_providers': effectiveProviderQuery,
+            'watch_region': 'ID',
+          }),
+        );
+      } else if (preference != ContentPreference.all) {
+        final prefFilter = _preferenceFilterParams(preference);
+        preferredFutures.add(
+          _fetchDiscoverMoviesSafe({
+            'page': page,
+            'language': languageCode,
+            'sort_by': 'popularity.desc',
+            'with_watch_providers': effectiveProviderQuery,
+            'watch_region': effectiveRegion,
+            ...prefFilter,
+          }),
+        );
+        if (effectiveRegion != 'ID') {
+          preferredFutures.add(
+            _fetchDiscoverMoviesSafe({
+              'page': page,
+              'language': languageCode,
+              'sort_by': 'popularity.desc',
+              'with_watch_providers': effectiveProviderQuery,
+              'watch_region': 'ID',
+              ...prefFilter,
+            }),
+          );
+        }
+      }
+
+      // Tier 3: Standard platform region & company/extra-region discovery (Global fallback)
+      if (preference != ContentPreference.indonesia || effectiveRegion != 'ID') {
+        regionalAndGlobalFutures.add(
+          _fetchDiscoverMovies({
+            'page': page,
+            'language': languageCode,
+            'sort_by': 'popularity.desc',
+            'with_watch_providers': effectiveProviderQuery,
+            'watch_region': effectiveRegion,
+          }),
+        );
+      }
+
+      if (platform != null) {
+        if (platform.companyIds != null && platform.companyIds!.isNotEmpty) {
+          regionalAndGlobalFutures.add(
+            _fetchDiscoverMoviesSafe({
+              'page': page,
+              'language': languageCode,
+              'sort_by': 'popularity.desc',
+              'with_companies': platform.companyIds,
+            }),
+          );
+        }
+        for (final extraRegion in platform.extraWatchRegions) {
+          regionalAndGlobalFutures.add(
+            _fetchDiscoverMoviesSafe({
+              'page': page,
+              'language': languageCode,
+              'sort_by': 'popularity.desc',
+              'with_watch_providers': effectiveProviderQuery,
+              'watch_region': extraRegion,
+            }),
+          );
+        }
+      }
+
+      final preferredLists = preferredFutures.isNotEmpty
+          ? await Future.wait(preferredFutures)
+          : const <List<MovieModel>>[];
+      final generalLists = await Future.wait(regionalAndGlobalFutures);
+
+      final combined = _deduplicateMoviesSequential([
+        _interleaveAndDeduplicateMovies(preferredLists),
+        _interleaveAndDeduplicateMovies(generalLists),
+      ]);
+
+      if (preference == ContentPreference.all) return combined;
+
+      final matching = combined.where((m) => preference.matchesMovie(m)).toList();
+      final others = combined.where((m) => !preference.matchesMovie(m)).toList();
+      return [...matching, ...others];
     } on DioException catch (e) {
       throw ServerException(
         e.response?.statusMessage ?? 'Failed to fetch provider movies',
@@ -448,30 +581,314 @@ class TmdbRemoteDatasource {
     }
   }
 
-  /// Discover TV series available on a specific streaming provider.
+  /// Discover TV series, originals, dramas, anime/donghua, and variety shows
+  /// available on a specific streaming platform, respecting user [preference].
   Future<List<TvSeriesModel>> getTvByWatchProvider({
     required dynamic providerId,
     int page = 1,
     String watchRegion = 'US',
+    ContentPreference preference = ContentPreference.all,
   }) async {
+    final queryStr = providerId.toString();
+    final platform = StreamingPlatform.tryFromQueryOrId(queryStr);
+    final effectiveProviderQuery = platform?.watchProviderQuery ?? queryStr;
+    final effectiveRegion = platform?.watchRegion ?? watchRegion;
+
     try {
-      final response = await _dio.get(
-        '/discover/tv',
-        queryParameters: {
-          'page': page,
-          'language': languageCode,
-          'sort_by': 'popularity.desc',
-          'with_watch_providers': providerId.toString(),
-          'watch_region': watchRegion,
-        },
-      );
-      return _parseTvList(response.data);
+      final preferredFutures = <Future<List<TvSeriesModel>>>[];
+      final regionalAndGlobalFutures = <Future<List<TvSeriesModel>>>[];
+
+      if (preference == ContentPreference.indonesia) {
+        // Tier 1: Indonesian-origin TV series on this platform (Watch Provider ID + Original Networks)
+        preferredFutures.add(
+          _fetchDiscoverTvSafe({
+            'page': page,
+            'language': languageCode,
+            'sort_by': 'popularity.desc',
+            'with_watch_providers': effectiveProviderQuery,
+            'watch_region': 'ID',
+            'with_original_language': 'id',
+          }),
+        );
+        if (platform?.primaryNetworkIds != null &&
+            platform!.primaryNetworkIds!.isNotEmpty) {
+          preferredFutures.add(
+            _fetchDiscoverTvSafe({
+              'page': page,
+              'language': languageCode,
+              'sort_by': 'popularity.desc',
+              'with_networks': platform.primaryNetworkIds,
+              'with_original_language': 'id',
+            }),
+          );
+        }
+        if (effectiveRegion != 'ID') {
+          preferredFutures.add(
+            _fetchDiscoverTvSafe({
+              'page': page,
+              'language': languageCode,
+              'sort_by': 'popularity.desc',
+              'with_watch_providers': effectiveProviderQuery,
+              'watch_region': effectiveRegion,
+              'with_original_language': 'id',
+            }),
+          );
+        }
+
+        // Tier 2: Platform's Region Indonesia ('ID') catalog
+        regionalAndGlobalFutures.add(
+          _fetchDiscoverTvSafe({
+            'page': page,
+            'language': languageCode,
+            'sort_by': 'popularity.desc',
+            'with_watch_providers': effectiveProviderQuery,
+            'watch_region': 'ID',
+          }),
+        );
+      } else if (preference != ContentPreference.all) {
+        final prefFilter = _preferenceFilterParams(preference);
+        preferredFutures.add(
+          _fetchDiscoverTvSafe({
+            'page': page,
+            'language': languageCode,
+            'sort_by': 'popularity.desc',
+            'with_watch_providers': effectiveProviderQuery,
+            'watch_region': effectiveRegion,
+            ...prefFilter,
+          }),
+        );
+        if (effectiveRegion != 'ID') {
+          preferredFutures.add(
+            _fetchDiscoverTvSafe({
+              'page': page,
+              'language': languageCode,
+              'sort_by': 'popularity.desc',
+              'with_watch_providers': effectiveProviderQuery,
+              'watch_region': 'ID',
+              ...prefFilter,
+            }),
+          );
+        }
+        if (platform?.primaryNetworkIds != null &&
+            platform!.primaryNetworkIds!.isNotEmpty) {
+          preferredFutures.add(
+            _fetchDiscoverTvSafe({
+              'page': page,
+              'language': languageCode,
+              'sort_by': 'popularity.desc',
+              'with_networks': platform.primaryNetworkIds,
+              ...prefFilter,
+            }),
+          );
+        }
+      }
+
+      // Tier 3: Primary Original Broadcast Network (Vidio Originals, WeTV Originals, Viu Originals)
+      if (platform?.primaryNetworkIds != null &&
+          platform!.primaryNetworkIds!.isNotEmpty) {
+        regionalAndGlobalFutures.add(
+          _fetchDiscoverTvSafe({
+            'page': page,
+            'language': languageCode,
+            'sort_by': 'popularity.desc',
+            'with_networks': platform.primaryNetworkIds,
+          }),
+        );
+      }
+
+      // Tier 4: Watch Provider in default region (Global fallback)
+      if (preference != ContentPreference.indonesia || effectiveRegion != 'ID') {
+        regionalAndGlobalFutures.add(
+          _fetchDiscoverTv({
+            'page': page,
+            'language': languageCode,
+            'sort_by': 'popularity.desc',
+            'with_watch_providers': effectiveProviderQuery,
+            'watch_region': effectiveRegion,
+          }),
+        );
+      }
+
+      // Tier 5: Secondary / Global Parent Network (e.g. Tencent Video 2007 for WeTV)
+      if (platform?.secondaryNetworkIds != null &&
+          platform!.secondaryNetworkIds!.isNotEmpty) {
+        regionalAndGlobalFutures.add(
+          _fetchDiscoverTvSafe({
+            'page': page,
+            'language': languageCode,
+            'sort_by': 'popularity.desc',
+            'with_networks': platform.secondaryNetworkIds,
+          }),
+        );
+      }
+
+      // Tier 6: Extra watch regions (e.g. SG, MY, HK for Viu)
+      if (platform != null) {
+        for (final extraRegion in platform.extraWatchRegions) {
+          regionalAndGlobalFutures.add(
+            _fetchDiscoverTvSafe({
+              'page': page,
+              'language': languageCode,
+              'sort_by': 'popularity.desc',
+              'with_watch_providers': effectiveProviderQuery,
+              'watch_region': extraRegion,
+            }),
+          );
+        }
+      }
+
+      final preferredLists = preferredFutures.isNotEmpty
+          ? await Future.wait(preferredFutures)
+          : const <List<TvSeriesModel>>[];
+      final generalLists = await Future.wait(regionalAndGlobalFutures);
+
+      final combined = _deduplicateTvSequential([
+        _interleaveAndDeduplicateTv(preferredLists),
+        _interleaveAndDeduplicateTv(generalLists),
+      ]);
+
+      if (preference == ContentPreference.all) return combined;
+
+      final matching = combined.where((t) => preference.matchesTv(t)).toList();
+      final others = combined.where((t) => !preference.matchesTv(t)).toList();
+      return [...matching, ...others];
     } on DioException catch (e) {
       throw ServerException(
         e.response?.statusMessage ?? 'Failed to fetch provider TV series',
         e.response?.statusCode,
       );
     }
+  }
+
+  Map<String, dynamic> _preferenceFilterParams(ContentPreference preference) {
+    switch (preference) {
+      case ContentPreference.indonesia:
+        return {'with_original_language': 'id'};
+      case ContentPreference.anime:
+        return {'with_genres': '16', 'with_original_language': 'ja'};
+      case ContentPreference.hollywood:
+        return {'with_original_language': 'en'};
+      case ContentPreference.korea:
+        return {'with_original_language': 'ko'};
+      case ContentPreference.japan:
+        return {'with_original_language': 'ja'};
+      case ContentPreference.bollywood:
+        return {'with_original_language': 'hi'};
+      case ContentPreference.all:
+        return const {};
+    }
+  }
+
+  List<MovieModel> _deduplicateMoviesSequential(List<List<MovieModel>> groups) {
+    final seen = <int>{};
+    final result = <MovieModel>[];
+    for (final group in groups) {
+      for (final item in group) {
+        if (seen.add(item.id)) {
+          result.add(item);
+        }
+      }
+    }
+    return result;
+  }
+
+  List<TvSeriesModel> _deduplicateTvSequential(
+    List<List<TvSeriesModel>> groups,
+  ) {
+    final seen = <int>{};
+    final result = <TvSeriesModel>[];
+    for (final group in groups) {
+      for (final item in group) {
+        if (seen.add(item.id)) {
+          result.add(item);
+        }
+      }
+    }
+    return result;
+  }
+
+  Future<List<MovieModel>> _fetchDiscoverMovies(
+    Map<String, dynamic> queryParameters,
+  ) async {
+    final response = await _dio.get(
+      '/discover/movie',
+      queryParameters: queryParameters,
+    );
+    return _parseMovieList(response.data);
+  }
+
+  Future<List<MovieModel>> _fetchDiscoverMoviesSafe(
+    Map<String, dynamic> queryParameters,
+  ) async {
+    try {
+      return await _fetchDiscoverMovies(queryParameters);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<List<TvSeriesModel>> _fetchDiscoverTv(
+    Map<String, dynamic> queryParameters,
+  ) async {
+    final response = await _dio.get(
+      '/discover/tv',
+      queryParameters: queryParameters,
+    );
+    return _parseTvList(response.data);
+  }
+
+  Future<List<TvSeriesModel>> _fetchDiscoverTvSafe(
+    Map<String, dynamic> queryParameters,
+  ) async {
+    try {
+      return await _fetchDiscoverTv(queryParameters);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  List<MovieModel> _interleaveAndDeduplicateMovies(
+    List<List<MovieModel>> lists,
+  ) {
+    final seenIds = <int>{};
+    final merged = <MovieModel>[];
+    var maxLen = 0;
+    for (final l in lists) {
+      if (l.length > maxLen) maxLen = l.length;
+    }
+    for (var i = 0; i < maxLen; i++) {
+      for (final l in lists) {
+        if (i < l.length) {
+          final item = l[i];
+          if (seenIds.add(item.id)) {
+            merged.add(item);
+          }
+        }
+      }
+    }
+    return merged;
+  }
+
+  List<TvSeriesModel> _interleaveAndDeduplicateTv(
+    List<List<TvSeriesModel>> lists,
+  ) {
+    final seenIds = <int>{};
+    final merged = <TvSeriesModel>[];
+    var maxLen = 0;
+    for (final l in lists) {
+      if (l.length > maxLen) maxLen = l.length;
+    }
+    for (var i = 0; i < maxLen; i++) {
+      for (final l in lists) {
+        if (i < l.length) {
+          final item = l[i];
+          if (seenIds.add(item.id)) {
+            merged.add(item);
+          }
+        }
+      }
+    }
+    return merged;
   }
 
   /// Fetch personalized movie recommendations based on a movie ID.

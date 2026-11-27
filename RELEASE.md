@@ -1,6 +1,6 @@
 # Cineva v1.2.2 — Release Notes 🎬
 
-**Cineva v1.2.2 (Build 23)** delivers a major overhaul to the **Live TV & Real-Time Football Broadcast** experience, universal playback reliability across all national and international live channels, and a suite of new cinematic and data-resilience features. Key highlights include the **Real-Time EPG + Live Scoreboard Football Detection Engine** paired with a **Tournament-Styled Live Football Modal**, an in-app **Local Loopback DASH-to-HLS fMP4 Bridge** for crash-free dynamic MPD streaming, **Account-Free Local Auto Backup** directly to `Documents/Cineva`, **Scene Bookmarks & Cinematic Quote Card Studio**, **Two-Row Rich Media Sharing with Instant `0ms` Deep Links**, **Watch Party `1.05x` Smooth Micro-Speed Catch-Up**, a **3-Missed-Updates Mandatory Update Guard**, and a **Trilingual Release Notes Timeline**.
+**Cineva v1.2.2 (Build 23)** delivers a major overhaul to the **Live TV & Real-Time Football Broadcast** experience, expands the **Streaming Platform Discovery Catalog** with **Vidio, WeTV, and Viu** powered by **Multi-Source TMDB Aggregation & Content Preference Prioritization**, and introduces a suite of new cinematic and data-resilience features. Key highlights include the **Real-Time EPG + Live Scoreboard Football Detection Engine** paired with a **Tournament-Styled Live Football Modal**, an in-app **Local Loopback DASH-to-HLS fMP4 Bridge** for crash-free dynamic MPD streaming, **11 Streaming Platform Hubs with Regional & Content-Preference Prioritization**, a dedicated **Full-Screen Content Preference Selector**, **Account-Free Local Auto Backup** directly to `Documents/Cineva`, **Scene Bookmarks & Cinematic Quote Card Studio**, **Two-Row Rich Media Sharing with Instant `0ms` Deep Links**, **Watch Party `1.05x` Smooth Micro-Speed Catch-Up**, a **3-Missed-Updates Mandatory Update Guard**, and a **Trilingual Release Notes Timeline**.
 
 ---
 
@@ -23,34 +23,41 @@
 * **75 Curated Live Channels & Verified Full-Resolution Logos**:
   * Audited and upgraded all 75 Live TV channels across every category (*Sports, Indonesian National, News, Movies, Kids, Music, Documentary*) with multi-URL automatic failover (`fallbackStreamUrls`) and verified official high-resolution channel logos (including updated official logos for *Trans TV* and *iNews HD*).
 
-### 3. Account-Free Local Auto Backup (`Documents/Cineva`)
+### 3. Vidio, WeTV & Viu Platform Catalogs & Content-Preference Prioritization
+* **New Asian & Indonesian Streaming Platforms (`Vidio`, `WeTV`, `Viu`)**:
+  * Expanded the **Browse by Platform** section on the Search Screen to **11 platforms** (*Netflix, Prime Video, Disney+, Apple TV+, Max, Hulu, Paramount+, Peacock, Vidio, WeTV, and Viu*) with official high-resolution brand logos and full trilingual taglines (**Indonesian, English, and Hindi**).
+  * Powered by a **Multi-Source TMDB Aggregation Engine** that combines regional Watch Providers (`watch_region: 'ID'` & Asian storefronts), Original Broadcast Networks (*Vidio Originals `3579`, WeTV Originals `3732|2224`, Tencent Video `2007`, Viu Originals `7237|2980`*), and Production Studios (*Vidio / Screenplay Films, WeTV / Tencent Pictures, Viu Studios*) so every movie, original series, C-Drama, K-Drama, anime/donghua, and variety show is discovered.
+* **Smart Content-Preference Prioritization Across All 11 Platforms**:
+  * When the user sets **Content Preference** (for example, **Indonesia**), every platform catalog (*Netflix, Prime Video, Disney+ Hotstar `337|122`, Max `1899|1825|384`, Vidio, WeTV, Viu*, etc.) automatically prioritizes titles originating from that country/language (`with_original_language: 'id'` & `watch_region: 'ID'`), followed by the platform's regional Indonesia catalog and a seamless fallback to the global catalog for platforms without an Indonesian storefront (*Hulu, Paramount+, Peacock*).
+
+### 4. Account-Free Local Auto Backup (`Documents/Cineva`)
 * **Automated On-Device Data Protection**:
   * Added an **Auto Backup** management screen in Settings that automatically backs up watch history, watchlist items, user profile data, and app preferences directly to the local `Documents/Cineva` directory without requiring a cloud account.
   * Supports **Weekly (7-day)**, **Monthly (30-day)**, or **Off** schedules, alongside an instant **Back Up Now** trigger and a saved backups manager for one-tap restoration or cleanup.
 
-### 4. Scene Bookmarks & Cinematic Quote Card Studio
+### 5. Scene Bookmarks & Cinematic Quote Card Studio
 * **In-Player Scene Bookmarking**:
   * Users can bookmark memorable scenes at the exact timestamp directly inside the video player, automatically capturing the active subtitle line or custom notes.
 * **Cinematic Quote Card Generator**:
   * Transform bookmarked scenes and dialogue lines into high-resolution, cinema-styled quote cards ready to save or share across social platforms.
 
-### 5. Two-Row Rich Media Sharing & Instant `0ms` Root Deep Links
+### 6. Two-Row Rich Media Sharing & Instant `0ms` Root Deep Links
 * **Ergonomic Two-Row Detail Action Bar & Poster Sharing**:
   * Movie and TV Series detail screens now feature a balanced two-row action layout with a **Share** button that automatically attaches the official title poster alongside a direct deep link (`https://cineva-stream.github.io/movie/:id` and `/tv/:id`).
 * **Instant `0ms` Native App Launch**:
   * Root web deep-link pages for Movies, TV Series, and Watch Party rooms (`/party/:code`) immediately trigger native app opening at `0ms`, backed by a responsive English fallback landing page when the app is not yet installed.
 
-### 6. Watch Party `1.05x` Smooth Micro-Speed Catch-Up
+### 7. Watch Party `1.05x` Smooth Micro-Speed Catch-Up
 * **Buffer-Free Playback Synchronization**:
-  * When a Watch Party participant drifts slightly behind the host (`0.8 – 3.5 seconds`), the video player automatically applies a imperceptible **`1.05x`** micro-speed boost until synchronized—eliminating jarring hard seeks and re-buffering interruptions.
+  * When a Watch Party participant drifts slightly behind the host (`0.8 – 3.5 seconds`), the video player automatically applies an imperceptible **`1.05x`** micro-speed boost until synchronized—eliminating jarring hard seeks and re-buffering interruptions.
 
-### 7. Mandatory Update Guard, Trilingual Release Notes Timeline & Automated Feedback Replies
+### 8. Mandatory Update Guard, Dedicated Content Preference Screen & Release Notes Timeline
 * **3-Missed-Updates Mandatory Update Screen**:
   * Presents a full-screen *Cinema Amber* mandatory update gate whenever the installed application falls 3 or more versions behind the latest release.
-* **Trilingual Release Notes Timeline & Dedicated App Language Screen**:
-  * Added an interactive vertical **Release Notes** timeline summarizing core version highlights across all 3 supported languages (**Indonesian, English, and Hindi**), plus a dedicated **App Language** selection screen.
-* **Plain-Text SMTP Auto-Reply for User Feedback**:
-  * Submitting in-app feedback or bug reports now dispatches an automated confirmation email formatted with `Asia/Jakarta (WIB)` timestamps.
+* **Dedicated Full-Screen Content Preference & App Language Selectors**:
+  * Upgraded the **Content Preference** setting from a modal bottom sheet to a dedicated minimalist full-screen page matching the **App Language** screen aesthetic, featuring crisp country flag badges (`ID`, `JP`, `US`, `KR`, `IN`), smooth `1px` hairline dividers, and Cineva Orange active highlights.
+* **Trilingual Release Notes Timeline & Plain-Text SMTP Feedback Auto-Reply**:
+  * Added an interactive vertical **Release Notes** timeline summarizing core version highlights across all 3 supported languages (**Indonesian, English, and Hindi**), plus automated plain-text confirmation emails (`Asia/Jakarta WIB`) upon feedback submission.
 
 ---
 

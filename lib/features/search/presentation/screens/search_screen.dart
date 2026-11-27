@@ -857,35 +857,45 @@ class _SearchDiscoveryView extends ConsumerWidget {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                child: Builder(
+                  builder: (context) {
+                    const platforms = StreamingPlatform.supportedPlatforms;
+                    final firstRowCount = (platforms.length / 2).ceil();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        for (int i = 0; i < 4; i++)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: _buildPlatformChip(
-                              context,
-                              StreamingPlatform.supportedPlatforms[i],
-                            ),
-                          ),
+                        Row(
+                          children: [
+                            for (int i = 0; i < firstRowCount; i++)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 10),
+                                child: _buildPlatformChip(
+                                  context,
+                                  platforms[i],
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            for (
+                              int i = firstRowCount;
+                              i < platforms.length;
+                              i++
+                            )
+                              Padding(
+                                padding: const EdgeInsets.only(right: 10),
+                                child: _buildPlatformChip(
+                                  context,
+                                  platforms[i],
+                                ),
+                              ),
+                          ],
+                        ),
                       ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        for (int i = 4; i < 8; i++)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: _buildPlatformChip(
-                              context,
-                              StreamingPlatform.supportedPlatforms[i],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
 

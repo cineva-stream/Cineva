@@ -1,5 +1,5 @@
 name: cineva
-description: "Cineva — Free P2P Movie & TV Series Streaming App"
+description: "A modern, ad-free Flutter streaming app for movies, TV series, and Live TV. Features Torrentio P2P playback, YouTube-style live channels, smart subtitle synchronization, offline downloads, and background auto-update checks."
 publish_to: 'none'
 
 version: 1.2.2+23

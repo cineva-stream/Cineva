@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/constants/content_preference.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/platform/device_form_factor.dart';
@@ -39,7 +38,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  String _contentPreference = 'all';
   String _defaultSubtitleLang = 'id';
   bool _autoTranslate = true;
   String _defaultQuality = 'Auto';
@@ -76,7 +74,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   void _loadSettings() {
     setState(() {
-      _contentPreference = SettingsService.getContentPreference();
       _defaultSubtitleLang = SettingsService.getDefaultSubtitleLang();
       _autoTranslate = SettingsService.getAutoTranslate();
       _defaultQuality = SettingsService.getDefaultQuality();
@@ -191,130 +188,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         );
       },
-    );
-  }
-
-  void _showContentPreferenceSheet(AppStrings s) {
-    final preferences = ContentPreference.values;
-
-    _showModalSheet(
-      header: Row(
-        children: [
-          const Icon(Iconsax.category_2, color: AppColors.primary, size: 22),
-          const SizedBox(width: 10),
-          Text(
-            s.settingsContentPref,
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-      subtitle: s.settingsContentPrefDesc,
-      children: preferences.map((pref) {
-        final isSelected = _contentPreference == pref.code;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? AppColors.primary.withValues(alpha: 0.12)
-                : AppColors.surfaceVariant,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected
-                  ? AppColors.primary
-                  : Colors.white.withValues(alpha: 0.05),
-              width: isSelected ? 1.2 : 0.6,
-            ),
-          ),
-          child: ListTile(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary.withValues(alpha: 0.2)
-                    : Colors.black.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                pref.icon,
-                color: isSelected ? AppColors.primary : AppColors.textMuted,
-                size: 18,
-              ),
-            ),
-            title: Text(
-              pref.getLocalizedLabel(s.isIndonesian, s.language),
-              style: GoogleFonts.inter(
-                color: isSelected ? AppColors.primary : Colors.white,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 14,
-              ),
-            ),
-            subtitle: Text(
-              pref.getLocalizedDescription(s.isIndonesian, s.language),
-              style: GoogleFonts.inter(
-                color: AppColors.textMuted,
-                fontSize: 11,
-              ),
-            ),
-            trailing: isSelected
-                ? const Icon(
-                    Icons.check_circle_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  )
-                : null,
-            onTap: () async {
-              Navigator.of(context, rootNavigator: true).pop();
-              await ref
-                  .read(contentPreferenceProvider.notifier)
-                  .setPreference(pref);
-              _loadSettings();
-
-              if (mounted) {
-                final prefLabel = pref.getLocalizedLabel(
-                  s.isIndonesian,
-                  s.language,
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: AppColors.surfaceElevated,
-                    content: Row(
-                      children: [
-                        const Icon(
-                          Icons.check_circle_rounded,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            s.tr(
-                              'Preferensi diubah ke $prefLabel. Beranda & Pencarian otomatis disesuaikan.',
-                              'Preference changed to $prefLabel. Home & Search updated.',
-                              'वरीयता $prefLabel में बदल दी गई। होम और खोज अपडेट हो गए।',
-                            ),
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-            },
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -1072,6 +945,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final s = ref.watch(appStringsProvider);
     final currentAppLang = ref.watch(appLanguageProvider);
+    final currentContentPref = ref.watch(contentPreferenceProvider);
     final currentSubLang = SubtitleLanguageCatalog.findByCode(
       _defaultSubtitleLang,
     );
@@ -1262,7 +1136,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: Iconsax.discover,
                     title: s.settingsContentPref,
                     subtitle:
-                        '${s.settingsContentPrefDesc} (${ContentPreference.fromCode(_contentPreference).getLocalizedLabel(s.isIndonesian, s.language)})',
+                        '${s.settingsContentPrefDesc} (${currentContentPref.getLocalizedLabel(s.isIndonesian, s.language)})',
                     trailingWidget: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -1276,7 +1150,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            ContentPreference.fromCode(_contentPreference)
+                            currentContentPref
                                 .getLocalizedLabel(s.isIndonesian, s.language)
                                 .split(' ')
                                 .first,
@@ -1295,7 +1169,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ],
                     ),
-                    onTap: () => _showContentPreferenceSheet(s),
+                    onTap: () async {
+                      await context.push('/settings/content-preference');
+                      if (mounted) _loadSettings();
+                    },
                   ),
                 ]),
 

@@ -73,13 +73,29 @@ class MovieRepositoryImpl implements MovieRepository {
   }
 
   @override
-  Future<List<Movie>> getMoviesByWatchProvider({required dynamic providerId, int page = 1}) {
-    return _remoteDatasource.getMoviesByWatchProvider(providerId: providerId, page: page);
+  Future<List<Movie>> getMoviesByWatchProvider({
+    required dynamic providerId,
+    int page = 1,
+    ContentPreference preference = ContentPreference.all,
+  }) {
+    return _remoteDatasource.getMoviesByWatchProvider(
+      providerId: providerId,
+      page: page,
+      preference: preference,
+    );
   }
 
   @override
-  Future<List<TvSeries>> getTvByWatchProvider({required dynamic providerId, int page = 1}) {
-    return _remoteDatasource.getTvByWatchProvider(providerId: providerId, page: page);
+  Future<List<TvSeries>> getTvByWatchProvider({
+    required dynamic providerId,
+    int page = 1,
+    ContentPreference preference = ContentPreference.all,
+  }) {
+    return _remoteDatasource.getTvByWatchProvider(
+      providerId: providerId,
+      page: page,
+      preference: preference,
+    );
   }
 
   @override
