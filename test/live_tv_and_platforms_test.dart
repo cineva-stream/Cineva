@@ -78,7 +78,7 @@ void main() {
       }
 
       final indosiar = channels.firstWhere((c) => c.id == 'id_indosiar');
-      expect(indosiar.streamUrl, 'https://op-flashcon-digdayahd-1.dens.tv/h/h04/index.m3u8');
+      expect(indosiar.streamUrl, 'https://vidio123.mikrofast.web.id/vidio/205/index.mpd');
     });
   });
 
@@ -97,9 +97,9 @@ void main() {
       addTearDown(container.dispose);
 
       container.read(liveTvCategoryProvider.notifier).state = 'Semua';
-      container.read(liveTvSearchQueryProvider.notifier).state = 'NASA';
+      container.read(liveTvSearchQueryProvider.notifier).state = 'BBC';
       final filtered = container.read(filteredLiveTvChannelsProvider);
-      expect(filtered.any((c) => c.name.contains('NASA')), isTrue);
+      expect(filtered.any((c) => c.name.contains('BBC')), isTrue);
     });
   });
 
