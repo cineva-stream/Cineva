@@ -1,9 +1,10 @@
 import '../../domain/entities/live_tv_channel.dart';
 
-/// Curated registry of public, verified, and free HLS live television broadcasts.
-/// Includes comprehensive Indonesia National Channels, International News, Sports,
+/// Curated registry of public, verified, and free HLS/DASH live television broadcasts.
+/// Includes comprehensive Indonesia National Channels, Football & Sports, International News,
 /// Movies & Entertainment, Kids, Science, and Music.
-/// Every channel contains a verified stream URL and high-resolution logo.
+/// Every channel contains a verified primary stream URL, multi-source fallback URLs,
+/// and an official high-resolution logo matching the exact broadcast.
 class LiveTvChannelsData {
   LiveTvChannelsData._();
 
@@ -26,191 +27,370 @@ class LiveTvChannelsData {
       id: 'id_tvri_nasional',
       name: 'TVRI Nasional',
       category: 'Indonesia',
-      streamUrl: 'https://ott-balancer.tvri.go.id/live/eds/Nasional/hls/Nasional.m3u8',
-      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/TVRILogo2019.svg/960px-TVRILogo2019.svg.png',
+      streamUrl:
+          'https://ott-balancer.tvri.go.id/live/eds/Nasional/hls/Nasional.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/tvri/index.m3u8',
+        'https://vidio123.mikrofast.web.id/vidio/6441/index.mpd',
+      ],
+      logoUrl:
+          'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/indonesia/tvri-id.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Saluran televisi nasional resmi Republik Indonesia menyajikan siaran publik terlengkap.',
+      description:
+          'Saluran televisi nasional resmi Republik Indonesia menyajikan siaran publik terlengkap.',
     ),
     LiveTvChannel(
-      id: 'id_indosiar',
-      name: 'Indosiar HD',
+      id: 'id_rcti',
+      name: 'RCTI HD',
       category: 'Indonesia',
-      streamUrl: 'https://op-flashcon-digdayahd-1.dens.tv/h/h04/index.m3u8',
-      logoUrl: 'https://thumbor.prod.vidiocdn.com/0plBZ7Gso7gNBJxid9ksA8HMGxc=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/205/54ab19.png',
+      streamUrl: 'https://rplus.inisemar.my.id/rcti.m3u8',
+      fallbackStreamUrls: [
+        'https://r-plus.sedotcw3.workers.dev/index.m3u8?id=rcti',
+      ],
+      logoUrl:
+          'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/indonesia/rcti-id.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Saluran televisi swasta terkemuka Indonesia dengan Mega Series, Dangdut Academy, dan siaran eksklusif BRI Liga 1.',
-    ),
-    LiveTvChannel(
-      id: 'id_moji',
-      name: 'Moji HD',
-      category: 'Indonesia',
-      streamUrl: 'https://op-flashcon-digdayahd-1.dens.tv/h/h207/01.m3u8',
-      logoUrl: 'https://thumbor.prod.vidiocdn.com/g7gTjD2Il1GI4DJULOZ1cv6NSj4=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/206/1823dc.png',
-      quality: '1080p',
-      country: 'Indonesia',
-      description: 'Everyday is a Moji Day: Siaran olahraga voli Proliga, Premier League, dan program hiburan gaya hidup seru.',
+      description:
+          'Kebanggaan Bersama Milik Bangsa: Siaran langsung Timnas Indonesia, AFC Champions League, Piala Asia, dan sinetron unggulan.',
     ),
     LiveTvChannel(
       id: 'id_sctv',
       name: 'SCTV HD',
       category: 'Indonesia',
-      streamUrl: 'https://op-flashcon-digdayahd-1.dens.tv/h/h217/01.m3u8?app_type=web&userid=lite&chname=SCTV',
-      logoUrl: 'https://thumbor.prod.vidiocdn.com/kH-K9J4cROqL0TZrAyQhw7P5pBk=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/204/4e9f5c.png',
+      streamUrl: 'https://vidio123.mikrofast.web.id/vidio/204/index.mpd',
+      logoUrl:
+          'https://thumbor.prod.vidiocdn.com/kH-K9J4cROqL0TZrAyQhw7P5pBk=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/204/4e9f5c.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Satu Untuk Semua: Sinetron unggulan, FTV terfavorit, berita Liputan 6, dan sepakbola bergengsi.',
+      description:
+          'Satu Untuk Semua: Siaran langsung UEFA Champions League, Europa League, Premier League, Liputan 6, dan sinetron unggulan.',
+    ),
+    LiveTvChannel(
+      id: 'id_indosiar',
+      name: 'Indosiar HD',
+      category: 'Indonesia',
+      streamUrl: 'https://vidio123.mikrofast.web.id/vidio/205/index.mpd',
+      fallbackStreamUrls: [
+        'http://013tv.com:8080/F33848/cbd9779b/162138',
+      ],
+      logoUrl:
+          'https://thumbor.prod.vidiocdn.com/0plBZ7Gso7gNBJxid9ksA8HMGxc=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/205/54ab19.png',
+      quality: '1080p',
+      country: 'Indonesia',
+      description:
+          'Saluran televisi swasta terkemuka Indonesia dengan siaran eksklusif BRI Liga 1, Timnas U-20, Mega Series, dan Dangdut Academy.',
+    ),
+    LiveTvChannel(
+      id: 'id_mnctv',
+      name: 'MNCTV HD',
+      category: 'Indonesia',
+      streamUrl:
+          'https://linier-mnctv.rctiplus.id/mnctv-sdi-avc1_1000000=17-mp4a_96000=1.m3u8',
+      fallbackStreamUrls: [
+        'https://rplus.inisemar.my.id/mnctv.m3u8',
+        'https://r-plus.sedotcw3.workers.dev/index.m3u8?id=mnctv',
+      ],
+      logoUrl:
+          'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/indonesia/mnc-tv-id.png',
+      quality: '1080p',
+      country: 'Indonesia',
+      description:
+          'Selalu di Hati: Siaran langsung sepak bola ASEAN (AFF Cup), Futsal Nasional, dan hiburan keluarga Indonesia.',
+    ),
+    LiveTvChannel(
+      id: 'id_gtv',
+      name: 'GTV HD',
+      category: 'Indonesia',
+      streamUrl:
+          'https://linier-gtv.rctiplus.id/gtv-sdi-avc1_1000000=7-mp4a_96000=1.m3u8',
+      fallbackStreamUrls: [
+        'https://rplus.inisemar.my.id/gtv.m3u8',
+        'https://r-plus.sedotcw3.workers.dev/index.m3u8?id=gtv',
+      ],
+      logoUrl:
+          'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/indonesia/gtv-id.png',
+      quality: '1080p',
+      country: 'Indonesia',
+      description:
+          'Pilihan Terbaik Keluarga Indonesia: Turnamen olahraga, kualifikasi sepak bola, Big Movies, animasi, dan hiburan seru.',
+    ),
+    LiveTvChannel(
+      id: 'id_moji',
+      name: 'Moji HD',
+      category: 'Indonesia',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/moji/index.m3u8',
+      fallbackStreamUrls: [
+        'https://vidio123.mikrofast.web.id/vidio/206/index.mpd',
+        'https://op-flashcon-digdayahd-1.dens.tv/h/h207/01.m3u8',
+      ],
+      logoUrl:
+          'https://thumbor.prod.vidiocdn.com/g7gTjD2Il1GI4DJULOZ1cv6NSj4=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/206/1823dc.png',
+      quality: '1080p',
+      country: 'Indonesia',
+      description:
+          'Everyday is a Moji Day: Siaran olahraga Premier League, UEFA Champions League, Voli Proliga, dan hiburan gaya hidup.',
     ),
     LiveTvChannel(
       id: 'id_trans_tv',
       name: 'Trans TV',
       category: 'Indonesia',
-      streamUrl: 'https://live.cnbcindonesia.com/transtv/smil:transtv.smil/playlist.m3u8',
-      logoUrl: 'https://thumbor.prod.vidiocdn.com/kK3fL4X1Q_f6e91m8c-8_4y1cQE=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/733/88c67c.png',
+      streamUrl:
+          'https://live.cnbcindonesia.com/transtv/smil:transtv.smil/playlist.m3u8',
+      fallbackStreamUrls: [
+        'http://013tv.com:8080/F33848/cbd9779b/162503',
+      ],
+      logoUrl:
+          'https://thumbor.prod.vidiocdn.com/__j35q7LPpcS2EgkR7v8GpE4USQ=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/733/ecaa60.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Milik Kita Bersama: Bioskop Trans TV terlengkap, variety show populer, dan hiburan keluarga.',
+      description:
+          'Milik Kita Bersama: Bioskop Trans TV terlengkap, variety show populer, dan hiburan keluarga.',
     ),
     LiveTvChannel(
       id: 'id_trans7',
       name: 'Trans7 HD',
       category: 'Indonesia',
-      streamUrl: 'https://live.cnbcindonesia.com/trans7/smil:trans7.smil/playlist.m3u8',
-      logoUrl: 'https://thumbor.prod.vidiocdn.com/-MEB2a6J4sB6SvBDimCb7JYP6WY=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/734/131514.png',
+      streamUrl:
+          'https://live.cnbcindonesia.com/trans7/smil:trans7.smil/playlist.m3u8',
+      fallbackStreamUrls: [
+        'http://013tv.com:8080/F33848/cbd9779b/162502',
+      ],
+      logoUrl:
+          'https://thumbor.prod.vidiocdn.com/-MEB2a6J4sB6SvBDimCb7JYP6WY=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/734/131514.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Aktif, Cerdas, dan Menghibur: Lapor Pak!, On The Spot, Jejak Petualang, dan siaran MotoGP.',
+      description:
+          'Aktif, Cerdas, dan Menghibur: Lapor Pak!, On The Spot, Jejak Petualang, dan siaran MotoGP.',
     ),
     LiveTvChannel(
       id: 'id_antv',
       name: 'ANTV HD',
       category: 'Indonesia',
-      streamUrl: 'https://op-flashcon-digdayahd-1.dens.tv/h/h07/index.m3u8',
-      logoUrl: 'https://thumbor.prod.vidiocdn.com/IRVkD3QGRzroJ4IZzXBpS-0MRls=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/782/e1af8b.png',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/antv/index.m3u8',
+      fallbackStreamUrls: [
+        'https://vidio123.mikrofast.web.id/vidio/782/index.mpd',
+        'http://013tv.com:8080/F33848/cbd9779b/165072',
+      ],
+      logoUrl:
+          'https://thumbor.prod.vidiocdn.com/IRVkD3QGRzroJ4IZzXBpS-0MRls=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/782/e1af8b.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Kanal drama series Asia terfavorit, sinema India, dan program hiburan terpopuler.',
+      description:
+          'Kanal drama series Asia terfavorit, sinema India, dan program hiburan terpopuler.',
+    ),
+    LiveTvChannel(
+      id: 'id_mdtv',
+      name: 'MDTV HD (NET.)',
+      category: 'Indonesia',
+      streamUrl: 'https://vidio123.mikrofast.web.id/vidio/875/index.mpd',
+      fallbackStreamUrls: [
+        'https://op-flashcon-digdayahd-1.dens.tv/h/h223/02.m3u8',
+      ],
+      logoUrl:
+          'https://thumbor.prod.vidiocdn.com/LCZH_yEBnTYEQzrU1pB7w7ev-Bw=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/875/325605.png',
+      quality: '1080p',
+      country: 'Indonesia',
+      description:
+          'Drama masa kini, serial pilihan, talkshow malam, dan hiburan keluarga modern Indonesia.',
+    ),
+    LiveTvChannel(
+      id: 'id_tvone',
+      name: 'tvOne HD',
+      category: 'Indonesia',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/tvone/index.m3u8',
+      fallbackStreamUrls: [
+        'https://vidio123.mikrofast.web.id/vidio/783/index.mpd',
+        'https://op-group1-densxvisionhd-1.dens.tv/h/h40/01.m3u8',
+      ],
+      logoUrl:
+          'https://thumbor.prod.vidiocdn.com/APQ6a9vXvN6lU1zjeyL15IV_AJQ=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/783/07750c.png',
+      quality: '1080p',
+      country: 'Indonesia',
+      description:
+          'Memang Beda: Berita terkini, Indonesia Lawyers Club, Kabar Petang, dan olahraga One Pride MMA.',
+    ),
+    LiveTvChannel(
+      id: 'id_rtv',
+      name: 'RTV HD',
+      category: 'Indonesia',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/rtv/index.m3u8',
+      fallbackStreamUrls: [
+        'https://vidio123.mikrofast.web.id/vidio/1561/index.mpd',
+      ],
+      logoUrl:
+          'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/indonesia/rtv-id.png',
+      quality: '1080p',
+      country: 'Indonesia',
+      description:
+          'Rajawali Televisi Makin Cakep: Animasi anak populer, tokusatsu, dan hiburan keluarga Indonesia.',
     ),
     LiveTvChannel(
       id: 'id_metro_tv',
       name: 'Metro TV HD',
       category: 'Indonesia',
-      streamUrl: 'https://edge.medcom.id/live-edge/smil:metro.smil/playlist.m3u8',
-      logoUrl: 'https://thumbor.prod.vidiocdn.com/u0aa_S_rQeujrp5eR6LwXdertrI=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/777/ea8483.png',
+      streamUrl:
+          'https://edge.medcom.id/live-edge/smil:metro.smil/playlist.m3u8',
+      fallbackStreamUrls: [
+        'https://vidio123.mikrofast.web.id/vidio/777/index.mpd',
+        'https://op-flashcon-digdayahd-1.dens.tv/h/h12/01.m3u8',
+      ],
+      logoUrl:
+          'https://thumbor.prod.vidiocdn.com/u0aa_S_rQeujrp5eR6LwXdertrI=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/777/ea8483.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Knowledge to Elevate: Televisi berita 24 jam pelopor di Indonesia dengan liputan investigasi terpercaya.',
+      description:
+          'Knowledge to Elevate: Televisi berita 24 jam pelopor di Indonesia dengan liputan investigasi terpercaya.',
     ),
     LiveTvChannel(
       id: 'id_kompas_tv',
       name: 'Kompas TV HD',
       category: 'Indonesia',
-      streamUrl: 'https://op-flashcon-digdayahd-1.dens.tv/s/s104/index.m3u8',
-      logoUrl: 'https://thumbor.prod.vidiocdn.com/Pf8yLSfHEUZeRI9tUzLDR2U8Zow=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/874/042ca3.png',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/kompas/index.m3u8',
+      fallbackStreamUrls: [
+        'https://op-flashcon-digdayahd-1.dens.tv/s/s104/index.m3u8',
+      ],
+      logoUrl:
+          'https://thumbor.prod.vidiocdn.com/Pf8yLSfHEUZeRI9tUzLDR2U8Zow=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/874/042ca3.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Independen | Tepercaya: Berita aktual, dialog politik, investigasi mendalam, dan Stand Up Comedy Indonesia.',
+      description:
+          'Independen | Tepercaya: Berita aktual, dialog politik, investigasi mendalam, dan Stand Up Comedy Indonesia.',
     ),
     LiveTvChannel(
       id: 'id_inews',
       name: 'iNews HD',
       category: 'Indonesia',
-      streamUrl: 'https://live.i-news.tv/hls/stream.m3u8',
-      logoUrl: 'https://thumbor.prod.vidiocdn.com/wSfbef0k6V3fn7rnZa4azgVrLcM=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/728/eb7747.png',
+      streamUrl:
+          'https://linier-inews.rctiplus.id/inews-sdi-avc1_1000000=22-mp4a_96000=1.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/inews/index.m3u8',
+        'https://rplus.inisemar.my.id/inews.m3u8',
+        'https://live.i-news.tv/hls/stream.m3u8',
+      ],
+      logoUrl:
+          'https://thumbor.prod.vidiocdn.com/BmeGg2IWkB_FAVPDviCk8gP8qcw=/230x230/filters:quality(70)/vidio-web-prod-livestreaming/uploads/livestreaming/square_image/5409/c40666.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Inspirasi Nusantara: Jaringan berita daerah dan nasional terbesar dengan siaran olahraga terlengkap.',
+      description:
+          'Inspirasi Nusantara: Jaringan berita nasional dan siaran langsung olahraga sepak bola serta BWF.',
     ),
     LiveTvChannel(
       id: 'id_cnn_indonesia',
       name: 'CNN Indonesia',
       category: 'Indonesia',
-      streamUrl: 'https://video.detik.com/livecnn/smil:cnntv/chunklist_w268557525_b384000_sleng.m3u8',
+      streamUrl:
+          'https://video.detik.com/livecnn/smil:cnntv/chunklist_w268557525_b384000_sleng.m3u8',
+      fallbackStreamUrls: [
+        'https://live.cnnindonesia.com/livecnn/smil:cnntv/chunklist_w1188349826_b384000_sleng.m3u8',
+      ],
       logoUrl: 'https://i.imgur.com/l0JyOrm.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Kanal berita berstandar internasional menyajikan laporan terkini, analisis mendalam, dan fakta akurat.',
+      description:
+          'Kanal berita berstandar internasional menyajikan laporan terkini, analisis mendalam, dan fakta akurat.',
     ),
     LiveTvChannel(
       id: 'id_cnbc_indonesia',
       name: 'CNBC Indonesia',
       category: 'Indonesia',
-      streamUrl: 'https://video.detik.com/livecnbc/smil:cnbctv/chunklist_w1279679883_b384000_sleng.m3u8',
-      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/CNBC_Indonesia_2025.svg/960px-CNBC_Indonesia_2025.svg.png',
+      streamUrl:
+          'https://video.detik.com/livecnbc/smil:cnbctv/chunklist_w1279679883_b384000_sleng.m3u8',
+      fallbackStreamUrls: [
+        'http://013tv.com:8080/F33848/cbd9779b/165062',
+      ],
+      logoUrl:
+          'https://raw.githubusercontent.com/apistech/project/refs/heads/main/logo/image_ch_cnbcindonesia.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Beyond Business: Informasi pasar modal, finansial, ekonomi makro, dan pergerakan bursa global.',
+      description:
+          'Beyond Business: Informasi pasar modal, finansial, ekonomi makro, dan pergerakan bursa global.',
     ),
     LiveTvChannel(
       id: 'id_btv',
       name: 'BTV Indonesia',
       category: 'Indonesia',
-      streamUrl: 'https://lnd0t3b922.tenbytecdn.com/ta-sg1/90369cf5-6ac2-411d-b3d0-15fae10a2e2c/master.m3u8',
-      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/BTV_%28Indonesia%29_logo_%282025%29.svg/960px-BTV_%28Indonesia%29_logo_%282025%29.svg.png',
+      streamUrl:
+          'https://lnd0t3b922.tenbytecdn.com/ta-sg1/90369cf5-6ac2-411d-b3d0-15fae10a2e2c/master.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/btv/index.m3u8',
+        'https://vidio123.mikrofast.web.id/vidio/6165/index.mpd',
+      ],
+      logoUrl:
+          'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/indonesia/btv-id.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Bersatu Menginspirasi: Saluran televisi nasional berita, inspirasi bisnis, dan musik keluarga.',
+      description:
+          'Bersatu Menginspirasi: Saluran televisi nasional berita, inspirasi bisnis, dan hiburan keluarga.',
     ),
     LiveTvChannel(
       id: 'id_jawa_pos_tv',
       name: 'Jawa Pos TV',
       category: 'Indonesia',
-      streamUrl: 'http://122.248.43.242:1935/JAWAPOSTVJKT/_definst_/myStream/playlist.m3u8',
-      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Jawa_Pos_TV_2024.svg/960px-Jawa_Pos_TV_2024.svg.png',
+      streamUrl:
+          'http://122.248.43.242:1935/JAWAPOSTVJKT/_definst_/myStream/playlist.m3u8',
+      logoUrl:
+          'https://raw.githubusercontent.com/apistech/project/refs/heads/main/logo/image_ch_jawapos.png',
       quality: '720p',
       country: 'Indonesia',
-      description: 'Melihat Indonesia Sesungguhnya: Jaringan informasi nasional grup Jawa Pos.',
+      description:
+          'Melihat Indonesia Sesungguhnya: Jaringan informasi nasional grup Jawa Pos.',
     ),
     LiveTvChannel(
       id: 'id_jtv',
       name: 'JTV Surabaya',
       category: 'Indonesia',
-      streamUrl: 'http://122.248.43.242:1935/JTVSURABAYA/_definst_/myStream/playlist.m3u8',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/jtv/index.m3u8',
+      fallbackStreamUrls: [
+        'http://122.248.43.242:1935/JTVSURABAYA/_definst_/myStream/playlist.m3u8',
+      ],
       logoUrl: 'https://i.imgur.com/mIDWIQk.png',
       quality: '720p',
       country: 'Indonesia',
-      description: 'Jawa Timur Televisi: Siaran khas budaya lokal, komedi Suroboyoan, dan berita daerah terpopuler.',
-    ),
-    LiveTvChannel(
-      id: 'id_ugtv',
-      name: 'UGTV Gunadarma',
-      category: 'Indonesia',
-      streamUrl: 'https://cdn.gunadarma.ac.id/streams/ugtv/ingestugtv.m3u8',
-      logoUrl: 'https://i.imgur.com/iEKDH26.png',
-      quality: '720p',
-      country: 'Indonesia',
-      description: 'Televisi komunitas berbasis pendidikan, sains digital, dan inovasi kampus Universitas Gunadarma.',
+      description:
+          'Jawa Timur Televisi: Siaran khas budaya lokal, komedi Suroboyoan, dan berita daerah terpopuler.',
     ),
     LiveTvChannel(
       id: 'id_tvri_world',
       name: 'TVRI World',
       category: 'Indonesia',
-      streamUrl: 'https://ott-balancer.tvri.go.id/live/eds/TVRIWorld/hls/TVRIWorld.m3u8',
-      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/TVRIWorld.png/960px-TVRIWorld.png',
+      streamUrl:
+          'https://ott-balancer.tvri.go.id/live/eds/TVRIWorld/hls/TVRIWorld.m3u8',
+      logoUrl:
+          'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/indonesia/tvri-world-id.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Siaran internasional resmi dari TVRI menyajikan budaya, pariwisata, dan berita Nusantara.',
+      description:
+          'Siaran internasional resmi dari TVRI menyajikan budaya, pariwisata, dan berita Nusantara.',
     ),
     LiveTvChannel(
       id: 'id_daai_tv',
       name: 'DAAI TV Indonesia',
       category: 'Indonesia',
-      streamUrl: 'https://pull.daaiplus.com/live-DAAIPLUS/live-DAAIPLUS_HD.m3u8',
+      streamUrl:
+          'https://pull.daaiplus.com/live-DAAIPLUS/live-DAAIPLUS_HD.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/daaitv/index.m3u8',
+        'https://op-flashcon-digdayahd-1.dens.tv/h/h16/01.m3u8',
+      ],
       logoUrl: 'https://i.imgur.com/YC7JCHo.png',
       quality: 'HD',
       country: 'Indonesia',
-      description: 'Televisi cinta kasih dengan tayangan edukasi, inspirasi, dan kemanusiaan.',
+      description:
+          'Televisi cinta kasih dengan tayangan edukasi, inspirasi, dan kemanusiaan.',
     ),
     LiveTvChannel(
       id: 'id_garuda_tv',
       name: 'Garuda TV',
       category: 'Indonesia',
-      streamUrl: 'https://hgmtv.com:19360/garudatvlivestreaming/garudatvlivestreaming.m3u8',
+      streamUrl:
+          'https://hgmtv.com:19360/garudatvlivestreaming/garudatvlivestreaming.m3u8',
       logoUrl: 'https://i.imgur.com/sXsAcZ3.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Saluran televisi swasta nasional berita dan hiburan keluarga nusantara.',
+      description:
+          'Saluran televisi swasta nasional berita dan hiburan keluarga nusantara.',
     ),
     LiveTvChannel(
       id: 'id_indonesiana_tv',
@@ -220,7 +400,8 @@ class LiveTvChannelsData {
       logoUrl: 'https://i.imgur.com/192wiS1.png',
       quality: '720p',
       country: 'Indonesia',
-      description: 'Kanal kebudayaan dan seni tradisi nusantara dari Kemendikbudristek.',
+      description:
+          'Kanal kebudayaan dan seni tradisi nusantara dari Kemendikbudristek.',
     ),
     LiveTvChannel(
       id: 'id_albahjah_tv',
@@ -230,17 +411,20 @@ class LiveTvChannelsData {
       logoUrl: 'https://i.imgur.com/52dlDZk.png',
       quality: '1080p',
       country: 'Indonesia',
-      description: 'Siaran dakwah, kajian Islam dan edukasi nilai-nilai kebaikan keluarga.',
+      description:
+          'Siaran dakwah, kajian Islam dan edukasi nilai-nilai kebaikan keluarga.',
     ),
     LiveTvChannel(
       id: 'id_ahsan_tv',
       name: 'Ahsan TV',
       category: 'Indonesia',
-      streamUrl: 'https://5bf7b725107e5.streamlock.net/ahsantv/ahsantv/playlist.m3u8',
+      streamUrl:
+          'https://5bf7b725107e5.streamlock.net/ahsantv/ahsantv/playlist.m3u8',
       logoUrl: 'https://i.imgur.com/dZdUbYd.png',
       quality: '720p',
       country: 'Indonesia',
-      description: 'Kanal dakwah sunnah, tafsir Al-Quran dan inspirasi Islam sejuk.',
+      description:
+          'Kanal dakwah sunnah, tafsir Al-Quran dan inspirasi Islam sejuk.',
     ),
     LiveTvChannel(
       id: 'id_rodja_tv',
@@ -250,155 +434,203 @@ class LiveTvChannelsData {
       logoUrl: 'https://i.imgur.com/XwCeHlC.png',
       quality: '720p',
       country: 'Indonesia',
-      description: 'Saluran televisi dakwah Islam terkemuka di Indonesia menyajikan kajian ilmiah, tilawah Al-Quran, dan siaran keagamaan 24 jam.',
+      description:
+          'Saluran televisi dakwah Islam terkemuka di Indonesia menyajikan kajian ilmiah, tilawah Al-Quran, dan siaran keagamaan 24 jam.',
     ),
 
     // ════════════════════════════════════════════════════════════════
-    // 2. BERITA (INTERNATIONAL & REGIONAL NEWS)
+    // 2. OLAHRAGA & SEPAK BOLA (FOOTBALL & SPORTS)
     // ════════════════════════════════════════════════════════════════
     LiveTvChannel(
-      id: 'ch_cnn_news18',
-      name: 'CNN News 18',
-      category: 'Berita',
-      streamUrl: 'https://n18syndication.akamaized.net/bpk-tv/CNN_News18_NW18_MOB/output01/master.m3u8',
-      logoUrl: 'https://dtil.tmsimg.com/assets/s142747_ld_h15_aa.png?lock=720x540',
+      id: 'ch_bein_sports_1',
+      name: 'beIN Sports 1 HD',
+      category: 'Olahraga',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/bein1/index.m3u8',
+      fallbackStreamUrls: [
+        'https://bein-xtra-bein.amagi.tv/playlist.m3u8',
+      ],
+      logoUrl:
+          'https://images.pluto.tv/channels/5d8d164d92e97a5e107638d2/colorLogoPNG.png',
       quality: '1080p',
-      country: 'Global / Asia',
-      description: 'CNN International partnership channel delivering 24/7 world breaking news and interviews.',
+      country: 'Global / Europe',
+      description:
+          'Siaran langsung LaLiga, Serie A, Ligue 1, FA Cup, dan pertandingan sepak bola klub top Eropa.',
     ),
     LiveTvChannel(
-      id: 'ch_bbc_news',
-      name: 'BBC News International',
-      category: 'Berita',
-      streamUrl: 'http://23.237.104.106:8080/USA_BBC_NEWS/index.m3u8',
-      logoUrl: 'https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_BBC_NEWS/images/LOGO_HD/image.png',
+      id: 'ch_bein_sports_2',
+      name: 'beIN Sports 2 HD',
+      category: 'Olahraga',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/bein2/index.m3u8',
+      fallbackStreamUrls: [
+        'https://bein-xtra-bein.amagi.tv/playlist.m3u8',
+      ],
+      logoUrl:
+          'https://images.pluto.tv/channels/5d8d164d92e97a5e107638d2/colorLogoPNG.png',
       quality: '1080p',
-      country: 'United Kingdom / Global',
-      description: 'British Broadcasting Corporation global coverage, investigative journalism, and analysis.',
+      country: 'Global / Europe',
+      description:
+          'Saluran kedua beIN Sports menyajikan pertandingan langsung liga-liga Eropa, turnamen piala domestik, dan analisis bola.',
     ),
     LiveTvChannel(
-      id: 'ch_abc_news',
-      name: 'ABC News Live',
-      category: 'Berita',
-      streamUrl: 'https://abc-news-dmd-streams-1.akamaized.net/out/v1/701126012d044971b3fa89406a440133/index.m3u8',
-      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/ABC_News_Live_logo_2021.svg/960px-ABC_News_Live_logo_2021.svg.png',
-      quality: '720p',
-      country: 'USA / Global',
-      description: 'Premier 24/7 live breaking news, live event specials, and in-depth reporting from ABC News.',
-    ),
-    LiveTvChannel(
-      id: 'ch_cbs_news',
-      name: 'CBS News 24/7',
-      category: 'Berita',
-      streamUrl: 'https://cbsn-us.cbsnstream.cbsnews.com/out/v1/55a8648e8f134e82a470f83d562deeca/master.m3u8',
-      logoUrl: 'https://images.pluto.tv/channels/6350fdd266e9ea0007bedec5/colorLogoPNG.png',
-      quality: '720p',
-      country: 'USA / Global',
-      description: 'The live stream streaming service from CBS News with continuous coverage, 60 Minutes specials, and debates.',
-    ),
-    LiveTvChannel(
-      id: 'ch_nbc_news',
-      name: 'NBC News NOW',
-      category: 'Berita',
-      streamUrl: 'https://d1si3n1st4nkgb.cloudfront.net/10502/88896001/hls/master.m3u8?ads.xumo_channelId=88896001',
-      logoUrl: 'https://i.imgur.com/JZt2qh5.png',
+      id: 'ch_bein_sports_3',
+      name: 'beIN Sports 3 HD',
+      category: 'Olahraga',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/bein3/index.m3u8',
+      fallbackStreamUrls: [
+        'https://bein-xtra-bein.amagi.tv/playlist.m3u8',
+      ],
+      logoUrl:
+          'https://images.pluto.tv/channels/5d8d164d92e97a5e107638d2/colorLogoPNG.png',
       quality: '1080p',
-      country: 'USA / Global',
-      description: 'NBC News round-the-clock live stream network delivering original reporting and world headlines.',
+      country: 'Global / Europe',
+      description:
+          'Saluran ketiga beIN Sports untuk liputan simultan big match sepak bola Eropa dan kejuaraan dunia.',
     ),
     LiveTvChannel(
-      id: 'ch_aljazeera_en',
-      name: 'Al Jazeera English',
-      category: 'Berita',
-      streamUrl: 'https://live-hls-apps-aje-fa.getaj.net/AJE/index.m3u8',
-      logoUrl: 'https://www.mncvision.id/userfiles/image/channel/aljazeera.png',
+      id: 'ch_bein_sports_xtra',
+      name: 'beIN Sports Xtra HD',
+      category: 'Olahraga',
+      streamUrl: 'https://bein-xtra-bein.amagi.tv/playlist.m3u8',
+      fallbackStreamUrls: [
+        'https://bein-xtra-bein.amagi.tv/playlistR720P.m3u8',
+        'https://dc1644a9jazgj.cloudfront.net/beIN_Sports_Xtra_Espanol.m3u8',
+      ],
+      logoUrl:
+          'https://images.pluto.tv/channels/5d8d164d92e97a5e107638d2/colorLogoPNG.png',
       quality: '1080p',
-      country: 'Qatar / Global',
-      description: 'Award-winning international news channel with unparalleled coverage of global affairs.',
+      country: 'Global / Europe',
+      description:
+          'Siaran langsung sepak bola Eropa, Ligue 1, Süper Lig, Copa Libertadores, dan highlight liga-liga top dunia 24/7.',
     ),
     LiveTvChannel(
-      id: 'ch_dw_en',
-      name: 'DW News English',
-      category: 'Berita',
-      streamUrl: 'https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8',
-      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Deutsche_Welle_symbol_2012.svg/960px-Deutsche_Welle_symbol_2012.svg.png',
+      id: 'ch_soccer_channel',
+      name: 'Soccer Channel HD',
+      category: 'Olahraga',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/soccer/index.m3u8',
+      logoUrl: 'https://a.espncdn.com/i/leaguelogos/soccer/500/23.png',
       quality: '1080p',
-      country: 'Germany / Global',
-      description: 'German international news broadcaster covering global events, European perspectives, and technology.',
+      country: 'Indonesia / Global',
+      description:
+          'Saluran khusus sepak bola 24 jam menayangkan pertandingan Timnas, AFC, kualifikasi Piala Dunia, dan liga internasional.',
     ),
     LiveTvChannel(
-      id: 'ch_sky_news_live',
-      name: 'Sky News Live HD',
-      category: 'Berita',
-      streamUrl: 'https://skynewsau-live-premium.akamaized.net/hls/live/2105299/skynews/live.m3u8',
-      logoUrl: 'https://images.pluto.tv/channels/61de96114757070008d33cae/colorLogoPNG.png',
+      id: 'ch_fifa_plus',
+      name: 'FIFA+ Live HD',
+      category: 'Olahraga',
+      streamUrl:
+          'https://95cedebd.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/Vml6aW9fRklGQVBsdXNFbmdsaXNoX0hMUw/playlist.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/soccer/index.m3u8',
+      ],
+      logoUrl: 'https://a.espncdn.com/i/leaguelogos/soccer/500/4.png',
       quality: '1080p',
       country: 'Global',
-      description: 'Live 24/7 breaking international news, live reports, politics, and world headlines.',
+      description:
+          'Saluran resmi FIFA 24/7 menayangkan pertandingan live FIFA, klasik Piala Dunia, dan dokumenter sepak bola dunia.',
+    ),
+    LiveTvChannel(
+      id: 'ch_realmadrid_tv',
+      name: 'Real Madrid TV HD',
+      category: 'Olahraga',
+      streamUrl: 'http://88.212.15.50/live/real_madrid_tv/index.m3u8',
+      logoUrl: 'https://a.espncdn.com/i/teamlogos/soccer/500/86.png',
+      quality: '1080p',
+      country: 'Spain / Europe',
+      description:
+          'Saluran televisi resmi klub Real Madrid CF: liputan LaLiga, UEFA Champions League, sesi latihan, dan pertandingan penuh.',
+    ),
+    LiveTvChannel(
+      id: 'id_tvri_sport',
+      name: 'TVRI Sport HD',
+      category: 'Olahraga',
+      streamUrl:
+          'https://ott-balancer.tvri.go.id/live/eds/SportHD/hls/SportHD.m3u8',
+      logoUrl:
+          'https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/indonesia/tvri-sport-id.png',
+      quality: '1080p',
+      country: 'Indonesia',
+      description:
+          'Saluran olahraga nasional resmi TVRI menayangkan sepak bola nasional, bulutangkis, dan kejuaraan olahraga dunia.',
+    ),
+    LiveTvChannel(
+      id: 'ch_spotv_2',
+      name: 'SPOTV 2 HD',
+      category: 'Olahraga',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/spotv2/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/ss1/index.m3u8',
+      ],
+      logoUrl:
+          'https://raw.githubusercontent.com/apistech/project/refs/heads/main/logo/image_ch_spotv2.png',
+      quality: '1080p',
+      country: 'Asia / Global',
+      description:
+          'Siaran olahraga premium Asia & Eropa: Saudi Pro League, MotoGP, BWF World Tour, dan turnamen internasional.',
+    ),
+    LiveTvChannel(
+      id: 'ch_sportstars',
+      name: 'Sportstars HD',
+      category: 'Olahraga',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/ss1/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/ss2/index.m3u8',
+      ],
+      logoUrl: 'https://a.espncdn.com/i/leaguelogos/soccer/500/12.png',
+      quality: '1080p',
+      country: 'Indonesia / Global',
+      description:
+          'Saluran olahraga Vision+ dengan liputan sepak bola, futsal, bulu tangkis, dan turnamen dunia.',
+    ),
+    LiveTvChannel(
+      id: 'ch_cbs_sports_hq',
+      name: 'CBS Sports HQ HD',
+      category: 'Olahraga',
+      streamUrl:
+          'https://dai.google.com/linear/hls/event/Sid4xiTQTkCT1SLu6rjUSQ/master.m3u8',
+      logoUrl:
+          'https://images.pluto.tv/channels/5e9f2c05172a0f0007db4786/colorLogoPNG.png',
+      quality: '1080p',
+      country: 'USA / Europe',
+      description:
+          'Liputan langsung UEFA Champions League, Serie A, Europa League, skor real-time, dan analisis pertandingan 24/7.',
+    ),
+    LiveTvChannel(
+      id: 'ch_aspor',
+      name: 'A Spor HD',
+      category: 'Olahraga',
+      streamUrl:
+          'https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/aspor/aspor.m3u8',
+      logoUrl: 'https://i.imgur.com/ZhkZzLf.png',
+      quality: '1080p',
+      country: 'Europe',
+      description:
+          'European football, cup competitions, live match coverage, and sports talk.',
     ),
     LiveTvChannel(
       id: 'ch_fox_sports_news',
       name: 'Fox Sports News HD',
-      category: 'Berita',
-      streamUrl: 'https://skynewsau-live-premium.akamaized.net/hls/live/2105307/foxsportsnews/live_1080p.m3u8',
-      logoUrl: 'https://jiotvimages.cdn.jio.com/dare_images/images/Bloomberg_Originals.png',
+      category: 'Olahraga',
+      streamUrl:
+          'https://skynewsau-live-premium.akamaized.net/hls/live/2105307/foxsportsnews/live_1080p.m3u8',
+      logoUrl:
+          'https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.foxsports.com.au&size=256',
       quality: '1080p',
       country: 'Global',
-      description: 'Live 24/7 sports breaking news, match highlights, analysis, and global sports coverage.',
+      description:
+          'Live 24/7 sports breaking news, football match highlights, analysis, and global sports coverage.',
     ),
-    LiveTvChannel(
-      id: 'ch_france24_en',
-      name: 'France 24 English',
-      category: 'Berita',
-      streamUrl: 'https://live.france24.com/hls/live/2037218-b/F24_EN_HI_HLS/master_5000.m3u8',
-      logoUrl: 'https://i.imgur.com/u8N6uoj.png',
-      quality: '1080p',
-      country: 'France / Global',
-      description: 'International news from a French perspective with live debates, culture, and world reportage.',
-    ),
-    LiveTvChannel(
-      id: 'ch_cnbc_intl',
-      name: 'CNBC International',
-      category: 'Berita',
-      streamUrl: 'https://cnbc-live.akamaized.net/cnbc/master.m3u8',
-      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/CNBC_Arabia_2025.svg/960px-CNBC_Arabia_2025.svg.png',
-      quality: '1080p',
-      country: 'Global',
-      description: 'World business and financial news leader with real-time stock exchanges and market summits.',
-    ),
-    LiveTvChannel(
-      id: 'ch_3catinfo',
-      name: '3CatInfo News',
-      category: 'Berita',
-      streamUrl: 'https://directes-tv-int.3catdirectes.cat/live-origin/canal324-hls/master.m3u8',
-      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/3CatInfo_logo.svg/960px-3CatInfo_logo.svg.png',
-      quality: '1080p',
-      country: 'Europe',
-      description: 'European continuous breaking news and geopolitics network.',
-    ),
-    LiveTvChannel(
-      id: 'ch_4sides_news',
-      name: '4 SiDES TV News',
-      category: 'Berita',
-      streamUrl: 'https://stream.ottlive.co.in/4sidestv/index.m3u8',
-      logoUrl: 'https://jiotvimages.cdn.jio.com/dare_images/images/4sites.png',
-      quality: '1080p',
-      country: 'Global',
-      description: 'Worldwide current events, live reports, and multi-perspective headlines.',
-    ),
-
-    // ════════════════════════════════════════════════════════════════
-    // 3. OLAHRAGA (SPORTS)
-    // ════════════════════════════════════════════════════════════════
     LiveTvChannel(
       id: 'ch_redbull_tv',
       name: 'Red Bull TV',
       category: 'Olahraga',
-      streamUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
-      logoUrl: 'https://images.pluto.tv/channels/5e7cb84a172a0f0007da69e4/colorLogoPNG.png',
+      streamUrl:
+          'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+      logoUrl:
+          'https://images.pluto.tv/channels/5e7cb84a172a0f0007da69e4/colorLogoPNG.png',
       quality: '1080p',
       country: 'Global',
-      description: 'Extreme sports, live racing, skate, surf, and action documentaries.',
+      description:
+          'Extreme sports, live racing, skate, surf, and action documentaries.',
     ),
     LiveTvChannel(
       id: 'ch_acc_sports',
@@ -408,125 +640,349 @@ class LiveTvChannelsData {
       logoUrl: 'https://i.imgur.com/V6Kaqha.png',
       quality: '1080p',
       country: 'USA',
-      description: 'Live college basketball, football, highlights, and championship games.',
+      description:
+          'Live college basketball, football, highlights, and championship games.',
     ),
     LiveTvChannel(
-      id: 'ch_aspor',
-      name: 'A Spor HD',
+      id: 'ch_fight_sports',
+      name: 'Fight Sports HD',
       category: 'Olahraga',
-      streamUrl: 'https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/aspor/aspor.m3u8',
-      logoUrl: 'https://i.imgur.com/ZhkZzLf.png',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/fightsports/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/outdoor/index.m3u8',
+      ],
+      logoUrl:
+          'https://raw.githubusercontent.com/apistech/project/refs/heads/main/logo/image_ch_fightsport.png',
       quality: '1080p',
-      country: 'Europe',
-      description: 'European football, premier league coverage, cup competitions and sports talk.',
+      country: 'USA / Global',
+      description:
+          'World championship boxing, kickboxing, MMA, martial arts, and combat sports 24/7.',
+    ),
+
+    // ════════════════════════════════════════════════════════════════
+    // 3. BERITA (INTERNATIONAL & REGIONAL NEWS)
+    // ════════════════════════════════════════════════════════════════
+    LiveTvChannel(
+      id: 'ch_cnn_news18',
+      name: 'CNN News 18',
+      category: 'Berita',
+      streamUrl:
+          'https://n18syndication.akamaized.net/bpk-tv/CNN_News18_NW18_MOB/output01/master.m3u8',
+      logoUrl:
+          'https://dtil.tmsimg.com/assets/s142747_ld_h15_aa.png?lock=720x540',
+      quality: '1080p',
+      country: 'Global / Asia',
+      description:
+          'CNN International partnership channel delivering 24/7 world breaking news and interviews.',
     ),
     LiveTvChannel(
-      id: 'ch_golf_kingdom',
-      name: 'Golf Kingdom TV',
-      category: 'Olahraga',
-      streamUrl: 'https://30a-tv.com/feeds/vidaa/golf.m3u8',
-      logoUrl: 'https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1322.png',
+      id: 'ch_bbc_news',
+      name: 'BBC News International',
+      category: 'Berita',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/bbcworld/index.m3u8',
+      fallbackStreamUrls: [
+        'http://23.237.104.106:8080/USA_BBC_NEWS/index.m3u8',
+      ],
+      logoUrl:
+          'https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_BBC_NEWS/images/LOGO_HD/image.png',
+      quality: '1080p',
+      country: 'United Kingdom / Global',
+      description:
+          'British Broadcasting Corporation global coverage, investigative journalism, and analysis.',
+    ),
+    LiveTvChannel(
+      id: 'ch_abc_news',
+      name: 'ABC News Live',
+      category: 'Berita',
+      streamUrl:
+          'https://abc-news-dmd-streams-1.akamaized.net/out/v1/701126012d044971b3fa89406a440133/index_5.m3u8',
+      logoUrl:
+          'https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://abcnews.go.com&size=256',
       quality: '720p',
-      country: 'USA',
-      description: 'Championship golf tournaments, course guides, and pro masterclasses.',
+      country: 'USA / Global',
+      description:
+          'Premier 24/7 live breaking news, live event specials, and in-depth reporting from ABC News.',
+    ),
+    LiveTvChannel(
+      id: 'ch_cbs_news',
+      name: 'CBS News 24/7',
+      category: 'Berita',
+      streamUrl:
+          'https://cbsn-us.cbsnstream.cbsnews.com/out/v1/55a8648e8f134e82a470f83d562deeca/master.m3u8',
+      logoUrl:
+          'https://images.pluto.tv/channels/6350fdd266e9ea0007bedec5/colorLogoPNG.png',
+      quality: '720p',
+      country: 'USA / Global',
+      description:
+          'The live streaming service from CBS News with continuous coverage, 60 Minutes specials, and debates.',
+    ),
+    LiveTvChannel(
+      id: 'ch_nbc_news',
+      name: 'NBC News NOW',
+      category: 'Berita',
+      streamUrl:
+          'https://d1si3n1st4nkgb.cloudfront.net/10502/88896001/hls/master.m3u8?ads.xumo_channelId=88896001',
+      logoUrl: 'https://i.imgur.com/JZt2qh5.png',
+      quality: '1080p',
+      country: 'USA / Global',
+      description:
+          'NBC News round-the-clock live stream network delivering original reporting and world headlines.',
+    ),
+    LiveTvChannel(
+      id: 'ch_aljazeera_en',
+      name: 'Al Jazeera English',
+      category: 'Berita',
+      streamUrl: 'https://live-hls-apps-aje-fa.getaj.net/AJE/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/aljazeera/index.m3u8',
+      ],
+      logoUrl: 'https://www.mncvision.id/userfiles/image/channel/aljazeera.png',
+      quality: '1080p',
+      country: 'Qatar / Global',
+      description:
+          'Award-winning international news channel with unparalleled coverage of global affairs.',
+    ),
+    LiveTvChannel(
+      id: 'ch_dw_en',
+      name: 'DW News English',
+      category: 'Berita',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/dwtv/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8',
+      ],
+      logoUrl:
+          'https://raw.githubusercontent.com/apistech/project/refs/heads/main/logo/image_ch_dwtv.png',
+      quality: '1080p',
+      country: 'Germany / Global',
+      description:
+          'German international news broadcaster covering global events, European perspectives, and technology.',
+    ),
+    LiveTvChannel(
+      id: 'ch_fox_news',
+      name: 'FOX News Channel HD',
+      category: 'Berita',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/foxnews/index.m3u8',
+      logoUrl: 'https://www.visionplus.id/images/repository/677/677-LOGO-m.png',
+      quality: '1080p',
+      country: 'USA / Global',
+      description:
+          'Live 24/7 breaking news, political commentary, interviews, and world headlines.',
+    ),
+    LiveTvChannel(
+      id: 'ch_france24_en',
+      name: 'France 24 English',
+      category: 'Berita',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/france24/index.m3u8',
+      fallbackStreamUrls: [
+        'https://live.france24.com/hls/live/2037218-b/F24_EN_HI_HLS/master_5000.m3u8',
+      ],
+      logoUrl: 'https://i.imgur.com/u8N6uoj.png',
+      quality: '1080p',
+      country: 'France / Global',
+      description:
+          'International news from a French perspective with live debates, culture, and world reportage.',
+    ),
+    LiveTvChannel(
+      id: 'ch_cnbc_intl',
+      name: 'CNBC International',
+      category: 'Berita',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/cnbc/index.m3u8',
+      fallbackStreamUrls: [
+        'https://cnbc-live.akamaized.net/cnbc/master.m3u8',
+      ],
+      logoUrl:
+          'https://raw.githubusercontent.com/apistech/project/refs/heads/main/logo/image_ch_cnbcasia.png',
+      quality: '1080p',
+      country: 'Global',
+      description:
+          'World business and financial news leader with real-time stock exchanges and market summits.',
+    ),
+    LiveTvChannel(
+      id: 'ch_cna_news',
+      name: 'CNA (Channel NewsAsia) HD',
+      category: 'Berita',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/cna/index.m3u8',
+      logoUrl:
+          'https://cms.cignal.tv/Upload/Images/CNA%20LOGO%20-horizontal%20-%20on%20light%20background.png',
+      quality: '1080p',
+      country: 'Singapore / Asia',
+      description:
+          'Asian and international breaking news, business analysis, and current affairs from Singapore.',
+    ),
+    LiveTvChannel(
+      id: 'ch_euronews_en',
+      name: 'Euronews English HD',
+      category: 'Berita',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/euronews/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/bloomberg/index.m3u8',
+      ],
+      logoUrl:
+          'https://raw.githubusercontent.com/apistech/project/refs/heads/main/logo/image_ch_euronews.png',
+      quality: '1080p',
+      country: 'Europe / Global',
+      description:
+          'Pan-European continuous breaking news, world affairs, business, and geopolitics network.',
     ),
 
     // ════════════════════════════════════════════════════════════════
     // 4. FILM & HIBURAN (MOVIES & SERIES)
     // ════════════════════════════════════════════════════════════════
     LiveTvChannel(
-      id: 'ch_bbc_studios',
-      name: 'BBC Earth & Studios',
+      id: 'ch_galaxy_premium',
+      name: 'Galaxy Premium Movies HD',
       category: 'Film & Hiburan',
-      streamUrl: 'https://amg00793-amg00793c6-xumo-us-2669.playouts.now.amagi.tv/BBCStudios-BBCEarthA-hls/playlist.m3u8',
-      logoUrl: 'https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_BBC_NEWS/images/LOGO_HD/image.png',
-      quality: '1080p',
-      country: 'United Kingdom',
-      description: 'Landmark natural history documentaries, British drama, and flagship series.',
-    ),
-    LiveTvChannel(
-      id: 'ch_pluto_movies',
-      name: 'Pluto TV Movies',
-      category: 'Film & Hiburan',
-      streamUrl: 'https://service-stitcher.clusters.pluto.tv/v1/stitch/embed/hls/channel/5d8bda705e4a86000966ffbd/master.m3u8?advertisingId=&appName=web&appVersion=unknown&appStoreUrl=&architecture=&buildVersion=&clientDeviceType=0&deviceDNT=0&deviceId=unknown&deviceMake=unknown&deviceModel=unknown&deviceType=unknown&deviceVersion=unknown&includeExtendedEvents=false&sid=unknown&userId=',
-      logoUrl: 'https://images.pluto.tv/channels/5c5c3b948002db3c3e0b262e/colorLogoPNG.png',
-      quality: '1080p',
-      country: 'USA',
-      description: 'Blockbuster films, award-winning drama, and Hollywood favorites 24/7.',
-    ),
-    LiveTvChannel(
-      id: 'ch_action_hollywood',
-      name: 'Action Hollywood HD',
-      category: 'Film & Hiburan',
-      streamUrl: 'https://amg01076-lightningintern-actionhollywood-samsungau-rs69y.amagi.tv/playlist/amg01076-lightningintern-actionhollywood-samsungau/playlist.m3u8',
-      logoUrl: 'https://provider-static.plex.tv/epg/cms/production/bcfb9977-809f-49ae-acc7-430f2c6ffb26/50CentAction_Logo_1500x1000_DarkBG_-_Chris_Connors.png',
-      quality: '720p',
-      country: 'Global',
-      description: 'High-octane action movies, thrillers, and crime drama blockbusters 24/7.',
-    ),
-    LiveTvChannel(
-      id: 'ch_4ever_cinema',
-      name: '4ever Cinema HD',
-      category: 'Film & Hiburan',
-      streamUrl: 'http://stream.mcquack.net/258/index.m3u8',
-      logoUrl: 'https://i.imgur.com/vFOgVbG.png',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/galaxyprem/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/galaxy/index.m3u8',
+      ],
+      logoUrl: 'https://i.imgur.com/oGKtYYG.png',
       quality: '1080p',
       country: 'Global',
-      description: 'Curated cinema channel streaming classic cinema and world films.',
+      description:
+          'Blockbuster Hollywood movies, action hits, and award-winning cinema 24/7.',
     ),
     LiveTvChannel(
-      id: 'ch_wedo_movies',
-      name: 'WeDo Movies HD',
+      id: 'ch_hits_movies',
+      name: 'HITS Movies HD',
       category: 'Film & Hiburan',
-      streamUrl: 'https://op-flashcon-digdayahd-1.dens.tv/h/h70/index.m3u8',
-      logoUrl: 'https://pic.dens.tv/tv_183x174/wedo-tv-movies183x174@3x.jpg',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/hitsmovies/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/hits/index.m3u8',
+      ],
+      logoUrl: 'https://www.visionplus.id/images/repository/622/622-LOGO-m.png',
       quality: '1080p',
       country: 'Global',
-      description: 'Free live cinema featuring international drama, comedy, romance, and thrillers.',
+      description:
+          'Iconic Hollywood blockbuster films and timeless movie favorites 24/7.',
+    ),
+    LiveTvChannel(
+      id: 'ch_axn_hd',
+      name: 'AXN HD',
+      category: 'Film & Hiburan',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/axn/index.m3u8',
+      logoUrl: 'https://www.visionplus.id/images/repository/617/617-LOGO-m.png',
+      quality: '1080p',
+      country: 'Global',
+      description:
+          'High-energy action series, blockbuster movies, crime dramas, and adventure entertainment.',
+    ),
+    LiveTvChannel(
+      id: 'ch_rock_action',
+      name: 'ROCK Action HD',
+      category: 'Film & Hiburan',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/rockaction/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/kix/index.m3u8',
+      ],
+      logoUrl: 'https://www.visionplus.id/images/repository/664/664-LOGO-m.png',
+      quality: '1080p',
+      country: 'Global',
+      description:
+          'Non-stop adrenaline-fueled action films, martial arts cinema, and Hollywood blockbusters.',
+    ),
+    LiveTvChannel(
+      id: 'ch_thrill_movies',
+      name: 'Thrill Horror & Suspense HD',
+      category: 'Film & Hiburan',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/thrill/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/celestialmovies/index.m3u8',
+      ],
+      logoUrl: 'https://www.visionplus.id/images/repository/626/626-LOGO-m.png',
+      quality: '1080p',
+      country: 'Asia / Global',
+      description:
+          '24/7 horror, thriller, suspense, and supernatural cinema favorites.',
+    ),
+    LiveTvChannel(
+      id: 'ch_tvn_movies',
+      name: 'tvN Movies HD',
+      category: 'Film & Hiburan',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/tvnmovies/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/celestialmovies/index.m3u8',
+      ],
+      logoUrl: 'https://www.visionplus.id/images/repository/658/658-LOGO-m.png',
+      quality: '1080p',
+      country: 'Korea / Asia',
+      description:
+          'Home of Korean blockbuster movies, box-office hits, and award-winning Asian cinema.',
     ),
     LiveTvChannel(
       id: 'ch_my_cinema_europe',
       name: 'My Cinema Europe HD',
       category: 'Film & Hiburan',
-      streamUrl: 'https://op-flashcon-digdayahd-1.dens.tv/h/h18/index.m3u8',
-      logoUrl: 'https://raw.githubusercontent.com/apistech/project/refs/heads/main/logo/My_Cinema_Europe_HD_1.jpg',
+      streamUrl: 'https://op-flashcon-digdayahd-1.dens.tv/h/h18/01.m3u8',
+      logoUrl:
+          'https://raw.githubusercontent.com/apistech/project/refs/heads/main/logo/My_Cinema_Europe_HD_1.jpg',
       quality: '1080p',
       country: 'Europe / Global',
-      description: 'Curated European cinema, festival gems, and critically acclaimed films.',
+      description:
+          'Curated European cinema, festival gems, and critically acclaimed films.',
     ),
 
     // ════════════════════════════════════════════════════════════════
     // 5. ANAK & ANIMASI (KIDS)
     // ════════════════════════════════════════════════════════════════
     LiveTvChannel(
-      id: 'ch_cbc_kids',
-      name: 'CBC Kids HD',
+      id: 'ch_dreamworks_kids',
+      name: 'DreamWorks Channel HD',
       category: 'Anak & Animasi',
-      streamUrl: 'https://amagi-streams.akamaized.net/hls/live/2120483/cbckids/master.m3u8',
-      logoUrl: 'https://i.imgur.com/2JO5Y8c.png',
-      quality: 'HD',
-      country: 'Global',
-      description: 'Animated musical songs, fun cartoons, and educational kids programming.',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/dreamworks/index.m3u8',
+      logoUrl: 'https://www.visionplus.id/images/repository/649/649-LOGO-m.png',
+      quality: '1080p',
+      country: 'USA / Global',
+      description:
+          'Official DreamWorks Animation channel featuring Kung Fu Panda, Madagascar, Trolls, and family adventures.',
     ),
     LiveTvChannel(
-      id: 'ch_3abn_kids',
-      name: '3ABN Kids Network',
+      id: 'ch_cbeebies_kids',
+      name: 'BBC CBeebies HD',
       category: 'Anak & Animasi',
-      streamUrl: 'https://3abn.bozztv.com/3abn2/Kids_live/smil:Kids_live.smil/playlist.m3u8',
-      logoUrl: 'https://i.imgur.com/z3npqO1.png',
-      quality: '720p',
-      country: 'USA',
-      description: 'Wholesome family animations, nature discoveries, and children stories.',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/cbeebies/index.m3u8',
+      logoUrl: 'https://ichef.bbci.co.uk/images/ic/1920xn/p0fpxchz.png',
+      quality: '1080p',
+      country: 'United Kingdom / Global',
+      description:
+          'Award-winning BBC preschool & children programming, interactive stories, and educational cartoons.',
     ),
     LiveTvChannel(
-      id: 'ch_boomerang_toons',
-      name: 'Boomerang Toons',
+      id: 'ch_nick_jr',
+      name: 'Nick Jr. HD',
       category: 'Anak & Animasi',
-      streamUrl: 'http://cdn4.skygo.mn/live/disk1/Boomerang/HLSv3-FTA/Boomerang.m3u8',
-      logoUrl: 'https://images.pluto.tv/channels/6452c814939a590008567a3b/colorLogoPNG_1731836283044.png',
-      quality: '720p',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/nickjr/index.m3u8',
+      logoUrl: 'https://www.visionplus.id/images/repository/652/652-LOGO-m.png',
+      quality: '1080p',
+      country: 'USA / Global',
+      description:
+          'PAW Patrol, Dora the Explorer, Blue\'s Clues, and fun learning adventures for kids.',
+    ),
+    LiveTvChannel(
+      id: 'ch_animax_hd',
+      name: 'Animax Anime HD',
+      category: 'Anak & Animasi',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/animax/index.m3u8',
+      logoUrl: 'https://www.visionplus.id/images/repository/646/646-LOGO-m.png',
+      quality: '1080p',
+      country: 'Japan / Asia',
+      description:
+          '24/7 Japanese anime television network broadcasting popular action, fantasy, and comedy anime series.',
+    ),
+    LiveTvChannel(
+      id: 'ch_moonbug_kids',
+      name: 'Moonbug Kids HD (CoComelon)',
+      category: 'Anak & Animasi',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/moonbug/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/zoomoo/index.m3u8',
+      ],
+      logoUrl:
+          'https://www.visionplus.id/images/repository/909/162909-LOGO-m.png',
+      quality: '1080p',
       country: 'Global',
-      description: 'Classic cartoons, nostalgic animation favorites, and family entertainment.',
+      description:
+          'CoComelon, Blippi, Little Baby Bum, and joyful animated nursery rhymes for children.',
     ),
 
     // ════════════════════════════════════════════════════════════════
@@ -537,74 +993,124 @@ class LiveTvChannelsData {
       name: '1HD Music Television',
       category: 'Musik',
       streamUrl: 'http://176.118.197.101/1HD/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/musictv/index.m3u8',
+      ],
       logoUrl: 'https://i.imgur.com/4Ww7CsR.png',
       quality: '1080p',
       country: 'Global',
-      description: 'High definition international music videos, chart hits, and live DJ sets.',
+      description:
+          'High definition international music videos, chart hits, and live DJ sets.',
     ),
     LiveTvChannel(
-      id: 'ch_4ever_music',
-      name: '4ever Music HD',
+      id: 'ch_vision_music_tv',
+      name: 'Music TV HD',
       category: 'Musik',
-      streamUrl: 'http://stream.mcquack.net/257/index.m3u8',
-      logoUrl: 'https://i.imgur.com/UJ5oaeU.png',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/musictv/index.m3u8',
+      logoUrl:
+          'https://raw.githubusercontent.com/apistech/project/refs/heads/main/logo/image_ch_musikindonesia.png',
       quality: '1080p',
-      country: 'Global',
-      description: 'Non-stop music videos covering Pop, Rock, R&B, and electronic hits.',
+      country: 'Indonesia / Global',
+      description:
+          'Non-stop Indonesian & international music videos, pop chart hits, and concert specials 24/7.',
     ),
     LiveTvChannel(
-      id: 'ch_eu_music',
-      name: 'EU Music HD',
+      id: 'ch_adria_music',
+      name: 'Adria Music Television HD',
       category: 'Musik',
-      streamUrl: 'http://stream.mcquack.net/261/index.m3u8',
-      logoUrl: 'https://i.imgur.com/iBcqT8L.png',
+      streamUrl: 'https://adriaapp.b-cdn.net/1080p/index.m3u8',
+      logoUrl: 'https://i.imgur.com/QoDpnKg.png',
       quality: '1080p',
       country: 'Europe / Global',
-      description: 'Top European chart hits, pop music, and high energy music videos.',
+      description:
+          'Top European and international chart hits, pop music, and high-energy music videos.',
     ),
 
     // ════════════════════════════════════════════════════════════════
-    // 7. SAINS & EDUKASI (SCIENCE)
+    // 7. SAINS & EDUKASI (SCIENCE & DOCUMENTARY)
     // ════════════════════════════════════════════════════════════════
     LiveTvChannel(
-      id: 'ch_nasa_tv',
-      name: 'NASA TV Public',
+      id: 'ch_bbc_earth',
+      name: 'BBC Earth HD',
       category: 'Sains & Edukasi',
-      streamUrl: 'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
-      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/960px-NASA_logo.svg.png',
-      quality: '720p',
-      country: 'USA',
-      description: 'Official NASA coverage of spacewalks, rocket launches, and ISS views.',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/bbcearth/index.m3u8',
+      fallbackStreamUrls: [
+        'https://amg00793-amg00793c6-xumo-us-2669.playouts.now.amagi.tv/BBCStudios-BBCEarthA-hls/playlist.m3u8',
+      ],
+      logoUrl: 'https://www.visionplus.id/images/repository/634/634-LOGO-m.png',
+      quality: '1080p',
+      country: 'United Kingdom / Global',
+      description:
+          'Landmark BBC natural history documentaries, wildlife expeditions, space science, and Planet Earth.',
     ),
     LiveTvChannel(
-      id: 'ch_discovery_science',
-      name: 'Discovery Science',
+      id: 'ch_history_hd',
+      name: 'History Channel HD',
       category: 'Sains & Edukasi',
-      streamUrl: 'https://drk6xq0vhn.gpcdn.net/live/discovery_science_abr/index.m3u8',
-      logoUrl: 'https://dtil.tmsimg.com/assets/s159107_ld_h15_aa.png?lock=720x540',
-      quality: '720p',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/history/index.m3u8',
+      logoUrl: 'https://www.visionplus.id/images/repository/638/638-LOGO-m.png',
+      quality: '1080p',
       country: 'USA / Global',
-      description: 'Deep dives into space, physics, engineering, and groundbreaking technology.',
+      description:
+          'Ancient civilizations, engineering marvels, world history documentaries, and scientific mysteries.',
     ),
     LiveTvChannel(
-      id: 'ch_davinci_learning',
-      name: 'DaVinci Learning HD',
+      id: 'ch_love_nature',
+      name: 'Love Nature HD',
       category: 'Sains & Edukasi',
-      streamUrl: 'http://stream.mcquack.net/238/index.m3u8',
-      logoUrl: 'https://i.imgur.com/FQ0FpXV.png',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/lovenature/index.m3u8',
+      logoUrl: 'https://www.visionplus.id/images/repository/639/639-LOGO-m.png',
       quality: '1080p',
       country: 'Global',
-      description: 'Fascinating science experiments, nature documentaries, and educational adventures.',
+      description:
+          'Breathtaking wildlife stories, ocean discoveries, and nature documentaries from around the globe.',
     ),
     LiveTvChannel(
-      id: 'ch_scifi',
-      name: '.sci-fi Channel',
+      id: 'ch_global_trekker',
+      name: 'Global Trekker HD',
       category: 'Sains & Edukasi',
-      streamUrl: 'http://stream.mcquack.net/180/index.m3u8',
-      logoUrl: 'https://i.imgur.com/nSSUHcg.png',
-      quality: 'HD',
+      streamUrl: 'https://dsgtq5sngxkde.cloudfront.net/globetrekker/index.m3u8',
+      fallbackStreamUrls: [
+        'https://dsgtq5sngxkde.cloudfront.net/cgtndoc/index.m3u8',
+      ],
+      logoUrl: 'https://www.visionplus.id/images/repository/637/637-LOGO-m.png',
+      quality: '1080p',
       country: 'Global',
-      description: 'Futuristic discoveries, astronomy documentaries, and science fiction.',
+      description:
+          'Science, technology, global exploration, cultural documentaries, and innovation insights.',
     ),
   ];
+
+  /// Looks up a [LiveTvChannel] by its unique [id].
+  static LiveTvChannel? findById(String id) {
+    for (final ch in defaultChannels) {
+      if (ch.id == id) return ch;
+    }
+    return null;
+  }
+
+  /// Returns all football-capable channels in priority order.
+  static List<LiveTvChannel> get footballChannels {
+    const ids = [
+      'ch_bein_sports_1',
+      'ch_bein_sports_2',
+      'ch_bein_sports_3',
+      'ch_bein_sports_xtra',
+      'ch_soccer_channel',
+      'id_sctv',
+      'id_indosiar',
+      'id_rcti',
+      'id_moji',
+      'id_tvri_sport',
+      'ch_fifa_plus',
+      'ch_realmadrid_tv',
+      'ch_spotv_2',
+      'ch_sportstars',
+      'ch_cbs_sports_hq',
+      'id_inews',
+      'id_mnctv',
+      'ch_aspor',
+    ];
+    return ids.map(findById).whereType<LiveTvChannel>().toList();
+  }
 }

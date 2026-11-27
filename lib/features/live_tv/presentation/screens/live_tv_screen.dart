@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,8 +10,10 @@ import '../../../../core/localization/app_language_provider.dart';
 import '../../../../core/platform/device_form_factor.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
 import '../../data/datasources/live_tv_channels_data.dart';
+import '../../data/services/live_football_match_service.dart';
 import '../../domain/entities/live_tv_channel.dart';
 import '../providers/live_tv_providers.dart';
+import '../widgets/live_football_match_modal.dart';
 
 /// TV Live Channel Catalog Screen.
 ///
@@ -31,10 +34,24 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
+    Future.microtask(() async {
       if (mounted) {
         ref.read(liveTvIsPlayingProvider.notifier).state = false;
         ref.read(liveTvFullscreenProvider.notifier).state = false;
+      }
+      if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+        try {
+          final matches = await ref.read(liveFootballMatchesProvider.future);
+          if (!mounted || matches.isEmpty) return;
+          if (LiveFootballMatchService.hasUnseenLiveMatches(matches)) {
+            LiveFootballMatchService.markMatchesAsShown(matches);
+            await LiveFootballMatchModal.show(
+              context,
+              matches: matches,
+              onWatchChannel: _onChannelSelected,
+            );
+          }
+        } catch (_) {}
       }
     });
   }
@@ -235,6 +252,108 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
             ),
 
             const SizedBox(height: 10),
+
+            // ── Live Football Match Quick Banner (When a match is currently in progress) ──
+            if (!Platform.environment.containsKey('FLUTTER_TEST'))
+              ref
+                  .watch(liveFootballMatchesProvider)
+                  .maybeWhen(
+                    data: (liveMatches) {
+                      if (liveMatches.isEmpty) return const SizedBox.shrink();
+                      final topMatch = liveMatches.first;
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                        child: InkWell(
+                          onTap: () => LiveFootballMatchModal.show(
+                            context,
+                            matches: liveMatches,
+                            onWatchChannel: _onChannelSelected,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.45,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.redAccent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${s.footballLiveBannerTitle} • ${topMatch.competitionName} (${topMatch.broadcastingChannelNames})',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.inter(
+                                          color: AppColors.primary,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        topMatch.homeScore != '-' &&
+                                                topMatch.awayScore != '-'
+                                            ? '${s.localizeFootballLabel(topMatch.homeTeamName)} ${topMatch.homeScore} - ${topMatch.awayScore} ${s.localizeFootballLabel(topMatch.awayTeamName)} (${topMatch.statusDetail})'
+                                            : '${s.localizeFootballLabel(topMatch.homeTeamName)} vs ${s.localizeFootballLabel(topMatch.awayTeamName)} (${topMatch.statusDetail})',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.outfit(
+                                          color: Colors.white,
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    s.footballLiveWatchNowBtn,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.black,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    orElse: () => const SizedBox.shrink(),
+                  ),
 
             // ── Channel Grid / List View ──
             Expanded(
@@ -452,7 +571,7 @@ class _LiveTvScreenState extends ConsumerState<LiveTvScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    s.isIndonesian ? 'Tonton' : 'Watch',
+                    s.liveTvWatchShortBtn,
                     style: GoogleFonts.outfit(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,

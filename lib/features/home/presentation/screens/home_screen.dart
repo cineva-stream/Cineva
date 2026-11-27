@@ -34,6 +34,9 @@ import '../../../search/presentation/screens/search_screen.dart';
 import '../../../../core/platform/device_form_factor.dart';
 import '../../../../shared/widgets/tv_focusable.dart';
 import '../../../download/presentation/widgets/download_feature_announcement_dialog.dart';
+import '../../../live_tv/data/services/live_football_match_service.dart';
+import '../../../live_tv/presentation/providers/live_tv_providers.dart';
+import '../../../live_tv/presentation/widgets/live_football_match_modal.dart';
 import '../../../settings/data/settings_service.dart';
 import '../../../updater/data/legacy_migration_service.dart';
 
@@ -90,6 +93,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         Future.delayed(const Duration(milliseconds: 1400), () {
           if (!mounted) return;
           LegacyMigrationService.checkAndShow(context);
+        });
+      }
+
+      // Check for live in-progress football matches and show modal popup if a match has kicked off
+      if (!kIsWeb && !Platform.environment.containsKey('FLUTTER_TEST')) {
+        Future.delayed(const Duration(milliseconds: 1800), () async {
+          if (!mounted) return;
+          try {
+            final matches = await ref.read(liveFootballMatchesProvider.future);
+            if (!mounted || matches.isEmpty) return;
+            if (LiveFootballMatchService.hasUnseenLiveMatches(matches)) {
+              LiveFootballMatchService.markMatchesAsShown(matches);
+              await LiveFootballMatchModal.show(context, matches: matches);
+            }
+          } catch (_) {}
         });
       }
     });

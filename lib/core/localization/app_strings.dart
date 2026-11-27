@@ -2721,5 +2721,63 @@ class AppStrings {
     'Backup file deleted',
     'बैकअप फ़ाइल हटाई गई',
   );
+
+  // ── 23. LIVE FOOTBALL CHANNELS & LIVE MATCH MODAL POPUP ──
+  String get footballLiveModalBadge => tr(
+    'PERTANDINGAN BERLANGSUNG',
+    'LIVE FOOTBALL MATCH',
+    'लाइव फुटबॉल मैच',
+  );
+  String get footballLiveModalTitle => tr(
+    'Sepak Bola Sedang Tayang!',
+    'Live Football is On Now!',
+    'लाइव फुटबॉल अभी चल रहा है!',
+  );
+  String get footballLiveModalSubtitle => tr(
+    'Pertandingan sudah dimulai. Tonton siaran langsungnya sekarang di TV Live.',
+    'The match has kicked off. Watch the live broadcast now on Live TV.',
+    'मैच शुरू हो चुका है। अभी लाइव टीवी पर सीधा प्रसारण देखें।',
+  );
+  String get footballLiveBroadcastOn => tr(
+    'Tayang di',
+    'Broadcasting on',
+    'प्रसारण चैनल',
+  );
+  String get footballLiveWatchNowBtn => tr(
+    'Tonton Sekarang',
+    'Watch Now',
+    'अभी देखें',
+  );
+  String get footballLiveDismissBtn => tr(
+    'Nanti Saja',
+    'Maybe Later',
+    'बाद में',
+  );
+  String get footballLiveOtherMatches => tr(
+    'Pertandingan Lain yang Sedang Berlangsung',
+    'Other Matches Currently Live',
+    'अन्य चल रहे लाइव मैच',
+  );
+  String get footballLiveBannerTitle => tr(
+    'Pertandingan Bola Sedang Berlangsung',
+    'Live Football Match in Progress',
+    'लाइव फुटबॉल मैच जारी है',
+  );
+  String get footballLiveBroadcastTeamFallback => tr(
+    'Siaran Langsung',
+    'Live Broadcast',
+    'सीधा प्रसारण',
+  );
+  String get liveTvWatchShortBtn => tr(
+    'Tonton',
+    'Watch',
+    'देखें',
+  );
+  String localizeFootballLabel(String raw) {
+    if (raw == 'Siaran Langsung' || raw == 'Live Broadcast') {
+      return footballLiveBroadcastTeamFallback;
+    }
+    return raw;
+  }
 }
 

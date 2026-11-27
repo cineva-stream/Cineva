@@ -1,9 +1,32 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../data/datasources/live_tv_channels_data.dart';
+import '../../data/services/live_football_match_service.dart';
+import '../../domain/entities/live_football_match.dart';
 import '../../domain/entities/live_tv_channel.dart';
+
+/// Service provider for fetching real-time in-progress football matches.
+final liveFootballMatchServiceProvider = Provider<LiveFootballMatchService>((
+  ref,
+) {
+  return LiveFootballMatchService();
+});
+
+/// Asynchronous provider that resolves currently live football matches
+/// verified against real-time EPG schedules, auto-refreshing every 60 seconds.
+final liveFootballMatchesProvider =
+    FutureProvider<List<LiveFootballMatch>>((ref) async {
+      final timer = Timer(const Duration(seconds: 60), () {
+        ref.invalidateSelf();
+      });
+      ref.onDispose(timer.cancel);
+
+      final service = ref.watch(liveFootballMatchServiceProvider);
+      return service.fetchLiveMatches();
+    });
 
 /// Active category filter on the Live TV screen ('Semua', 'Olahraga', etc.)
 final liveTvCategoryProvider = StateProvider<String>((ref) => 'Semua');

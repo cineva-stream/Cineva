@@ -1,62 +1,67 @@
-# Cineva v1.2.1 - Release Notes 🎬
+# Cineva v1.2.2 - Release Notes 🎬
 
-Pembaruan Cineva versi **1.2.1 (Build 22)** menghadirkan ekspansi katalog konten global, personalisasi tontonan cerdas, serta lonjakan besar pada performa pengunduhan offline: dukungan penuh **Bahasa India (Hindi / हिन्दी)** di seluruh antarmuka (3 bahasa: Indonesia, English, dan Hindi), section rekomendasi personal **"Because You Watched..."** berdasarkan film atau serial TV yang ditonton, halaman **Cineva Insights & Statistik Tontonan** di menu Profil (lengkap dengan kartu identitas member bergaya ID / ATM Cineva), **Optimalisasi Mesin Unduhan Offline** (*Background Isolate* anti-lag dengan proses *finalizing* instan), penambahan 5 section regional baru (**Indonesia, Anime, K-Drama, Hollywood, dan Bollywood**) di layar utama lengkap dengan halaman katalog penuh *infinite scroll* (*See All*), serta pembaruan **Logika & Filter Pencarian** yang kini secara default menampilkan rilis terbaru terlebih dahulu.
+Pembaruan Cineva versi **1.2.2 (Build 23)** menghadirkan perombakan besar pada pengalaman **TV Live & Siaran Sepak Bola Real-Time**, keandalan pemutaran seluruh saluran TV nasional maupun internasional, serta rangkaian fitur sinematik dan perlindungan data pengguna: sistem **Deteksi Pertandingan Sepak Bola Live Berbasis Real-Time EPG + Live Scoreboard** lengkap dengan **Modal Turnamen Sepak Bola**, mesin **Local Loopback DASH-to-HLS fMP4 Bridge** untuk memutar seluruh channel TV Live tanpa *stuck loading*, fitur **Cadangan Otomatis Lokal (*Auto Backup*)** langsung ke folder `Documents/Cineva`, **Bookmark Momen Adegan & Studio Kartu Kutipan (*Quote Card*)**, **Bagikan Tayangan 2 Baris dengan Deep Link Instan**, **Watch Party `1.05x` Smooth Micro-Speed Catch-Up**, serta **Layar Pembaruan Wajib (*Mandatory Update*)** dan **Lini Masa Catatan Rilis 3 Bahasa**.
 
 ---
 
-## Ringkasan Fitur Baru & Peningkatan Utama (v1.2.1)
+## Ringkasan Fitur Baru & Peningkatan Utama (v1.2.2)
 
-### 1. Dukungan Penuh Bahasa India / Hindi (*Full Trilingual Localization: Indonesia, English & Hindi*)
-* **Ekspansi Lokalisasi 3 Bahasa Menyeluruh (`id`, `en`, `hi`)**:
-  * Menambahkan bahasa **India (Hindi / हिन्दी)** sebagai bahasa resmi ketiga di Cineva mendampingi Bahasa Indonesia dan Bahasa Inggris.
-  * Seluruh teks antarmuka aplikasi — mulai dari layar awal (*Splash Screen*), Beranda, Pencarian, Filter & Urutkan, Halaman Detail Film/Serial, Pemutar Video, Subtitle, Watch Party, Unduhan Offline, Profil, hingga Dokumen Legalitas & Halaman Info Aplikasi — telah diterjemahkan secara lengkap dan konsisten ke dalam 3 bahasa.
-  * Dilengkapi pengayaan metadata episode TV cerdas (*automatic `en-US` fallback*) sehingga judul dan sinopsis setiap episode serial TV tetap tampil lengkap meskipun bahasa aplikasi diatur ke Bahasa Indonesia atau Hindi.
+### 1. Deteksi Pertandingan Sepak Bola Real-Time EPG & Modal Turnamen (*Real-Time EPG Live Football Match & Tournament Modal*)
+* **Verifikasi Silang Jadwal TV Real-Time (`XMLTV EPG`) & Live Scoreboard**:
+  * Sistem deteksi pertandingan bola kini memverifikasi jadwal program TV yang sedang tayang saat itu juga (`start <= now < stop`) dari feed EPG real-time pada channel-channel olahraga dan nasional di Cineva (*SCTV HD, Indosiar HD, RCTI HD, MNCTV HD, GTV HD, iNews HD, Moji, TVRI Sport HD, TVRI Nasional, beIN Sports 1 HD, beIN Sports 2 HD, beIN Sports 3 HD, Soccer Channel HD, Sportstars HD, SPOTV 2 HD, A Spor HD*) dengan data skor langsung dari ESPN Scoreboard.
+  * Bagian **"Tayang di" (*Broadcasting on* / *प्रसारण चैनल*)** kini **100% real-time dan akurat**: hanya menampilkan channel yang benar-benar sedang menayangkan pertandingan tersebut beserta judul program EPG asli dan jam tayangnya dalam WIB (contoh: `UEL 2026/27: OLY Vs MIL (L) • 00:40–02:55 WIB`).
+  * Ketika beberapa pertandingan berlangsung serentak di channel berbeda (misalnya *beIN Sports 1 HD*, *beIN Sports 2 HD*, dan *SCTV HD / beIN Sports 3 HD*), setiap pertandingan dipisahkan secara presisi lengkap dengan daftar channel penayangnya masing-masing.
+  * Secara otomatis menyaring pertandingan asing yang tidak ditayangkan di TV maupun program olahraga non-sepak bola (*Premier Padel, V-League Voli, Highlights, FTV*).
+* **Desain Baru Modal Ala Turnamen Sepak Bola (*Tournament Matchday Arena UI*)**:
+  * Tampilan modal **`LIVE FOOTBALL MATCH`** didesain ulang bergaya grafis siaran turnamen sepak bola modern tanpa tumpukan *badge* berlebihan: header kompetisi bersih dengan indikator titik merah *LIVE*, arena papan skor dengan lambang tim di dalam cincin lingkaran, kartu *official broadcaster* berlogo channel resmi, serta tombol **"Tonton Sekarang"** yang selalu tersemat (*pinned*) dan langsung membuka siaran channel terpilih.
 
-### 2. Rekomendasi Personal Berdasarkan Tontonan (*"Because You Watched..." Personalized Section*)
-* **Saran Konten Cerdas dari Riwayat Tontonan**:
-  * Menampilkan section dinamis **"Karena Anda Menonton [Judul]..."** (*"Because You Watched..."* / *"क्योंकि आपने ... देखा"*) secara otomatis di halaman Beranda berdasarkan film atau serial TV yang terakhir Anda tonton.
-  * Mengkurasi judul-judul serupa yang relevan dan sudah tersedia untuk ditonton, dengan tampilan header rata kiri yang bersih dan minimalis.
+### 2. Optimalisasi Mesin Pemutar TV Live & 75 Saluran Berlogo Resmi (*DASH-to-HLS fMP4 Bridge & Verified Streams*)
+* **Local Loopback DASH-to-HLS fMP4 Bridge (`127.0.0.1`)**:
+  * Membangun jembatan konversi *in-app* yang menerjemahkan aliran MPD DASH dinamis (`index.mpd` dengan `<SegmentTimeline>` pada *SCTV HD, Indosiar HD, Moji, Metro TV, ANTV, tvOne, MDTV, RTV, BTV, TVRI*) menjadi aliran *live* HLS fMP4 (`#EXT-X-MAP`) secara *real-time*, mengatasi *crash* dan *stuck loading* demuxer `dashdec` pada FFmpeg / `libmpv`.
+* **Smart Master Playlist & Cross-Domain Redirect Resolver**:
+  * Resolusi langsung *child video playlist* 720p/1080p pada aliran dinamis Wurl/Xumo (*FIFA+ Live HD, NBC News NOW, ABC News Live*) serta *302 redirect* lintas domain (*RCTI HD, GTV HD, MNCTV HD, iNews HD*) dengan injeksi header `Referer` dan `User-Agent` tingkat native `libmpv` serta penonaktifan *subtitle track* kosong (`sid=no`).
+* **Pembaruan Katalog 75 Saluran TV Live & Logo Resmi**:
+  * Memperbarui seluruh aliran channel TV Live di semua kategori (*Olahraga, Nasional, Berita, Film, Anak, Musik, Dokumenter*) agar dapat diputar sepenuhnya dengan *multi-URL automatic failover* (`fallbackStreamUrls`) dan logo resmi beresolusi penuh pada seluruh 75 channel (termasuk perbaikan logo *Trans TV* dan *iNews HD*).
 
-### 3. Halaman Cineva Insights & Statistik di Menu Profil (*Watch Insights, Stats & Member Card Studio*)
-* **Dasbor Analisis Aktivitas Menonton**:
-  * Menambahkan halaman **Cineva Insights / Statistik Tontonan** yang dapat diakses langsung dari menu Profil.
-  * Menampilkan ringkasan metrik tontonan personal secara visual: total durasi jam menonton, jumlah film dan episode serial TV yang telah diselesaikan, distribusi genre favorit, tren aktivitas harian/mingguan, serta pencapaian (*milestones*) penonton.
-* **Studio Kartu Member Cineva (Gaya Kartu ID & Kartu ATM Premium)**:
-  * Pengguna dapat melihat, menyesuaikan, dan membagikan kartu identitas anggota resmi Cineva (*Cineva Member Card*) dalam desain Kartu ID sinematik maupun kartu ATM modern lengkap dengan statistik tontonan pengguna.
+### 3. Cadangan Otomatis Lokal Tanpa Akun (*Local Auto Backup to `Documents/Cineva`*)
+* **Pencadangan Terjadwal & Mandiri di Penyimpanan Perangkat**:
+  * Menambahkan halaman **Cadangan Otomatis (*Auto Backup* / *ऑटो बैकअप*)** di menu Pengaturan yang secara otomatis mencadangkan riwayat tontonan, *watchlist*, profil, dan preferensi pengguna ke folder `Documents/Cineva` tanpa memerlukan login akun.
+  * Mendukung pilihan frekuensi **Mingguan (7 hari)**, **Bulanan (30 hari)**, atau **Nonaktif**, dilengkapi tombol **Cadangkan Sekarang** serta daftar berkas cadangan tersimpan yang dapat dipulihkan (*Restore*) atau dihapus kapan saja.
 
-### 4. Optimalisasi Mesin Unduhan Offline (*High-Speed Background Isolate Download Engine*)
-* **Zero UI Lag dengan Background Isolate Murni**:
-  * Memindahkan seluruh proses pengunduhan segmen HLS, dekripsi paralel `AES-128-CBC`, ekstraksi *wrapper* Gzip/PNG/WebP, dan penyelarasan paket MPEG-TS (`0x47`) ke dalam `Isolate.spawn` latar belakang khusus dengan 16 *worker* paralel.
-  * Menjaga *frame rate* layar utama tetap mulus 60/120 FPS tanpa beban pada *main UI thread* meskipun sedang mengunduh video berkecepatan lebih dari 10 MB/s.
-* **Finalisasi Instan (`< 0.5 Detik`) & Smart Download Queue**:
-  * Perakitan berkas video dilakukan secara progresif selama pengunduhan berlangsung (*in-memory sliding-window progressive assembler*), sehingga tahap *Finalizing* selesai secara instan tanpa menyalin ulang ratusan segmen di akhir unduhan.
-  * Dilengkapi sistem antrean unduhan cerdas (*Smart Concurrent Download Queue*, maksimal 2 unduhan aktif bersamaan dengan status *"Dalam antrean..."* otomatis) serta pembersihan segmen sementara secara asinkron di latar belakang.
+### 4. Penanda Momen Adegan & Kartu Kutipan Sinematik (*Scene Bookmarks & Cinematic Quote Card Studio*)
+* **Simpan Detik Adegan Favorit di Pemutar Video**:
+  * Pengguna dapat menandai momen adegan favorit (*Scene Bookmark*) langsung saat menonton film atau episode serial TV, lengkap dengan *timestamp* presisi dan teks dialog *subtitle* yang sedang tampil.
+* **Studio Kartu Kutipan Sinematik (*Cinematic Quote Card*)**:
+  * Mengubah momen adegan atau dialog favorit menjadi gambar kartu kutipan bergaya poster sinema yang siap disimpan atau dibagikan ke media sosial.
 
-### 5. Section Katalog Regional Baru di Beranda (*Indonesia, Anime, K-Drama, Hollywood & Bollywood*)
-* **5 Kategori Kurasi Regional & Genre Populer**:
-  * Menambahkan 5 section baru di halaman Beranda (**Home Screen**): **Anime**, **K-Drama**, **Indonesia**, **Hollywood**, dan **Bollywood** yang menampilkan tayangan terbaru yang sudah rilis dan siap ditonton.
-* **Halaman Katalog Penuh Infinite Scroll (`See All`) & Immersive Edge-to-Edge**:
-  * Setiap section dilengkapi tombol **"Lihat Semua" (*See All*)** yang membuka halaman katalog penuh dengan *infinite scroll* mulus, tampilan layar penuh *Immersive Edge-to-Edge* (tanpa bilah navigasi bawah yang menghalangi), serta filter tipe media (*Semua, Film, Serial TV*), urutan (*Terbaru, Populer, Rating Tertinggi*), Tahun Rilis, dan Genre.
-* **Perlindungan Cerdas Tayangan Belum Rilis (*Smart "Segera Hadir" Guard*)**:
-  * Film atau episode serial TV yang tanggal rilisnya masih di masa depan dan belum tersedia di server otomatis menonaktifkan tombol tonton menjadi **"Segera Hadir"** (*"Coming Soon"* / *"जल्द आ रहा है"*) serta menyembunyikan tombol unduh, namun tetap melakukan pengecekan latar belakang (*stream availability probe*) agar tayangan yang rilis lebih awal tetap langsung bisa diputar.
+### 5. Bagikan Tayangan dengan Poster & Deep Link Instan `0ms` (*Rich Media Share & Root Deep Links*)
+* **Tata Letak Aksi Detail 2 Baris & Berbagi Poster Otomatis**:
+  * Halaman detail Film dan Serial TV kini menampilkan tata letak tombol aksi 2 baris yang rapi dengan fitur **Bagikan (*Share*)** yang menyertakan gambar poster tayangan beserta tautan langsung (`https://cineva-stream.github.io/movie/:id` dan `/tv/:id`).
+* **Prioritas Peluncuran Aplikasi Native Instan (`0ms`)**:
+  * Halaman web *deep link* untuk Film, Serial TV, dan Ruangan Watch Party (`/party/:code`) kini langsung memicu pembukaan aplikasi native Cineva pada `0ms` dengan halaman *fallback* berbahasa Inggris yang responsif apabila aplikasi belum terpasang.
 
-### 6. Logika Pencarian Terbaru & Bilah Filter Modern (*Newest-First Search & Unified Filter Bar*)
-* **Urutan Default Hasil Pencarian dari Rilis Terbaru**:
-  * Logika hasil pencarian kini diperbarui agar secara otomatis mengurutkan dan menampilkan film maupun serial TV dari **rilis terbaru terlebih dahulu** (*Newest First*), sambil tetap menjaga relevansi judul dan menyaring item tanpa poster yang tidak valid.
-* **Desain Bilah Filter Satu Baris yang Rapi (*Single-Row Smart Filter Bar*)**:
-  * Halaman hasil pencarian dan halaman katalog *See All* kini menggunakan bilah filter satu baris rata tengah dengan latar hitam khas Cineva dan *smooth border* elegan:
-    * Chip cepat untuk tipe konten (**Semua / Film / Serial TV**).
-    * Satu tombol **Filter & Urutkan** terpadu (dengan lencana indikator jumlah filter aktif) yang membuka panel *Bottom Sheet* modern untuk memilih **Urutkan Berdasarkan** (*Terbaru, Populer, Rating Tertinggi*), **Tahun Rilis**, dan **Genre**.
+### 6. Watch Party `1.05x` Smooth Micro-Speed Catch-Up
+* **Sinkronisasi Halus Tanpa Jeda Buffering**:
+  * Ketika posisi pemutaran peserta Watch Party tertinggal tipis (`0.8 – 3.5 detik`) dari *host*, pemutar video secara otomatis menerapkan percepatan mikro **`1.05x`** hingga kembali sejajar secara mulus tanpa melakukan *hard seek* yang memicu *loading* ulang.
 
-### 7. Integrasi Saluran Resmi Telegram & Deep Link Media (*Official Telegram Channel & "Watch on Cineva"*)
-* **Menu "Join Our Channel" di Halaman Info Aplikasi**:
-  * Menambahkan kartu menu **Gabung Saluran Kami (*Join Our Channel* / *हमारे चैनल से जुड़ें*)** lengkap dengan ikon vektor resmi Telegram (`https://t.me/cineva_platform`) di halaman Info Aplikasi sejajar dengan GitHub dan Email Pengembang.
-* **Deep Link Langsung ke Halaman Film & Serial TV**:
-  * Mendukung pembukaan tautan langsung `/Cineva/movie/:id`, `/Cineva/tv/:id`, `cineva://movie/:id`, dan `cineva://tv/:id` dari tombol aksi **Watch on Cineva** di saluran Telegram langsung menuju halaman detail tayangan di dalam aplikasi.
+### 7. Layar Pembaruan Wajib, Lini Masa Catatan Rilis 3 Bahasa & Balasan Email Feedback Otomatis
+* **Perlindungan Pembaruan Wajib (*3-Missed-Updates Mandatory Update Screen*)**:
+  * Menampilkan layar pembaruan penuh bergaya *Cinema Amber* secara otomatis apabila versi aplikasi pengguna tertinggal 3 rilis atau lebih di belakang versi terbaru.
+* **Lini Masa Catatan Rilis (*Release Notes Timeline*) & Halaman Bahasa Aplikasi**:
+  * Menambahkan halaman **Catatan Rilis** vertikal bergaya *timeline* yang merangkum fitur inti setiap versi dalam 3 bahasa (`id`, `en`, `hi`), serta halaman khusus pemilihan **Bahasa Aplikasi**.
+* **Balasan Email Otomatis (*Plain-Text SMTP Auto-Reply*) pada Masukan Pengguna**:
+  * Pengiriman masukan dan laporan bug (*Feedback*) kini dilengkapi sistem balasan email otomatis dengan cap waktu `Asia/Jakarta (WIB)`.
 
 ---
 
 ## Riwayat Versi Sebelumnya
+
+### Cineva v1.2.1
+* **Dukungan Penuh Bahasa India / Hindi (`id`, `en`, `hi`)**: Ekspansi lokalisasi 3 bahasa menyeluruh di seluruh antarmuka aplikasi beserta pengayaan metadata episode TV cerdas (*automatic `en-US` fallback*).
+* **Rekomendasi Personal *"Because You Watched..."***: Saran konten cerdas di halaman Beranda berdasarkan film atau serial TV yang terakhir ditonton.
+* **Halaman Cineva Insights & Studio Kartu Member**: Dasbor statistik jam menonton, genre favorit, dan pencapaian penonton di menu Profil, lengkap dengan kartu identitas member bergaya Kartu ID & Kartu ATM Cineva.
+* **Optimalisasi Mesin Unduhan Offline (*Background Isolate*)**: Pengunduhan segmen HLS dan dekripsi `AES-128-CBC` 16 *worker* di `Isolate` latar belakang tanpa membebani UI (`< 0.5 detik` *finalizing*) serta *Smart Concurrent Download Queue*.
+* **5 Section Katalog Regional Baru & Bilah Filter Modern**: Penambahan kategori **Anime, K-Drama, Indonesia, Hollywood, dan Bollywood** di Beranda dengan halaman *See All* *infinite scroll*, perlindungan tayangan *"Segera Hadir"*, urutan pencarian rilis terbaru (*Newest First*), serta integrasi saluran resmi Telegram (`https://t.me/cineva_platform`).
 
 ### Cineva v1.2.0
 * **Pratinjau Pesan Obrolan Dynamic Island**: Kapsul notifikasi pesan chat melayang bergaya *Dynamic Island* saat panel obrolan Watch Party ditutup.
@@ -84,13 +89,13 @@ Pembaruan Cineva versi **1.2.1 (Build 22)** menghadirkan ekspansi katalog konten
 
 ## Informasi Versi
 
-* **Versi Aplikasi**: 1.2.1
-* **Build**: 22
+* **Versi Aplikasi**: 1.2.2
+* **Build**: 23
 * **Target Sistem Operasi**: Android 5.0 (API 21) ke atas (Smartphone, Tablet & Android TV / Google TV), Windows 10/11 (64-bit)
 * **Daftar Varian File Rilis**:
-  * `Cineva_setup_v1.2.1.exe` (Windows Desktop Installer Resmi)
-  * `Cineva_v1.2.1-android-tv.apk` (Khusus Android TV & Smart TV - **Rekomendasi TV**)
-  * `Cineva_v1.2.1-arm64-v8a.apk` (HP & Tablet Android Modern 64-bit)
-  * `Cineva_v1.2.1-armeabi-v7a.apk` (HP & Tablet Android Lawas 32-bit)
-  * `Cineva_v1.2.1-x86_64.apk` (Emulator PC & Android x86)
-  * `Cineva_v1.2.1.apk` (Universal / Semua CPU, Kompatibel Penuh)
+  * `Cineva_setup_v1.2.2.exe` (Windows Desktop Installer Resmi)
+  * `Cineva_v1.2.2-android-tv.apk` (Khusus Android TV & Smart TV - **Rekomendasi TV**)
+  * `Cineva_v1.2.2-arm64-v8a.apk` (HP & Tablet Android Modern 64-bit)
+  * `Cineva_v1.2.2-armeabi-v7a.apk` (HP & Tablet Android Lawas 32-bit)
+  * `Cineva_v1.2.2-x86_64.apk` (Emulator PC & Android x86)
+  * `Cineva_v1.2.2.apk` (Universal / Semua CPU, Kompatibel Penuh)

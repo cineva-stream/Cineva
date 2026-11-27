@@ -49,16 +49,16 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Indonesian title & v1.2.1 core feature
+        // Indonesian title & v1.2.2 core feature
         expect(find.text('Catatan Rilis'), findsOneWidget);
-        expect(find.text('v1.2.1'), findsOneWidget);
+        expect(find.text('v1.2.2'), findsOneWidget);
         expect(
-          find.text('Dukungan penuh 3 bahasa (Indonesia, English, Hindi)'),
+          find.text('Deteksi pertandingan sepak bola Live via Real-Time EPG'),
           findsOneWidget,
         );
 
         // Latest version header uses Cineva Orange
-        final latestVersionText = tester.widget<Text>(find.text('v1.2.1'));
+        final latestVersionText = tester.widget<Text>(find.text('v1.2.2'));
         expect(latestVersionText.style?.color, AppColors.primary);
 
         // Switch to English
@@ -69,7 +69,7 @@ void main() {
 
         expect(find.text('Release Notes'), findsOneWidget);
         expect(
-          find.text('Full trilingual interface (Indonesian, English, Hindi)'),
+          find.text('Real-Time EPG live football match & broadcaster detection'),
           findsOneWidget,
         );
 
@@ -81,7 +81,7 @@ void main() {
 
         expect(find.text('रिलीज़ नोट्स'), findsOneWidget);
         expect(
-          find.text('3 भाषाओं का पूर्ण समर्थन (इंडोनेशियाई, अंग्रेजी, हिंदी)'),
+          find.text('रियल-टाइम EPG लाइव फुटबॉल मैच और प्रसारण चैनल पहचान'),
           findsOneWidget,
         );
       },

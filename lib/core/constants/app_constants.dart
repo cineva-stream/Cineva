@@ -3,8 +3,8 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = 'Cineva Stream';
-  static const String appVersion = '1.2.1';
-  static const String appBuildNumber = '22';
+  static const String appVersion = '1.2.2';
+  static const String appBuildNumber = '23';
   static const String appTagline = 'Stream Freely';
 
   /// Normalizes Android ABI-split version codes (e.g. 2021 -> 21, 1021 -> 21)

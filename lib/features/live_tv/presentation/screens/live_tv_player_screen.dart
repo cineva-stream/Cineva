@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -44,6 +46,16 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
   bool _isFullscreen = false;
   bool _controlsVisible = true;
   Timer? _hideControlsTimer;
+  Timer? _fallbackWatchdogTimer;
+  int _currentSourceIndex = 0;
+  int _playSessionToken = 0;
+  bool _hasConfirmedVideoPlayback = false;
+  HttpServer? _dashBridgeServer;
+  String? _activeDashMpdUrl;
+  Map<String, String> _activeDashHeaders = const {};
+  String? _cachedMpdUrl;
+  String? _cachedMpdBody;
+  DateTime? _cachedMpdAt;
   bool _isLoading = false;
   bool _isPlaying = false;
   bool _hasError = false;
@@ -124,6 +136,19 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
     }
   }
 
+  void _markVideoPlaybackConfirmed() {
+    if (!mounted) return;
+    _hasConfirmedVideoPlayback = true;
+    _fallbackWatchdogTimer?.cancel();
+    if (_isLoading || _hasError) {
+      setState(() {
+        _isLoading = false;
+        _hasError = false;
+        _errorMessage = null;
+      });
+    }
+  }
+
   void _listenPlayerEvents() {
     _player?.stream.buffering.listen((buffering) {
       if (mounted) {
@@ -148,11 +173,29 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
       }
     });
 
+    _player?.stream.videoParams.listen((params) {
+      if ((params.w ?? 0) > 0 && (params.h ?? 0) > 0) {
+        _markVideoPlaybackConfirmed();
+      }
+    });
+
+    _player?.stream.width.listen((w) {
+      if ((w ?? 0) > 0) {
+        _markVideoPlaybackConfirmed();
+      }
+    });
+
+    _player?.stream.position.listen((pos) {
+      if (pos > const Duration(milliseconds: 300)) {
+        _markVideoPlaybackConfirmed();
+      }
+    });
+
     _player?.stream.error.listen((error) {
       debugPrint('[LiveTvPlayer] mpv stream warning/event: $error');
       // Transient non-fatal decoder and networking warnings (e.g. dropped audio frames,
       // temporary TCP reconnects) must never interrupt or obscure an active broadcast.
-      if (mounted && error.isNotEmpty && !_isPlaying) {
+      if (mounted && error.isNotEmpty && !_hasConfirmedVideoPlayback) {
         final isTransient =
             error.contains('Error decoding audio') ||
             error.contains('ffurl_read') ||
@@ -161,8 +204,12 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
             error.contains('hls:') ||
             error.contains('non-existing') ||
             error.contains('header missing') ||
-            error.contains('decode_slice_header');
+            error.contains('decode_slice_header') ||
+            error.contains('Could not set AVOption');
         if (!isTransient) {
+          if (_tryNextFallbackSource(reason: error)) {
+            return;
+          }
           setState(() {
             _hasError = true;
             _errorMessage = error;
@@ -173,11 +220,408 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
     });
   }
 
-  Future<void> _playChannel(LiveTvChannel channel) async {
+  Map<String, String> _buildHttpHeadersForUrl(String url) {
+    final lower = url.toLowerCase();
+    if (lower.contains('vidio123.mikrofast.web.id') ||
+        lower.contains('vidio.com') ||
+        lower.contains('akamaized.net/stream/') ||
+        lower.contains('127.0.0.1:')) {
+      return {
+        'User-Agent':
+            'Mozilla/5.0 (Linux; Android 14; Google TV Streamer Build/UTT3.240625.001.K5; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/130.0.6723.60 Mobile Safari/537.36',
+        'Referer': 'https://www.vidio.com/',
+        'Origin': 'https://www.vidio.com',
+      };
+    }
+    if (lower.contains('dsgtq5sngxkde.cloudfront.net')) {
+      return {
+        'User-Agent':
+            'Mozilla/5.0 (Linux; Android 14; Google TV Streamer Build/UTT3.240625.001.K5; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/130.0.6723.60 Mobile Safari/537.36',
+        'Referer': 'https://www.rctiplus.com/',
+      };
+    }
+    if (lower.contains('rctiplus.id') ||
+        lower.contains('rplus.inisemar.my.id') ||
+        lower.contains('sedotcw3.workers.dev')) {
+      return {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Referer': 'https://www.rctiplus.com/',
+        'Origin': 'https://www.rctiplus.com',
+      };
+    }
+    if (lower.contains('dens.tv')) {
+      return {
+        'User-Agent':
+            'DENSGO/3.00.00 (Linux;Android 15.0.0;) ExoPlayerLib/2.19.1',
+        'Referer': 'https://www.dens.tv/',
+        'Origin': 'https://www.dens.tv',
+      };
+    }
+    if (lower.contains('cnbcindonesia.com') ||
+        lower.contains('cnnindonesia.com') ||
+        lower.contains('detik.com')) {
+      return {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Referer': 'https://20.detik.com/',
+        'Origin': 'https://20.detik.com',
+      };
+    }
+    if (lower.contains('tvri.go.id')) {
+      return {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Referer': 'https://www.tvri.go.id/',
+      };
+    }
+    return {
+      'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    };
+  }
+
+  /// Starts or updates the local loopback DASH-to-HLS fMP4 bridge server.
+  ///
+  /// FFmpeg 6.0's built-in `dashdec.c` has a use-after-free bug when refreshing
+  /// `type="dynamic"` MPDs with `<SegmentTimeline>` and `$Time%012d$`. Serving a
+  /// live fMP4 HLS playlist (`#EXT-X-MAP` + `.m4s` segment URLs) over localhost
+  /// lets `libmpv` use its rock-solid HLS demuxer (`hls.c`) while fetching the
+  /// video/audio segments directly from Akamai CDN.
+  Future<String> _startOrUpdateDashHlsBridge(
+    String mpdUrl,
+    Map<String, String> headers,
+  ) async {
+    _activeDashMpdUrl = mpdUrl;
+    _activeDashHeaders = headers;
+    _cachedMpdUrl = null;
+    _cachedMpdBody = null;
+    _cachedMpdAt = null;
+
+    if (_dashBridgeServer == null) {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      _dashBridgeServer = server;
+      server.listen(_handleDashBridgeRequest, onError: (_) {});
+    }
+    final port = _dashBridgeServer!.port;
+    return 'http://127.0.0.1:$port/master.m3u8';
+  }
+
+  Future<String?> _fetchFreshMpdXml() async {
+    final target = _activeDashMpdUrl;
+    if (target == null) return null;
+
+    final now = DateTime.now();
+    if (_cachedMpdUrl == target &&
+        _cachedMpdBody != null &&
+        _cachedMpdAt != null &&
+        now.difference(_cachedMpdAt!).inMilliseconds < 2200) {
+      return _cachedMpdBody;
+    }
+
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 5);
+    try {
+      final req = await client
+          .getUrl(Uri.parse(target))
+          .timeout(const Duration(seconds: 5));
+      _activeDashHeaders.forEach((k, v) {
+        req.headers.set(k, v);
+      });
+      final resp = await req.close().timeout(const Duration(seconds: 5));
+      if (resp.statusCode == 200) {
+        final body = await resp.transform(utf8.decoder).join();
+        _cachedMpdUrl = target;
+        _cachedMpdBody = body;
+        _cachedMpdAt = DateTime.now();
+        return body;
+      } else {
+        await resp.drain<void>();
+      }
+    } catch (e) {
+      debugPrint('[LiveTvPlayer] DASH bridge MPD fetch error: $e');
+    } finally {
+      client.close(force: true);
+    }
+    return _cachedMpdBody;
+  }
+
+  Future<void> _handleDashBridgeRequest(HttpRequest request) async {
+    try {
+      final path = request.uri.path;
+      final port = _dashBridgeServer?.port ?? 0;
+      if (path.endsWith('/master.m3u8')) {
+        final master = [
+          '#EXTM3U',
+          '#EXT-X-VERSION:7',
+          '#EXT-X-INDEPENDENT-SEGMENTS',
+          '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud",NAME="Main",DEFAULT=YES,AUTOSELECT=YES,URI="http://127.0.0.1:$port/audio.m3u8"',
+          '#EXT-X-STREAM-INF:BANDWIDTH=3092966,CODECS="avc1.64001f,mp4a.40.2",RESOLUTION=1280x720,AUDIO="aud"',
+          'http://127.0.0.1:$port/video.m3u8',
+          '',
+        ].join('\n');
+        request.response.statusCode = HttpStatus.ok;
+        request.response.headers.contentType = ContentType(
+          'application',
+          'vnd.apple.mpegurl',
+          charset: 'utf-8',
+        );
+        request.response.write(master);
+        await request.response.close();
+        return;
+      }
+
+      final mpd = await _fetchFreshMpdXml();
+      if (mpd == null || mpd.isEmpty) {
+        request.response.statusCode = HttpStatus.serviceUnavailable;
+        await request.response.close();
+        return;
+      }
+
+      final isAudio = path.endsWith('/audio.m3u8');
+      final playlist = _buildFmp4HlsPlaylistFromMpd(mpd, isAudio: isAudio);
+      if (playlist == null) {
+        request.response.statusCode = HttpStatus.notFound;
+        await request.response.close();
+        return;
+      }
+
+      request.response.statusCode = HttpStatus.ok;
+      request.response.headers.contentType = ContentType(
+        'application',
+        'vnd.apple.mpegurl',
+        charset: 'utf-8',
+      );
+      request.response.write(playlist);
+      await request.response.close();
+    } catch (e) {
+      try {
+        request.response.statusCode = HttpStatus.internalServerError;
+        await request.response.close();
+      } catch (_) {}
+    }
+  }
+
+  String? _buildFmp4HlsPlaylistFromMpd(String mpd, {required bool isAudio}) {
+    final baseMatch = RegExp(r'<BaseURL>([^<]+)</BaseURL>').firstMatch(mpd);
+    final baseUrl = baseMatch?.group(1)?.trim() ?? '';
+    if (baseUrl.isEmpty) return null;
+
+    final trackFolders = isAudio
+        ? const ['primary/aac/']
+        : const [
+            'primary/avc-720p/',
+            'primary/avc-1080p/',
+            'primary/avc-480p/',
+            'primary/avc-360p/',
+          ];
+
+    RegExpMatch? tplMatch;
+    for (final folder in trackFolders) {
+      final escapedFolder = RegExp.escape(folder);
+      final rx = RegExp(
+        '<SegmentTemplate[^>]*timescale="(\\d+)"[^>]*initialization="($escapedFolder[^"]+)"[^>]*media="($escapedFolder[^"]+)"[^>]*startNumber="(\\d+)"[^>]*>\\s*<SegmentTimeline>([\\s\\S]*?)</SegmentTimeline>',
+      );
+      tplMatch = rx.firstMatch(mpd);
+      if (tplMatch != null) break;
+    }
+    if (tplMatch == null) return null;
+
+    final timescale = int.tryParse(tplMatch.group(1) ?? '') ?? 12800;
+    final initRel = (tplMatch.group(2) ?? '').replaceAll('&amp;', '&');
+    final mediaRelTpl = (tplMatch.group(3) ?? '').replaceAll('&amp;', '&');
+    final startNumber = int.tryParse(tplMatch.group(4) ?? '') ?? 1;
+    final timelineXml = tplMatch.group(5) ?? '';
+
+    final initUrl = '$baseUrl$initRel';
+    final mediaUrlTpl = '$baseUrl$mediaRelTpl';
+
+    final sRx = RegExp(r'<S(?:\s+t="(\d+)")?\s+d="(\d+)"(?:\s+r="(\d+)")?\s*/>');
+    final segments = <({int time, int duration})>[];
+    int curTime = 0;
+    for (final m in sRx.allMatches(timelineXml)) {
+      final tStr = m.group(1);
+      if (tStr != null) {
+        curTime = int.tryParse(tStr) ?? curTime;
+      }
+      final d = int.tryParse(m.group(2) ?? '') ?? 0;
+      if (d <= 0) continue;
+      final r = int.tryParse(m.group(3) ?? '') ?? 0;
+      for (int k = 0; k <= r; k++) {
+        segments.add((time: curTime, duration: d));
+        curTime += d;
+      }
+    }
+    if (segments.isEmpty) return null;
+
+    const windowSize = 5;
+    final startIndex = math.max(0, segments.length - windowSize);
+    final mediaSeq = startNumber + startIndex;
+
+    final sb = StringBuffer()
+      ..writeln('#EXTM3U')
+      ..writeln('#EXT-X-VERSION:7')
+      ..writeln('#EXT-X-TARGETDURATION:7')
+      ..writeln('#EXT-X-MEDIA-SEQUENCE:$mediaSeq')
+      ..writeln('#EXT-X-MAP:URI="$initUrl"');
+
+    for (int i = startIndex; i < segments.length; i++) {
+      final seg = segments[i];
+      final durSec = (seg.duration / timescale).clamp(1.0, 10.0);
+      final timePadded = seg.time.toString().padLeft(12, '0');
+      final segUrl = mediaUrlTpl.replaceAll(r'$Time%012d$', timePadded);
+      sb
+        ..writeln('#EXTINF:${durSec.toStringAsFixed(3)},')
+        ..writeln(segUrl);
+    }
+    return sb.toString();
+  }
+
+  /// Resolves:
+  /// 1. `.mpd` DASH manifests (`vidio123.mikrofast.web.id`) to the local loopback
+  ///    fMP4 HLS bridge (`http://127.0.0.1:<port>/master.m3u8`).
+  /// 2. Cross-domain 302 redirects (`rplus.inisemar.my.id`, `sedotcw3.workers.dev`)
+  ///    to the final `linier-*.rctiplus.id` URL so `Referer` headers are preserved.
+  /// 3. Wurl / Xumo dynamic master playlists (`wurl.com/master/`, `ads.xumo_channelId`)
+  ///    to their 720p video child playlist (`3.m3u8`) so `libmpv` skips empty WebVTT
+  ///    subtitle playlists (`5.m3u8`) that otherwise stall `avformat_find_stream_info`.
+  Future<String> _resolveRedirectIfNeeded(
+    String rawUrl,
+    Map<String, String> headers,
+  ) async {
+    if (_isTesting) return rawUrl;
+    final lower = rawUrl.toLowerCase();
+
+    if (lower.endsWith('.mpd') || lower.contains('vidio123.mikrofast.web.id/vidio/')) {
+      try {
+        return await _startOrUpdateDashHlsBridge(rawUrl, headers);
+      } catch (e) {
+        debugPrint('[LiveTvPlayer] DASH bridge startup error: $e');
+        return rawUrl;
+      }
+    }
+
+    final isWurlOrXumoMaster =
+        lower.contains('wurl.com/master/') ||
+        lower.contains('ads.xumo_channelid=');
+    if (isWurlOrXumoMaster) {
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 4);
+      try {
+        final uri = Uri.parse(rawUrl);
+        final req = await client.getUrl(uri).timeout(const Duration(seconds: 4));
+        headers.forEach((k, v) => req.headers.set(k, v));
+        final resp = await req.close().timeout(const Duration(seconds: 4));
+        if (resp.statusCode == 200) {
+          final body = await resp.transform(utf8.decoder).join();
+          final lines = body
+              .split('\n')
+              .map((l) => l.trim())
+              .where((l) => l.isNotEmpty && !l.startsWith('#'))
+              .toList();
+          if (lines.isNotEmpty) {
+            final preferred = lines.firstWhere(
+              (l) => l.contains('/3.m3u8'),
+              orElse: () => lines.last,
+            );
+            final resolved = uri.resolve(preferred).toString();
+            debugPrint('[LiveTvPlayer] Resolved Wurl/Xumo child: $resolved');
+            return resolved;
+          }
+        } else {
+          await resp.drain<void>();
+        }
+      } catch (e) {
+        debugPrint('[LiveTvPlayer] Wurl/Xumo resolve note: $e');
+      } finally {
+        client.close(force: true);
+      }
+      return rawUrl;
+    }
+
+    final needsRedirectResolve =
+        lower.contains('rplus.inisemar.my.id') ||
+        lower.contains('sedotcw3.workers.dev');
+    if (!needsRedirectResolve) {
+      return rawUrl;
+    }
+
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 4);
+    try {
+      final uri = Uri.parse(rawUrl);
+      final req = await client.getUrl(uri).timeout(const Duration(seconds: 4));
+      req.followRedirects = false;
+      headers.forEach((k, v) {
+        req.headers.set(k, v);
+      });
+      final resp = await req.close().timeout(const Duration(seconds: 4));
+      final location = resp.headers.value(HttpHeaders.locationHeader);
+      await resp.drain<void>();
+      if (location != null && location.trim().isNotEmpty) {
+        final resolved = uri.resolve(location.trim()).toString();
+        debugPrint('[LiveTvPlayer] Resolved 302 redirect: $rawUrl -> $resolved');
+        return resolved;
+      }
+    } catch (e) {
+      debugPrint('[LiveTvPlayer] Redirect resolve note ($rawUrl): $e');
+    } finally {
+      client.close(force: true);
+    }
+    return rawUrl;
+  }
+
+  bool _tryNextFallbackSource({String? reason}) {
+    final urls = _currentChannel.allStreamUrls;
+    final nextIndex = _currentSourceIndex + 1;
+    if (nextIndex >= urls.length) {
+      return false;
+    }
+    debugPrint(
+      '[LiveTvPlayer] Failing over ${_currentChannel.name} to source #${nextIndex + 1}/${urls.length} (${reason ?? "timeout"})',
+    );
+    _openChannelSource(_currentChannel, sourceIndex: nextIndex);
+    return true;
+  }
+
+  Future<void> _playChannel(LiveTvChannel channel, {int sourceIndex = 0}) async {
     _ensurePlayerInitialized();
+    await _openChannelSource(channel, sourceIndex: sourceIndex);
+  }
+
+  Future<void> _configureNativeMpvProperties(
+    Map<String, String> headers,
+  ) async {
+    if (_player == null || _isTesting) return;
+    try {
+      final dynamic platform = _player!.platform;
+      final ua = headers['User-Agent'] ?? '';
+      final ref = headers['Referer'] ?? '';
+      if (ua.isNotEmpty) {
+        await platform.setProperty('user-agent', ua);
+      }
+      await platform.setProperty('referrer', ref);
+      await platform.setProperty('demuxer-lavf-o', 'allowed_extensions=ALL');
+      await platform.setProperty('sid', 'no');
+    } catch (e) {
+      debugPrint('[LiveTvPlayer] setProperty note: $e');
+    }
+  }
+
+  Future<void> _openChannelSource(
+    LiveTvChannel channel, {
+    required int sourceIndex,
+  }) async {
+    _fallbackWatchdogTimer?.cancel();
+    final sessionToken = ++_playSessionToken;
+    final urls = channel.allStreamUrls;
+    final safeIndex = sourceIndex.clamp(0, urls.length - 1);
+    final rawTargetUrl = urls[safeIndex];
 
     setState(() {
       _currentChannel = channel;
+      _currentSourceIndex = safeIndex;
+      _hasConfirmedVideoPlayback = false;
       _isLoading = true;
       _isPlaying = true;
       _hasError = false;
@@ -192,28 +636,40 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
     _startHideTimer();
 
     if (_player != null) {
-      try {
-        final headers = <String, String>{
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        };
-        if (channel.streamUrl.contains('dens.tv')) {
-          headers['Referer'] = 'https://www.dens.tv/';
-          headers['Origin'] = 'https://www.dens.tv';
-        } else if (channel.streamUrl.contains('cnbcindonesia.com') ||
-            channel.streamUrl.contains('detik.com')) {
-          headers['Referer'] = 'https://video.detik.com/';
-        }
+      // Watchdog: if video frames haven't arrived within 10 seconds and fallback
+      // URLs exist, automatically try the next source.
+      if (safeIndex + 1 < urls.length) {
+        _fallbackWatchdogTimer = Timer(const Duration(seconds: 10), () {
+          if (mounted &&
+              sessionToken == _playSessionToken &&
+              !_hasConfirmedVideoPlayback) {
+            _tryNextFallbackSource(reason: 'watchdog 10s timeout');
+          }
+        });
+      }
 
-        await _player!.open(Media(channel.streamUrl, httpHeaders: headers));
+      try {
+        final initialHeaders = _buildHttpHeadersForUrl(rawTargetUrl);
+        final resolvedUrl = await _resolveRedirectIfNeeded(
+          rawTargetUrl,
+          initialHeaders,
+        );
+        if (!mounted || sessionToken != _playSessionToken) return;
+        final finalHeaders = _buildHttpHeadersForUrl(resolvedUrl);
+        await _configureNativeMpvProperties(finalHeaders);
+        if (!mounted || sessionToken != _playSessionToken) return;
+
+        await _player!.open(Media(resolvedUrl, httpHeaders: finalHeaders));
       } catch (e) {
-        if (mounted) {
-          setState(() {
-            _hasError = true;
-            _errorMessage = e.toString();
-            _isLoading = false;
-          });
+        if (!mounted || sessionToken != _playSessionToken) return;
+        if (_tryNextFallbackSource(reason: e.toString())) {
+          return;
         }
+        setState(() {
+          _hasError = true;
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
       }
     }
   }
@@ -241,7 +697,10 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
   }
 
   void _reloadStream() {
-    _playChannel(_currentChannel);
+    final urls = _currentChannel.allStreamUrls;
+    final nextIndex =
+        urls.length > 1 ? (_currentSourceIndex + 1) % urls.length : 0;
+    _playChannel(_currentChannel, sourceIndex: nextIndex);
   }
 
   void _toggleVideoFit() {
@@ -321,6 +780,9 @@ class _LiveTvPlayerScreenState extends ConsumerState<LiveTvPlayerScreen> {
   @override
   void dispose() {
     _hideControlsTimer?.cancel();
+    _fallbackWatchdogTimer?.cancel();
+    _dashBridgeServer?.close(force: true);
+    _dashBridgeServer = null;
     _player?.dispose();
     _searchController.dispose();
     restoreSystemUiAndOrientations(isTv: gIsTv);

@@ -269,15 +269,15 @@ void main() {
 
   group('AppConstants Build Number & Version Normalization Tests', () {
     test('Normalizes Android ABI-split version codes to canonical pubspec build number', () {
-      expect(AppConstants.appVersion, '1.2.1');
-      expect(AppConstants.appBuildNumber, '22');
+      expect(AppConstants.appVersion, '1.2.2');
+      expect(AppConstants.appBuildNumber, '23');
 
       // Flutter ABI-split version codes
-      expect(AppConstants.normalizeBuildNumber('2022'), '22'); // arm64-v8a: 2000 + 22
-      expect(AppConstants.normalizeBuildNumber('1022'), '22'); // armeabi-v7a: 1000 + 22
-      expect(AppConstants.normalizeBuildNumber('3022'), '22'); // x86_64: 3000 + 22
-      expect(AppConstants.normalizeBuildNumber('22'), '22');   // Universal / Non-split
-      expect(AppConstants.normalizeBuildNumber(' 2022 '), '22');
+      expect(AppConstants.normalizeBuildNumber('2023'), '23'); // arm64-v8a: 2000 + 23
+      expect(AppConstants.normalizeBuildNumber('1023'), '23'); // armeabi-v7a: 1000 + 23
+      expect(AppConstants.normalizeBuildNumber('3023'), '23'); // x86_64: 3000 + 23
+      expect(AppConstants.normalizeBuildNumber('23'), '23');   // Universal / Non-split
+      expect(AppConstants.normalizeBuildNumber(' 2023 '), '23');
       expect(AppConstants.normalizeBuildNumber('dev'), 'dev');
     });
   });
